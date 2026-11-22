@@ -5,7 +5,6 @@ import type { Call } from '@superdurable/connectors-sdk';
 import { z } from 'zod';
 import type { GmailHTTPClient } from './http.js';
 import { DexMessageIDHeader } from './dex_message_id_header.js';
-import { GmailMessageResourceSchema, parseMailbox } from './message.js';
 import type { Credentials } from './models.js';
 import type { SentMessageIdentity } from './provider.js';
 
@@ -14,13 +13,28 @@ const SentMailCandidateWindow = 'newer_than:2d';
 const SentMailCandidateLimit = 25;
 // Admits only characters that Gmail search reads literally in a to: term.
 const SearchableRecipientAddress = /^[A-Za-z0-9._+-]+@[A-Za-z0-9.-]+$/;
-// Go decodes a null entry, ID, thread ID, header name, or header value as empty, and rejects other types.
-const SentMailCandidateListSchema = z.object({ messages: z.array(z.object({ id: z.string().nullish(), threadId: z.string().nullish() }).nullish()).nullish() });
-const SentMailCandidateSchema = GmailMessageResourceSchema.extend({
-  payload: z.object({
-    mimeType: z.string().nullish(), body: z.object({ data: z.string().nullish() }).nullish(), parts: z.array(z.unknown()).nullish(),
-    headers: z.array(z.object({ name: z.string().nullish(), value: z.string().nullish() }).nullish()).nullish(),
-  }).nullish(),
+// The formatted mailbox ends with its addr-spec; a Q-encoded display name may not parse again.
+const FormattedMailboxAddrSpec = /<([^<>]+)>$/;
+const QuotedLocalPart = /^"((?:[^"\\]|\\.)*)"(@.*)$/;
+// Go decodes a null document, list, entry, ID, or thread ID as empty, and rejects other types.
+const SentMailCandidateListSchema = z.object({ messages: z.array(z.object({ id: z.string().nullish(), threadId: z.string().nullish() }).nullish()).nullish() }).nullable();
+
+interface SentMailCandidatePart {
+  mimeType?: string | null | undefined;
+  headers?: ({ name?: string | null | undefined; value?: string | null | undefined } | null | undefined)[] | null | undefined;
+  body?: { data?: string | null | undefined } | null | undefined;
+  parts?: (SentMailCandidatePart | null | undefined)[] | null | undefined;
+}
+
+// Go's gmailMessageResource at every depth: null decodes as empty, any other mistyped field is unreadable.
+const SentMailCandidatePartSchema: z.ZodType<SentMailCandidatePart> = z.lazy(() => z.object({
+  mimeType: z.string().nullish(),
+  headers: z.array(z.object({ name: z.string().nullish(), value: z.string().nullish() }).nullish()).nullish(),
+  body: z.object({ data: z.string().nullish() }).nullish(), parts: z.array(SentMailCandidatePartSchema.nullish()).nullish(),
+}));
+const SentMailCandidateSchema = z.object({
+  id: z.string().nullish(), threadId: z.string().nullish(), labelIds: z.array(z.string().nullish()).nullish(),
+  snippet: z.string().nullish(), internalDate: z.string().nullish(), payload: SentMailCandidatePartSchema.nullish(),
 });
 
 // Gmail replaces Message-ID on send and cannot search custom headers, so candidates are read.
@@ -76,7 +90,7 @@ export class SentMailReadBack {
     catch { throw new Error('Gmail sent-message lookup returned an invalid response'); }
     const parsed = SentMailCandidateListSchema.safeParse(document);
     if (!parsed.success) throw new Error('Gmail sent-message lookup returned an invalid response');
-    return parsed.data.messages ?? [];
+    return parsed.data?.messages ?? [];
   }
 
   /** Match the preserved X-Dex-Message-ID header or, where a gateway keeps it, Message-ID itself. */
@@ -94,13 +108,20 @@ export class SentMailReadBack {
     if (resource.id !== messageId) throw new Error('Gmail sent-message header read returned an invalid response');
     const isMatch = (resource.payload?.headers ?? []).some(header =>
       ['message-id', DexMessageIDHeader.toLowerCase()].includes((header?.name ?? '').toLowerCase()) && (header?.value ?? '').trim() === this.#dexMessageId);
-    return isMatch ? { id: resource.id, threadId: resource.threadId } : undefined;
+    return isMatch ? { id: messageId, threadId: resource.threadId ?? '' } : undefined;
   }
 }
 
-/** Narrow Sent Mail to recent messages, and to the first recipient when its address is plain enough to search. */
+/** Narrow Sent Mail to recent messages, and to the first formatted recipient whose address is searchable. */
 export function sentMailCandidateQuery(recipients: readonly string[]): string {
   const query = `in:sent ${SentMailCandidateWindow}`;
-  const address = recipients[0] === undefined ? undefined : parseMailbox(recipients[0])?.address;
+  const address = recipients[0] === undefined ? undefined : formattedMailboxAddress(recipients[0]);
   return address && SearchableRecipientAddress.test(address) ? `${query} to:${address}` : query;
+}
+
+// Read the addr-spec as Go's and Python's address parsers do, unquoting a quoted local part.
+function formattedMailboxAddress(mailbox: string): string | undefined {
+  const addrSpec = FormattedMailboxAddrSpec.exec(mailbox)?.[1];
+  const quoted = addrSpec === undefined ? null : QuotedLocalPart.exec(addrSpec);
+  return quoted ? `${quoted[1]!.replace(/\\(.)/g, '$1')}${quoted[2]!}` : addrSpec;
 }

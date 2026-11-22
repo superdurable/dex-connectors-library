@@ -162,14 +162,14 @@ The connector derives an RFC `Message-ID` from the stable call key, Dex's
 first run ID, and the Flow start second. From Go v0.29.1, Python v0.5.1, and
 TypeScript v0.5.1 it repeats that value in an `X-Dex-Message-ID` header; the
 safe correlation header `X-Dex-Call-ID` carries the Call ID. Gmail documents no
-deduplication by `Message-ID`, and a live account showed that `messages.send`
-replaces the client `Message-ID` on the Sent copy with Gmail's own
-`<…@mail.gmail.com>` value, also for an ID in the sender's own domain, and
+deduplication by `Message-ID`, and a live Workspace mailbox showed that
+`messages.send` replaces the client `Message-ID` on the Sent copy with Gmail's
+own `<…@mail.gmail.com>` value, also for an ID in the sender's own domain, and
 keeps no copy of it, while it keeps `X-Dex-*` headers verbatim. Gmail search
 cannot match a custom header, so Sent Mail read-back lists up to 25 recent
 candidates with `in:sent newer_than:2d`, adding `to:` and the first recipient
-when the recipient is known and its address uses only letters, digits, and
-`.`, `_`, `+`, or `-`. A reply's read-back before its source read knows no
+when the recipient is known and its address, whatever its display name, uses
+only letters, digits, and `.`, `_`, `+`, or `-`. A reply's read-back before its source read knows no
 recipient, so below the send cap a later attempt reads back again with the
 source's reply recipient before it posts; at the cap only the read-back
 without a recipient runs. The connector then reads each candidate's
@@ -178,12 +178,14 @@ whose `X-Dex-Message-ID`, or whose `Message-ID` where a compatible gateway kept
 it, equals this call's value is a match; a Sent copy of another call, or of an
 earlier run of a reused Flow ID with the same `X-Dex-Call-ID`, is not. Within
 one poll, a candidate found to be another message is not read again, and a
-candidate whose read fails leaves the lookup inconclusive unless another
-candidate matches. A credential refreshed after a 401 during read-back serves
+candidate whose read fails, or whose resource has a field of the wrong JSON
+type, leaves the lookup inconclusive unless another candidate matches. A credential refreshed after a 401 during read-back serves
 that read-back's remaining reads and every later request before the POST.
-Before these releases the read-back searched
-`rfc822msgid:`, which never matches the rewritten `Message-ID`, so a crash or
-lost answer after Gmail accepted a send was resent up to the send cap:
+Before these releases the read-back searched `rfc822msgid:`, which never
+matches the rewritten `Message-ID`, so a crash or lost answer after Gmail
+accepted a send was resent up to the send cap.
+
+Sends and replies are confirmed as follows:
 
 - A 2xx with a Gmail message ID is `sent`, with no search. A body names a
   message ID when it is a JSON object whose `id` is a non-empty string, whatever

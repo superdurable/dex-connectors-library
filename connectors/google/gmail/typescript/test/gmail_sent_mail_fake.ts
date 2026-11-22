@@ -18,11 +18,7 @@ export interface FakeGmailHeader { name: string; value: string }
 /** One Sent Mail message with the headers Gmail stored on it. */
 export interface FakeSentCopy { id: string; threadId: string; headers: FakeGmailHeader[] }
 
-/**
- * How Gmail and the worker handle one messages.send POST: `accepted` answers it, `acceptedResponseLost` keeps
- * the Sent copy but loses the connection, `acceptedWorkerCrashed` keeps the Sent copy and never answers, as
- * when the worker dies after Gmail accepted, and `lost` loses the connection before Gmail accepted it.
- */
+/** One POST's fate; every outcome but `lost` keeps a Sent copy, and only `accepted` answers. */
 export type FakeSendOutcome = 'accepted' | 'acceptedResponseLost' | 'acceptedWorkerCrashed' | 'lost';
 
 /** Dex context fields that derive the run-specific Message-ID. */
@@ -32,11 +28,7 @@ const credentials: Credentials = { accessToken: new SecretString('access-token')
 const expiredCredentials: Credentials = { ...credentials, accessToken: new SecretString('expired-token') };
 const driver: CredentialRefreshDriver<Credentials> = { refreshRequired: () => false, refresh: async () => { throw new Error('unexpected refresh'); } };
 
-/**
- * Fake Gmail API that behaves like real Gmail on send: the Sent copy gets a Gmail-generated Message-Id and keeps
- * every other header, including X-Dex-Message-ID; search lists candidates newest first; metadata reads return
- * only the requested headers.
- */
+/** Fake Gmail API that, like Gmail, replaces Message-Id on send and keeps X-Dex-Message-ID. */
 export class FakeGmailSentMail {
   /** Sent Mail, newest first. */ readonly sentMail: FakeSentCopy[] = [];
   /** Decoded raw MIME messages that reached Gmail, in order. */ readonly postedMessages: string[] = [];
@@ -48,12 +40,15 @@ export class FakeGmailSentMail {
   /** Forced credential refreshes after a 401. */ forcedRefreshes = 0;
   readonly #sendOutcomes: FakeSendOutcome[];
   readonly #failingHeaderReads: ReadonlyMap<string, number>;
+  readonly #candidateFields: ReadonlyMap<string, Record<string, unknown>>;
   readonly #isStoredTokenExpired: boolean;
 
-  /** Script POST outcomes, failing header reads by ID, and a stored token Gmail rejects until refreshed. */
-  constructor(options: { sendOutcomes?: FakeSendOutcome[]; failingHeaderReads?: ReadonlyMap<string, number>; isStoredTokenExpired?: boolean } = {}) {
+  /** Script POST outcomes, failing or extra-field header reads by ID, and a stored token Gmail rejects until refreshed. */
+  constructor(options: { sendOutcomes?: FakeSendOutcome[]; failingHeaderReads?: ReadonlyMap<string, number>; candidateFields?: ReadonlyMap<string, Record<string, unknown>>; isStoredTokenExpired?: boolean } = {}) {
     this.#sendOutcomes = [...(options.sendOutcomes ?? [])];
     this.#failingHeaderReads = options.failingHeaderReads ?? new Map();
+    // Fields a header read adds or replaces; `payload` fields merge into the payload.
+    this.#candidateFields = options.candidateFields ?? new Map();
     this.#isStoredTokenExpired = options.isStoredTokenExpired ?? false;
   }
 
@@ -107,7 +102,8 @@ export class FakeGmailSentMail {
     if (!copy) return json(404, { error: { code: 404 } });
     const requested = url.searchParams.getAll('metadataHeaders').map(name => name.toLowerCase());
     const headers = copy.headers.filter(header => requested.includes(header.name.toLowerCase()));
-    return json(200, { id: copy.id, threadId: copy.threadId, labelIds: ['SENT'], payload: { mimeType: 'text/plain', headers } });
+    const { payload, ...fields } = this.#candidateFields.get(messageId) ?? {};
+    return json(200, { id: copy.id, threadId: copy.threadId, labelIds: ['SENT'], payload: { mimeType: 'text/plain', headers, ...(payload as object | undefined) }, ...fields });
   }
 
   async #acceptSend(request: ProviderRequest): Promise<ProviderResponse> {

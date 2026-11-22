@@ -643,11 +643,12 @@ class _SentMailReadBack:
             document = json.loads(result.body)
         except (ValueError, UnicodeDecodeError) as error:
             raise ValueError("Gmail sent-message lookup returned an invalid response") from error
-        if not isinstance(document, dict) or not isinstance(document.get("messages", []), list | None):
+        # Go decodes a null document, list, ID, or thread ID as empty; another type is an invalid response.
+        listed = document.get("messages") if isinstance(document, dict) else None
+        if not isinstance(document, dict | None) or not isinstance(listed, list | None):
             raise ValueError("Gmail sent-message lookup returned an invalid response")
         candidate_ids: list[str] = []
-        # Go decodes a null ID or thread ID as an empty one; another type is an invalid response.
-        for candidate in document.get("messages") or []:
+        for candidate in listed or []:
             candidate_id = candidate.get("id") if isinstance(candidate, dict) else None
             thread_id = candidate.get("threadId") if isinstance(candidate, dict) else None
             if not isinstance(candidate, dict | None) or not isinstance(candidate_id, str | None):
@@ -682,27 +683,56 @@ class _SentMailReadBack:
 
 
 def _sent_mail_candidate_headers(resource: object, message_id: str) -> list[tuple[str, str]]:
-    """Return a metadata read's headers, rejecting a resource that is not the requested message."""
+    """Return a metadata read's headers, rejecting another message or a resource Go cannot decode."""
     invalid = ValueError("Gmail sent-message header read returned an invalid response")
     if not isinstance(resource, dict) or resource.get("id") != message_id:
         raise invalid
-    if not isinstance(resource.get("threadId"), str | None):
+    string_fields = ("threadId", "snippet", "internalDate")
+    if not all(isinstance(resource.get(name), str | None) for name in string_fields):
+        raise invalid
+    label_ids = resource.get("labelIds")
+    if not isinstance(label_ids, list | None):
+        raise invalid
+    if not all(isinstance(label, str | None) for label in label_ids or []):
         raise invalid
     payload = resource.get("payload")
+    # Go's gmailMessageResource at every depth: null decodes as empty, any other mistyped field fails.
+    pending_parts: list[object] = [payload]
+    while pending_parts:
+        part = pending_parts.pop()
+        if part is None:
+            continue
+        if not isinstance(part, dict) or not isinstance(part.get("mimeType"), str | None):
+            raise invalid
+        body = part.get("body")
+        if not isinstance(body, dict | None) or not isinstance((body or {}).get("data"), str | None):
+            raise invalid
+        if not _is_go_header_list(part.get("headers")):
+            raise invalid
+        children = part.get("parts")
+        if not isinstance(children, list | None):
+            raise invalid
+        pending_parts.extend(children or [])
     listed = payload.get("headers") if isinstance(payload, dict) else None
-    if not isinstance(payload, dict | None) or not isinstance(listed, list | None):
-        raise invalid
-    headers: list[tuple[str, str]] = []
-    # Go decodes a null header as an empty one, which matches nothing.
-    for header in listed or []:
-        name = header.get("name") if isinstance(header, dict) else None
-        value = header.get("value") if isinstance(header, dict) else None
-        if not isinstance(header, dict | None) or not isinstance(name, str | None):
-            raise invalid
-        if not isinstance(value, str | None):
-            raise invalid
-        headers.append((name or "", value or ""))
-    return headers
+    return [
+        (header.get("name") or "", header.get("value") or "")
+        for header in listed or []
+        if isinstance(header, dict)
+    ]
+
+
+def _is_go_header_list(headers: object) -> bool:
+    if not isinstance(headers, list | None):
+        return False
+    return all(
+        header is None
+        or (
+            isinstance(header, dict)
+            and isinstance(header.get("name"), str | None)
+            and isinstance(header.get("value"), str | None)
+        )
+        for header in headers or []
+    )
 
 
 __all__ = [

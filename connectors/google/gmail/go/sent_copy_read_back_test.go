@@ -18,8 +18,7 @@ import (
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatchtest"
 )
 
-// crashAfterAcceptedSendTransport ends the attempt's goroutine once Gmail answered the send,
-// like a Worker that dies after Gmail accepted but before the connector saw the answer.
+// crashAfterAcceptedSendTransport ends the attempt after Gmail accepts the send, before the connector sees it.
 type crashAfterAcceptedSendTransport struct{ base http.RoundTripper }
 
 func (transport crashAfterAcceptedSendTransport) RoundTrip(request *http.Request) (*http.Response, error) {
@@ -40,8 +39,7 @@ func expectedCandidateQuery(isReply bool) string {
 	return "in:sent newer_than:2d to:customer@example.com"
 }
 
-// TestGmailCrashAfterAcceptedSendIsNeverResent reproduces the live duplicate: Gmail rewrote the
-// Message-ID of the accepted send, so only its preserved X-Dex-Message-ID can confirm it.
+// TestGmailCrashAfterAcceptedSendIsNeverResent reproduces the live duplicate, confirmed only by X-Dex-Message-ID.
 func TestGmailCrashAfterAcceptedSendIsNeverResent(t *testing.T) {
 	forSendAndReply(t, func(t *testing.T, isReply bool) {
 		fake := newGmailSendFake(t, sendFakeBehavior{
@@ -91,8 +89,7 @@ func TestGmailPostedMessageCarriesTheDexMessageID(t *testing.T) {
 	})
 }
 
-// TestGmailReadBackSkipsOtherSentCopies matches only this run's X-Dex-Message-ID: another call's
-// copy, or one an earlier run of a reused Flow ID sent with the same X-Dex-Call-ID, is no proof.
+// TestGmailReadBackSkipsOtherSentCopies ignores copies of other calls or runs, even with the same X-Dex-Call-ID.
 func TestGmailReadBackSkipsOtherSentCopies(t *testing.T) {
 	forSendAndReply(t, func(t *testing.T, isReply bool) {
 		fake := newGmailSendFake(t, sendFakeBehavior{
@@ -109,8 +106,7 @@ func TestGmailReadBackSkipsOtherSentCopies(t *testing.T) {
 	})
 }
 
-// TestGmailOnlyOtherSentCopiesResendsBelowTheCap treats a candidate list without this run's copy
-// as a miss: the poll reads each candidate once, and the next attempt resends.
+// TestGmailOnlyOtherSentCopiesResendsBelowTheCap reads each decoy once per poll, then resends.
 func TestGmailOnlyOtherSentCopiesResendsBelowTheCap(t *testing.T) {
 	forSendAndReply(t, func(t *testing.T, isReply bool) {
 		fake := newGmailSendFake(t, sendFakeBehavior{
@@ -192,6 +188,26 @@ func TestGmailReplyRetryReadsBackByRecipientBeforeResending(t *testing.T) {
 	require.Equal(t, 1, sends, "the accepted reply must not be posted again")
 	require.Equal(t, []string{"in:sent newer_than:2d", expectedCandidateQuery(true)}, fake.queries())
 	require.Equal(t, 26, fake.headerReadCount())
+}
+
+// TestGmailCandidateQueryNamesThePlainAddressWhateverTheDisplayName pins the to: term for display names and quoted local parts.
+func TestGmailCandidateQueryNamesThePlainAddressWhateverTheDisplayName(t *testing.T) {
+	for recipient, expectedQuery := range map[string]string{
+		"ada@example.com":                    "in:sent newer_than:2d to:ada@example.com",
+		`"Müller, Hans" <hans@example.de>`:   "in:sent newer_than:2d to:hans@example.de",
+		`"Zoë\\Inc" <zoe@example.com>`:       "in:sent newer_than:2d to:zoe@example.com",
+		`"Zoë\"Inc" <zoe@example.com>`:       "in:sent newer_than:2d to:zoe@example.com",
+		`Ada <"a..b"@example.com>`:           "in:sent newer_than:2d to:a..b@example.com",
+		"o'brien@example.com":                "in:sent newer_than:2d",
+		`"Ada Lovelace" <{ada}@example.com>`: "in:sent newer_than:2d",
+	} {
+		sendQuery, isValid := gmail.SentMailCandidateQueryForSendForTest([]string{recipient, "bob@example.com"})
+		require.True(t, isValid, recipient)
+		require.Equal(t, expectedQuery, sendQuery, recipient)
+		replyQuery, isValid := gmail.SentMailCandidateQueryForReplyForTest(gmail.Message{ReplyTo: recipient, From: "sender@example.com"})
+		require.True(t, isValid, recipient)
+		require.Equal(t, expectedQuery, replyQuery, recipient)
+	}
 }
 
 // TestGmailReadBackKeepsTheRefreshedCredential refreshes an expired token once per attempt.

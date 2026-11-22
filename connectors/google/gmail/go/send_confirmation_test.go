@@ -35,8 +35,7 @@ type sendFakeBehavior struct {
 	// answerSend writes the messages.send answer; nil aborts the connection after reading the request.
 	answerSend        func(http.ResponseWriter)
 	answerSendAttempt func(http.ResponseWriter, int)
-	// searchMatch is the messages.list candidate JSON; empty answers with no messages. A candidate's
-	// header read answers with the connector's X-Dex-Message-ID unless decoyCandidateIDs names it.
+	// searchMatch is the candidate list JSON; each header read matches unless decoyCandidateIDs names it.
 	searchMatch string
 	// searchMatchByQuery answers the listed queries with their own candidate JSON instead of searchMatch.
 	searchMatchByQuery   map[string]string
@@ -58,8 +57,7 @@ type sendFakeBehavior struct {
 	isSendHanging, isSearchHanging, isSourceReadHanging, hangFirstSend bool
 }
 
-// gmailSendFake is a Gmail API fake that behaves like Gmail's messages.send: the Sent copy gets a
-// Gmail-generated Message-ID and keeps the connector's X-Dex-Message-ID, which search cannot match.
+// gmailSendFake replaces Message-ID on send, like Gmail, and keeps the unsearchable X-Dex-Message-ID.
 type gmailSendFake struct {
 	*httptest.Server
 	t                                                      *testing.T

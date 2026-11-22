@@ -206,7 +206,7 @@ transport failure proven to precede dispatch, permits a later send. The
 manifest limits sends and replies to seven attempts within five minutes;
 `max_sends_override` on the generated Step factory changes one Step's cap.
 
-A live Gmail account showed the `Message-ID` replacement and the verbatim
-`X-Dex-Message-ID` that read-back relies on. This package has not run against
-a live account, so live provider authorization and Sent Mail indexing latency
+A live Google Workspace mailbox showed the `Message-ID` replacement and the
+verbatim `X-Dex-Message-ID` that read-back relies on. This package has not run
+against a live account, so live provider authorization and Sent Mail indexing latency
 remain unverified. No live provider credentials are included in this package.

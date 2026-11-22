@@ -105,6 +105,28 @@ def test_sent_mail_candidate_query_names_only_a_literal_first_recipient(
     assert _sent_mail_candidate_query(recipients) == expected_query
 
 
+@pytest.mark.parametrize(
+    ("recipient", "expected_query"),
+    [
+        ("ada@example.com", "in:sent newer_than:2d to:ada@example.com"),
+        ('"Müller, Hans" <hans@example.de>', "in:sent newer_than:2d to:hans@example.de"),
+        ('"Zoë\\\\Inc" <zoe@example.com>', "in:sent newer_than:2d to:zoe@example.com"),
+        ('"Zoë\\"Inc" <zoe@example.com>', "in:sent newer_than:2d to:zoe@example.com"),
+        ('Ada <"a..b"@example.com>', "in:sent newer_than:2d to:a..b@example.com"),
+        ("o'brien@example.com", "in:sent newer_than:2d"),
+        ('"Ada Lovelace" <{ada}@example.com>', "in:sent newer_than:2d"),
+    ],
+)
+def test_sent_mail_candidate_query_matches_go_for_formatted_recipients(
+    recipient: str, expected_query: str
+) -> None:
+    """A send's and a reply's formatted first recipient give Go's to: term, whatever the display name."""
+    send_input = SendMessageInput(to=[recipient, "bob@example.com"], subject="Progress", text_body="Update")
+    send_recipients = validate_send_input(send_input, "owner@example.com")
+    assert _sent_mail_candidate_query(send_recipients) == expected_query
+    assert _sent_mail_candidate_query([_format_go_mailbox(parse_mailbox(recipient))]) == expected_query
+
+
 def test_sent_message_search_query_stays_importable(call: Call) -> None:
     """The 0.5.0 helper keeps its query, although read-back no longer uses it."""
     assert sent_message_search_query(call, "run", None, message_id_address="digest@dex.superdurable.dev") == (

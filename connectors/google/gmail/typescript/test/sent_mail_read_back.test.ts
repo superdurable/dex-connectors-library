@@ -3,7 +3,8 @@
 
 import { describe, expect, it, vi } from 'vitest';
 import type { Call } from '@superdurable/connectors-sdk';
-import { rfcMessageIDAddress } from '../src/message.js';
+import { replyRecipient, rfcMessageIDAddress, validateSendInput } from '../src/message.js';
+import type { Message } from '../src/models.js';
 import { GmailProvider } from '../src/provider.js';
 import type { GmailSender } from '../src/send.js';
 import { sentMailCandidateQuery } from '../src/sent_mail_read_back.js';
@@ -64,6 +65,26 @@ describe('Sent Mail candidate query', () => {
     expect(sentMailCandidateQuery(['=?utf-8?q?Jos=C3=A9?= <jose@example.com>'])).toBe('in:sent newer_than:2d to:jose@example.com');
     expect(sentMailCandidateQuery(["<o'brien@example.com>"])).toBe('in:sent newer_than:2d');
     expect(sentMailCandidateQuery(['<{ada}@example.com>'])).toBe('in:sent newer_than:2d');
+  });
+
+  it('names a recipient whose formatted non-ASCII display name holds a comma or another special, as Go and Python do', () => {
+    for (const display of ['"Müller, Hans"', '"Zoë (x)"', '"Zoë; Inc"', '"Zoë@Inc"', '"Zoë<Inc>"', '"Zoë\\"Inc"', '"Zoë: Inc"', '"Zoë [x]"', '"Zoë\\\\Inc"']) {
+      const recipient = `${display} <hans@example.de>`;
+      const [formatted] = validateSendInput({ to: [recipient], subject: 'Progress', textBody: 'Update' }, 'owner@example.com');
+      expect(sentMailCandidateQuery([formatted!]), recipient).toBe('in:sent newer_than:2d to:hans@example.de');
+      const source = { replyTo: recipient, from: 'Sender <sender@example.com>' } as Message;
+      expect(sentMailCandidateQuery([replyRecipient(source)]), recipient).toBe('in:sent newer_than:2d to:hans@example.de');
+    }
+  });
+
+  it('unquotes a quoted local part, as Go and Python do', () => {
+    for (const [recipient, expected] of [
+      ['"ab"@example.com', 'in:sent newer_than:2d to:ab@example.com'], ['Ada <"a..b"@example.com>', 'in:sent newer_than:2d to:a..b@example.com'],
+      ['"Ü" <".ab"@example.com>', 'in:sent newer_than:2d to:.ab@example.com'], ['"a\\"b"@example.com', 'in:sent newer_than:2d'],
+    ] as const) {
+      const [formatted] = validateSendInput({ to: [recipient], subject: 'Progress', textBody: 'Update' }, 'owner@example.com');
+      expect(sentMailCandidateQuery([formatted!]), recipient).toBe(expected);
+    }
   });
 });
 
@@ -163,6 +184,37 @@ for (const operationId of ['sendMessage', 'replyToMessage'] as const) {
       });
       expect(gmail.headerReads).toEqual(['deleted', 'unreadable']);
       expect(gmail.posts()).toBe(0);
+    });
+
+    it('treats a matching candidate with a field Go cannot decode as unreadable', async () => {
+      const mistypedFields: Record<string, unknown>[] = [
+        { snippet: 7 }, { labelIds: [1] }, { labelIds: 'SENT' }, { internalDate: 123 }, { threadId: 7 },
+        { payload: { mimeType: 5 } }, { payload: { body: 'x' } }, { payload: { body: { data: 5 } } }, { payload: { parts: [5] } },
+        { payload: { parts: {} } }, { payload: { parts: [{ parts: [{ mimeType: 5 }] }] } }, { payload: { parts: [{ headers: [{ name: 5, value: 'x' }] }] } },
+      ];
+      for (const fields of mistypedFields) {
+        const gmail = new FakeGmailSentMail({ candidateFields: new Map([['own-copy', fields]]) });
+        gmail.addSentCopy(ownSentCopy('own-copy'));
+        expect(await invoke(gmail.sender(), sentMailOperationCall(operationId, contextFields, 4, claimedCheckpoint(3))), JSON.stringify(fields)).toMatchObject({
+          kind: 'uncertain', failure: { message: `Gmail sent-mail search did not answer, and no further ${requestName} is permitted` },
+        });
+        expect(gmail.posts()).toBe(0);
+      }
+    });
+
+    it('matches a candidate whose null or unknown fields Go decodes as empty', async () => {
+      const decodableFields: Record<string, unknown>[] = [
+        { labelIds: [null, 'SENT'], snippet: null, internalDate: null }, { historyId: 5, sizeEstimate: 'large' },
+        { payload: { mimeType: null, body: null, parts: null } }, { payload: { body: { data: null, size: 3 } } },
+        { payload: { parts: [null, { headers: [null, { name: null, value: null }], body: null }] } },
+      ];
+      for (const fields of decodableFields) {
+        const gmail = new FakeGmailSentMail({ candidateFields: new Map([['own-copy', fields]]) });
+        gmail.addSentCopy(ownSentCopy('own-copy'));
+        expect(await invoke(gmail.sender(), sentMailOperationCall(operationId, contextFields, 4, claimedCheckpoint(3))), JSON.stringify(fields)).toMatchObject({
+          kind: 'branch', branch: 'sent', value: { messageId: 'own-copy', threadId: 'own-copy-thread' },
+        });
+      }
     });
 
     it('treats a candidate deleted after the search as a clean miss', async () => {

@@ -97,6 +97,8 @@ class FakeSentMail:
     copies: list[FakeSentCopy] = field(default_factory=list)
     # Status a candidate header read returns instead of the copy, by message ID.
     header_read_failures: dict[str, int] = field(default_factory=dict)
+    # Fields a candidate header read adds or replaces, by message ID; `payload` fields merge into the payload.
+    header_read_fields: dict[str, dict[str, Any]] = field(default_factory=dict)
     searches: list[str] = field(default_factory=list)
     header_reads: list[str] = field(default_factory=list)
 
@@ -135,11 +137,14 @@ class FakeSentMail:
         headers = [
             {"name": name, "value": value} for name, value in copy.headers if name.lower() in requested
         ]
+        fields = dict(self.header_read_fields.get(message_id, {}))
+        payload = {"mimeType": "text/plain", "headers": headers, **fields.pop("payload", {})}
         return httpx.Response(200, json={
             "id": copy.id,
             "threadId": copy.thread_id,
             "labelIds": ["SENT"],
-            "payload": {"mimeType": "text/plain", "headers": headers},
+            "payload": payload,
+            **fields,
         })
 
     def _search(self, request: httpx.Request, query: str) -> httpx.Response:

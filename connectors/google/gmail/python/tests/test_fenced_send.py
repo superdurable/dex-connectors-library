@@ -966,6 +966,69 @@ async def test_failing_candidate_does_not_hide_a_later_match(operation_id: str) 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("operation_id", ["sendMessage", "replyToMessage"])
+@pytest.mark.parametrize(
+    "mistyped_fields",
+    [
+        {"snippet": 7},
+        {"labelIds": [1]},
+        {"labelIds": "SENT"},
+        {"internalDate": 123},
+        {"threadId": 7},
+        {"payload": {"mimeType": 5}},
+        {"payload": {"body": "x"}},
+        {"payload": {"body": {"data": 5}}},
+        {"payload": {"parts": [5]}},
+        {"payload": {"parts": {}}},
+        {"payload": {"parts": [{"parts": [{"mimeType": 5}]}]}},
+        {"payload": {"parts": [{"headers": [{"name": 5, "value": "x"}]}]}},
+    ],
+)
+async def test_candidate_go_cannot_decode_leaves_read_back_inconclusive(
+    operation_id: str, mistyped_fields: dict[str, object]
+) -> None:
+    """A candidate with a field Go cannot decode is unreadable, even when its header matches."""
+    context = HeartbeatContext(4)
+    call = _call(context, operation_id=operation_id)
+    context.previous = Marker(call.id, 3, State.CLAIMED, send_count=3)
+    sent_mail = FakeSentMail(
+        [dex_sent_copy("sent-1", "thread-1", _dex_message_id(call, context))],
+        header_read_fields={"sent-1": mistyped_fields},
+    )
+    attempt, requests = await _invoke(call, httpx.MockTransport(_sent_mail_gmail(sent_mail)))
+    assert attempt.kind == "uncertain" and attempt.failure is not None
+    assert attempt.failure.message.startswith("Gmail sent-mail search did not answer")
+    assert "POST" not in _methods(requests)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("operation_id", ["sendMessage", "replyToMessage"])
+@pytest.mark.parametrize(
+    "null_or_unknown_fields",
+    [
+        {"labelIds": [None, "SENT"], "snippet": None, "internalDate": None},
+        {"historyId": 5, "sizeEstimate": "large"},
+        {"payload": {"mimeType": None, "body": None, "parts": None}},
+        {"payload": {"body": {"data": None, "size": 3}}},
+        {"payload": {"parts": [None, {"headers": [None, {"name": None, "value": None}], "body": None}]}},
+    ],
+)
+async def test_candidate_with_fields_go_decodes_as_empty_matches(
+    operation_id: str, null_or_unknown_fields: dict[str, object]
+) -> None:
+    """Go decodes null as empty and ignores unknown fields, so the header still matches."""
+    context = HeartbeatContext(4)
+    call = _call(context, operation_id=operation_id)
+    context.previous = Marker(call.id, 3, State.CLAIMED, send_count=3)
+    sent_mail = FakeSentMail(
+        [dex_sent_copy("sent-1", "thread-1", _dex_message_id(call, context))],
+        header_read_fields={"sent-1": null_or_unknown_fields},
+    )
+    attempt, _ = await _invoke(call, httpx.MockTransport(_sent_mail_gmail(sent_mail)))
+    assert attempt.branch == "sent" and attempt.value.message_id == "sent-1"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("operation_id", ["sendMessage", "replyToMessage"])
 async def test_crash_after_gmail_accepted_is_confirmed_by_the_sent_copy(operation_id: str) -> None:
     """A worker lost after Gmail accepted a POST leaves a claim; the retry finds the copy without a POST."""
     sent_mail = FakeSentMail()
