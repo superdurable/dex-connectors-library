@@ -5,6 +5,7 @@
 Unlike Go, other charsets decode through Python codecs, or stay literal when unknown, as in TypeScript.
 Invalid bytes in a utf-8 encoded word become U+FFFD, where Go keeps them, as in TypeScript.
 A display name made only of empty encoded words reads as no name, as in Go 1.24 and TypeScript.
+A comment may follow an encoded word in a display name, as in Go 1.24 and Python v0.5.1.
 """
 
 import base64
@@ -170,15 +171,15 @@ class _MailAddressParser:
         return f"{local_part}@{domain}"
 
     def _consume_phrase(self) -> str:
-        # Go 1.26 and later join adjacent encoded words, skip empty ones, and need one word.
+        # Like Go 1.26 and later, adjacent encoded words join and an empty one adds no word.
         words: list[str] = []
         encoded_run = ""
+        # Like Go 1.24, any word read, encoded or empty, allows CFWS after it and an empty name.
+        is_word_read = False
         is_word_missing = False
-        # Like Go 1.24, a phrase of only empty encoded words is an empty name; Go 1.26 rejects it.
-        is_encoded_word_read = False
         while True:
             # Go allows CFWS between phrase words (obs-phrase).
-            if words:
+            if is_word_read:
                 self._skip_required_cfws()
             self._skip_space()
             if self._is_empty():
@@ -188,9 +189,9 @@ class _MailAddressParser:
             except MailAddressSyntaxError:
                 is_word_missing = True
                 break
+            is_word_read = True
             if is_encoded:
                 encoded_run += word
-                is_encoded_word_read = True
                 continue
             if encoded_run:
                 words.append(encoded_run)
@@ -198,7 +199,7 @@ class _MailAddressParser:
             words.append(word)
         if encoded_run:
             words.append(encoded_run)
-        if is_word_missing and not words and not is_encoded_word_read:
+        if is_word_missing and not is_word_read:
             raise MailAddressSyntaxError("missing word in phrase")
         return " ".join(words)
 

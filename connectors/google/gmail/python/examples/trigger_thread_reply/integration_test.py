@@ -150,7 +150,9 @@ async def test_starts_one_flow_per_root_replies_after_the_matching_reply_and_con
         root_message(f"ignored-{suffix}", f"ignored-thread-{suffix}", sender="Eve <eve@example.com>")
     )
     gmail.receive(reply_message(f"orphan-{suffix}", f"orphan-thread-{suffix}"))
-    gmail.receive(root_message(f"root-{suffix}", thread))
+    # The allowlist matches an encoded name followed by a comment, so the reply must accept it too.
+    commented_sender = "=?UTF-8?B?5byg5LiJ?= (Zhang San) <ada@example.com>"
+    gmail.receive(root_message(f"root-{suffix}", thread, sender=commented_sender))
     async with running_application(project, gmail) as application:
 
         async def is_waiting() -> bool:
@@ -158,12 +160,13 @@ async def test_starts_one_flow_per_root_replies_after_the_matching_reply_and_con
 
         await eventually(is_waiting)
         gmail.receive(reply_message(f"reply-{suffix}", thread, snippet="Not yet"))
-        gmail.receive(reply_message(f"approved-{suffix}", thread))
+        gmail.receive(reply_message(f"approved-{suffix}", thread, sender=commented_sender))
         state = await wait_for_completed_state(application, flow_id)
         assert state.reply_event_id == f"approved-{suffix}"
         assert state.reply_message_id == f"approved-{suffix}"
         assert state.root_message is not None and state.root_message.message_id == f"root-{suffix}"
         assert len(gmail.sent) == 1
+        assert "\r\nTo: =?utf-8?q?=E5=BC=A0=E4=B8=89?= <ada@example.com>\r\n" in gmail.sent[0]
         assert f"In-Reply-To: <approved-{suffix}@mail.example.com>" in gmail.sent[0]
         assert REPLY_TEXT in gmail.sent[0]
         logger = application.logger

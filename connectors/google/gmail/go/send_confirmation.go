@@ -230,7 +230,7 @@ func sentMailCandidateQuery(recipients []string) string {
 	if len(recipients) == 0 {
 		return query
 	}
-	// Parse only the addr-spec: Go's encoded-word for some display names, such as one with a backslash, does not parse.
+	// Parse only the addr-spec.
 	mailbox := recipients[0]
 	if start := strings.LastIndex(mailbox, "<"); start >= 0 {
 		mailbox = mailbox[start:]

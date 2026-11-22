@@ -215,6 +215,25 @@ def test_display_name_of_only_empty_encoded_words_reads_as_no_name(value: str) -
     assert _decode_to_header(f"{value}, bob@example.com") == ["<ada@example.com>", "<bob@example.com>"]
 
 
+# Go 1.24.13 recorded each result; Go 1.26 and later reject these mailboxes.
+COMMENT_AFTER_ENCODED_WORD_MAILBOXES = [
+    ("=?UTF-8?B?5byg5LiJ?= (Zhang San) <z@example.com>", "=?utf-8?q?=E5=BC=A0=E4=B8=89?= <z@example.com>"),
+    ("=?utf-8?q?Zo=C3=AB?= =?utf-8?q?x?= (c) <z@example.com>", "=?utf-8?q?Zo=C3=ABx?= <z@example.com>"),
+    ("=?utf-8?q?a?= (c) =?utf-8?q?b?= <z@example.com>", '"ab" <z@example.com>'),
+    ("=?utf-8?q?a?= (c) Bob <z@example.com>", '"a Bob" <z@example.com>'),
+    ("=?utf-8?q??= (c) <z@example.com>", "<z@example.com>"),
+]
+
+
+@pytest.mark.parametrize(("value", "formatted"), COMMENT_AFTER_ENCODED_WORD_MAILBOXES)
+def test_comment_after_an_encoded_word_is_skipped(value: str, formatted: str) -> None:
+    """Go 1.24, the go.mod minimum and CI toolchain, skips it, so the Trigger's sender can be replied to."""
+    assert _format_go_mailbox(value) == formatted
+    assert _format_recipient(value) == formatted
+    assert _decode_to_header(f"{value}, bob@example.com") == [formatted, "<bob@example.com>"]
+    assert _format_go_mailbox(formatted) == formatted
+
+
 def test_recipients_are_duplicates_by_unquoted_address() -> None:
     """Go compares the parsed address, so a quoted local part duplicates its plain form."""
     recipients = ['"alice"@example.com', "Alice <ALICE@example.com>"]
