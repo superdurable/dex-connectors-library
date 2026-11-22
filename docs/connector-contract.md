@@ -541,13 +541,16 @@ email. If such a check refuses on a retry after a possible send, a definite
 refusal tells the caller that nothing was sent. The caller may then start a new
 call, whose new Call ID has an empty fence, and send a second time. So the
 Mutation reads the same bound without parsing the checkpoint: in Go,
-`sdkgo.NextCallID` names the Call ID of the next call of an operation in the
-Step attempt without counting it, and `singledispatch.MaximumPriorSends`
-returns the bound that `Decide` of that Call ID's Fence computes in the
-current attempt. A refusal after a bound above zero selects `uncertain`, and a
-read error returns Retry. The runnable
+`singledispatch.MaximumPriorSends` returns the bound that `Decide` of a Call
+ID's Fence computes in the current attempt. A Mutation whose `Invoke` calls the
+wrapped `Invoke` with the Call it received passes that Call's ID, which the
+wrapped Fence uses. A Mutation that starts the write as its own call, through
+`RunMutation`, a Connector Step, or an agent tool, names it with
+`sdkgo.NextCallID`, which returns the Call ID of the next call of an operation
+in the Step attempt without counting it. A refusal after a bound above zero
+selects `uncertain`, and a read error returns Retry. The runnable
 [`prior_sends_example_test.go`](../sdkgo/singledispatch/prior_sends_example_test.go)
-shows this wrapper.
+shows a wrapper that starts its write as its own call.
 
 `StepOptionsOverride` overlays non-zero Execute fields and can add
 `dex.ProceedToOnExecuteFailure`. That recovery target accepts the original

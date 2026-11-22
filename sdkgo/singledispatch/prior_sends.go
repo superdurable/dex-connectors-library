@@ -26,11 +26,14 @@ type priorCallEntry struct {
 // own send; an attempt that recorded canResend or notSent adds nothing.
 //
 // It needs no Fence, so an application Mutation or another wrapper can call it before the
-// connector operation it wraps runs, naming that operation's call with sdkgo.NextCallID.
-// When the wrapper's own pre-send check refuses the call and the result is above zero, an
-// earlier send may have taken effect, so the wrapper selects uncertain, never a definite
-// refusal. The read records no heartbeat, does not change a later Decide, and does not
-// count sends of the current attempt. It is safe for concurrent callers.
+// connector write it wraps runs. A wrapper that calls the wrapped Invoke with the Call it
+// received passes call.ID, the ID that the wrapped Fence uses. A wrapper that starts the
+// write as its own call, through sdkgo.RunMutation, a Connector Step, or an agent tool,
+// names that call with sdkgo.NextCallID. When the wrapper's own pre-send check refuses the
+// call and the result is above zero, an earlier send may have taken effect, so the wrapper
+// selects uncertain, never a definite refusal. The read records no heartbeat, does not change
+// a later Decide, and does not count sends of the current attempt. It is safe for concurrent
+// callers.
 //
 // It returns zero and an error when ctx is nil, its attempt is below one, or callID is
 // empty; when Dex cannot read the last heartbeat; and when callID's entry has a send count

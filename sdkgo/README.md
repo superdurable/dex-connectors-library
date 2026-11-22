@@ -706,15 +706,23 @@ Gmail message, can read how many sends of that write earlier attempts may have
 made. `singledispatch.MaximumPriorSends(ctx, callID)` returns the upper bound
 that `Decide` of the Fence for that Call ID computes in this attempt,
 `Decision.MaximumPriorSends`, without a Fence and without parsing the
-checkpoint. `sdkgo.NextCallID(ctx, operation)` names the write: it returns the
-Call ID that the next call of the operation in the Step attempt gets, and it
-counts nothing, so call it before the write starts. When the application's
-check refuses on a retry whose bound is above zero, an earlier attempt may
-already have sent, so the Mutation selects `uncertain`, which an agent host
-reads as unknown. A definite refusal would let the caller start a new call
-with a new Call ID and an empty fence, which sends again. When the read
-returns an error, the bound is unknown, so return Retry. The read records no
-heartbeat and does not count sends of the current attempt.
+checkpoint. Pass the Call ID that the write's Fence uses:
+
+- When the Mutation's `Invoke` calls the wrapped operation's `Invoke` with the
+  `Call` it received, the wrapped Fence uses that Call's ID, so pass
+  `call.ID`; `sdkgo.NextCallID` would name a different call there.
+- When the Mutation starts the write as its own call, through `RunMutation`, a
+  Connector Step, or an agent tool, `sdkgo.NextCallID(ctx, operation)` names
+  it: it returns the Call ID that the next call of the operation in the Step
+  attempt gets, and it counts nothing, so call it before the write starts.
+
+When the application's check refuses on a retry whose bound is above zero, an
+earlier attempt may already have sent, so the Mutation selects `uncertain`,
+which an agent host reads as unknown. A definite refusal would let the caller
+start a new call with a new Call ID and an empty fence, which sends again. When
+the read returns an error, the bound is unknown, so return Retry. The read
+records no heartbeat and does not count sends of the current attempt. The
+example below starts its write as its own call with `RunMutation`.
 
 From [`singledispatch/prior_sends_example_test.go`](singledispatch/prior_sends_example_test.go):
 

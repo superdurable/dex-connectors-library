@@ -30,9 +30,13 @@ var stepCallOccurrences = stepattempt.NewRegistry(func(dex.Context) *callOccurre
 // nothing, so it never changes the ID of a later call and returns the same ID until that
 // call starts.
 //
-// An application Mutation that runs its own checks before a fenced connector write names
-// the write with NextCallID and passes the ID to singledispatch.MaximumPriorSends. Call it
-// before the wrapped call starts: once it has started, NextCallID names the call after it,
+// An application Mutation that runs its own checks before a fenced connector write it starts
+// as its own call, through RunMutation, a Connector Step, or an agent tool, names that write
+// with NextCallID and passes the ID to singledispatch.MaximumPriorSends. A wrapper whose
+// Invoke calls the wrapped operation's Invoke with the Call it received passes call.ID
+// instead, because the wrapped Fence uses that ID; there NextCallID names a different call,
+// as the wrapper's own call has already been counted or belongs to another operation. Call
+// NextCallID before the write starts: once it has started, NextCallID names the call after it,
 // and the result's Receipt.CallID names the call that ran. Because the count restarts each
 // attempt, the ID names the same call in every attempt only when the Step makes its
 // connector calls in a deterministic order. It is safe for concurrent callers, but a call
