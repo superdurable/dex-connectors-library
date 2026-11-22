@@ -28,8 +28,10 @@ type priorCallEntry struct {
 // It needs no Fence, so an application Mutation or another wrapper can call it before the
 // connector write it wraps runs. A wrapper that calls the wrapped Invoke with the Call it
 // received passes call.ID, the ID that the wrapped Fence uses. A wrapper that starts the
-// write as its own call, through sdkgo.RunMutation, a Connector Step, or an agent tool,
-// names that call with sdkgo.NextCallID. When the wrapper's own pre-send check refuses the
+// write as its own call in the same Step, through sdkgo.RunMutation or an agent tool, names
+// that call with sdkgo.NextCallID. The read covers only ctx's Step: a write in a separate
+// Connector Step has its own Step execution, Call ID, and heartbeat, so another Step cannot
+// read its prior sends. When the wrapper's own pre-send check refuses the
 // call and the result is above zero, an earlier send may have taken effect, so the wrapper
 // selects uncertain, never a definite refusal. The read records no heartbeat, does not change
 // a later Decide, and does not count sends of the current attempt. It is safe for concurrent

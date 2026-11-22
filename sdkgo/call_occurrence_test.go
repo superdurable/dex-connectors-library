@@ -151,6 +151,14 @@ func TestNextCallIDNamesTheNextCallWithoutCountingIt(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, namedQuery, query.call.ID, "each operation keeps its own count")
 
+	namedSecondQuery, err := sdkgo.NextCallID(ctx, testQueryRef)
+	require.NoError(t, err)
+	require.NotEqual(t, namedQuery, namedSecondQuery, "after the first Query starts, the next name is occurrence 2")
+	secondQuery := &queryOperation{}
+	_, err = sdkgo.RunQuery(ctx, secondQuery, testConnection, "profile")
+	require.NoError(t, err)
+	require.Equal(t, namedSecondQuery, secondQuery.call.ID)
+
 	ctx.AttemptNo = 2
 	retried, err := sdkgo.NextCallID(ctx, testMutationRef)
 	require.NoError(t, err)

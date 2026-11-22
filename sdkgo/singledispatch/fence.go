@@ -19,9 +19,9 @@
 // MaximumPriorSends reads the bound on earlier sends that Decide computes for a Call ID,
 // without a Fence. An application Mutation that runs its own checks before a wrapped
 // connector write passes it the write's Call ID: call.ID when it calls the wrapped Invoke
-// with the Call it received, or sdkgo.NextCallID when it starts the write as its own call. It
-// selects uncertain, never a definite refusal, when a check fails after a possible earlier
-// send.
+// with the Call it received, or sdkgo.NextCallID when it starts the write as its own call in
+// the same Step. It selects uncertain, never a definite refusal, when a check fails after a
+// possible earlier send.
 package singledispatch
 
 import (

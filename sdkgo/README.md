@@ -711,10 +711,13 @@ checkpoint. Pass the Call ID that the write's Fence uses:
 - When the Mutation's `Invoke` calls the wrapped operation's `Invoke` with the
   `Call` it received, the wrapped Fence uses that Call's ID, so pass
   `call.ID`; `sdkgo.NextCallID` would name a different call there.
-- When the Mutation starts the write as its own call, through `RunMutation`, a
-  Connector Step, or an agent tool, `sdkgo.NextCallID(ctx, operation)` names
-  it: it returns the Call ID that the next call of the operation in the Step
+- When the Mutation starts the write as its own call in the same Step, through
+  `RunMutation` or an agent tool, `sdkgo.NextCallID(ctx, operation)` names it:
+  it returns the Call ID that the next call of the operation in the Step
   attempt gets, and it counts nothing, so call it before the write starts.
+- A write in a separate Connector Step cannot be read from another Step. That
+  Step has its own Step execution ID, so its Call ID differs from the one
+  `NextCallID` derives elsewhere, and its checkpoint is in its own heartbeat.
 
 When the application's check refuses on a retry whose bound is above zero, an
 earlier attempt may already have sent, so the Mutation selects `uncertain`,

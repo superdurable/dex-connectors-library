@@ -24,15 +24,18 @@ var stepCallOccurrences = stepattempt.NewRegistry(func(dex.Context) *callOccurre
 })
 
 // NextCallID returns the Call ID of the next call of operation in ctx's Step attempt: the
-// Call.ID that RunQuery, RunMutation, a Connector Step, or an agent tool gives that call when
-// it starts. The first call of an operation in a Step attempt gets the four-field derivation
-// of the connector contract, and the n-th call mixes in n; see Call.ID. NextCallID counts
-// nothing, so it never changes the ID of a later call and returns the same ID until that
-// call starts.
+// Call.ID that RunQuery, RunMutation, or an agent tool's RunAttempt gives that call when it
+// starts with ctx. The first call of an operation in a Step attempt gets the four-field
+// derivation of the connector contract, and the n-th call mixes in n; see Call.ID.
+// NextCallID counts nothing, so it never changes the ID of a later call and returns the same
+// ID until that call starts.
 //
 // An application Mutation that runs its own checks before a fenced connector write it starts
-// as its own call, through RunMutation, a Connector Step, or an agent tool, names that write
-// with NextCallID and passes the ID to singledispatch.MaximumPriorSends. A wrapper whose
+// as its own call in the same Step, through RunMutation or an agent tool, names that write
+// with NextCallID and passes the ID to singledispatch.MaximumPriorSends. A write in a
+// separate Connector Step is not such a call: that Step has its own Step execution ID, so
+// its Call ID differs from the one NextCallID derives in another Step, and its checkpoint is
+// in its own heartbeat, which another Step cannot read. A wrapper whose
 // Invoke calls the wrapped operation's Invoke with the Call it received passes call.ID
 // instead, because the wrapped Fence uses that ID; there NextCallID names a different call,
 // as the wrapper's own call has already been counted or belongs to another operation. Call
