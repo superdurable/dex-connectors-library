@@ -30,9 +30,10 @@ Shared behavior, not repeated per row:
   an omitted tier is `limited`.
 - A provider ID saved from an accepted answer is read back and never resent.
 - Every connector classifies a credential failure the same way in Go, Python,
-  and TypeScript, except that Go cannot yet recognize malformed stored
-  credential material (see [Open discrepancies](#open-discrepancies)). It is terminal only for reauthorization required (in Go,
-  either `sdkgo.ErrReauthorizationRequired` or
+  and TypeScript, except that Go connectors have not yet adopted the SDK's
+  `ErrCredentialMaterialInvalid` for malformed stored material (see
+  [Open discrepancies](#open-discrepancies)). It is terminal only for
+  reauthorization required (in Go, either `sdkgo.ErrReauthorizationRequired` or
   `projectconfig.ErrReauthorizationRequired`), a missing configuration object
   (`ErrObjectNotFound`), a connection the scope no longer selects
   (`ErrConnectionNotSelected`), a credential broker refusal
@@ -336,13 +337,11 @@ These rows differ from the shared behavior above.
   decision. `amazon/sqs` `deleteMessage` can select `receiptHandleInvalid` on a
   repeat after a delete whose answer was lost (seen on ElasticMQ), while
   `changeMessageVisibility` guards that case on attempt 2 or later.
-- `sdkgo/projectconfig` masks decoder error types: `DecodeCredentials` and the
-  `CredentialResolver` replace a decoding error with a plain error, so Go
-  connectors cannot recognize malformed stored credential material and treat
-  it as transient, retrying until the retry budget ends. Python and
-  TypeScript treat it as terminal through the generated
-  `is_credential_material_error` and `isCredentialMaterialError`. An SDK
-  change is needed for Go.
+- `sdkgo/projectconfig` now returns `ErrCredentialMaterialInvalid` for a
+  credential decoding failure without exposing decoder details. Go connectors
+  still treat it as transient until they adopt the marker in a later release
+  (#926); Python and TypeScript treat it as terminal through the generated
+  `is_credential_material_error` and `isCredentialMaterialError`.
 - A terminal credential failure after a possible send selects `defect` or
   `providerRejected` on any attempt in some `safe` rows (`airtable`,
   `clickup`, `calendly`, `docusign`, `helpscout`, `hubspot`, `intercom`,

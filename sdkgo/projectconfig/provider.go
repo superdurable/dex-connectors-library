@@ -15,6 +15,17 @@ import (
 // The prior credential stays authorized, and a later call refreshes again.
 var ErrRefreshFailed = errors.New("project credential refresh failed; the current authorization is kept")
 
+// ErrCredentialMaterialInvalid reports stored credentials that cannot be decoded; resolving them again cannot help.
+var ErrCredentialMaterialInvalid = errors.New("project credential material is invalid")
+
+type invalidCredentialMaterialError struct{ reason string }
+
+// Error returns a secret-safe description of the malformed credential.
+func (err invalidCredentialMaterialError) Error() string { return err.reason }
+
+// Unwrap exposes the terminal credential classification to errors.Is.
+func (err invalidCredentialMaterialError) Unwrap() error { return ErrCredentialMaterialInvalid }
+
 // RefreshState carries private current credentials only at the provider boundary.
 type RefreshState[C any] struct {
 	// Credentials contains complete current credential material.
@@ -117,7 +128,7 @@ func (provider *CredentialResolver[C]) Resolve(ctx context.Context) (C, error) {
 	}
 	credentials, err := provider.decode(material.Credentials)
 	if err != nil {
-		return zero, errors.New("project credential decoding failed")
+		return zero, invalidCredentialMaterialError{reason: "project credential decoding failed"}
 	}
 	return credentials, nil
 }
@@ -252,13 +263,13 @@ func (provider *CredentialResolver[C]) decodeShared(credential brokerCredential)
 	var credentials, zero C
 	if unmarshaler, isSharedAware := any(&credentials).(SharedCredentialUnmarshaler); isSharedAware {
 		if err := unmarshaler.UnmarshalSharedCredential(credential.credential); err != nil {
-			return zero, errors.New("shared project credential decoding failed")
+			return zero, invalidCredentialMaterialError{reason: "shared project credential decoding failed"}
 		}
 		return credentials, nil
 	}
 	credentials, err := provider.decode(credential.credential)
 	if err != nil {
-		return zero, errors.New("project credential decoding failed: this connector version does not support shared credentials")
+		return zero, invalidCredentialMaterialError{reason: "project credential decoding failed: this connector version does not support shared credentials"}
 	}
 	return credentials, nil
 }
@@ -322,7 +333,7 @@ func (provider *CredentialResolver[C]) evaluateReady(ctx context.Context, record
 	}
 	credentials, err := provider.decode(material.Credentials)
 	if err != nil {
-		return CredentialMaterial{}, RefreshState[C]{}, false, errors.New("project credential decoding failed")
+		return CredentialMaterial{}, RefreshState[C]{}, false, invalidCredentialMaterialError{reason: "project credential decoding failed"}
 	}
 	now := provider.store.now()
 	state = RefreshState[C]{Credentials: credentials, ExpiresAt: material.ExpiresAt, Now: now}

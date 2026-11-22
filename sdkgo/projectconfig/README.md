@@ -221,6 +221,12 @@ decodes a shared credential with its ordinary decoder, which fails with "this
 connector version does not support shared credentials" when the broker has
 removed host-kept fields. Ordinary entries always use the ordinary decoder.
 
+`DecodeCredentials` and `CredentialResolver` return errors matching
+`ErrCredentialMaterialInvalid` when stored or broker-served credential material
+cannot be decoded. The errors retain their existing secret-safe messages and
+do not wrap the decoder's original error. Connectors can classify this as a
+terminal, pre-dispatch failure; a later retry cannot repair stored material.
+
 ### Relayed Triggers
 
 A host whose own provider application receives events for many shared
