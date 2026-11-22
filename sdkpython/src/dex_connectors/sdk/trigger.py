@@ -424,9 +424,9 @@ class TriggerRPCRequestConflictError(UndeliverableTriggerError):
     ) -> None:
         """Describe the conflict of one delivery attempt.
 
-        `rpc_name` is the RPC name in the request ID: the target's `rpc_name` or the handler's method
-        name. `request_id` is the ID this attempt sent, from `trigger_rpc_request_id`. `cause` is the
-        `dex.DexServiceError` that reported the conflict.
+        `rpc_name` is the RPC name in the request ID: the target's `rpc_name` or the name of the Flow
+        attribute that holds the handler. `request_id` is the ID this attempt sent, from
+        `trigger_rpc_request_id`. `cause` is the `dex.DexServiceError` that reported the conflict.
         """
         super().__init__(cause)
         self.args = (
@@ -463,10 +463,11 @@ def trigger_rpc_request_id(rpc_name: str, event_id: str) -> str:
 
     The ID is `TRIGGER_RPC_REQUEST_ID_PREFIX` followed by the first 16 bytes, as unpadded base64url (22
     characters), of the SHA-256 digest of the UTF-8 bytes of `rpc_name`, one 0x00 byte, and the UTF-8
-    bytes of `event_id`. It matches the TypeScript SDK's `triggerRPCRequestId` byte for byte. Each
-    surrogate code point, such as one that `surrogateescape` decoding or a lone `\\ud800` JSON escape
-    leaves in a string, counts as U+FFFD, as the durable Trigger inbox stores it and as TypeScript
-    encodes an unpaired surrogate.
+    bytes of `event_id`. It matches the TypeScript SDK's `triggerRPCRequestId` and the Go SDK's
+    `TriggerRPCRequestID` byte for byte. Each surrogate code point, such as one that `surrogateescape`
+    decoding or a lone `\\ud800` JSON escape leaves in a string, counts as U+FFFD, as the durable
+    Trigger inbox stores it, as TypeScript encodes an unpaired surrogate, and as Go hashes each invalid
+    UTF-8 byte, which `surrogateescape` decodes to one surrogate.
 
     For example, `trigger_rpc_request_id("receiveReply", "Ev1")` hashes the 16 bytes
     `receiveReply\\x00Ev1` and returns `"trigger-rpc-kDFFz9I4ELDtzXkmvRTzlA"`.
@@ -493,6 +494,20 @@ def _well_formed_utf8(text: str) -> bytes:
 
 def _is_trigger_rpc_name_usable(rpc_name: object) -> bool:
     return isinstance(rpc_name, str) and bool(rpc_name.strip()) and "\0" not in rpc_name
+
+
+def _flow_attribute_name_of(rpc_method: Callable[..., Any]) -> str | None:
+    """Find the bound method's first attribute in `dir()` order, as `dex.Registry` names RPCs."""
+    receiver = getattr(rpc_method, "__self__", None)
+    function = getattr(rpc_method, "__func__", None)
+    if receiver is None or function is None:
+        return None
+    for attribute_name in dir(receiver):
+        attribute = inspect.getattr_static(receiver, attribute_name, None)
+        is_holding_handler = getattr(attribute, "__func__", attribute) is function
+        if is_holding_handler and _is_trigger_rpc_name_usable(attribute_name):
+            return attribute_name
+    return None
 
 
 def _is_request_id_used_for_different_request(error: BaseException, request_id: str) -> bool:
@@ -648,12 +663,15 @@ def new_dex_rpc_trigger_target(
     event.id)`, through `dex.RPCInvokeOptions.request_id`, so Dex Server applies the RPC's Flow changes
     at most once per event while the Flow run keeps that request ID: after a durable inbox replay, a
     provider or relay retry, or a retry after a timeout that hid an applied RPC. The RPC name is
-    `rpc_name` when given, and otherwise the handler's Python method name, `rpc_method.__name__`. The IDs
-    therefore match the TypeScript RPC target's for the same RPC name. Set `rpc_name` to the RPC's
-    wire name when the RPC has an `@dex.rpc(name=...)` override; without it, renaming the method changes
-    the IDs of events still being redelivered. `rpc_name` must contain a non-blank character and no NUL
-    character. Without `rpc_name`, a handler whose name is missing, blank, or contains NUL, such as a
-    `functools.partial`, is invoked without a request ID, so every attempt is a new request.
+    `rpc_name` when given, and otherwise the name of the Flow attribute that holds the handler, as
+    `dex.Registry` names an RPC: its method name, or for a handler that a factory made, the attribute it
+    is assigned to. When several attributes hold one handler, the first in `dir()` order is used, as
+    the Dex Client does. Each RPC of a Flow therefore gets its own IDs, and they match the TypeScript and
+    Go RPC targets' for the same RPC name. Set `rpc_name` to the RPC's wire name when the RPC has an
+    `@dex.rpc(name=...)` override; without it, renaming the attribute changes the IDs of events still
+    being redelivered. `rpc_name` must contain a non-blank character and no NUL character. Without
+    `rpc_name`, a callable that no attribute of its object holds, which the Dex Client rejects as an
+    unregistered RPC, is invoked without a request ID.
 
     A Flow run keeps only its newest request IDs, as many as the Dex Server limit
     `limits.maxRequestIdsPerRun` (1000 by default), shared with its other requests that carry request
@@ -699,8 +717,7 @@ def new_dex_rpc_trigger_target(
     if rpc_name is not None and not _is_trigger_rpc_name_usable(rpc_name):
         raise ValueError("RPC trigger rpc_name must contain a non-blank character and no NUL characters")
     if rpc_name is None:
-        method_name = getattr(rpc_method, "__name__", None)
-        rpc_name = method_name if _is_trigger_rpc_name_usable(method_name) else None
+        rpc_name = _flow_attribute_name_of(rpc_method)
     return _DexRPCTriggerTarget(
         client,
         rpc_method,

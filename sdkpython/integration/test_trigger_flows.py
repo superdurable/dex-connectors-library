@@ -2,8 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Real dexcli dev verification of Trigger delivery into Flows and RPCs.
 
-The RPC request ID scenarios port the TypeScript suite's (sdkts 0.10.1). They adapt to the Dex Server:
-0.1.37 and later answer a changed repeat with the first reply, and earlier servers report a conflict.
+The RPC request ID scenarios port sdkts 0.10.1's and pass on Dex Server 0.1.37 and earlier servers.
 """
 
 import asyncio
@@ -13,7 +12,7 @@ import os
 import subprocess
 import sys
 import tempfile
-from collections.abc import AsyncIterator, Mapping
+from collections.abc import AsyncIterator, Callable, Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -251,6 +250,15 @@ class AwaitLedgerEntries(dex.Step[None]):
         return dex.dead_end()
 
 
+def _make_points_adder(weight: int) -> Callable[[Any, dex.Context, LedgerEntry], dex.RPCResult[int]]:
+    @dex.rpc(is_transactional=True)
+    def add(self: Any, context: dex.Context, entry: LedgerEntry) -> dex.RPCResult[int]:
+        """Add the entry's amount times the weight."""
+        return _add_to_ledger(context, entry.amount * weight)
+
+    return add
+
+
 class LedgerFlow(dex.Flow[None]):
     """Adds event amounts to a total through RPCs that rely on the Trigger request ID alone."""
 
@@ -289,6 +297,10 @@ class LedgerFlow(dex.Flow[None]):
         """Add one entry under a wire name that differs from the method name."""
         LEDGER_HANDLER_CALLS["record_wired"] += 1
         return _add_to_ledger(context, entry.amount)
+
+    # One factory makes both handlers, so they share the __name__ "add".
+    add_points = _make_points_adder(1)
+    add_bonus_points = _make_points_adder(100)
 
     @dex.rpc(is_transactional=True, timeout=timedelta(seconds=30))
     async def record_gated(self, context: dex.Context, entry: LedgerEntry) -> dex.RPCResult[int]:
@@ -488,10 +500,8 @@ async def test_rpc_target_sends_one_request_id_for_every_delivery_of_an_event(st
     assert LEDGER_HANDLER_CALLS["record_transactional"] == 1, "a transactional repeat gets the recorded reply"
     assert await client.invoke_rpc(LEDGER_FLOW.get_total, ledger_id) == 5
 
-    # A mapper whose input changes on every call applies its first delivery once. Its redelivery maps the
-    # event to a different request under the one request ID: Dex Server 0.1.37 and later answer it with the
-    # first reply, and earlier servers refuse it, which the target logs at ERROR before it drops the event.
-    # Either way the durable inbox consumes the redelivery and the event applies once.
+    # A changing mapper's redelivery gets the first reply, or before 0.1.37 a dropped conflict;
+    # it applies once.
     bonus = _event(f"Ev-{SUFFIX}-bonus", {"amount": 3})
     mappings = iter(range(1, 100))
     conflict_logger = RecordingLogger()
@@ -566,7 +576,7 @@ async def test_rpc_target_sends_one_request_id_for_every_delivery_of_an_event(st
     assert LEDGER_HANDLER_CALLS["increment_total"] == 1
     assert await client.invoke_rpc(LEDGER_FLOW.get_total, ledger_id) == 9
 
-    # rpc_name replaces the method name in the request ID, so the wire name keeps the IDs stable.
+    # rpc_name replaces the attribute name in the request ID, so the wire name keeps the IDs stable.
     wired = _event(f"Ev-{SUFFIX}-wired", {"amount": 4})
     wired_target = _ledger_target(client, LEDGER_FLOW.record_wired, ledger_id, rpc_name="record_ledger_entry")
     await deliver_trigger(TriggerContext(), wired_target, wired, logger=quiet)
@@ -584,10 +594,8 @@ async def test_rpc_target_sends_one_request_id_for_every_delivery_of_an_event(st
     assert LEDGER_HANDLER_CALLS["record_non_transactional"] == 2, "a non-transactional repeat reruns"
     assert await client.invoke_rpc(LEDGER_FLOW.get_total, ledger_id) == 18, "each RPC applied the event once"
 
-    # An earlier attempt with another input, such as one a crashed process sent, is still in flight. A server
-    # before 0.1.37 reports the same conflict, so the target drops the event, and when that attempt then fails
-    # without committing, this delivery is lost. A later server reports no conflict, so this delivery is never
-    # dropped: it either fails for a retry or applies the event.
+    # An earlier attempt with another input is in flight. Before 0.1.37 the target drops this delivery
+    # as a conflict.
     deposit = _event(f"Ev-{SUFFIX}-deposit", {"amount": 7})
     gate = LedgerGate(is_failing=True)
     LEDGER_GATES.append(gate)
@@ -620,6 +628,29 @@ async def test_rpc_target_sends_one_request_id_for_every_delivery_of_an_event(st
     # A later redelivery of the same event, such as a provider retry, applies the deposit exactly once.
     await deliver_trigger(TriggerContext(), gated_target, deposit, logger=quiet)
     assert await client.invoke_rpc(LEDGER_FLOW.get_total, ledger_id) == 25
+    await client.stop_flow(ledger_id)
+
+
+async def test_rpc_target_gives_each_rpc_of_one_handler_factory_its_own_request_id(stack: DexStack) -> None:
+    client = stack.client
+    ledger_id = f"ledger-factory-{SUFFIX}"
+    await client.start_flow(LEDGER_FLOW, ledger_id, None)
+    quiet = RecordingLogger()
+    assert LEDGER_FLOW.add_points.__name__ == LEDGER_FLOW.add_bonus_points.__name__
+
+    grant = _event(f"Ev-{SUFFIX}-grant", {"amount": 2})
+    for rpc_method, rpc_name in (
+        (LEDGER_FLOW.add_points, "add_points"),
+        (LEDGER_FLOW.add_bonus_points, "add_bonus_points"),
+    ):
+        logger = RecordingLogger()
+        target = _ledger_target(client, rpc_method, ledger_id, logger)
+        await deliver_trigger(TriggerContext(), target, grant, logger=quiet)
+        await deliver_trigger(TriggerContext(), target, grant, logger=quiet)
+        assert [record[2]["request_id"] for record in logger.records] == [
+            trigger_rpc_request_id(rpc_name, grant.id)
+        ] * 2
+    assert await client.invoke_rpc(LEDGER_FLOW.get_total, ledger_id) == 202, "each RPC applied the event once"
     await client.stop_flow(ledger_id)
 
 

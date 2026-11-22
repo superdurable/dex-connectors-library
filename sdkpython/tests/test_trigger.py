@@ -613,7 +613,7 @@ async def test_rpc_target_delivers_undecodable_responses_and_sends_one_request_i
         await blank.handle_trigger(TriggerContext(), EVENT)
 
 
-# sdkts triggerRPCRequestId yields these IDs; surrogate cases use its U+FFFD or unpaired-surrogate form.
+# The sdkts and sdkgo vector tests expect these IDs; surrogate cases take their U+FFFD forms.
 @pytest.mark.parametrize(
     ("rpc_name", "event_id", "request_id"),
     [
@@ -636,7 +636,7 @@ async def test_rpc_target_delivers_undecodable_responses_and_sends_one_request_i
         ),
     ],
 )
-def test_trigger_rpc_request_id_matches_the_typescript_vectors(
+def test_trigger_rpc_request_id_matches_the_go_and_typescript_vectors(
     rpc_name: str, event_id: str, request_id: str
 ) -> None:
     assert trigger_rpc_request_id(rpc_name, event_id) == request_id
@@ -661,7 +661,22 @@ def test_trigger_rpc_request_id_survives_durable_inbox_encoding() -> None:
     assert trigger_rpc_request_id("approve", replayed.id) == trigger_rpc_request_id("approve", event.id)
 
 
-async def test_rpc_target_derives_the_request_id_from_rpc_name_or_the_method_name() -> None:
+def _make_reply_sender() -> Any:
+    async def send(self: Any, ctx: Any, reply: str) -> None:
+        """Take an input."""
+
+    return send
+
+
+class FactoryRPCFlow:
+    """Stand-in Flow whose RPCs share one `__name__`, and an alias of one of them."""
+
+    send_reply = _make_reply_sender()
+    send_receipt = _make_reply_sender()
+    acknowledge_receipt = send_receipt
+
+
+async def test_rpc_target_derives_the_request_id_from_rpc_name_or_the_flow_attribute_name() -> None:
     client = FakeRPCClient([])
     flow = RPCFlow()
 
@@ -688,12 +703,23 @@ async def test_rpc_target_derives_the_request_id_from_rpc_name_or_the_method_nam
         receive_reply_options,
         {"options": dex.RPCInvokeOptions(request_id=trigger_rpc_request_id("send_reply", "Ev1"))},
         receive_reply_options,
-        # A handler without a usable name and without rpc_name keeps a new request ID per attempt.
+        # A callable that no attribute holds, which the Dex Client rejects, gets no request ID.
         {},
     ]
     for rpc_name in ("", "   ", "receive\0Reply"):
         with pytest.raises(ValueError, match="rpc_name must contain a non-blank character and no NUL"):
             deliver_with(flow.send_reply, rpc_name)
+
+    # dex.Registry names each RPC by its attribute, the first in dir() order for an alias.
+    factory_flow = FactoryRPCFlow()
+    client.calls.clear()
+    for rpc_method in (factory_flow.send_reply, factory_flow.send_receipt, factory_flow.acknowledge_receipt):
+        await deliver_with(rpc_method, None).handle_trigger(TriggerContext(), EVENT)
+    assert [keywords["options"].request_id for _, keywords in client.calls] == [
+        trigger_rpc_request_id("send_reply", "Ev1"),
+        trigger_rpc_request_id("acknowledge_receipt", "Ev1"),
+        trigger_rpc_request_id("acknowledge_receipt", "Ev1"),
+    ]
 
 
 async def test_rpc_target_drops_the_event_on_its_first_request_id_conflict() -> None:

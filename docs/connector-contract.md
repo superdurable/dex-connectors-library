@@ -192,22 +192,16 @@ Once Dex distinguishes committed conflicts (superdurable/dex#1866), a future
 release can drop only events whose earlier request committed. The Go SDK
 RPC target sends the same ID from `sdkgo` v0.40.0, with the Go method name as
 the default RPC name and `sdkgo.WithTriggerRPCName` in place of `rpcName`, and
-drops a conflict with `sdkgo.TriggerRPCRequestConflictError`. Dex Server
-0.1.37 and later compare only the request ID: they answer a repeat whose
-request differs with the first request's reply and report no conflict. Dex
-payload encryption encrypts each attempt's input with a fresh nonce, so an
-earlier server reports every repeat as a conflict, even from a deterministic
-mapper; use server-zd 0.1.37 or later with payload encryption.
-
-The Python SDK RPC target, `new_dex_rpc_trigger_target`, sends the same ID on
-every delivery attempt, with the Python method name as the default RPC name and
-its `rpc_name` argument in place of `rpcName`, and drops a conflict with
-`TriggerRPCRequestConflictError`. It sends the ID for every handler shape. Dex
-Server 0.1.37 and later compare only the request ID: they answer a repeat whose
-request differs with the first request's reply and report no conflict. Dex
-payload encryption encrypts each attempt's input with a fresh nonce, so an
-earlier server reports every repeat as a conflict, even from a deterministic
-mapper; use server-zd 0.1.37 or later with payload encryption.
+drops a conflict with `sdkgo.TriggerRPCRequestConflictError`. The Python SDK
+RPC target sends the same ID from `sdkpython` 0.14.0 for every handler shape,
+with the name of the Flow attribute that holds the handler as the default RPC
+name and the `rpc_name` argument in place of `rpcName`, and drops a conflict
+with `TriggerRPCRequestConflictError`. Dex Server 0.1.37 and later compare only
+the request ID: they answer a repeat whose request differs with the first
+request's reply and report no conflict. Dex payload encryption encrypts each
+attempt's input with a fresh nonce, so an earlier server reports every repeat
+as a conflict, even from a deterministic mapper; use server-zd 0.1.37 or later
+with payload encryption.
 
 Trigger binding configuration is separate from connection configuration and
 credentials. Its identity is connector ID, connection name, trigger name, and
