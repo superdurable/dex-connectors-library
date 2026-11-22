@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import base64
 import email.parser
 import hashlib
 import json
@@ -31,7 +32,7 @@ else:
                                           is_certificate_verification_failure, release_assets)
 
 PYPI_LOOKUP_ATTEMPTS = 4
-GO_DIRECT_DOWNLOAD_ATTEMPTS = 3
+GO_DIRECT_DOWNLOAD_ATTEMPTS = 5
 GO_DIRECT_DOWNLOAD_INITIAL_DELAY_SECONDS = 5.0
 # Git's text for GitHub throttling or an outage; Go wraps it as "invalid version".
 TRANSIENT_GIT_HTTP_ERRORS = tuple(f"the requested url returned error: {status}"
@@ -145,6 +146,7 @@ class DependencyReleaseLookup:
         environment["GOWORK"] = "off"
         environment["GOPROXY"] = "direct"
         environment["GONOSUMDB"] = LIBRARY_MODULE_PATH
+        environment.update(github_git_authentication_environment(environment))
         for attempt in range(1, GO_DIRECT_DOWNLOAD_ATTEMPTS + 1):
             result = subprocess.run(
                 ("go", "mod", "download", f"{module}@{version}"),
@@ -163,6 +165,25 @@ class DependencyReleaseLookup:
                     f"{module}@{version} is not downloadable with GOWORK=off GOPROXY=direct: {result.stderr.strip()}"
                 )
             time.sleep(GO_DIRECT_DOWNLOAD_INITIAL_DELAY_SECONDS * 2 ** (attempt - 1))
+
+
+def github_git_authentication_environment(environment: dict[str, str]) -> dict[str, str]:
+    """Returns Git configuration variables that authenticate Git's GitHub reads with GH_TOKEN or GITHUB_TOKEN.
+
+    Hosted runners share IP addresses, so anonymous reads hit GitHub's limit and fail with HTTP 403.
+    The header travels in the environment, never in a command line, and Git does not print it.
+    Returns no variables when neither token is set.
+    """
+    token = environment.get("GH_TOKEN") or environment.get("GITHUB_TOKEN")
+    if not token:
+        return {}
+    index = int(environment.get("GIT_CONFIG_COUNT") or "0")
+    credentials = base64.b64encode(f"x-access-token:{token}".encode()).decode()
+    return {
+        "GIT_CONFIG_COUNT": str(index + 1),
+        f"GIT_CONFIG_KEY_{index}": "http.https://github.com/.extraheader",
+        f"GIT_CONFIG_VALUE_{index}": f"AUTHORIZATION: basic {credentials}",
+    }
 
 
 def git(*arguments: str, check: bool = True) -> subprocess.CompletedProcess[str]:
