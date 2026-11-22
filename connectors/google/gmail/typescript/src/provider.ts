@@ -7,9 +7,8 @@ import { z } from 'zod';
 import type { Credentials } from './models.js';
 import { GmailHTTPClient } from './http.js';
 import { GmailMessageResourceSchema, type GmailMessageResource } from './message.js';
+import { SentMailReadBack } from './sent_mail_read_back.js';
 
-const SentMessageSchema = z.object({ id: z.string().optional(), threadId: z.string().optional() });
-const SentSearchSchema = z.object({ messages: z.array(SentMessageSchema).nullish() });
 const MessageListSchema = z.object({ messages: z.array(z.object({ id: z.string().nullish(), threadId: z.string().nullish() })).nullish() });
 
 /** One message reference in an inbox listing, newest first as Gmail lists it. */
@@ -73,21 +72,14 @@ export class GmailProvider {
     return { messages: (parsed.messages ?? []).map(message => ({ id: message.id ?? '', threadId: message.threadId ?? '' })), credentials: result.credentials };
   }
 
-  /** Search Sent Mail once for the run-specific RFC Message-ID. */
-  async findSentMessage(call: Call, credentials: Credentials, messageIdAddress: string, signal?: AbortSignal): Promise<SentMessageIdentity | undefined> {
-    const query = new URLSearchParams();
-    query.set('includeSpamTrash', 'true');
-    query.set('maxResults', '1');
-    query.set('q', `in:sent rfc822msgid:${messageIdAddress}`);
-    const { response } = await this.#http.request(call, credentials, 'GET', `/users/me/messages?${query.toString()}`, undefined, signal);
-    if (response.status !== 200) throw new Error('Gmail sent-message lookup did not return a usable response');
-    let document: unknown;
-    try { document = JSON.parse(Buffer.from(response.body).toString('utf8')) as unknown; }
-    catch { throw new Error('Gmail sent-message lookup returned an invalid response'); }
-    const parsed = SentSearchSchema.safeParse(document);
-    if (!parsed.success) throw new Error('Gmail sent-message lookup returned an invalid response');
-    const message = parsed.data.messages?.find(candidate => candidate.id);
-    return message?.id ? { id: message.id, threadId: message.threadId ?? '' } : undefined;
+  /**
+   * Search recent Sent Mail once for the message whose X-Dex-Message-ID or Message-ID header carries the
+   * run-specific Message-ID address, reading the headers of up to 25 candidates. Resolves undefined on a
+   * clean miss; rejects when the search or a candidate read is inconclusive. Pass `recipients` to narrow
+   * the search to the first recipient.
+   */
+  async findSentMessage(call: Call, credentials: Credentials, messageIdAddress: string, signal?: AbortSignal, recipients: readonly string[] = []): Promise<SentMessageIdentity | undefined> {
+    return new SentMailReadBack(this.#http, call, credentials, messageIdAddress, recipients).find(signal);
   }
 
   /** Post one encoded Gmail messages.send request without redirects or transport replay. */

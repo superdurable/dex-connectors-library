@@ -61,13 +61,19 @@ export function decodeGmailMessage(resource: GmailMessageResource): Message {
 
 function visitGmailBody(part: GmailMessagePart, textBodies: string[], htmlBodies: string[]): void {
   if (part.body?.data) {
-    const encoded = part.body.data;
-    if (!/^[A-Za-z0-9_-]*$/.test(encoded) || encoded.length % 4 === 1) throw new TypeError('Gmail body is not raw base64url');
-    const decoded = Buffer.from(encoded, 'base64url').toString('utf8');
+    const decoded = decodeGmailBodyData(part.body.data).toString('utf8');
     if (part.mimeType?.toLowerCase() === 'text/plain') textBodies.push(decoded);
     if (part.mimeType?.toLowerCase() === 'text/html') htmlBodies.push(decoded);
   }
   for (const child of part.parts ?? []) visitGmailBody(child, textBodies, htmlBodies);
+}
+
+// Gmail pads body data whenever its decoded length is not a multiple of three.
+function decodeGmailBodyData(encoded: string): Buffer {
+  const isUnpadded = /^[A-Za-z0-9_-]*$/.test(encoded) && encoded.length % 4 !== 1;
+  const isPadded = /^[A-Za-z0-9_-]+={1,2}$/.test(encoded) && encoded.length % 4 === 0;
+  if (!isUnpadded && !isPadded) throw new TypeError('Gmail body is not base64url');
+  return Buffer.from(encoded, 'base64url');
 }
 
 function decodeRFC2047Header(value: string): string {
@@ -163,10 +169,19 @@ export function rfcMessageIDAddress(idempotencyKey: string, runId: string, flowS
   return `${createHash('sha256').update(`${idempotencyKey}\0${runIdentity}`).digest('hex')}@dex.superdurable.dev`;
 }
 
+/**
+ * Header that repeats the Message-ID a send sets. Gmail replaces Message-ID on the Sent copy but keeps
+ * this header, so Sent Mail read-back matches it.
+ */
+export const DexMessageIDHeader = 'X-Dex-Message-ID';
+
 /** Build the exact raw RFC 5322 request body shared by sends and replies. */
 export function buildMIMEMessage(callId: string, idempotencyKey: string, messageIdAddress: string, sender: string, recipients: string[], subject: string, textBody: string, htmlBody = '', replyHeaders?: { inReplyTo: string; references: string }): Uint8Array {
   if (/[\r\n]/.test(sender + subject + messageIdAddress + recipients.join('') + (replyHeaders?.inReplyTo ?? '') + (replyHeaders?.references ?? ''))) throw new TypeError('MIME header contains a newline');
-  const headers = [`From: ${sender}`, `To: ${recipients.join(', ')}`, `Subject: ${encodeSubject(subject)}`, `Message-ID: <${messageIdAddress}>`];
+  const headers = [
+    `From: ${sender}`, `To: ${recipients.join(', ')}`, `Subject: ${encodeSubject(subject)}`,
+    `Message-ID: <${messageIdAddress}>`, `${DexMessageIDHeader}: <${messageIdAddress}>`,
+  ];
   if (replyHeaders) headers.push(`In-Reply-To: ${replyHeaders.inReplyTo}`, `References: ${replyHeaders.references}`);
   headers.push(`X-Dex-Call-ID: ${callId}`, 'MIME-Version: 1.0');
   if (!htmlBody) {

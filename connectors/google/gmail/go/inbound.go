@@ -262,7 +262,7 @@ type gmailBodyDecoder struct {
 
 func (decoder *gmailBodyDecoder) visit(part gmailMessagePart) error {
 	if part.Body.Data != "" {
-		decoded, err := base64.RawURLEncoding.DecodeString(part.Body.Data)
+		decoded, err := decodeGmailBodyData(part.Body.Data)
 		if err != nil {
 			return err
 		}
@@ -279,6 +279,14 @@ func (decoder *gmailBodyDecoder) visit(part gmailMessagePart) error {
 		}
 	}
 	return nil
+}
+
+// decodeGmailBodyData accepts unpadded base64url and the padded form Gmail usually returns.
+func decodeGmailBodyData(data string) ([]byte, error) {
+	if strings.HasSuffix(data, "=") {
+		return base64.URLEncoding.DecodeString(data)
+	}
+	return base64.RawURLEncoding.DecodeString(data)
 }
 
 func gmailHeaders(headers []gmailMessageHeader) map[string]string {
@@ -335,6 +343,7 @@ func buildReplyMIMEMessage(call sdkgo.Call, sender string, recipient string, sou
 	mustWriteMIMEHeader(&message, "To", recipient)
 	mustWriteMIMEHeader(&message, "Subject", mime.QEncoding.Encode("UTF-8", subject))
 	mustWriteMIMEHeader(&message, "Message-ID", "<"+rfcMessageIDAddress(call)+">")
+	mustWriteMIMEHeader(&message, dexMessageIDHeader, "<"+rfcMessageIDAddress(call)+">")
 	mustWriteMIMEHeader(&message, "In-Reply-To", source.RFCMessageID)
 	references := strings.TrimSpace(source.References + " " + source.RFCMessageID)
 	mustWriteMIMEHeader(&message, "References", references)

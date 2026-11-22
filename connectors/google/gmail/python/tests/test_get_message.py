@@ -142,6 +142,22 @@ async def test_get_message_decodes_bodies_headers_and_receipt(call: Call) -> Non
 
 
 @pytest.mark.asyncio
+async def test_get_message_decodes_padded_base64url_bodies(call: Call) -> None:
+    """Gmail pads body.data whenever a body's length is not a multiple of three."""
+    document = json.loads(message_response())
+    text_part, html_part = document["payload"]["parts"]
+    text_part["body"]["data"] = base64.urlsafe_b64encode(b"Hello").decode()
+    html_part["body"]["data"] = base64.urlsafe_b64encode(b"<p>Hi!</p>").decode()
+    assert text_part["body"]["data"].endswith("=") and html_part["body"]["data"].endswith("==")
+    result = await make_operation(call, httpx.Response(200, json=document)).invoke(
+        call, GetMessageInput("message-1")
+    )
+    assert result.branch == "read" and result.value is not None
+    assert result.value.text_body == "Hello"
+    assert result.value.html_body == "<p>Hi!</p>"
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("status", "branch", "kind"),
     [

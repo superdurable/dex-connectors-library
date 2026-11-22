@@ -41,7 +41,8 @@ from dex_connectors.google_gmail.definitions import (
 )
 from dex_connectors.google_gmail.operations import ReplyToMessageOperation, SendMessageOperation
 from dex_connectors.google_gmail.project_credentials import StoredCredentialMaterialError
-from dex_connectors.google_gmail.provider import GmailCredentialMaterialError
+from dex_connectors.google_gmail.provider import GmailCredentialMaterialError, rfc_message_id_address
+from tests.gmail_inbox_fake import FakeSentCopy, FakeSentMail, dex_sent_copy
 
 
 def sdk_wrapped_material_error() -> ValueError:
@@ -229,6 +230,28 @@ def _methods(requests: list[httpx.Request]) -> list[str]:
     return [request.method for request in requests if not request.url.path.endswith("/source-1")]
 
 
+def _dex_message_id(call: Call, context: HeartbeatContext) -> str:
+    """The bracketed X-Dex-Message-ID this call's messages carry in the context's run."""
+    return f"<{rfc_message_id_address(call, context.run_id, context.flow_started_at)}>"
+
+
+def _sent_mail_gmail(
+    sent_mail: FakeSentMail, post: httpx.Response | None = None
+) -> Callable[[httpx.Request], httpx.Response]:
+    """Answer the reply source read and Sent Mail; messages.send returns post, or Gmail accepts it."""
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        if request.method == "POST":
+            return post if post is not None else sent_mail.accept_post(request)
+        if request.url.path.endswith("/messages/source-1"):
+            return _source_message()
+        answered = sent_mail.answer(request)
+        assert answered is not None, f"unexpected Gmail request {request.url}"
+        return answered
+
+    return answer
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize("operation_id", ["sendMessage", "replyToMessage"])
 async def test_claimed_previous_attempt_resends_after_sent_mail_miss(operation_id: str) -> None:
@@ -262,12 +285,12 @@ async def test_claimed_previous_attempt_found_by_read_back_is_not_resent(operati
     context = HeartbeatContext(2)
     call = _call(context, operation_id=operation_id)
     context.previous = Marker(call.id, 1, State.CLAIMED, send_count=1)
-    attempt, requests = await _invoke(call, httpx.MockTransport(_gmail(
-        httpx.Response(200, json={"messages": [{"id": "sent-1", "threadId": "thread-1"}]}),
-        httpx.Response(500),
-    )))
-    assert attempt.branch == "sent"
-    assert _methods(requests) == ["GET"]
+    sent_mail = FakeSentMail([dex_sent_copy("sent-1", "thread-1", _dex_message_id(call, context))])
+    attempt, requests = await _invoke(
+        call, httpx.MockTransport(_sent_mail_gmail(sent_mail, httpx.Response(500)))
+    )
+    assert attempt.branch == "sent" and attempt.value.message_id == "sent-1"
+    assert _methods(requests) == ["GET", "GET"]
 
 
 @pytest.mark.asyncio
@@ -308,9 +331,8 @@ async def test_send_cap_reached_read_back_match_is_sent(operation_id: str) -> No
     context = HeartbeatContext(4)
     call = _call(context, operation_id=operation_id)
     context.previous = Marker(call.id, 3, State.CLAIMED, send_count=call.max_sends)
-    attempt, requests = await _invoke(call, httpx.MockTransport(
-        lambda _: httpx.Response(200, json={"messages": [{"id": "sent-3", "threadId": "thread-1"}]})
-    ))
+    sent_mail = FakeSentMail([dex_sent_copy("sent-3", "thread-1", _dex_message_id(call, context))])
+    attempt, requests = await _invoke(call, httpx.MockTransport(_sent_mail_gmail(sent_mail)))
     assert attempt.branch == "sent" and attempt.value.message_id == "sent-3"
     assert "POST" not in _methods(requests)
 
@@ -755,10 +777,8 @@ async def test_counted_can_resend_searches_before_resending(operation_id: str) -
     context = HeartbeatContext(3)
     call = _call(context, operation_id=operation_id)
     context.previous = Marker(call.id, 2, State.CAN_RESEND, send_count=1)
-    attempt, requests = await _invoke(call, httpx.MockTransport(_gmail(
-        httpx.Response(200, json={"messages": [{"id": "sent-1", "threadId": "thread-1"}]}),
-        httpx.Response(200, json={"id": "sent-2", "threadId": "thread-1"}),
-    )))
+    sent_mail = FakeSentMail([dex_sent_copy("sent-1", "thread-1", _dex_message_id(call, context))])
+    attempt, requests = await _invoke(call, httpx.MockTransport(_sent_mail_gmail(sent_mail)))
     assert attempt.branch == "sent" and attempt.value.message_id == "sent-1"
     assert "POST" not in _methods(requests)
 
@@ -789,6 +809,164 @@ async def test_pre_send_retry_after_counted_can_resend_records_nothing(
     assert attempt.kind == "retry"
     assert "POST" not in [request.method for request in requests]
     assert context.heartbeats == []
+
+
+def _decoy_sent_copy(call: Call, decoy: str) -> FakeSentCopy:
+    """A recent Sent copy to the same recipient that is not this run's message."""
+    if decoy == "other_run_dex_message_id":
+        # A reused Flow ID repeats the Call ID in another run, whose digest differs.
+        other_run_id = "<" + "0" * 64 + "@dex.superdurable.dev>"
+        return dex_sent_copy("sent-9", "thread-9", other_run_id, call_id=str(call.id))
+    # A matching X-Dex-Call-ID alone proves nothing: Call IDs repeat across runs.
+    return dex_sent_copy("sent-9", "thread-9", "", call_id=str(call.id))
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("operation_id", ["sendMessage", "replyToMessage"])
+@pytest.mark.parametrize("decoy", ["other_run_dex_message_id", "matching_call_id_only"])
+async def test_read_back_skips_a_decoy_and_matches_its_own_sent_copy(operation_id: str, decoy: str) -> None:
+    """Read-back reads each newest candidate and matches only this run's X-Dex-Message-ID."""
+    context = HeartbeatContext(2)
+    call = _call(context, operation_id=operation_id)
+    context.previous = Marker(call.id, 1, State.CLAIMED, send_count=1)
+    sent_mail = FakeSentMail([
+        _decoy_sent_copy(call, decoy), dex_sent_copy("sent-1", "thread-1", _dex_message_id(call, context))
+    ])
+    attempt, requests = await _invoke(call, httpx.MockTransport(_sent_mail_gmail(sent_mail)))
+    assert attempt.branch == "sent" and attempt.value.message_id == "sent-1"
+    assert attempt.value.thread_id == "thread-1"
+    assert sent_mail.header_reads == ["sent-9", "sent-1"]
+    assert "POST" not in _methods(requests)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("operation_id", ["sendMessage", "replyToMessage"])
+@pytest.mark.parametrize("decoy", ["other_run_dex_message_id", "matching_call_id_only"])
+@pytest.mark.parametrize(("prior_sends", "expected_kind"), [(1, "branch"), (3, "uncertain")])
+async def test_read_back_of_only_a_decoy_is_a_miss(
+    operation_id: str, decoy: str, prior_sends: int, expected_kind: str
+) -> None:
+    """Only a decoy is a clean miss: a resend below the send cap, uncertain at it."""
+    context = HeartbeatContext(prior_sends + 1)
+    call = _call(context, operation_id=operation_id)
+    context.previous = Marker(call.id, prior_sends, State.CLAIMED, send_count=prior_sends)
+    sent_mail = FakeSentMail([_decoy_sent_copy(call, decoy)])
+    attempt, requests = await _invoke(call, httpx.MockTransport(_sent_mail_gmail(sent_mail)))
+    assert attempt.kind == expected_kind
+    if expected_kind == "branch":
+        assert attempt.branch == "sent" and attempt.value.message_id == "sent-2"
+        assert _methods(requests).count("POST") == 1
+    else:
+        assert attempt.failure is not None
+        assert attempt.failure.message.startswith("Gmail sent-mail search found no message")
+        assert "POST" not in _methods(requests)
+    assert sent_mail.header_reads[0] == "sent-9"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("operation_id", ["sendMessage", "replyToMessage"])
+async def test_gateway_that_keeps_message_id_matches_by_message_id(operation_id: str) -> None:
+    """A Sent copy that kept the client Message-ID matches without X-Dex-Message-ID."""
+    context = HeartbeatContext(4)
+    call = _call(context, operation_id=operation_id)
+    context.previous = Marker(call.id, 3, State.CLAIMED, send_count=3)
+    kept_message_id = FakeSentCopy(
+        "sent-1", "thread-1", [("To", "<ada@example.com>"), ("Message-ID", _dex_message_id(call, context))]
+    )
+    sent_mail = FakeSentMail([kept_message_id])
+    attempt, requests = await _invoke(call, httpx.MockTransport(_sent_mail_gmail(sent_mail)))
+    assert attempt.branch == "sent" and attempt.value.message_id == "sent-1"
+    assert "POST" not in _methods(requests)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("operation_id", ["sendMessage", "replyToMessage"])
+@pytest.mark.parametrize(
+    ("failed_status", "expected_message"),
+    [
+        (500, "Gmail sent-mail search did not answer"),
+        (403, "Gmail sent-mail search did not answer"),
+        # A candidate deleted after the search cannot be this call's copy.
+        (404, "Gmail sent-mail search found no message"),
+    ],
+)
+async def test_failing_candidate_header_read_leaves_read_back_inconclusive(
+    operation_id: str, failed_status: int, expected_message: str
+) -> None:
+    """A candidate that cannot be read may be this call's copy, so a miss is inconclusive."""
+    context = HeartbeatContext(4)
+    call = _call(context, operation_id=operation_id)
+    context.previous = Marker(call.id, 3, State.CLAIMED, send_count=3)
+    sent_mail = FakeSentMail(
+        [
+            dex_sent_copy("sent-1", "thread-1", _dex_message_id(call, context)),
+            _decoy_sent_copy(call, "matching_call_id_only"),
+        ],
+        {"sent-1": failed_status},
+    )
+    attempt, requests = await _invoke(call, httpx.MockTransport(_sent_mail_gmail(sent_mail)))
+    assert attempt.kind == "uncertain" and attempt.failure is not None
+    assert attempt.failure.message.startswith(expected_message)
+    assert sent_mail.header_reads == ["sent-1", "sent-9"]
+    assert "POST" not in _methods(requests)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("operation_id", ["sendMessage", "replyToMessage"])
+async def test_failing_candidate_does_not_hide_a_later_match(operation_id: str) -> None:
+    """A candidate read failure matters only when no other candidate matches."""
+    context = HeartbeatContext(4)
+    call = _call(context, operation_id=operation_id)
+    context.previous = Marker(call.id, 3, State.CLAIMED, send_count=3)
+    sent_mail = FakeSentMail(
+        [
+            _decoy_sent_copy(call, "matching_call_id_only"),
+            dex_sent_copy("sent-1", "thread-1", _dex_message_id(call, context)),
+        ],
+        {"sent-9": 500},
+    )
+    attempt, _ = await _invoke(call, httpx.MockTransport(_sent_mail_gmail(sent_mail)))
+    assert attempt.branch == "sent" and attempt.value.message_id == "sent-1"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("operation_id", ["sendMessage", "replyToMessage"])
+async def test_crash_after_gmail_accepted_is_confirmed_by_the_sent_copy(operation_id: str) -> None:
+    """A worker lost after Gmail accepted a POST leaves a claim; the retry finds the copy without a POST."""
+    sent_mail = FakeSentMail()
+    has_accepted = asyncio.Event()
+
+    async def answer(request: httpx.Request) -> httpx.Response:
+        if request.method == "POST":
+            sent_mail.accept_post(request)
+            has_accepted.set()
+            await asyncio.Event().wait()  # The worker is lost before Gmail's answer arrives.
+        if request.url.path.endswith("/messages/source-1"):
+            return _source_message()
+        answered = sent_mail.answer(request)
+        assert answered is not None, f"unexpected Gmail request {request.url}"
+        return answered
+
+    first_context = HeartbeatContext()
+    call = _call(first_context, operation_id=operation_id)
+    first_attempt = asyncio.create_task(_invoke(call, httpx.MockTransport(answer)))
+    await asyncio.wait_for(has_accepted.wait(), 10)
+    first_attempt.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await first_attempt
+    claim = first_context.heartbeats[-1]
+    assert claim.state == State.CLAIMED and claim.send_count == 1 and not claim.provider_id
+    # Gmail kept no copy of the client Message-ID; only X-Dex-Message-ID identifies the send.
+    stored_headers = dict(sent_mail.copies[0].headers)
+    assert stored_headers["Message-Id"] != _dex_message_id(call, first_context)
+    assert stored_headers["X-Dex-Message-ID"] == _dex_message_id(call, first_context)
+
+    retry_context = HeartbeatContext(2, claim)
+    retry_call = _call(retry_context, call.id, operation_id)
+    attempt, requests = await _invoke(retry_call, httpx.MockTransport(answer))
+    assert attempt.branch == "sent" and attempt.value.message_id == "sent-1"
+    assert "POST" not in [request.method for request in requests]
+    assert len(sent_mail.copies) == 1
 
 
 class _SlowAcceptedBody(httpx.AsyncByteStream):

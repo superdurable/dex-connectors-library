@@ -13,6 +13,7 @@ import { GmailCredentialError, GmailHTTPClient, gmailRequestID, gmailRetryAfterM
 import { buildMIMEMessage, buildReplyMIMEMessage, decodeGmailMessage, replyRecipient, rfcMessageIDAddress, validateSendInput } from './message.js';
 import { ReplyToMessageInputSchema, SendMessageInputSchema, type Credentials, type Message, type ReplyToMessageInput, type SendMessageInput, type SendMessageOutput } from './models.js';
 import { GmailProvider, parseSentResponse, type SentMessageIdentity } from './provider.js';
+import { SentMailReadBack } from './sent_mail_read_back.js';
 
 interface SendOutcomes {
   operationId: 'sendMessage' | 'replyToMessage';
@@ -180,7 +181,8 @@ export class GmailSender {
     if (call.context.attempt > 1 || fence.decide().kind === 'readBackRequired') {
       let hasSearchFailed = false;
       try {
-        const found = await this.#provider.findSentMessage(call, credentials, messageIdAddress, budget.preSendSignal());
+        // The source is not read yet, so the reply recipient is unknown.
+        const found = await new SentMailReadBack(this.#http, call, credentials, messageIdAddress, []).find(budget.preSendSignal());
         if (found) return this.#sentMessage(call, budget, credentials, ReplyToMessageOutcomes, { raw: new Uint8Array(), recipients: [], requestedThreadId: '', hasPreSendSearch: true, messageIdAddress }, found, this.#receipt(call));
       } catch {
         hasSearchFailed = true;
@@ -234,7 +236,7 @@ export class GmailSender {
     let hasSearchFailed = false;
     if ((call.context.attempt > 1 || fence.decide().kind === 'readBackRequired') && !message.hasPreSendSearch) {
       try {
-        const found = await this.#provider.findSentMessage(call, credentials, message.messageIdAddress, budget.preSendSignal());
+        const found = await this.#sentMailReadBack(call, credentials, message).find(budget.preSendSignal());
         if (found) return this.#sentMessage(call, budget, credentials, operation, message, found, this.#receipt(call));
       } catch {
         hasSearchFailed = true;
@@ -287,7 +289,7 @@ export class GmailSender {
       if (refusalNamedMessage) return this.#confirmRefusalNamingMessage(call, fence, budget, credentials, operation, message, refusalNamedMessage.id, receipt);
       if (call.context.attempt > 1) {
         try {
-          const found = await this.#provider.findSentMessage(call, credentials, message.messageIdAddress, budget.attemptSignal());
+          const found = await this.#sentMailReadBack(call, credentials, message).find(budget.attemptSignal());
           if (found) return this.#sentMessage(call, budget, credentials, operation, message, found, receipt);
         } catch { /* A conclusive current refusal still selects its branch. */ }
       }
@@ -341,6 +343,7 @@ export class GmailSender {
   }
 
   async #pollSentMessage(call: Call, budget: GmailSendAttemptBudget, credentials: Credentials, message: OutgoingMessage): Promise<{ sent?: SentMessageIdentity; hadError: boolean }> {
+    const readBack = this.#sentMailReadBack(call, credentials, message);
     let hadError = false;
     for (let lookup = 0; lookup < 4; lookup++) {
       if (lookup > 0) {
@@ -348,13 +351,17 @@ export class GmailSender {
         catch { return { hadError: true }; }
       }
       try {
-        const found = await this.#provider.findSentMessage(call, credentials, message.messageIdAddress, budget.attemptSignal());
+        const found = await readBack.find(budget.attemptSignal());
         if (found) return { sent: found, hadError: false };
         hadError = false;
       } catch { hadError = true; }
       if (Date.now() >= budget.attemptDeadline || call.context.cancellationSignal.aborted) break;
     }
     return { hadError };
+  }
+
+  #sentMailReadBack(call: Call, credentials: Credentials, message: OutgoingMessage): SentMailReadBack {
+    return new SentMailReadBack(this.#http, call, credentials, message.messageIdAddress, message.recipients);
   }
 
   #messageID(call: Call): string | undefined {

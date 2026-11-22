@@ -40,7 +40,7 @@ from dex_connectors.google_gmail.provider import (
     decode_message,
     parse_mailbox,
     rfc_message_id_address,
-    sent_message_search_query,
+    sent_mail_candidate_query,
     validate_send_input,
 )
 
@@ -70,7 +70,10 @@ def test_send_message_has_stable_headers_and_base64url_request(call: Call) -> No
     assert set(document) == {"raw"}
     raw = base64.urlsafe_b64decode(document["raw"] + "=" * (-len(document["raw"]) % 4))
     parsed = BytesParser(policy=policy.default).parsebytes(raw)
-    assert parsed["Message-ID"] == f"<{rfc_message_id_address(call, 'run-1', started_at)}>"
+    message_id = f"<{rfc_message_id_address(call, 'run-1', started_at)}>"
+    assert parsed["Message-ID"] == message_id
+    # Gmail replaces Message-ID on the Sent copy, so read-back matches the repeated header.
+    assert f"Message-ID: {message_id}\r\nX-Dex-Message-ID: {message_id}\r\n".encode() in raw
     assert parsed["X-Dex-Call-ID"] == call.id
     assert parsed["From"] == "owner@example.org"
     assert parsed["To"] == "Ada <ada@example.com>"
@@ -78,7 +81,27 @@ def test_send_message_has_stable_headers_and_base64url_request(call: Call) -> No
     assert b'\r\n\r\n--dex-' in raw
     assert b'\r\n\r\n\r\n--dex-' not in raw
     assert parsed.get_body(preferencelist=("plain",)).get_content() == "Line one\r\nLine two"
-    assert sent_message_search_query(call, "run-1", started_at).startswith("in:sent rfc822msgid:")
+
+
+@pytest.mark.parametrize(
+    ("recipients", "expected_query"),
+    [
+        ([], "in:sent newer_than:2d"),
+        (["<ada@example.com>", "<bo@example.com>"], "in:sent newer_than:2d to:ada@example.com"),
+        (
+            ['"Ada" <Ada.Lovelace+orders@mail.example.com>'],
+            "in:sent newer_than:2d to:Ada.Lovelace+orders@mail.example.com",
+        ),
+        (["=?utf-8?q?Jos=C3=A9?= <jose@example.com>"], "in:sent newer_than:2d to:jose@example.com"),
+        (["<jos\u00e9@example.com>"], "in:sent newer_than:2d"),
+        (['<"ada lovelace"@example.com>'], "in:sent newer_than:2d"),
+    ],
+)
+def test_sent_mail_candidate_query_names_only_a_literal_first_recipient(
+    recipients: list[str], expected_query: str
+) -> None:
+    """Only a first recipient that Gmail search reads literally narrows the recent Sent Mail candidates."""
+    assert sent_mail_candidate_query(recipients) == expected_query
 
 
 def test_mailbox_output_matches_go_header_shape() -> None:
@@ -114,6 +137,11 @@ def test_reply_message_preserves_thread_headers(call: Call) -> None:
     assert document["threadId"] == "thread-1"
     raw = base64.urlsafe_b64decode(document["raw"] + "=" * (-len(document["raw"]) % 4))
     parsed = BytesParser(policy=policy.default).parsebytes(raw)
+    message_id = parsed["Message-ID"]
+    assert message_id.endswith("@dex.superdurable.dev>")
+    assert (
+        f"Message-ID: {message_id}\r\nX-Dex-Message-ID: {message_id}\r\nIn-Reply-To: <source@example.com>\r\n"
+    ).encode() in raw
     assert parsed["Subject"] == "Re: Question"
     assert parsed["In-Reply-To"] == "<source@example.com>"
     assert parsed["References"] == "<prior@example.com> <source@example.com>"

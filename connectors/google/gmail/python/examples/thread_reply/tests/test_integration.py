@@ -35,6 +35,7 @@ from dex_connectors.google_gmail import (
 from dex_connectors.google_gmail.gmailmock import Mock
 from examples.thread_reply.flow import ThreadReplyFlow
 from examples.thread_reply.models import CONNECTION_NAME, ThreadReplyInput, ThreadReplyOutput
+from tests.gmail_inbox_fake import FakeSentMail
 
 FlowInput = TypeVar("FlowInput")
 
@@ -196,14 +197,20 @@ class SendMessageFlow(dex.Flow[SendMessageInput]):
 async def test_real_dex_send_retry_reads_back_before_duplicate_post(tmp_path: Path) -> None:
     """An ambiguous first POST retries, then finds the sent message before another POST."""
     methods: list[str] = []
+    sent_mail = FakeSentMail()
+    posts: list[httpx.Request] = []
 
     def respond(request: httpx.Request) -> httpx.Response:
         methods.append(request.method)
         if request.method == "POST":
+            posts.append(request)
             return httpx.Response(500)
-        if methods.count("GET") <= 4:
-            return httpx.Response(200, json={"messages": []})
-        return httpx.Response(200, json={"messages": [{"id": "sent-1", "threadId": "thread-1"}]})
+        if len(sent_mail.searches) == 4 and not sent_mail.copies:
+            # Gmail accepted the POST, but Sent Mail lists it only after the first attempt's polling.
+            sent_mail.accept_post(posts[0])
+        answered = sent_mail.answer(request)
+        assert answered is not None, request.url
+        return answered
 
     credential = Credentials(SecretString("inert-access"), "owner@example.org")
     credentials = StaticCredentialProvider({ConnectionRef("google", CONNECTION_NAME): credential})
@@ -220,22 +227,29 @@ async def test_real_dex_send_retry_reads_back_before_duplicate_post(tmp_path: Pa
         )
     assert result.status == dex.FlowStatus.COMPLETED, (result.error_message, methods)
     assert result.single_output(str) == "sent-1"
-    assert methods == ["POST", "GET", "GET", "GET", "GET", "GET"]
+    # Four empty polls, then the retry's search and its read of the candidate's X-Dex-Message-ID.
+    assert methods == ["POST", "GET", "GET", "GET", "GET", "GET", "GET"]
+    assert sent_mail.header_reads == ["sent-1"]
 
 
 @pytest.mark.asyncio
 async def test_real_dex_503_reads_back_without_resending(tmp_path: Path) -> None:
     """A 503 may have been processed, so the retry only searches Sent Mail and never POSTs again."""
     methods: list[str] = []
+    sent_mail = FakeSentMail()
+    posts: list[httpx.Request] = []
 
     def respond(request: httpx.Request) -> httpx.Response:
         methods.append(request.method)
         if request.method == "POST":
+            posts.append(request)
             return httpx.Response(503)
         # The send becomes searchable only after the first attempt's bounded polling.
-        if methods.count("GET") <= 4:
-            return httpx.Response(200, json={"messages": []})
-        return httpx.Response(200, json={"messages": [{"id": "sent-after-503", "threadId": "thread-1"}]})
+        if len(sent_mail.searches) == 4 and not sent_mail.copies:
+            sent_mail.accept_post(posts[0])
+        answered = sent_mail.answer(request)
+        assert answered is not None, request.url
+        return answered
 
     credential = Credentials(SecretString("inert-access"), "owner@example.org")
     credentials = StaticCredentialProvider({ConnectionRef("google", CONNECTION_NAME): credential})
@@ -251,5 +265,6 @@ async def test_real_dex_503_reads_back_without_resending(tmp_path: Path) -> None
             tmp_path / "cache",
         )
     assert result.status == dex.FlowStatus.COMPLETED, (result.error_message, methods)
-    assert result.single_output(str) == "sent-after-503"
-    assert methods == ["POST", "GET", "GET", "GET", "GET", "GET"]
+    assert result.single_output(str) == "sent-1"
+    assert methods == ["POST", "GET", "GET", "GET", "GET", "GET", "GET"]
+    assert sent_mail.header_reads == ["sent-1"]

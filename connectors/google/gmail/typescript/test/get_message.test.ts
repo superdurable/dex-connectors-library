@@ -38,6 +38,18 @@ describe('getMessage operation', () => {
     expect(request?.url).toContain('/users/me/messages/message-1?format=full');
   });
 
+  it('decodes the padded body data Gmail returns and unpadded data, and rejects malformed data', async () => {
+    const read = (data: string) => makeClient(async () => response(200, {
+      id: 'message-1', threadId: 'thread-1', internalDate: '1767312000000', payload: { mimeType: 'text/plain', body: { data } },
+    })).getMessage().invoke(call, { messageId: 'message-1' });
+    for (const [data, textBody] of [['SGVsbG8=', 'Hello'], ['SGVsbG8', 'Hello'], ['SGk=', 'Hi'], ['SGk', 'Hi'], ['SGV5', 'Hey']]) {
+      expect(await read(data!), data).toMatchObject({ kind: 'branch', branch: 'read', value: { textBody } });
+    }
+    for (const data of ['SGVsbG8==', 'SGk=SGk=', 'SGVsbG8+', 'S']) {
+      expect(await read(data), data).toMatchObject({ kind: 'branch', branch: 'invalidResponse', failure: { kind: 'PROTOCOL' } });
+    }
+  });
+
   it('selects every non-happy branch without sending invalid local input', async () => {
     let calls = 0;
     const client = makeClient(async () => { calls++; return response(404, {}); });

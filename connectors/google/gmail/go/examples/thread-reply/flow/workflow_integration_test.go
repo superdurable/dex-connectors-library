@@ -254,21 +254,29 @@ func waitForGmailStatus(
 	return state
 }
 
+// gmailProvider models Gmail Sent Mail: a Sent copy gets a Gmail Message-Id and keeps X-Dex-Message-ID.
 type gmailProvider struct {
 	*httptest.Server
-	release               chan struct{}
-	mutex                 sync.Mutex
-	sendsByThread         map[string]int
-	searchesByThread      map[string]int
-	threadsByRFCMessageID map[string]string
-	sentByRFCMessageID    map[string]struct{ ID, ThreadID string }
+	release          chan struct{}
+	mutex            sync.Mutex
+	sendsByThread    map[string]int
+	searchesByThread map[string]int
+	sentCopies       []*gmailSentCopy
+	// lastSentThreadID receives the searches, because a read-back query names no thread.
+	lastSentThreadID string
+}
+
+// gmailSentCopy is one accepted send as Gmail stores it in Sent Mail.
+type gmailSentCopy struct {
+	id, threadID, dexMessageID string
+	// searchesUntilVisible models Sent Mail indexing lag; negative never indexes the copy.
+	searchesUntilVisible int
 }
 
 func newGmailProvider(t *testing.T) *gmailProvider {
 	t.Helper()
 	provider := &gmailProvider{
 		release: make(chan struct{}), sendsByThread: map[string]int{}, searchesByThread: map[string]int{},
-		threadsByRFCMessageID: map[string]string{}, sentByRFCMessageID: map[string]struct{ ID, ThreadID string }{},
 	}
 	provider.Server = httptest.NewServer(http.HandlerFunc(provider.serveHTTP))
 	return provider
@@ -284,6 +292,8 @@ func (provider *gmailProvider) serveHTTP(response http.ResponseWriter, request *
 	switch {
 	case request.Method == http.MethodGet && request.URL.Path == "/users/me/messages":
 		provider.serveSentMailSearch(response, request)
+	case request.Method == http.MethodGet && strings.HasPrefix(request.URL.Path, "/users/me/messages/sent-"):
+		provider.serveSentCopyHeaders(response, request)
 	case request.Method == http.MethodGet && strings.HasPrefix(request.URL.Path, "/users/me/messages/"):
 		messageID := strings.TrimPrefix(request.URL.Path, "/users/me/messages/")
 		isReply := strings.HasPrefix(messageID, "reply-")
@@ -299,27 +309,61 @@ func (provider *gmailProvider) serveHTTP(response http.ResponseWriter, request *
 	}
 }
 
-// serveSentMailSearch answers only Gmail's exact documented rfc822msgid query, as the connector sends it.
+// serveSentMailSearch lists indexed Sent copies newest first for the connector's candidate query.
 func (provider *gmailProvider) serveSentMailSearch(response http.ResponseWriter, request *http.Request) {
 	query := request.URL.Query()
+	isCandidateQuery := (query.Get("q") == "in:sent newer_than:2d" || query.Get("q") == "in:sent newer_than:2d to:sender@example.com") &&
+		query.Get("maxResults") == "25" && query.Get("includeSpamTrash") == "true"
+	if !isCandidateQuery {
+		response.WriteHeader(http.StatusBadRequest)
+		return
+	}
 	provider.mutex.Lock()
-	var found struct{ ID, ThreadID string }
-	for rfcMessageID, threadID := range provider.threadsByRFCMessageID {
-		if query.Get("q") == "in:sent rfc822msgid:"+rfcMessageID && query.Get("maxResults") == "1" && query.Get("includeSpamTrash") == "true" {
-			provider.searchesByThread[threadID]++
-			found = provider.sentByRFCMessageID[rfcMessageID]
-			// A retried send that got 503 was processed, but Sent Mail indexes it only after four searches.
-			if strings.HasPrefix(threadID, "thread-retried-") && provider.searchesByThread[threadID] > 4 {
-				found = struct{ ID, ThreadID string }{"sent-after-503", threadID}
-			}
+	provider.searchesByThread[provider.lastSentThreadID]++
+	var candidates []string
+	for index := len(provider.sentCopies) - 1; index >= 0; index-- {
+		sentCopy := provider.sentCopies[index]
+		if sentCopy.searchesUntilVisible > 0 {
+			sentCopy.searchesUntilVisible--
+		}
+		if sentCopy.searchesUntilVisible == 0 {
+			candidates = append(candidates, `{"id":`+strconv.Quote(sentCopy.id)+`,"threadId":`+strconv.Quote(sentCopy.threadID)+`}`)
 		}
 	}
 	provider.mutex.Unlock()
-	if found.ID == "" {
+	if len(candidates) == 0 {
 		writeGmailProviderResponse(response, `{"resultSizeEstimate":0}`)
 		return
 	}
-	writeGmailProviderResponse(response, `{"messages":[{"id":`+strconv.Quote(found.ID)+`,"threadId":`+strconv.Quote(found.ThreadID)+`}]}`)
+	writeGmailProviderResponse(response, `{"messages":[`+strings.Join(candidates, ",")+`]}`)
+}
+
+// serveSentCopyHeaders answers a candidate header read with Gmail's rewritten Message-Id.
+func (provider *gmailProvider) serveSentCopyHeaders(response http.ResponseWriter, request *http.Request) {
+	messageID := strings.TrimPrefix(request.URL.Path, "/users/me/messages/")
+	provider.mutex.Lock()
+	var found *gmailSentCopy
+	for _, sentCopy := range provider.sentCopies {
+		if sentCopy.id == messageID {
+			found = sentCopy
+		}
+	}
+	provider.mutex.Unlock()
+	if found == nil || request.URL.Query().Get("format") != "metadata" {
+		http.NotFound(response, request)
+		return
+	}
+	contents, err := json.Marshal(map[string]any{
+		"id": found.id, "threadId": found.threadID, "labelIds": []string{"SENT"},
+		"payload": map[string]any{"mimeType": "text/plain", "headers": []map[string]string{
+			{"name": "Message-Id", "value": "<CAGmail-" + found.id + "@mail.gmail.com>"},
+			{"name": "X-Dex-Message-ID", "value": found.dexMessageID},
+		}},
+	})
+	if err != nil {
+		panic(err)
+	}
+	writeGmailProviderResponse(response, string(contents))
 }
 
 // serveSend answers by thread prefix: confirmed loses the answer, hanging never answers, retried fails once with 503.
@@ -333,16 +377,21 @@ func (provider *gmailProvider) serveSend(response http.ResponseWriter, request *
 		panic(err)
 	}
 	threadID := payload["threadId"]
-	isVisibleWithoutAnswer := strings.HasPrefix(threadID, "thread-confirmed-") || strings.HasPrefix(threadID, "thread-hanging-")
 	provider.mutex.Lock()
 	provider.sendsByThread[threadID]++
+	provider.lastSentThreadID = threadID
+	sentCopyID := "sent-" + strconv.Itoa(len(provider.sentCopies)+1)
 	for _, line := range strings.Split(string(raw), "\r\n") {
-		if value, isMessageID := strings.CutPrefix(line, "Message-ID: "); isMessageID {
-			rfcMessageID := strings.TrimSuffix(strings.TrimPrefix(value, "<"), ">")
-			provider.threadsByRFCMessageID[rfcMessageID] = threadID
-			if isVisibleWithoutAnswer {
-				provider.sentByRFCMessageID[rfcMessageID] = struct{ ID, ThreadID string }{"sent-without-answer", threadID}
+		if value, isDexMessageID := strings.CutPrefix(line, "X-Dex-Message-ID: "); isDexMessageID {
+			sentCopy := &gmailSentCopy{id: sentCopyID, threadID: threadID, dexMessageID: value}
+			switch {
+			case strings.HasPrefix(threadID, "thread-retried-"):
+				// A send that got 503 was processed, but Sent Mail indexes it only after four searches.
+				sentCopy.searchesUntilVisible = 5
+			case strings.HasPrefix(threadID, "thread-accepted-"), strings.HasPrefix(threadID, "thread-claimed-"):
+				sentCopy.searchesUntilVisible = -1
 			}
+			provider.sentCopies = append(provider.sentCopies, sentCopy)
 		}
 	}
 	provider.mutex.Unlock()
@@ -364,7 +413,7 @@ func (provider *gmailProvider) serveSend(response http.ResponseWriter, request *
 		response.WriteHeader(http.StatusServiceUnavailable)
 		writeGmailProviderResponse(response, `{"error":{"message":"unavailable"}}`)
 	default:
-		writeGmailProviderResponse(response, `{"id":"sent-success","threadId":`+strconv.Quote(threadID)+`}`)
+		writeGmailProviderResponse(response, `{"id":`+strconv.Quote(sentCopyID)+`,"threadId":`+strconv.Quote(threadID)+`}`)
 	}
 }
 
