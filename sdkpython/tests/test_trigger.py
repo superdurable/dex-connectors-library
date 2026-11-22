@@ -613,7 +613,7 @@ async def test_rpc_target_delivers_undecodable_responses_and_sends_one_request_i
         await blank.handle_trigger(TriggerContext(), EVENT)
 
 
-# triggerRPCRequestId (sdkts) and TriggerRPCRequestID (sdkgo) yield these IDs for the same inputs.
+# sdkts triggerRPCRequestId yields these IDs; surrogate cases use its U+FFFD or unpaired-surrogate form.
 @pytest.mark.parametrize(
     ("rpc_name", "event_id", "request_id"),
     [
@@ -624,11 +624,11 @@ async def test_rpc_target_delivers_undecodable_responses_and_sends_one_request_i
         ("ReceiveEnvelopeEvent", "evt_0123456789abcdef", "trigger-rpc-N-9RTMPf6sXlUYgoeYwLfg"),
         ("recordLedgerEntry", "caf\u00e9-\u4e8b\u4ef6-\U0001f600", "trigger-rpc-cVlFUH2QCxK31tF2KjqSUA"),
         ("receiveReply", "", "trigger-rpc-hBjdrS1VKDIhGHGRhqXIxw"),
-        # TypeScript hashes the unpaired surrogate in "a\ud800b" as U+FFFD, and Go an invalid byte.
+        # TypeScript hashes the unpaired surrogate in "a\ud800b" as U+FFFD.
         ("receiveReply", "a\ud800b", "trigger-rpc--DMh9mmLQmtdCEEqMlYxWA"),
         ("receiveReply", b"a\xffb".decode("utf-8", "surrogateescape"), "trigger-rpc--DMh9mmLQmtdCEEqMlYxWA"),
         ("receiveReply", "a\ufffdb", "trigger-rpc--DMh9mmLQmtdCEEqMlYxWA"),
-        # Go's truncated sequence "x\xe2\x82y" hashes as two U+FFFD, as TypeScript hashes "x\ufffd\ufffdy".
+        # The truncated sequence "x\xe2\x82y" hashes as TypeScript hashes "x\ufffd\ufffdy".
         (
             "receiveReply",
             b"x\xe2\x82y".decode("utf-8", "surrogateescape"),
@@ -636,7 +636,7 @@ async def test_rpc_target_delivers_undecodable_responses_and_sends_one_request_i
         ),
     ],
 )
-def test_trigger_rpc_request_id_matches_the_typescript_and_go_vectors(
+def test_trigger_rpc_request_id_matches_the_typescript_vectors(
     rpc_name: str, event_id: str, request_id: str
 ) -> None:
     assert trigger_rpc_request_id(rpc_name, event_id) == request_id

@@ -463,10 +463,10 @@ def trigger_rpc_request_id(rpc_name: str, event_id: str) -> str:
 
     The ID is `TRIGGER_RPC_REQUEST_ID_PREFIX` followed by the first 16 bytes, as unpadded base64url (22
     characters), of the SHA-256 digest of the UTF-8 bytes of `rpc_name`, one 0x00 byte, and the UTF-8
-    bytes of `event_id`. It matches the TypeScript SDK's `triggerRPCRequestId` and the Go SDK's
-    `TriggerRPCRequestID` byte for byte. Each surrogate code point, such as one that `surrogateescape`
-    decoding or a lone `\\ud800` JSON escape leaves in a string, counts as U+FFFD, as the durable Trigger
-    inbox stores it and as TypeScript encodes an unpaired surrogate and Go an invalid UTF-8 byte.
+    bytes of `event_id`. It matches the TypeScript SDK's `triggerRPCRequestId` byte for byte. Each
+    surrogate code point, such as one that `surrogateescape` decoding or a lone `\\ud800` JSON escape
+    leaves in a string, counts as U+FFFD, as the durable Trigger inbox stores it and as TypeScript
+    encodes an unpaired surrogate.
 
     For example, `trigger_rpc_request_id("receiveReply", "Ev1")` hashes the 16 bytes
     `receiveReply\\x00Ev1` and returns `"trigger-rpc-kDFFz9I4ELDtzXkmvRTzlA"`.
@@ -649,7 +649,7 @@ def new_dex_rpc_trigger_target(
     at most once per event while the Flow run keeps that request ID: after a durable inbox replay, a
     provider or relay retry, or a retry after a timeout that hid an applied RPC. The RPC name is
     `rpc_name` when given, and otherwise the handler's Python method name, `rpc_method.__name__`. The IDs
-    therefore match the TypeScript and Go RPC targets for the same RPC name. Set `rpc_name` to the RPC's
+    therefore match the TypeScript RPC target's for the same RPC name. Set `rpc_name` to the RPC's
     wire name when the RPC has an `@dex.rpc(name=...)` override; without it, renaming the method changes
     the IDs of events still being redelivered. `rpc_name` must contain a non-blank character and no NUL
     character. Without `rpc_name`, a handler whose name is missing, blank, or contains NUL, such as a

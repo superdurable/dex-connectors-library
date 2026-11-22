@@ -172,7 +172,9 @@ needs `map_to_rpc_input`. Both take `dex.AsyncClient`. A blank Flow or event
 ID, a Flow that never started or has closed, an input that cannot be encoded,
 and an RPC handler's own `UndeliverableTriggerError` are undeliverable;
 `classify_dex_trigger_error` applies these rules. Raise
-`UndeliverableTriggerError` itself in a handler, never a subclass.
+`UndeliverableTriggerError` itself in a handler, never a subclass. A closed
+Flow whose run recorded the RPC event's request ID is the exception: Dex
+answers the redelivery, so the RPC target consumes it as delivered.
 
 The RPC target sends one Dex request ID on every delivery attempt of an event,
 `trigger_rpc_request_id(rpc_name, event.id)`, so Dex Server applies the RPC's
@@ -180,7 +182,7 @@ Flow changes at most once per event while the Flow run keeps that ID, provided
 `map_to_rpc_input` is deterministic. The ID is `trigger-rpc-` followed by the
 first 16 bytes, as unpadded base64url, of the SHA-256 digest of the UTF-8 RPC
 name, one `0x00` byte, and the UTF-8 event ID, with each surrogate code point
-hashed as U+FFFD. It matches the Go and TypeScript targets byte for byte: for
+hashed as U+FFFD. It matches sdkts `triggerRPCRequestId` byte for byte: for
 example, `receiveReply` and `Ev1` yield `trigger-rpc-kDFFz9I4ELDtzXkmvRTzlA`.
 The RPC name is the `rpc_name` argument, or else the handler's Python method
 name. Set `rpc_name` to the RPC's wire name when it has an
@@ -193,7 +195,8 @@ one event to the same RPC on the same Flow share one ID; give each its own RPC.
 Declare the handler with `@dex.rpc(is_transactional=True)` or with Attribute
 locks: Dex then answers a repeat from the recorded reply without running the
 handler. Any other handler runs again on a repeat, and Dex discards that
-attempt's Flow changes when it makes any. Each Flow run keeps only its newest
+attempt's Flow changes when it makes any. Both hold after the Flow closed too,
+until Dex deletes the closed run. Each Flow run keeps only its newest
 request IDs, as many as the server's `limits.maxRequestIdsPerRun` (1000 by
 default), so a handler that must ignore repeats beyond that window also keeps
 its own record of event IDs.
@@ -364,7 +367,8 @@ Runners and durable targets add `connector`, `connection`, `trigger`, and
 
 - RPC targets send the event's request ID for every handler shape, because the
   Dex Python Client resolves the RPC's input itself. The TypeScript target
-  invokes a few handler shapes without one.
+  invokes a few handler shapes without one. The Go RPC target of sdkgo v0.39.0
+  and earlier sends a new request ID on every attempt.
 - A Python handler's `UndeliverableTriggerError` is reported as
   `ConnectorsSDK.UndeliverableTriggerError`, so Python and TypeScript RPC targets
   consume it. Go RPC targets do not, and Python and TypeScript targets do not
@@ -733,6 +737,7 @@ The core example sends through an in-process HTTP transport.
 
 ## Version history
 
+- `0.14.0` (breaking): RPC Trigger targets send one Dex request ID per event on every delivery attempt, `trigger_rpc_request_id(rpc_name, event.id)`, byte for byte as sdkts `triggerRPCRequestId` does, so a redelivered event applies the RPC's Flow changes at most once while the Flow run keeps the ID. `new_dex_rpc_trigger_target` takes `rpc_name`, which defaults to the handler's method name; set it to the wire name of an RPC with an `@dex.rpc(name=...)` override. `TRIGGER_RPC_REQUEST_ID_PREFIX` and `TriggerRPCRequestConflictError` are exported. The package now requires dex-python-sdk 1.45.17 or later, the first release with `RPCInvokeOptions.request_id`; an application on an earlier release takes on the breaking changes of dex-python-sdk 1.35.0, 1.43.0, and 1.45.0 (see the Dex Python SDK change log). Delivery changes on every Dex Server: two bindings that route one event to the same RPC on the same Flow apply only the first; a redelivery whose mapper returns another input no longer applies again; and a redelivery to a closed Flow whose run recorded the event's request ID is consumed as delivered instead of skipped as undeliverable. Dex Server 0.1.37 and later answer a repeat whose request differs with the first reply. Earlier servers reject it, also while the first request is in flight, and the target logs ERROR and drops the event with `TriggerRPCRequestConflictError`; with Dex payload encryption every redelivery is such a conflict to them. Construction accepts every argument `0.13.0` accepted.
 - `0.13.0` (breaking): One Step may make several fenced writes. Every Fence heartbeat holds one marker per Call ID of the Step attempt, merged across Fences, including concurrent tasks, and `decide_dispatch` takes the whole previous heartbeat and reads only its own Call ID's entry. A single marker from an earlier release is read as its Call ID's entry, keeping its state and provider ID, and carried forward in the map format. A heartbeat it cannot read, including an earlier release's marker of another Call ID, counts as no marker instead of failing closed; a later attempt then assumes each earlier attempt sent once. The heartbeat format is internal and may change; hosts must not parse it. Releases before `0.13.0` fail closed on the new format. `derive_step_call_id` and `derive_call_id(..., occurrence=n)` give the n-th call of one operation in a Step attempt its own Call ID; the first call's ID is unchanged. A Mutation call refused as concurrent keeps its occurrence. A send cut off at the Fence write deadline raises `WriteWindowTimeoutError`, a `TimeoutError` subclass carrying the HTTP status of the request that was cut off.
 - `0.12.0`: Add the durable poll Trigger kit `pollingtrigger` (binding and feed pollers, `PollRunner`, keyed snapshots, `new_binding_trigger_source`, `new_trigger_credential_call`) and `projectconfig.PollCursorStore` with `LoadedProject.poll_cursor_store` and `poll_feed_cursor_store`, byte-compatible with the Go kit. Local poll cursor objects may be 8 MiB. This addition is not breaking.
 - `0.11.0`: Add Trigger support: Trigger identities and runners, `deliver_trigger` with capped retries, Dex Flow and RPC Trigger targets, durable project Trigger inboxes byte-compatible with Go and TypeScript (file-backed for Dex Web projects), relay signatures and `LoadedProject.verify_relayed_request` and `register_relayed_trigger`, and `webhooktrigger.WebhookEndpoint` as an ASGI application with lifespan-run Trigger runners. Local Trigger inbox objects may be 8 MiB. This addition is not breaking.
@@ -871,8 +876,9 @@ The integration suite checks
 branch routing, retry and exhaustion, uncertainty, the lost-response fence,
 safe resend from a persisted checkpoint, heartbeat cadence, mock replay,
 result Attribute, and progress/text Streams. Its Trigger tests check Flow and
-RPC targets, the one request ID of every delivery of an RPC event, handler
-markers, replay of a local inbox after a process restart,
+RPC targets, the one request ID of every delivery of an RPC event, also from a
+second binding and to a closed Flow, handler markers, replay of a local inbox
+after a process restart,
 a relayed webhook served through ASGI, and replay of a Go-written inbox. Its
 poll Trigger tests check seeding without backlog, restarts while the Worker is
 down, crashes before and after a commit, a reseed after 410, Retry-After, two

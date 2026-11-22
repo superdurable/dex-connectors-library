@@ -623,6 +623,75 @@ async def test_rpc_target_sends_one_request_id_for_every_delivery_of_an_event(st
     await client.stop_flow(ledger_id)
 
 
+async def test_rpc_target_applies_a_second_binding_once_and_answers_a_closed_flow(stack: DexStack) -> None:
+    client = stack.client
+    ledger_id = f"ledger-closed-{SUFFIX}"
+    await client.start_flow(LEDGER_FLOW, ledger_id, None)
+    quiet = RecordingLogger()
+    transactional_runs = LEDGER_HANDLER_CALLS["record_transactional"]
+    non_transactional_runs = LEDGER_HANDLER_CALLS["record_non_transactional"]
+
+    refund = _event(f"Ev-{SUFFIX}-refund", {"amount": 2})
+    first_binding = _ledger_target(client, LEDGER_FLOW.record_transactional, ledger_id)
+    await deliver_trigger(TriggerContext(), first_binding, refund, logger=quiet)
+    # Another binding with its own mapper routes the event to the same RPC, under the same request ID.
+    second_binding = _ledger_target(
+        client,
+        LEDGER_FLOW.record_transactional,
+        ledger_id,
+        map_to_entry=lambda event: LedgerEntry(event.payload["amount"] * 10),
+    )
+    try:
+        await second_binding.handle_trigger(TriggerContext(), refund)
+        second_binding_rejection: BaseException | None = None
+    except Exception as error:
+        second_binding_rejection = error
+    if second_binding_rejection is not None:
+        # Only a server before 0.1.37 compares the whole request and reports the conflict.
+        assert isinstance(second_binding_rejection, TriggerRPCRequestConflictError)
+    assert LEDGER_HANDLER_CALLS["record_transactional"] == transactional_runs + 1
+    assert await client.invoke_rpc(LEDGER_FLOW.get_total, ledger_id) == 2, "only the first binding applied"
+
+    rebate = _event(f"Ev-{SUFFIX}-rebate", {"amount": 3})
+    non_transactional_target = _ledger_target(client, LEDGER_FLOW.record_non_transactional, ledger_id)
+    await deliver_trigger(TriggerContext(), non_transactional_target, rebate, logger=quiet)
+    assert await client.invoke_rpc(LEDGER_FLOW.get_total, ledger_id) == 5
+    await client.stop_flow(ledger_id)
+    await asyncio.wait_for(client.wait_for_flow(ledger_id, timedelta(seconds=60)), 70)
+
+    # The closed run still answers the request IDs it recorded, so each redelivery is delivered.
+    closed_logger = RecordingLogger()
+    transactional_logger = RecordingLogger()
+    closed_transactional_target = _ledger_target(
+        client, LEDGER_FLOW.record_transactional, ledger_id, transactional_logger
+    )
+    await deliver_trigger(TriggerContext(), closed_transactional_target, refund, logger=closed_logger)
+    await deliver_trigger(TriggerContext(), non_transactional_target, rebate, logger=closed_logger)
+    assert closed_logger.records == []
+    assert transactional_logger.records == [
+        (
+            TriggerLogLevel.DEBUG,
+            "trigger event delivered",
+            {
+                "target": "rpc",
+                "event_id": refund.id,
+                "flow_id": ledger_id,
+                "request_id": trigger_rpc_request_id("record_transactional", refund.id),
+            },
+        )
+    ]
+    assert LEDGER_HANDLER_CALLS["record_transactional"] == transactional_runs + 1, "answered from the record"
+    assert LEDGER_HANDLER_CALLS["record_non_transactional"] == non_transactional_runs + 2, "ran again"
+
+    # An event whose request ID the closed run never recorded is undeliverable, as before.
+    late = _event(f"Ev-{SUFFIX}-late", {"amount": 4})
+    with pytest.raises(Exception) as closed:
+        await closed_transactional_target.handle_trigger(TriggerContext(), late)
+    assert is_trigger_undeliverable(closed.value)
+    assert isinstance(closed.value.__cause__, dex.FlowNotActiveOrNotFoundError)
+    assert LEDGER_HANDLER_CALLS["record_transactional"] == transactional_runs + 1
+
+
 class NoEventSource:
     """A source that ends at once, so a runner only replays its inbox."""
 
