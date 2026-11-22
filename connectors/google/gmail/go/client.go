@@ -383,10 +383,9 @@ func (client *Client) sendAndConfirm(
 	call sdkgo.Call, fence *singledispatch.Fence, decision singledispatch.Decision,
 	budget sendAttemptBudget, credentials Credentials, operation gmailSendOperation, message gmailOutgoingMessage,
 ) sdkgo.MutationAttempt[SendMessageOutput] {
-	if !message.hasPreSendSearch {
-		if attempt, isDecided := client.reconcileEarlierSends(call, fence, decision, budget, credentials, operation, message); isDecided {
-			return attempt
-		}
+	attempt, isDecided, credentials := client.reconcileEarlierSends(call, fence, decision, budget, credentials, operation, message)
+	if isDecided {
+		return attempt
 	}
 	if decision.Kind == singledispatch.ReadBackRequired {
 		return sdkgo.NewMutationUncertain(emptySendMessageOutput(), gmailOperationFailure(operation.operationID, sdkgo.FailureAvailability,
@@ -419,7 +418,7 @@ func (client *Client) sendAndConfirm(
 			"Gmail temporarily rejected the "+operation.requestName)
 	case response.StatusCode == http.StatusServiceUnavailable:
 		// Gmail documents 5xx as processing failures and Sent Mail search can lag, so the claim stays.
-		if sent, isFound, _ := client.pollSentMessageByRFCMessageID(budget.attemptContext, call, credentials); isFound {
+		if sent, isFound, _ := client.newSentMailReadBack(call, credentials, message.recipients).poll(budget.attemptContext); isFound {
 			return client.sentAfterDispatch(call, budget, credentials, operation, message, sent, receipt, fence)
 		}
 		return retryAfterGmailRefusal(response.Header, operation.operationID, sdkgo.FailureAvailability,
@@ -433,7 +432,7 @@ func (client *Client) sendAndConfirm(
 		}
 		isDefiniteRefusal := isRefusedBeforeProcessing(response.StatusCode) && dispatch.readErr == nil
 		if call.Context.Attempt() > 1 {
-			if sent, isFound, _ := client.findSentMessageByRFCMessageID(budget.attemptContext, call, credentials); isFound {
+			if sent, isFound, _ := client.newSentMailReadBack(call, credentials, message.recipients).find(budget.attemptContext); isFound {
 				return client.sentAfterDispatch(call, budget, credentials, operation, message, sent, receipt, fence)
 			}
 		}
@@ -450,20 +449,21 @@ func (client *Client) sendAndConfirm(
 	return client.sentAfterDispatch(call, budget, credentials, operation, message, sent, receipt, fence)
 }
 
-// reconcileEarlierSends reports whether read-back decides the attempt; otherwise it may resend.
+// reconcileEarlierSends reports whether read-back decides the attempt; otherwise it may resend
+// with the returned, possibly refreshed, credentials.
 func (client *Client) reconcileEarlierSends(
 	call sdkgo.Call, fence *singledispatch.Fence, decision singledispatch.Decision,
 	budget sendAttemptBudget, credentials Credentials, operation gmailSendOperation, message gmailOutgoingMessage,
-) (sdkgo.MutationAttempt[SendMessageOutput], bool) {
+) (sdkgo.MutationAttempt[SendMessageOutput], bool, Credentials) {
 	// A saved provider ID proves Gmail accepted an earlier send, so it is never resent.
 	hasSavedProviderID := decision.Kind != singledispatch.SendAllowed && decision.Marker.ProviderID != ""
 	if hasSavedProviderID {
 		if sent, isFound := client.readSavedSentMessage(budget.attemptContext, call, credentials, decision.Marker.ProviderID); isFound {
-			return client.sentMessage(call, budget, credentials, operation, message, sent, client.receipt(call, "", sent.ID)), true
+			return client.sentMessage(call, budget, credentials, operation, message, sent, client.receipt(call, "", sent.ID)), true, credentials
 		}
 	}
 	if call.Context.Attempt() == 1 && decision.Kind == singledispatch.SendAllowed {
-		return sdkgo.MutationAttempt[SendMessageOutput]{}, false
+		return sdkgo.MutationAttempt[SendMessageOutput]{}, false, credentials
 	}
 	mayDispatch := decision.Kind == singledispatch.SendAllowed ||
 		(decision.Kind == singledispatch.ReadBackThenResendAllowed && !hasSavedProviderID)
@@ -474,10 +474,12 @@ func (client *Client) reconcileEarlierSends(
 	} else {
 		searchContext, cancelSearch = context.WithCancel(budget.attemptContext)
 	}
-	sent, isFound, searchErr := client.findSentMessageByRFCMessageID(searchContext, call, credentials)
+	readBack := client.newSentMailReadBack(call, credentials, message.recipients)
+	sent, isFound, searchErr := readBack.find(searchContext)
 	cancelSearch()
+	credentials = readBack.credentials
 	if isFound {
-		return client.sentMessage(call, budget, credentials, operation, message, sent, client.receipt(call, "", "")), true
+		return client.sentMessage(call, budget, credentials, operation, message, sent, client.receipt(call, "", "")), true, credentials
 	}
 	if !mayDispatch {
 		// The send cap or a saved message ID forbids another send, so an unconfirmed read-back is final.
@@ -486,15 +488,15 @@ func (client *Client) reconcileEarlierSends(
 			failureMessage = "Gmail sent-mail search did not answer, and no further " + operation.requestName + " is permitted"
 		}
 		return sdkgo.NewMutationUncertain(emptySendMessageOutput(), gmailOperationFailure(operation.operationID, sdkgo.FailureAvailability,
-			failureMessage), client.receipt(call, "", decision.Marker.ProviderID)), true
+			failureMessage), client.receipt(call, "", decision.Marker.ProviderID)), true, credentials
 	}
 	// Below the send cap, an inconclusive search still permits a resend.
 	if searchErr != nil && decision.Kind != singledispatch.ReadBackThenResendAllowed {
 		recordNotSentBeforeAnySend(fence, decision)
 		return sdkgo.NewMutationRetry[SendMessageOutput](gmailOperationFailure(operation.operationID, sdkgo.FailureAvailability,
-			"Gmail sent-mail search did not answer before the "+operation.requestName), 0), true
+			"Gmail sent-mail search did not answer before the "+operation.requestName), 0), true, credentials
 	}
-	return sdkgo.MutationAttempt[SendMessageOutput]{}, false
+	return sdkgo.MutationAttempt[SendMessageOutput]{}, false, credentials
 }
 
 // canResendUnknownOutcome reports whether the send cap still permits a send after this attempt's.
@@ -637,7 +639,7 @@ func (client *Client) confirmPossiblySentMessage(
 	call sdkgo.Call, decision singledispatch.Decision, budget sendAttemptBudget, credentials Credentials, operation gmailSendOperation, message gmailOutgoingMessage,
 	kind sdkgo.FailureKind, failureMessage string, receipt sdkgo.Receipt, fence *singledispatch.Fence,
 ) sdkgo.MutationAttempt[SendMessageOutput] {
-	sent, isFound, err := client.pollSentMessageByRFCMessageID(budget.attemptContext, call, credentials)
+	sent, isFound, err := client.newSentMailReadBack(call, credentials, message.recipients).poll(budget.attemptContext)
 	if isFound {
 		return client.sentAfterDispatch(call, budget, credentials, operation, message, sent, receipt, fence)
 	}
@@ -653,7 +655,7 @@ func (client *Client) confirmAcceptedMessage(
 	call sdkgo.Call, budget sendAttemptBudget, credentials Credentials, operation gmailSendOperation, message gmailOutgoingMessage,
 	receipt sdkgo.Receipt, fence *singledispatch.Fence,
 ) sdkgo.MutationAttempt[SendMessageOutput] {
-	sent, isFound, _ := client.pollSentMessageByRFCMessageID(budget.attemptContext, call, credentials)
+	sent, isFound, _ := client.newSentMailReadBack(call, credentials, message.recipients).poll(budget.attemptContext)
 	if isFound {
 		return client.sentAfterDispatch(call, budget, credentials, operation, message, sent, receipt, fence)
 	}
@@ -711,59 +713,6 @@ func emptySendMessageOutput() SendMessageOutput {
 	return SendMessageOutput{Recipients: []string{}}
 }
 
-func (client *Client) pollSentMessageByRFCMessageID(
-	ctx context.Context, call sdkgo.Call, credentials Credentials,
-) (sendResponse, bool, error) {
-	var lastError error
-	for lookup := 0; lookup < 4; lookup++ {
-		if lookup > 0 {
-			backoff := time.Duration(75*(1<<(lookup-1))) * time.Millisecond
-			timer := time.NewTimer(backoff)
-			select {
-			case <-ctx.Done():
-				timer.Stop()
-				return sendResponse{}, false, ctx.Err()
-			case <-timer.C:
-			}
-		}
-		sent, isFound, err := client.findSentMessageByRFCMessageID(ctx, call, credentials)
-		if isFound {
-			return sent, true, nil
-		}
-		lastError = err
-		if ctx.Err() != nil {
-			return sendResponse{}, false, ctx.Err()
-		}
-	}
-	return sendResponse{}, false, lastError
-}
-
-// findSentMessageByRFCMessageID searches Sent Mail for the deterministic Message-ID.
-func (client *Client) findSentMessageByRFCMessageID(
-	ctx context.Context, call sdkgo.Call, credentials Credentials,
-) (sendResponse, bool, error) {
-	query := url.Values{"q": {sentMessageSearchQuery(call)}, "maxResults": {"1"}, "includeSpamTrash": {"true"}}
-	target := strings.TrimRight(client.endpoint.String(), "/") + "/users/me/messages?" + query.Encode()
-	response, _, err := client.doAuthenticatedRequest(ctx, call, credentials, http.MethodGet, target, nil, "")
-	if err != nil {
-		return sendResponse{}, false, fmt.Errorf("Gmail sent-message lookup failed: %w", err)
-	}
-	content, err := readAndCloseGmailResponse(response, client.maxResponseBytes)
-	if err != nil || response.StatusCode != http.StatusOK {
-		return sendResponse{}, false, fmt.Errorf("Gmail sent-message lookup did not return a usable response")
-	}
-	var matches sentMessageSearchResponse
-	if err := json.Unmarshal(content, &matches); err != nil {
-		return sendResponse{}, false, fmt.Errorf("Gmail sent-message lookup returned an invalid response")
-	}
-	for _, match := range matches.Messages {
-		if match.ID != "" {
-			return match, true, nil
-		}
-	}
-	return sendResponse{}, false, nil
-}
-
 func validateSendInput(input SendMessageInput, sender string) ([]string, *sdkgo.Failure) {
 	if strings.TrimSpace(sender) == "" || strings.ContainsAny(input.Subject, "\r\n") || strings.TrimSpace(input.Subject) == "" || strings.TrimSpace(input.TextBody) == "" || len(input.To) == 0 {
 		return nil, gmailFailurePointer(sdkgo.FailureValidation, "sender, recipients, subject, and text body are required")
@@ -806,6 +755,7 @@ func buildMIMEMessage(call sdkgo.Call, sender string, recipients []string, input
 	mustWriteMIMEHeader(&message, "To", strings.Join(recipients, ", "))
 	mustWriteMIMEHeader(&message, "Subject", mime.QEncoding.Encode("UTF-8", input.Subject))
 	mustWriteMIMEHeader(&message, "Message-ID", "<"+rfcMessageIDAddress(call)+">")
+	mustWriteMIMEHeader(&message, dexMessageIDHeader, "<"+rfcMessageIDAddress(call)+">")
 	mustWriteMIMEHeader(&message, "X-Dex-Call-ID", string(call.ID))
 	mustWriteMIMEHeader(&message, "MIME-Version", "1.0")
 	if input.HTMLBody == "" {

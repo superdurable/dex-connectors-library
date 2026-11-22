@@ -2,14 +2,17 @@
 
 `dex-connector-google-gmail` provides typed Gmail reads, sends, and replies for
 Dex Python Flows. The package imports as `dex_connectors.google_gmail`.
-Version 0.5.0 includes `getMessage`, `sendMessage`, and `replyToMessage`, and
+Version 0.5.1 includes `getMessage`, `sendMessage`, and `replyToMessage`, and
 the `messageReceived` and `replyReceived` Triggers at parity with Go. From
 0.4.0 a send or reply whose outcome is unknown may be sent up to three times;
 from 0.5.0 one that Sent Mail cannot confirm at that cap selects `uncertain`.
+From 0.5.1 Sent Mail read-back matches the `X-Dex-Message-ID` header, because
+Gmail replaces `Message-ID` on send, and `getMessage` rejects body data in the
+standard base64 alphabet or with malformed padding, as Go and TypeScript do.
 
 ## Install
 
-After release, install `dex-connector-google-gmail==0.5.0`. The package requires
+After release, install `dex-connector-google-gmail==0.5.1`. The package requires
 `dex-connectors-sdk>=0.12.0,<1` and `dex-python-sdk>=1.28.0`; the latter provides
 Go-compatible JSON field metadata and the Flow start and attempt deadline
 needed for Gmail's duplicate-send fence.
@@ -135,7 +138,34 @@ verified with this package.
 Gmail does not deduplicate messages by `Message-ID`. The connector derives a
 stable run-specific RFC Message-ID from the Dex Call key and run ID. A valid Flow
 start time contributes its Unix second, matching Go; an absent or invalid start
-time uses `no-flow-start`. A missing run ID returns a local defect before any
+time uses `no-flow-start`. From 0.5.1 every send and reply repeats that value in
+an `X-Dex-Message-ID` header directly after `Message-ID`, beside the
+`X-Dex-Call-ID` correlation header. Gmail's `messages.send` replaces the client
+`Message-ID` on the Sent copy with its own `<…@mail.gmail.com>` value, also for
+an ID in the sender's own domain, and keeps no copy of it, while it keeps the
+`X-Dex-*` headers verbatim. Gmail search cannot match a custom header, so
+read-back lists up to 25 recent Sent Mail candidates with
+`in:sent newer_than:2d`, adding `to:` and the first recipient when the recipient
+is known and its address uses only letters, digits, and `.`, `_`, `+`, or `-`. A
+reply's read-back before its source read knows no recipient, so below the send
+cap a later attempt reads back again with the source's reply recipient before it
+posts; at the cap only the read-back without a recipient runs. The connector then
+reads each candidate's `Message-ID` and `X-Dex-Message-ID` with
+`format=metadata`. Only a candidate whose `X-Dex-Message-ID`, or whose
+`Message-ID` where a compatible gateway kept it, equals this call's value is a
+match; a Sent copy of another call, or of an earlier run of a reused Flow ID
+with the same `X-Dex-Call-ID`, is not. Within one poll a candidate found to be
+another message is not read again, a candidate deleted after the search is a
+miss, and a candidate whose read fails leaves the search inconclusive unless
+another candidate matches. A credential refreshed after a 401 during read-back
+serves that read-back's remaining reads and every later request before the POST.
+Up to 0.5.0 read-back searched `rfc822msgid:`, which
+never matches the rewritten `Message-ID`, so a crash or lost answer after Gmail
+accepted a send was resent up to the send cap. Two gaps remain: a Sent copy
+outside that window or candidate limit, or one deleted from Sent Mail, is not
+found, so the send is resent up to the cap; and a message posted by 0.5.0 or
+earlier carries no `X-Dex-Message-ID`, so a call whose attempts cross the
+upgrade cannot be confirmed. A missing run ID returns a local defect before any
 Gmail request. Its Python Mutation Steps use the manifest's synchronous Execute
 durability and persist the single-dispatch heartbeat before a POST. On a
 numbered retry it searches Sent Mail first. After a possibly accepted POST
@@ -176,7 +206,7 @@ transport failure proven to precede dispatch, permits a later send. The
 manifest limits sends and replies to seven attempts within five minutes;
 `max_sends_override` on the generated Step factory changes one Step's cap.
 
-Live provider authorization and these Gmail behaviors remain unverified without
-a user-controlled account: retention of the client-set Message-ID header,
-`rfc822msgid` search matching, and Sent Mail indexing latency. No live provider
-credentials are included in this package.
+A live Google Workspace mailbox showed the `Message-ID` replacement and the
+verbatim `X-Dex-Message-ID` that read-back relies on. This package has not run
+against a live account, so live provider authorization and Sent Mail indexing latency
+remain unverified. No live provider credentials are included in this package.

@@ -12,6 +12,7 @@ import { GmailSendAttemptBudget, GmailSender } from '../src/send.js';
 import { SendMessageDefinition } from '../src/definitions.js';
 import type { CredentialSource, Credentials } from '../src/models.js';
 import { GetMessageInputSchema, ReplyToMessageInputSchema, MessageSchema } from '../src/models.js';
+import { rfcMessageIDAddress } from '../src/message.js';
 
 const connection = { provider: 'google', name: 'gmail-inbox' };
 const credentials: Credentials = { accessToken: new SecretString('access-token'), primaryEmail: 'owner@example.com' };
@@ -37,6 +38,19 @@ function response(status: number, body: unknown, headers: Record<string, string>
 function postedMessageID(request: ProviderRequest): string {
   const payload = JSON.parse(Buffer.from(request.body ?? []).toString()) as { raw: string };
   return Buffer.from(payload.raw, 'base64url').toString().split('\r\n').find(line => line.startsWith('Message-ID: ')) ?? '';
+}
+
+// operationCall's run-specific Message-ID, which Gmail keeps only in the X-Dex-Message-ID header of the Sent copy.
+const dexMessageID = `<${rfcMessageIDAddress('01234567-89ab-5cde-8f01-23456789abcd', 'run-1', new Date('2026-01-02T00:00:00Z'))}>`;
+
+function isSentCopyHeaderRead(request: ProviderRequest): boolean {
+  return request.method === 'GET' && request.url.includes('format=metadata') && request.url.includes('metadataHeaders=X-Dex-Message-ID');
+}
+
+/** Answer a Sent Mail header read as Gmail does: a Gmail-generated Message-Id beside the preserved X-Dex-Message-ID. */
+function sentCopyHeaders(request: ProviderRequest, threadId = 'thread-1'): ProviderResponse {
+  const id = decodeURIComponent(new URL(request.url).pathname.split('/').at(-1) ?? '');
+  return response(200, { id, threadId, payload: { headers: [{ name: 'Message-Id', value: `<CA${id}@mail.gmail.com>` }, { name: 'X-Dex-Message-ID', value: dexMessageID }] } });
 }
 
 function sender(transport: (request: ProviderRequest) => Promise<ProviderResponse>, maxMessageBytes?: number): GmailSender {
@@ -233,8 +247,9 @@ describe('Gmail send and reply classification', () => {
     let searchCount = 0;
     const operation = sender(async request => {
       if (request.method === 'POST') { postCount++; throw new ProviderTransportError(false); }
+      if (isSentCopyHeaderRead(request)) return sentCopyHeaders(request);
       searchCount++;
-      expect(request.url).toContain('rfc822msgid%3A');
+      expect(new URL(request.url).searchParams.get('q')).toBe('in:sent newer_than:2d to:ada@example.com');
       return response(200, { messages: [{ id: 'found-1', threadId: 'thread-1' }] });
     });
     const result = await operation.sendMessage(operationCall('sendMessage'), sendInput, new Date(Date.now() + 30_000));
@@ -455,6 +470,7 @@ describe('Gmail send and reply classification', () => {
     let posts = 0;
     let isFirstSendVisible = false;
     const operation = sender(async request => {
+      if (isSentCopyHeaderRead(request)) return sentCopyHeaders(request);
       if (request.method === 'GET') return response(200, isFirstSendVisible ? { messages: [{ id: 'sent-1', threadId: 'thread-1' }] } : { messages: [] });
       posts++;
       return posts === 1 ? response(500, {}) : response(429, {});
@@ -637,6 +653,7 @@ describe('Gmail send and reply classification', () => {
     let searches = 0;
     const operation = sender(async request => {
       if (request.method === 'POST') return response(500, {});
+      if (isSentCopyHeaderRead(request)) return sentCopyHeaders(request);
       searches++;
       // The pre-send search misses; the post-send poll finds the final send.
       return searches === 1 ? response(200, { messages: [] }) : response(200, { messages: [{ id: 'sent-3', threadId: 'thread-1' }] });
@@ -651,6 +668,7 @@ describe('Gmail send and reply classification', () => {
     let posts = 0;
     const operation = sender(async request => {
       if (request.method === 'POST') posts++;
+      if (isSentCopyHeaderRead(request)) return sentCopyHeaders(request);
       return response(200, { messages: [{ id: 'sent-3', threadId: 'thread-1' }] });
     });
     expect(await operation.sendMessage(operationCall('sendMessage', 4, checkpoint), sendInput, new Date(Date.now() + 30_000)))
@@ -660,9 +678,11 @@ describe('Gmail send and reply classification', () => {
 
   it('records the provider ID when read-back confirms an ambiguous send', async () => {
     const checkpoint: { value?: unknown } = {};
-    const operation = sender(async request => request.method === 'POST'
-      ? response(500, {})
-      : response(200, { messages: [{ id: 'read-back-send', threadId: 'thread-1' }] }));
+    const operation = sender(async request => {
+      if (request.method === 'POST') return response(500, {});
+      if (isSentCopyHeaderRead(request)) return sentCopyHeaders(request);
+      return response(200, { messages: [{ id: 'read-back-send', threadId: 'thread-1' }] });
+    });
     expect(await operation.sendMessage(operationCall('sendMessage', 1, checkpoint), sendInput, new Date(Date.now() + 30_000)))
       .toMatchObject({ branch: 'sent', value: { messageId: 'read-back-send' } });
     expect(checkpoint.value).toMatchObject({ state: 'claimed', providerId: 'read-back-send', attempt: 1 });
@@ -760,6 +780,7 @@ describe('Gmail send and reply classification', () => {
     let postCount = 0;
     const operation = sender(async request => {
       if (request.method === 'POST') postCount++;
+      if (isSentCopyHeaderRead(request)) return sentCopyHeaders(request);
       return response(200, { messages: [{ id: 'previous-1', threadId: 'thread-1' }] });
     });
     const result = await operation.sendMessage(operationCall('sendMessage', 2), sendInput, new Date(Date.now() + 30_000));
@@ -851,7 +872,8 @@ describe('Gmail send and reply classification', () => {
     expect(await operation.replyToMessage(operationCall('replyToMessage', 2, checkpoint), replyInput, new Date(Date.now() + 30_000)))
       .toMatchObject({ branch: 'sent', value: { messageId: 'reply-after-503' } });
     expect(posts).toBe(2);
-    expect(searches).toBe(5);
+    // Four 503 polls, then a read-back before the source read and one with its recipient.
+    expect(searches).toBe(6);
   });
 
   it('accepts an oversized 2xx reply response without resending when Sent Mail has no match', async () => {
@@ -872,7 +894,10 @@ describe('Gmail send and reply classification', () => {
   it('confirms a previous reply before reading its source or posting again', async () => {
     let searches = 0;
     const operation = sender(async request => {
+      if (isSentCopyHeaderRead(request)) return sentCopyHeaders(request);
       expect(request.url).toContain('/users/me/messages?');
+      // The source is not read yet, so the search cannot name the reply recipient.
+      expect(new URL(request.url).searchParams.get('q')).toBe('in:sent newer_than:2d');
       searches++;
       return response(200, { messages: [{ id: 'earlier-reply', threadId: 'thread-1' }] });
     });
@@ -894,6 +919,7 @@ describe('Gmail send and reply classification', () => {
         ] } });
       }
       if (request.method === 'POST') { posts++; throw new ProviderTransportError(false); }
+      if (isSentCopyHeaderRead(request)) return sentCopyHeaders(request);
       searches++;
       return response(200, { messages: searches >= 5 ? [{ id: 'confirmed-reply', threadId: 'thread-1' }] : [] });
     });

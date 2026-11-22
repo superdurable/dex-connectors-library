@@ -119,10 +119,13 @@ answers.
 
 The example wires only the happy-path branches. An unwired optional branch
 fails the Flow with its safe failure reason. A reply whose answer is lost
-completes when the Sent Mail search finds its Message-ID. A failed or missing
+completes when Sent Mail read-back finds its Sent copy, whose `X-Dex-Message-ID`
+header Gmail keeps while it replaces `Message-ID`. A failed or missing
 read-back retries, and each numbered later attempt searches before reading the
-source or posting. After a prior `claimed` dispatch, a search miss resends the
-reply with the same Message-ID while fewer than three sends may have taken
+source and, below the send cap, again with the source's reply recipient
+(`Reply-To`, or `From` when it has none) before posting.
+After a prior `claimed` dispatch, a search miss resends the reply with the same
+Message-ID while fewer than three sends may have taken
 effect; at that cap it only reads back, and the Flow fails when its retry
 budget runs out. A 503 keeps that claim too. A 429 or proven undispatched failure may checkpoint `canResend` and permit
 one later POST after a search miss. An accepted 2xx with an unusable response selects `sent` without

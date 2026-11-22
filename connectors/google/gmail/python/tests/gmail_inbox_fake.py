@@ -1,11 +1,12 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
-"""A fake Gmail API for Trigger tests: an inbox listed newest first, metadata reads, and failures."""
+"""A fake Gmail API: an inbox listed newest first, Sent Mail as Gmail keeps it, reads, and failures."""
 
 import asyncio
 import base64
 import json
 from dataclasses import dataclass, field
+from email.parser import HeaderParser
 from typing import Any
 
 import httpx
@@ -57,6 +58,114 @@ def reply_message(message_id: str, thread_id: str, **overrides: Any) -> FakeGmai
 
 
 @dataclass
+class FakeSentCopy:
+    """One Sent Mail message as Gmail keeps it."""
+
+    id: str
+    thread_id: str
+    # Stored header names and values, in order.
+    headers: list[tuple[str, str]]
+
+
+def gmail_message_id(message_id: str) -> str:
+    """The Message-Id Gmail puts on a Sent copy in place of the client's."""
+    return f"<CAGmail-{message_id}@mail.gmail.com>"
+
+
+def dex_sent_copy(
+    message_id: str,
+    thread_id: str,
+    dex_message_id: str,
+    *,
+    recipient: str = "<ada@example.com>",
+    call_id: str = "",
+) -> FakeSentCopy:
+    """A Sent copy of a connector send: Gmail's own Message-Id, with the X-Dex headers kept verbatim."""
+    headers = [("To", recipient), ("Message-Id", gmail_message_id(message_id))]
+    if dex_message_id:
+        headers.append(("X-Dex-Message-ID", dex_message_id))
+    if call_id:
+        headers.append(("X-Dex-Call-ID", call_id))
+    return FakeSentCopy(message_id, thread_id, headers)
+
+
+@dataclass
+class FakeSentMail:
+    """Sent Mail as real Gmail serves it: no custom-header search, so candidates are read by metadata."""
+
+    # Newest first, as Gmail lists them.
+    copies: list[FakeSentCopy] = field(default_factory=list)
+    # Status a candidate header read returns instead of the copy, by message ID.
+    header_read_failures: dict[str, int] = field(default_factory=dict)
+    # Fields a candidate header read adds or replaces, by message ID; `payload` fields merge into the payload.
+    header_read_fields: dict[str, dict[str, Any]] = field(default_factory=dict)
+    searches: list[str] = field(default_factory=list)
+    header_reads: list[str] = field(default_factory=list)
+
+    def accept(self, raw_mime: str, message_id: str, thread_id: str) -> None:
+        """Keep a posted message as Gmail does: its own Message-Id replaces the client's Message-ID."""
+        parsed = HeaderParser().parsestr(raw_mime)
+        headers = [(name, value) for name, value in parsed.items() if name.lower() != "message-id"]
+        headers.append(("Message-Id", gmail_message_id(message_id)))
+        self.copies.insert(0, FakeSentCopy(message_id, thread_id, headers))
+
+    def accept_post(self, request: httpx.Request) -> httpx.Response:
+        """Answer messages.send by keeping its Sent copy and naming it."""
+        body = json.loads(request.content)
+        raw = body["raw"]
+        message_id = f"sent-{len(self.copies) + 1}"
+        thread_id = body.get("threadId") or f"thread-{message_id}"
+        self.accept(base64.urlsafe_b64decode(raw + "=" * (-len(raw) % 4)).decode(), message_id, thread_id)
+        return httpx.Response(200, json={"id": message_id, "threadId": thread_id})
+
+    def answer(self, request: httpx.Request) -> httpx.Response | None:
+        """Answer a Sent Mail search or a Sent copy's metadata read, and None for any other request."""
+        if request.method != "GET":
+            return None
+        if request.url.path.endswith("/users/me/messages"):
+            query = request.url.params.get("q", "")
+            return self._search(request, query) if query.startswith("in:sent") else None
+        message_id = request.url.path.rsplit("/", 1)[-1]
+        copy = next((candidate for candidate in self.copies if candidate.id == message_id), None)
+        if copy is None or request.url.params.get("format") != "metadata":
+            return None
+        self.header_reads.append(message_id)
+        if message_id in self.header_read_failures:
+            return httpx.Response(self.header_read_failures[message_id], json={"error": {"code": 0}})
+        # Gmail matches metadataHeaders names case-insensitively and keeps the stored spelling.
+        requested = {name.lower() for name in request.url.params.get_list("metadataHeaders")}
+        headers = [
+            {"name": name, "value": value} for name, value in copy.headers if name.lower() in requested
+        ]
+        fields = dict(self.header_read_fields.get(message_id, {}))
+        payload = {"mimeType": "text/plain", "headers": headers, **fields.pop("payload", {})}
+        return httpx.Response(200, json={
+            "id": copy.id,
+            "threadId": copy.thread_id,
+            "labelIds": ["SENT"],
+            "payload": payload,
+            **fields,
+        })
+
+    def _search(self, request: httpx.Request, query: str) -> httpx.Response:
+        self.searches.append(query)
+        recipient = query.partition(" to:")[2].lower()
+        matching = [
+            copy
+            for copy in self.copies
+            if not recipient
+            or any(name.lower() == "to" and recipient in value.lower() for name, value in copy.headers)
+        ]
+        listed = matching[: int(request.url.params.get("maxResults", "100"))]
+        if not listed:
+            return httpx.Response(200, json={"resultSizeEstimate": 0})
+        return httpx.Response(200, json={
+            "messages": [{"id": copy.id, "threadId": copy.thread_id} for copy in listed],
+            "resultSizeEstimate": len(listed),
+        })
+
+
+@dataclass
 class FakeGmail:
     """Fake Gmail API bound to an httpx MockTransport."""
 
@@ -66,6 +175,7 @@ class FakeGmail:
     read_failures: dict[str, int] = field(default_factory=dict)
     list_count: int = 0
     sent: list[str] = field(default_factory=list)
+    sent_mail: FakeSentMail = field(default_factory=FakeSentMail)
     full_read_gates: dict[str, asyncio.Event] = field(default_factory=dict)
 
     def receive(self, message: FakeGmailMessage) -> None:
@@ -89,10 +199,12 @@ class FakeGmail:
             raw = body["raw"]
             self.sent.append(base64.urlsafe_b64decode(raw + "=" * (-len(raw) % 4)).decode())
             thread_id = body.get("threadId") or f"sent-thread-{len(self.sent)}"
+            self.sent_mail.accept(self.sent[-1], f"sent-{len(self.sent)}", thread_id)
             return httpx.Response(200, json={"id": f"sent-{len(self.sent)}", "threadId": thread_id})
+        sent_mail_answer = self.sent_mail.answer(request)
+        if sent_mail_answer is not None:
+            return sent_mail_answer
         if path == "/gmail/v1/users/me/messages":
-            if request.url.params.get("q", "").startswith("in:sent"):
-                return httpx.Response(200, json={})
             self.list_count += 1
             if self.list_failures:
                 query = request.url.params.get("q", "")

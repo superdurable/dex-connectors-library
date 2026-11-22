@@ -1,10 +1,10 @@
 # Gmail Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/google/gmail/go@v0.29.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/google/gmail/go@v0.29.1`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/google/gmail`.
 
-## TypeScript (v0.5.0)
+## TypeScript (v0.5.1)
 
 Install `@superdurable/connector-google-gmail` with `@superdurable/dex`. The [TypeScript README](typescript/README.md) covers OAuth and Workspace connection setup, the `gmail-inbox` static connection name, the runnable Worker and Client examples, and real Dex tests. The TypeScript package implements `getMessage`, `sendMessage`, and `replyToMessage`, and from 0.3.0 the `messageReceived` and `replyReceived` Triggers at parity with Go: one ordered poller per connection, durable project inboxes, and roots delivered before replies. The [thread reply example](typescript/examples/thread-reply/README.md) mirrors the Go `thread-reply` example. Its manifest-derived npm marker lets Dex CLI render the examples as strict TypeScript FDG 2.0 graphs.
 
@@ -148,12 +148,44 @@ or use `NewProjectMessageTriggerRunner`.
 
 `GetMessage` returns decoded headers, text, HTML, snippet, labels, and received
 time. `ReplyToMessage` reads the source metadata and sends with Gmail thread
-ID, `In-Reply-To`, and `References` preserved.
+ID, `In-Reply-To`, and `References` preserved. Gmail pads a body's base64url
+data whenever its length is not a multiple of three. Go v0.29.1 `GetMessage`
+and `GetThread` and TypeScript v0.5.1 `getMessage`, which read
+`format=full`, accept that padding as well as unpadded data; earlier releases
+selected `invalidResponse` for such messages, which live tests found to be
+most of them. Triggers and the reply source read use `format=metadata`, which
+carries no body, so they were not affected. Python already accepted padded
+data; from v0.5.1 it also rejects the standard base64 alphabet and malformed
+padding, as Go and TypeScript do.
 
 The connector derives an RFC `Message-ID` from the stable call key, Dex's
-first run ID, and the Flow start second; the safe correlation header carries
-the Call ID. Gmail documents no deduplication by `Message-ID`, so the connector
-uses that header for Sent Mail read-back:
+first run ID, and the Flow start second. From Go v0.29.1, Python v0.5.1, and
+TypeScript v0.5.1 it repeats that value in an `X-Dex-Message-ID` header; the
+safe correlation header `X-Dex-Call-ID` carries the Call ID. Gmail documents no
+deduplication by `Message-ID`, and a live Workspace mailbox showed that
+`messages.send` replaces the client `Message-ID` on the Sent copy with Gmail's
+own `<…@mail.gmail.com>` value, also for an ID in the sender's own domain, and
+keeps no copy of it, while it keeps `X-Dex-*` headers verbatim. Gmail search
+cannot match a custom header, so Sent Mail read-back lists up to 25 recent
+candidates with `in:sent newer_than:2d`, adding `to:` and the first recipient
+when the recipient is known and its address, whatever its display name, uses
+only letters, digits, and `.`, `_`, `+`, or `-`. A reply's read-back before its source read knows no
+recipient, so below the send cap a later attempt reads back again with the
+source's reply recipient before it posts; at the cap only the read-back
+without a recipient runs. The connector then reads each candidate's
+`Message-ID` and `X-Dex-Message-ID` with `format=metadata`. Only a candidate
+whose `X-Dex-Message-ID`, or whose `Message-ID` where a compatible gateway kept
+it, equals this call's value is a match; a Sent copy of another call, or of an
+earlier run of a reused Flow ID with the same `X-Dex-Call-ID`, is not. Within
+one poll, a candidate found to be another message is not read again, and a
+candidate whose read fails, or whose resource has a field of the wrong JSON
+type, leaves the lookup inconclusive unless another candidate matches. A credential refreshed after a 401 during read-back serves
+that read-back's remaining reads and every later request before the POST.
+Before these releases the read-back searched `rfc822msgid:`, which never
+matches the rewritten `Message-ID`, so a crash or lost answer after Gmail
+accepted a send was resent up to the send cap.
+
+Sends and replies are confirmed as follows:
 
 - A 2xx with a Gmail message ID is `sent`, with no search. A body names a
   message ID when it is a JSON object whose `id` is a non-empty string, whatever
@@ -169,7 +201,7 @@ uses that header for Sent Mail read-back:
   reply thread ID, or an empty thread ID for a new message. It never resends
   that accepted request.
 - A request that may have reached Gmail but lost its answer or got a 5xx polls
-  Sent Mail several times by `in:sent rfc822msgid:<Message-ID>` in Gmail's
+  Sent Mail several times with that candidate read-back, in Gmail's
   [documented search syntax](https://support.google.com/mail/answer/7190).
   The lookup requests Spam and Trash inclusion.
   Any match is `sent` with Gmail's message and thread IDs, also when a reply
@@ -232,7 +264,7 @@ uses that header for Sent Mail read-back:
 The Go send result marshals an empty recipient list as JSON `[]` on every
 terminal branch, including an early read-back and a provider rejection.
 - When a prior checkpoint contains Gmail's message ID, the connector reads
-  that message directly before searching by RFC `Message-ID`. A matching read
+  that message directly before searching Sent Mail. A matching read
   returns `sent`; a failed read falls back to the Sent Mail search. A saved
   message ID proves Gmail accepted the send, so it is never resent.
 - A 429 and a failure that a traced DNS, connect, or TLS error proves happened
@@ -280,15 +312,23 @@ out searches Sent Mail; a later attempt can POST after its own search miss or
 failed search, following a `notSent` or `canResend` checkpoint, or a `claimed`
 one while below the send cap.
 
-The search adds no scope: `gmail.readonly` permits
+The read-back adds no scope: `gmail.readonly` permits
 [`messages.list`](https://developers.google.com/workspace/gmail/api/reference/rest/v1/users.messages/list)
-with a query. Three Gmail behaviors are unverified without a live account:
-whether `messages.send` keeps the client-set `Message-ID` header, whether the
-documented query matches it, and how soon a sent message becomes searchable.
-Without a saved Gmail message ID, failure of either of the first two behaviors
-makes an ambiguous send resend up to the send cap, three sends by default, and
-then select `uncertain`.
-Live provider authorization and indexing latency remain unverified.
+with a query and `messages.get` with `format=metadata`. A Google Workspace
+account verified the `Message-ID` replacement, the kept `X-Dex-*` headers,
+that `rfc822msgid:` matches only Gmail's own `Message-ID`, that header values
+are not searchable, and that search listed a new Sent copy within a second of
+the send's answer. A send whose attempt a test harness ended after Gmail
+accepted it, retried under the same Call, found its Sent copy and sent nothing
+more; no Dex Worker or Dex stack took part. The read-back still misses, and
+the send is resent up to the cap, when the Sent copy is not among the 25 newest
+candidates by the retry, is older than two days, was deleted, or is not yet
+searchable. At the cap, a reply whose copy is not among the 25 newest Sent Mail
+messages selects `uncertain`. A call whose earlier attempt ran Go v0.29.0,
+Python v0.5.0, TypeScript v0.5.0, or earlier posted no `X-Dex-Message-ID`, so
+it cannot be confirmed after an upgrade. Personal `@gmail.com` accounts,
+Workspace delegation, Trigger polling, and token refresh remain unverified
+live.
 
 Every operation uses `defect` for invalid local input, connection configuration,
 or Connector contract violations; a send or reply uses it only when no earlier

@@ -26,6 +26,7 @@ from dex_connectors.google_gmail.provider import (
     rfc_message_id_address,
 )
 from dex_connectors.google_gmail.send import SendExecution, SendService
+from tests.gmail_inbox_fake import FakeSentMail, dex_sent_copy
 
 
 def execution(operation_id: str = "sendMessage", attempt: int = 1) -> SendExecution:
@@ -48,6 +49,11 @@ def execution(operation_id: str = "sendMessage", attempt: int = 1) -> SendExecut
 def send_input() -> SendMessageInput:
     """Use one valid recipient and simple body."""
     return SendMessageInput(["ada@example.com"], "Progress", "Update")
+
+
+def dex_message_id(run: SendExecution) -> str:
+    """The bracketed Message-ID, and X-Dex-Message-ID, this run's messages carry."""
+    return f"<{rfc_message_id_address(run.call, run.run_id, run.flow_started_at)}>"
 
 
 def test_message_id_matches_typescript_context_vectors() -> None:
@@ -73,7 +79,7 @@ def test_message_id_matches_typescript_context_vectors() -> None:
 async def test_message_id_is_stable_across_send_and_readback(
     operation_id: str, has_flow_start: bool
 ) -> None:
-    """Every retry lookup uses the exact RFC Message-ID in the posted MIME body."""
+    """Every send repeats its run-scoped Message-ID as X-Dex-Message-ID, which read-back matches."""
     run = execution(operation_id)
     if not has_flow_start:
         run = replace(run, flow_started_at=None)
@@ -84,9 +90,11 @@ async def test_message_id_is_stable_across_send_and_readback(
     def answer(request: httpx.Request) -> httpx.Response:
         if request.method == "POST":
             encoded = json.loads(request.content)["raw"]
-            raw = base64.urlsafe_b64decode(encoded + "=" * (-len(encoded) % 4))
-            message_id_line = next(line for line in raw.split(b"\r\n") if line.startswith(b"Message-ID: "))
-            posted_ids.append(message_id_line.removeprefix(b"Message-ID: <").removesuffix(b">").decode())
+            lines = base64.urlsafe_b64decode(encoded + "=" * (-len(encoded) % 4)).split(b"\r\n")
+            position = next(index for index, line in enumerate(lines) if line.startswith(b"Message-ID: "))
+            message_id = lines[position].removeprefix(b"Message-ID: ")
+            assert lines[position + 1] == b"X-Dex-Message-ID: " + message_id
+            posted_ids.append(message_id.removeprefix(b"<").removesuffix(b">").decode())
             return httpx.Response(200, json={"id": "sent-1", "threadId": "thread-1"})
         if "q" in request.url.params:
             search_queries.append(request.url.params["q"])
@@ -103,7 +111,12 @@ async def test_message_id_is_stable_across_send_and_readback(
         )
         assert result.branch == "sent"
     assert posted_ids == [expected_id] * 3
-    assert search_queries == [f"in:sent rfc822msgid:{expected_id}"]
+    # A reply reads back before its source read, without a recipient, and again with the source's sender.
+    assert search_queries == (
+        ["in:sent newer_than:2d to:ada@example.com"]
+        if operation_id == "sendMessage"
+        else ["in:sent newer_than:2d", "in:sent newer_than:2d to:ada.reply@example.com"]
+    )
 
 
 @pytest.mark.asyncio
@@ -339,21 +352,79 @@ async def test_send_signed_nonnegative_retry_after_matches_go() -> None:
 
 @pytest.mark.asyncio
 async def test_send_503_readback_match_is_sent() -> None:
-    """A Sent Mail match after 503 proves acceptance before any resend."""
+    """A Sent copy found by its X-Dex-Message-ID after 503 proves acceptance before any resend."""
     run = execution()
-    methods: list[str] = []
+    sent_mail = FakeSentMail()
+    requests: list[httpx.Request] = []
 
     def answer(request: httpx.Request) -> httpx.Response:
-        methods.append(request.method)
-        if request.method == "GET":
-            assert request.url.params["includeSpamTrash"] == "true"
-            assert request.url.params["q"].startswith("in:sent rfc822msgid:")
-            return httpx.Response(200, json={"messages": [{"id": "sent-1", "threadId": "thread-1"}]})
-        return httpx.Response(503)
+        requests.append(request)
+        if request.method == "POST":
+            sent_mail.accept_post(request)  # Gmail processed the send before answering 503.
+            return httpx.Response(503)
+        answered = sent_mail.answer(request)
+        assert answered is not None
+        return answered
 
     result = await service(run, httpx.MockTransport(answer)).send_message(run, send_input())
     assert result.branch == "sent" and result.value is not None and result.value.message_id == "sent-1"
-    assert methods == ["POST", "GET"]
+    assert [request.method for request in requests] == ["POST", "GET", "GET"]
+    search, header_read = requests[1].url.params, requests[2].url.params
+    assert dict(search) == {
+        "q": "in:sent newer_than:2d to:ada@example.com", "maxResults": "25", "includeSpamTrash": "true"
+    }
+    assert requests[2].url.path == "/gmail/v1/users/me/messages/sent-1"
+    assert header_read["format"] == "metadata"
+    assert header_read.get_list("metadataHeaders") == ["Message-ID", "X-Dex-Message-ID"]
+    stored_headers = dict(sent_mail.copies[0].headers)
+    assert stored_headers["Message-Id"] != dex_message_id(run)
+    assert stored_headers["X-Dex-Message-ID"] == dex_message_id(run)
+
+
+@pytest.mark.asyncio
+async def test_poll_reads_each_mismatched_candidate_once() -> None:
+    """The four lookups of one poll list Sent Mail each time but read a mismatched candidate once."""
+    run = execution()
+    sent_mail = FakeSentMail([dex_sent_copy("sent-9", "thread-9", "<other-run@dex.superdurable.dev>")])
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        if request.method == "POST":
+            return httpx.Response(500)
+        answered = sent_mail.answer(request)
+        assert answered is not None
+        return answered
+
+    result = await service(run, httpx.MockTransport(answer)).send_message(run, send_input())
+    assert result.kind == "retry" and result.failure is not None
+    assert result.failure.message.endswith("the sent-mail search found no message")
+    assert len(sent_mail.searches) == 4
+    assert sent_mail.header_reads == ["sent-9"]
+
+
+@pytest.mark.asyncio
+async def test_provider_find_sent_message_matches_the_kept_header() -> None:
+    """The public provider read-back skips another run's Sent copy and returns this run's."""
+    run = execution()
+    sent_mail = FakeSentMail([
+        dex_sent_copy("sent-2", "thread-2", "<other-run@dex.superdurable.dev>", call_id=run.call.id),
+        dex_sent_copy("sent-1", "thread-1", dex_message_id(run)),
+    ])
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        answered = sent_mail.answer(request)
+        assert answered is not None
+        return answered
+
+    credential = Credentials(SecretString("access-token"), "owner@example.org")
+    provider = GmailProvider(
+        Config(endpoint="http://localhost/gmail/v1"),
+        StaticCredentialProvider({run.call.connection: credential}),
+        http_client=httpx.AsyncClient(transport=httpx.MockTransport(answer)),
+    )
+    found, _ = await provider.find_sent_message(run.call, credential, run.run_id, run.flow_started_at)
+    assert found == {"id": "sent-1", "threadId": "thread-1"}
+    assert sent_mail.searches == ["in:sent newer_than:2d"]
+    assert sent_mail.header_reads == ["sent-2", "sent-1"]
 
 
 @pytest.mark.asyncio
@@ -393,16 +464,19 @@ async def test_send_ambiguous_500_search_failure_retries_all_lookups() -> None:
 async def test_second_send_attempt_searches_before_post() -> None:
     """A prior accepted message prevents duplicate POST on numbered retries."""
     run = execution(attempt=2)
+    sent_mail = FakeSentMail([dex_sent_copy("prior-1", "thread-1", dex_message_id(run))])
     methods: list[str] = []
 
     def answer(request: httpx.Request) -> httpx.Response:
         methods.append(request.method)
-        assert request.method == "GET"
-        return httpx.Response(200, json={"messages": [{"id": "prior-1", "threadId": "thread-1"}]})
+        answered = sent_mail.answer(request)
+        assert answered is not None
+        return answered
 
     result = await service(run, httpx.MockTransport(answer)).send_message(run, send_input())
     assert result.branch == "sent" and result.value is not None and result.value.message_id == "prior-1"
-    assert methods == ["GET"]
+    assert result.value.thread_id == "thread-1"
+    assert methods == ["GET", "GET"]
 
 
 @pytest.mark.asyncio
@@ -764,18 +838,24 @@ async def test_reply_oversized_source_is_invalid_response() -> None:
 async def test_second_reply_attempt_readback_match_skips_source_and_post() -> None:
     """A prior Sent Mail match wins before reading the reply source on retry."""
     run = execution("replyToMessage", 2)
-    methods: list[str] = []
+    sent_mail = FakeSentMail([
+        dex_sent_copy("reply-1", "thread-1", dex_message_id(run), recipient="<ada.reply@example.com>")
+    ])
+    paths: list[str] = []
 
     def answer(request: httpx.Request) -> httpx.Response:
-        methods.append(request.method)
-        assert request.url.path == "/gmail/v1/users/me/messages"
-        return httpx.Response(200, json={"messages": [{"id": "reply-1", "threadId": "thread-1"}]})
+        paths.append(request.url.path)
+        answered = sent_mail.answer(request)
+        assert answered is not None
+        return answered
 
     result = await service(run, httpx.MockTransport(answer)).reply_to_message(
         run, ReplyToMessageInput("source-1", "Answer")
     )
     assert result.branch == "sent" and result.value is not None and result.value.recipients == []
-    assert methods == ["GET"]
+    assert result.value.message_id == "reply-1"
+    assert paths == ["/gmail/v1/users/me/messages", "/gmail/v1/users/me/messages/reply-1"]
+    assert sent_mail.searches == ["in:sent newer_than:2d"]
 
 
 @pytest.mark.asyncio

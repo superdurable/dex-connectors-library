@@ -35,6 +35,20 @@ beforeAll(async () => {
   await worker.waitPullRegistered({ timeoutMs: 15_000 });
 }, 30_000);
 
+/** The X-Dex-Message-ID a messages.send POST carries; Gmail keeps it on the Sent copy while replacing Message-ID. */
+function postedDexMessageID(request: ProviderRequest): string {
+  const { raw } = JSON.parse(Buffer.from(request.body ?? []).toString('utf8')) as { raw: string };
+  const line = Buffer.from(raw, 'base64url').toString('utf8').split('\r\n').find(header => header.startsWith('X-Dex-Message-ID: '));
+  return line?.slice('X-Dex-Message-ID: '.length) ?? '';
+}
+
+/** Answer a Sent Mail header read as Gmail does: a Gmail-generated Message-Id beside the preserved X-Dex-Message-ID. */
+function sentCopyHeaders(request: ProviderRequest, threadId: string, dexMessageId: string): ProviderResponse {
+  const id = decodeURIComponent(new URL(request.url).pathname.split('/').at(-1) ?? '');
+  const headers = [{ name: 'Message-Id', value: `<CA${id}@mail.gmail.com>` }, { name: 'X-Dex-Message-ID', value: dexMessageId }];
+  return { status: 200, headers: {}, body: Buffer.from(JSON.stringify({ id, threadId, payload: { headers } })) };
+}
+
 afterAll(async () => {
   if (client) await client.close();
   if (worker) await worker.close();
@@ -83,8 +97,10 @@ it('preserves the send claim across a real Dex retry and confirms by Sent Mail',
   let searchCount = 0;
   const connectionReference = { provider: 'google', name: ConnectionName };
   const credentials = { accessToken: new SecretString('integration-test-token'), primaryEmail: 'owner@example.com' };
+  let dexMessageId = '';
   const transport = async (request: ProviderRequest): Promise<ProviderResponse> => {
-    if (request.method === 'POST') { postCount++; throw new ProviderTransportError(false); }
+    if (request.method === 'POST') { postCount++; dexMessageId = postedDexMessageID(request); throw new ProviderTransportError(false); }
+    if (request.url.includes('format=metadata')) return sentCopyHeaders(request, 'confirmed-thread', dexMessageId);
     searchCount++;
     const messages = searchCount >= 5 ? [{ id: 'confirmed-send', threadId: 'confirmed-thread' }] : [];
     return { status: 200, headers: {}, body: Buffer.from(JSON.stringify({ messages })) };
@@ -116,7 +132,9 @@ it('ignores a 503 error-body ID and confirms by Sent Mail after a real Dex retry
   let searchCount = 0;
   const connectionReference = { provider: 'google', name: ConnectionName };
   const credentials = { accessToken: new SecretString('integration-test-token'), primaryEmail: 'owner@example.com' };
+  let dexMessageId = '';
   const transport = async (request: ProviderRequest): Promise<ProviderResponse> => {
+    if (request.method === 'GET' && request.url.includes('format=metadata')) return sentCopyHeaders(request, 'thread-1', dexMessageId);
     if (request.method === 'GET') {
       searchCount++;
       // The 503 send becomes visible in Sent Mail only after the first attempt's bounded polling.
@@ -124,6 +142,7 @@ it('ignores a 503 error-body ID and confirms by Sent Mail after a real Dex retry
       return { status: 200, headers: {}, body: Buffer.from(JSON.stringify({ messages })) };
     }
     postCount++;
+    dexMessageId = postedDexMessageID(request);
     return { status: 503, headers: {}, body: Buffer.from(JSON.stringify({ id: 'not-a-message' })) };
   };
   const providerClient = new GmailClient({ endpoint: 'http://127.0.0.1:8080' },

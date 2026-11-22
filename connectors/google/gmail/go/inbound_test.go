@@ -36,6 +36,41 @@ func TestGetMessageDecodesHeadersAndBodies(t *testing.T) {
 	require.Equal(t, "<p>hello</p>", result.Value.HTMLBody)
 }
 
+// TestGetMessageDecodesGmailBodyPadding accepts the padded base64url Gmail returns for most bodies,
+// the unpadded form, and rejects malformed data.
+func TestGetMessageDecodesGmailBodyPadding(t *testing.T) {
+	for _, test := range []struct {
+		name, data, wantText string
+		wantBranch           sdkgo.BranchID
+	}{
+		{name: "two padding characters", data: "SGk=", wantText: "Hi", wantBranch: gmail.GetMessageBranchRead},
+		{name: "one padding character", data: "SGVsbG8=", wantText: "Hello", wantBranch: gmail.GetMessageBranchRead},
+		{name: "no padding needed", data: "SGV5", wantText: "Hey", wantBranch: gmail.GetMessageBranchRead},
+		{name: "unpadded", data: "SGVsbG8", wantText: "Hello", wantBranch: gmail.GetMessageBranchRead},
+		{name: "excess padding", data: "SGVsbG8==", wantBranch: gmail.GetMessageBranchInvalidResponse},
+		{name: "padding inside", data: "SGk=SGk=", wantBranch: gmail.GetMessageBranchInvalidResponse},
+		{name: "short padding", data: "SA=", wantBranch: gmail.GetMessageBranchInvalidResponse},
+		{name: "standard alphabet", data: "+/8=", wantBranch: gmail.GetMessageBranchInvalidResponse},
+		{name: "unpadded standard alphabet", data: "S+/z", wantBranch: gmail.GetMessageBranchInvalidResponse},
+		{name: "lone sextet", data: "S", wantBranch: gmail.GetMessageBranchInvalidResponse},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+				_, _ = response.Write([]byte(`{"id":"message-1","threadId":"thread-1","internalDate":"1000","payload":{"mimeType":"text/plain",` +
+					`"headers":[{"name":"Subject","value":"Welcome — read this"}],"body":{"size":5,"data":"` + test.data + `"}}}`))
+			}))
+			defer server.Close()
+			result, err := sdkgo.RunQuery(newGmailDexContext("read-padded-"+test.name), newGmailClient(t, server.URL).GetMessage(), gmailConnection, gmail.GetMessageInput{MessageID: "message-1"})
+			require.NoError(t, err)
+			require.Equal(t, test.wantBranch, result.Branch)
+			if test.wantBranch == gmail.GetMessageBranchRead {
+				require.Equal(t, test.wantText, result.Value.TextBody)
+				require.Equal(t, "Welcome — read this", result.Value.Subject)
+			}
+		})
+	}
+}
+
 func TestGetMessageClassifiesProviderAndResponseFailures(t *testing.T) {
 	for _, test := range []struct {
 		name       string
@@ -202,6 +237,7 @@ func receiveTriggerEvent(t *testing.T, events <-chan sdkgo.TriggerEvent[gmail.Me
 	}
 }
 
+// gmailMessageJSON pads body data as Gmail does when a body's length is not a multiple of three.
 func gmailMessageJSON(messageID string, threadID string, reply bool, textBody string, htmlBody string) string {
 	headers := []map[string]string{
 		{"name": "Message-ID", "value": "<" + messageID + "@example.com>"},
@@ -217,10 +253,10 @@ func gmailMessageJSON(messageID string, threadID string, reply bool, textBody st
 	}
 	parts := []map[string]any{}
 	if textBody != "" {
-		parts = append(parts, map[string]any{"mimeType": "text/plain", "body": map[string]string{"data": base64.RawURLEncoding.EncodeToString([]byte(textBody))}})
+		parts = append(parts, map[string]any{"mimeType": "text/plain", "body": map[string]string{"data": base64.URLEncoding.EncodeToString([]byte(textBody))}})
 	}
 	if htmlBody != "" {
-		parts = append(parts, map[string]any{"mimeType": "text/html", "body": map[string]string{"data": base64.RawURLEncoding.EncodeToString([]byte(htmlBody))}})
+		parts = append(parts, map[string]any{"mimeType": "text/html", "body": map[string]string{"data": base64.URLEncoding.EncodeToString([]byte(htmlBody))}})
 	}
 	contents, err := json.Marshal(map[string]any{
 		"id": messageID, "threadId": threadID, "labelIds": []string{"INBOX"},

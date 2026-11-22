@@ -25,10 +25,26 @@ describe('Gmail message conversion', () => {
     expect(message.receivedAt).toMatch(/Z$/);
   });
 
+  it('decodes the padded base64url Gmail returns and the unpadded form', () => {
+    const textBody = (data: string) => decodeGmailMessage(GmailMessageResourceSchema.parse({
+      id: 'one', threadId: 'thread', internalDate: '1772615700000', payload: { mimeType: 'text/plain', body: { data } },
+    })).textBody;
+    for (const body of ['Hello', 'Hello!', 'Hi', 'Hey']) {
+      expect(textBody(Buffer.from(body).toString('base64url'))).toBe(body);
+      expect(textBody(Buffer.from(body).toString('base64').replaceAll('+', '-').replaceAll('/', '_'))).toBe(body);
+    }
+    expect(textBody('SGVsbG8=')).toBe('Hello');
+    expect(textBody('SGk=')).toBe('Hi');
+    expect(textBody('QQ==')).toBe('A');
+    expect(textBody('-_8=')).toBe(Buffer.from([0xfb, 0xff]).toString('utf8'));
+  });
+
   it('rejects malformed base64url and missing provider identity', () => {
     const base = { id: 'one', threadId: 'thread', internalDate: '1772615700000', payload: { mimeType: 'text/plain', body: { data: '*' } } };
     expect(() => decodeGmailMessage(GmailMessageResourceSchema.parse(base))).toThrow();
-    expect(() => decodeGmailMessage(GmailMessageResourceSchema.parse({ ...base, payload: { mimeType: 'text/plain', body: { data: 'QQ==' } } }))).toThrow();
+    for (const data of ['Q', 'QQ=', 'Q===', 'QQ==QQ==', 'QQ=A', '=QQ=', 'SGVsbG8+', 'SGVsbG8/', 'SGVs bG8=', '====']) {
+      expect(() => decodeGmailMessage(GmailMessageResourceSchema.parse({ ...base, payload: { mimeType: 'text/plain', body: { data } } })), data).toThrow('Gmail body is not base64url');
+    }
     expect(() => decodeGmailMessage(GmailMessageResourceSchema.parse({ ...base, id: '' }))).toThrow();
   });
 
@@ -59,12 +75,14 @@ describe('Gmail message conversion', () => {
     expect(messageID).toMatch(/^[0-9a-f]{64}@dex\.superdurable\.dev$/);
     expect(messageID).not.toBe(rfcMessageIDAddress('idempotency-key', 'run-2', new Date('2026-01-02T00:00:00Z')));
     const raw = buildMIMEMessage('call-1', 'idempotency-key', messageID, 'owner@example.com', ['ada@example.com'], 'Hello', 'Line 1\nLine 2');
-    expect(Buffer.from(raw).toString()).toContain('Message-ID: <' + messageID + '>\r\n');
+    // Gmail replaces Message-ID on the Sent copy, so X-Dex-Message-ID repeats it on the next line.
+    expect(Buffer.from(raw).toString()).toContain(`Message-ID: <${messageID}>\r\nX-Dex-Message-ID: <${messageID}>\r\nX-Dex-Call-ID: call-1\r\n`);
     expect(Buffer.from(raw).toString()).toContain('Line 1\r\nLine 2');
     const source = { messageId: 'one', threadId: 'thread', rfcMessageId: '<source@example.com>', from: 'ada@example.com', replyTo: 'reply@example.com', references: '<prior@example.com>', subject: 'Question', receivedAt: '2026-01-02T00:00:00Z' };
     const reply = buildReplyMIMEMessage('call-1', 'idempotency-key', messageID, 'owner@example.com', source, { messageId: 'one', textBody: 'Answer' });
     expect(Buffer.from(reply).toString()).toContain('To: <reply@example.com>\r\n');
     expect(Buffer.from(reply).toString()).toContain('Subject: Re: Question\r\n');
     expect(Buffer.from(reply).toString()).toContain('References: <prior@example.com> <source@example.com>\r\n');
+    expect(Buffer.from(reply).toString()).toContain(`Message-ID: <${messageID}>\r\nX-Dex-Message-ID: <${messageID}>\r\nIn-Reply-To: <source@example.com>\r\n`);
   });
 });

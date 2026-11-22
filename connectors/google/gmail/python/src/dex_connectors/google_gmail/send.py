@@ -34,6 +34,7 @@ from .provider import (
     GmailResponseTooLarge,
     ProviderTransportError,
     _format_go_mailbox,
+    _SentMailReadBack,
     build_reply_message,
     build_send_message,
     decode_message,
@@ -69,7 +70,6 @@ class _OutgoingMessage:
     recipients: list[str]
     message_id_address: str
     requested_thread_id: str = ""
-    has_pre_send_search: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -290,12 +290,10 @@ class SendService:
                     saved,
                     _receipt(execution, None, saved["id"]),
                 )
+            # The source is not read yet, so this read-back knows no recipient; a later one uses it.
+            read_back = self._read_back(execution, credential, _OutgoingMessage(b"", [], message_id_address))
             try:
-                async with asyncio.timeout_at(budget.pre_send_end):
-                    found, credential = await self._provider.find_sent_message(
-                        execution.call, credential, execution.run_id, execution.flow_started_at,
-                        message_id_address=message_id_address,
-                    )
+                found = await self._find_sent(budget.pre_send_end, read_back)
             except Exception:
                 found = None
                 if fence_result == DecisionKind.READ_BACK_REQUIRED:
@@ -307,6 +305,7 @@ class SendService:
                         _REPLY, FailureKind.AVAILABILITY,
                         "Gmail sent-mail search did not answer before the reply",
                     )
+            credential = read_back.credential
             if found:
                 return await self._sent(
                     execution,
@@ -427,9 +426,7 @@ class SendService:
                 execution, _REPLY, FailureKind.VALIDATION,
                 "reply could not be encoded within the configured limit",
             )
-        outgoing = _OutgoingMessage(
-            payload, [recipient], message_id_address, message.thread_id, execution.attempt > 1
-        )
+        outgoing = _OutgoingMessage(payload, [recipient], message_id_address, message.thread_id)
         return await self._send_and_confirm(execution, budget, credential, _REPLY, outgoing, fence_result)
 
     async def _decide_fence(
@@ -626,14 +623,12 @@ class SendService:
             return await self._sent(
                 execution, budget, credential, outcome, message, saved, _receipt(execution, None, saved["id"])
             )
+        read_back = self._read_back(execution, credential, message)
         try:
-            async with asyncio.timeout_at(budget.pre_send_end):
-                found, credential = await self._provider.find_sent_message(
-                    execution.call, credential, execution.run_id, execution.flow_started_at,
-                    message_id_address=message.message_id_address,
-                )
+            found = await self._find_sent(budget.pre_send_end, read_back)
         except Exception:
             return self._select_uncertain_without_resend(execution, outcome, True)
+        credential = read_back.credential
         if found:
             return await self._sent(
                 execution, budget, credential, outcome, message, found, _receipt(execution)
@@ -729,13 +724,10 @@ class SendService:
         message: _OutgoingMessage,
         decision_kind: DecisionKind,
     ) -> MutationAttempt[SendMessageOutput]:
-        if execution.attempt > 1 and not message.has_pre_send_search:
+        if execution.attempt > 1:
+            read_back = self._read_back(execution, credential, message)
             try:
-                async with asyncio.timeout_at(budget.pre_send_end):
-                    found, credential = await self._provider.find_sent_message(
-                        execution.call, credential, execution.run_id, execution.flow_started_at,
-                        message_id_address=message.message_id_address,
-                    )
+                found = await self._find_sent(budget.pre_send_end, read_back)
             except Exception:
                 found = None
                 # An inconclusive search still permits a resend below the send cap.
@@ -746,6 +738,7 @@ class SendService:
                         FailureKind.AVAILABILITY,
                         f"Gmail sent-mail search did not answer before the {outcome.request_name}",
                     )
+            credential = read_back.credential
             if found:
                 return await self._sent(
                     execution, budget, credential, outcome, message, found, _receipt(execution)
@@ -850,14 +843,12 @@ class SendService:
                     execution, budget, credential, outcome, message, named["id"], receipt
                 )
             if execution.attempt > 1:
+                read_back = self._read_back(execution, credential, message)
                 try:
-                    async with asyncio.timeout_at(budget.attempt_end):
-                        found, credential = await self._provider.find_sent_message(
-                            execution.call, credential, execution.run_id, execution.flow_started_at,
-                            message_id_address=message.message_id_address,
-                        )
+                    found = await self._find_sent(budget.attempt_end, read_back)
                 except (ValueError, OSError, TimeoutError):
                     found = None
+                credential = read_back.credential
                 if found:
                     return await self._sent(execution, budget, credential, outcome, message, found, receipt)
             is_definite_refusal = status in _REFUSED_BEFORE_PROCESSING_STATUSES and response is not None
@@ -904,6 +895,18 @@ class SendService:
             execution, _failure(outcome, kind, failure_message + suffix), receipt
         )
 
+    def _read_back(
+        self, execution: SendExecution, credential: Credentials, message: _OutgoingMessage
+    ) -> _SentMailReadBack:
+        return _SentMailReadBack(
+            self._provider, execution.call, credential, message.message_id_address, message.recipients
+        )
+
+    async def _find_sent(self, deadline: float, read_back: _SentMailReadBack) -> dict[str, str] | None:
+        """Search Sent Mail once before deadline; raise when the search is inconclusive."""
+        async with asyncio.timeout_at(deadline):
+            return await read_back.find()
+
     async def _poll_sent(
         self,
         execution: SendExecution,
@@ -911,16 +914,15 @@ class SendService:
         credential: Credentials,
         message: _OutgoingMessage,
     ) -> tuple[dict[str, str] | None, bool]:
+        # One read-back spans the poll, so a mismatched candidate is read only once.
+        read_back = self._read_back(execution, credential, message)
         has_lookup_error = False
         for lookup in range(4):
             try:
                 async with asyncio.timeout_at(budget.attempt_end):
                     if lookup:
                         await asyncio.sleep(0.075 * (2 ** (lookup - 1)))
-                    found, credential = await self._provider.find_sent_message(
-                        execution.call, credential, execution.run_id, execution.flow_started_at,
-                        message_id_address=message.message_id_address,
-                    )
+                    found = await read_back.find()
             except TimeoutError:
                 return None, True
             except Exception:

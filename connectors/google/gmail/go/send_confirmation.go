@@ -8,11 +8,16 @@ import (
 	"crypto/sha256"
 	"crypto/tls"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptrace"
+	"net/mail"
+	"net/url"
+	"regexp"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -39,11 +44,21 @@ var (
 	}
 )
 
+const (
+	// dexMessageIDHeader repeats the Message-ID the connector sets, because Gmail replaces Message-ID on send.
+	dexMessageIDHeader = "X-Dex-Message-ID"
+	// sentMailCandidateWindow covers the Execute retry window of a send with a wide margin.
+	sentMailCandidateWindow = "newer_than:2d"
+	sentMailCandidateLimit  = 25
+)
+
+// searchableRecipientAddress admits only characters that Gmail search reads literally in a to: term.
+var searchableRecipientAddress = regexp.MustCompile(`^[A-Za-z0-9._+-]+@[A-Za-z0-9.-]+$`)
+
 // gmailOutgoingMessage is one encoded messages.send request body and the identity it reports.
 type gmailOutgoingMessage struct {
-	payload          []byte
-	recipients       []string
-	hasPreSendSearch bool
+	payload    []byte
+	recipients []string
 	// requestedThreadID is the thread a reply asked for; empty for a new message.
 	requestedThreadID string
 }
@@ -61,6 +76,18 @@ type sendAttemptBudget struct {
 
 type sentMessageSearchResponse struct {
 	Messages []sendResponse `json:"messages"`
+}
+
+// sentMailReadBack matches recent Sent Mail candidates by X-Dex-Message-ID, because Gmail replaces Message-ID.
+type sentMailReadBack struct {
+	client *Client
+	call   sdkgo.Call
+	// credentials is the latest credential, which a refresh after a 401 replaces.
+	credentials  Credentials
+	searchQuery  string
+	dexMessageID string
+	// mismatchedCandidateIDs skips candidates already read; a message's headers never change.
+	mismatchedCandidateIDs map[string]bool
 }
 
 // requestDispatchObservation records whether a traced connection failure proves the request was never sent.
@@ -88,9 +115,131 @@ func (budget sendAttemptBudget) preSendContext() (context.Context, context.Cance
 	return context.WithDeadline(budget.attemptContext, budget.sendDeadline.Add(-budget.minimumSendTime))
 }
 
-// sentMessageSearchQuery uses Gmail's documented rfc822msgid syntax, which omits the angle brackets.
-func sentMessageSearchQuery(call sdkgo.Call) string {
-	return "in:sent rfc822msgid:" + rfcMessageIDAddress(call)
+func (client *Client) newSentMailReadBack(call sdkgo.Call, credentials Credentials, recipients []string) *sentMailReadBack {
+	return &sentMailReadBack{
+		client: client, call: call, credentials: credentials, searchQuery: sentMailCandidateQuery(recipients),
+		dexMessageID: "<" + rfcMessageIDAddress(call) + ">", mismatchedCandidateIDs: map[string]bool{},
+	}
+}
+
+// poll repeats find with a short backoff, because Sent Mail search can lag an accepted send.
+func (readBack *sentMailReadBack) poll(ctx context.Context) (sendResponse, bool, error) {
+	var lastError error
+	for lookup := 0; lookup < 4; lookup++ {
+		if lookup > 0 {
+			backoff := time.Duration(75*(1<<(lookup-1))) * time.Millisecond
+			timer := time.NewTimer(backoff)
+			select {
+			case <-ctx.Done():
+				timer.Stop()
+				return sendResponse{}, false, ctx.Err()
+			case <-timer.C:
+			}
+		}
+		sent, isFound, err := readBack.find(ctx)
+		if isFound {
+			return sent, true, nil
+		}
+		lastError = err
+		if ctx.Err() != nil {
+			return sendResponse{}, false, ctx.Err()
+		}
+	}
+	return sendResponse{}, false, lastError
+}
+
+// find reads candidate headers; an unreadable candidate leaves a miss inconclusive.
+func (readBack *sentMailReadBack) find(ctx context.Context) (sendResponse, bool, error) {
+	candidates, err := readBack.listCandidates(ctx)
+	if err != nil {
+		return sendResponse{}, false, err
+	}
+	var candidateError error
+	for _, candidate := range candidates {
+		if candidate.ID == "" || readBack.mismatchedCandidateIDs[candidate.ID] {
+			continue
+		}
+		sent, isMatch, err := readBack.readCandidate(ctx, candidate.ID)
+		if err != nil {
+			candidateError = err
+			if ctx.Err() != nil {
+				break
+			}
+			continue
+		}
+		if isMatch {
+			return sent, true, nil
+		}
+		readBack.mismatchedCandidateIDs[candidate.ID] = true
+	}
+	return sendResponse{}, false, candidateError
+}
+
+func (readBack *sentMailReadBack) listCandidates(ctx context.Context) ([]sendResponse, error) {
+	query := url.Values{"q": {readBack.searchQuery}, "maxResults": {strconv.Itoa(sentMailCandidateLimit)}, "includeSpamTrash": {"true"}}
+	target := strings.TrimRight(readBack.client.endpoint.String(), "/") + "/users/me/messages?" + query.Encode()
+	response, credentials, err := readBack.client.doAuthenticatedRequest(ctx, readBack.call, readBack.credentials, http.MethodGet, target, nil, "")
+	readBack.credentials = credentials
+	if err != nil {
+		return nil, fmt.Errorf("Gmail sent-message lookup failed: %w", err)
+	}
+	content, err := readAndCloseGmailResponse(response, readBack.client.maxResponseBytes)
+	if err != nil || response.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("Gmail sent-message lookup did not return a usable response")
+	}
+	var matches sentMessageSearchResponse
+	if err := json.Unmarshal(content, &matches); err != nil {
+		return nil, fmt.Errorf("Gmail sent-message lookup returned an invalid response")
+	}
+	return matches.Messages, nil
+}
+
+// readCandidate matches X-Dex-Message-ID, or a Message-ID that a compatible gateway kept.
+func (readBack *sentMailReadBack) readCandidate(ctx context.Context, messageID string) (sendResponse, bool, error) {
+	query := url.Values{"format": {"metadata"}, "metadataHeaders": {"Message-ID", dexMessageIDHeader}}
+	target := strings.TrimRight(readBack.client.endpoint.String(), "/") + "/users/me/messages/" + url.PathEscape(messageID) + "?" + query.Encode()
+	response, credentials, err := readBack.client.doAuthenticatedRequest(ctx, readBack.call, readBack.credentials, http.MethodGet, target, nil, "")
+	readBack.credentials = credentials
+	if err != nil {
+		return sendResponse{}, false, fmt.Errorf("Gmail sent-message header read failed: %w", err)
+	}
+	content, err := readAndCloseGmailResponse(response, readBack.client.maxResponseBytes)
+	if response.StatusCode == http.StatusNotFound && err == nil {
+		// A candidate deleted since the search cannot confirm the send.
+		return sendResponse{}, false, nil
+	}
+	if err != nil || response.StatusCode != http.StatusOK {
+		return sendResponse{}, false, fmt.Errorf("Gmail sent-message header read did not return a usable response")
+	}
+	var resource gmailMessageResource
+	if err := json.Unmarshal(content, &resource); err != nil || resource.ID != messageID {
+		return sendResponse{}, false, fmt.Errorf("Gmail sent-message header read returned an invalid response")
+	}
+	for _, header := range resource.Payload.Headers {
+		if (strings.EqualFold(header.Name, dexMessageIDHeader) || strings.EqualFold(header.Name, "Message-ID")) &&
+			strings.TrimSpace(header.Value) == readBack.dexMessageID {
+			return sendResponse{ID: resource.ID, ThreadID: resource.ThreadID}, true, nil
+		}
+	}
+	return sendResponse{}, false, nil
+}
+
+// sentMailCandidateQuery adds the first recipient when its address is safe in a to: term.
+func sentMailCandidateQuery(recipients []string) string {
+	query := "in:sent " + sentMailCandidateWindow
+	if len(recipients) == 0 {
+		return query
+	}
+	// Parse only the addr-spec: Go's encoded-word for some display names, such as one with a backslash, does not parse.
+	mailbox := recipients[0]
+	if start := strings.LastIndex(mailbox, "<"); start >= 0 {
+		mailbox = mailbox[start:]
+	}
+	address, err := mail.ParseAddress(mailbox)
+	if err != nil || !searchableRecipientAddress.MatchString(address.Address) {
+		return query
+	}
+	return query + " to:" + address.Address
 }
 
 // rfcMessageIDAddress includes the run start to separate reused Flow IDs.

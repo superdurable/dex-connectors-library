@@ -5,7 +5,9 @@ package gmail_test
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"io"
@@ -33,30 +35,45 @@ type sendFakeBehavior struct {
 	// answerSend writes the messages.send answer; nil aborts the connection after reading the request.
 	answerSend        func(http.ResponseWriter)
 	answerSendAttempt func(http.ResponseWriter, int)
-	// searchMatch is the messages.list match JSON; empty answers with no messages.
-	searchMatch          string
+	// searchMatch is the candidate list JSON; each header read matches unless decoyCandidateIDs names it.
+	searchMatch string
+	// searchMatchByQuery answers the listed queries with their own candidate JSON instead of searchMatch.
+	searchMatchByQuery   map[string]string
 	matchFromSearch      int
 	searchStatusCode     int
 	sourceReadStatusCode int
+	// decoyCandidateIDs are other Sent Mail messages, whose X-Dex-Message-ID belongs to another call.
+	decoyCandidateIDs map[string]bool
+	// headerReadStatusCode answers every candidate header read with this status; zero answers 200.
+	headerReadStatusCode int
+	// keepsClientMessageID models a Gmail-compatible gateway that keeps Message-ID and drops X-Dex-Message-ID.
+	keepsClientMessageID bool
+	// sentCopyDexMessageID is the X-Dex-Message-ID of a Sent copy whose POST this fake never saw.
+	sentCopyDexMessageID string
 	// threadReadID answers a format=minimal read with this thread; empty answers 500.
-	threadReadID                                                       string
+	threadReadID string
+	// rejectedAccessToken answers every request that carries it with 401, like an expired token.
+	rejectedAccessToken                                                string
 	isSendHanging, isSearchHanging, isSourceReadHanging, hangFirstSend bool
 }
 
-// gmailSendFake is a Gmail API fake whose search matches only the exact documented rfc822msgid query.
+// gmailSendFake replaces Message-ID on send, like Gmail, and keeps the unsearchable X-Dex-Message-ID.
 type gmailSendFake struct {
 	*httptest.Server
-	behavior                                  sendFakeBehavior
-	release                                   chan struct{}
-	mutex                                     sync.Mutex
-	sends, searches, sourceReads, threadReads int
-	rfcMessageID, rejectedSearchText          string
-	rfcMessageIDs                             []string
+	t                                                      *testing.T
+	behavior                                               sendFakeBehavior
+	release                                                chan struct{}
+	mutex                                                  sync.Mutex
+	sends, searches, sourceReads, threadReads, headerReads int
+	rejectedTokenRequests                                  int
+	rfcMessageID, dexMessageID, rejectedSearchText         string
+	rfcMessageIDs                                          []string
+	searchQueries                                          []string
 }
 
 func newGmailSendFake(t *testing.T, behavior sendFakeBehavior) *gmailSendFake {
 	t.Helper()
-	fake := &gmailSendFake{behavior: behavior, release: make(chan struct{})}
+	fake := &gmailSendFake{t: t, behavior: behavior, release: make(chan struct{})}
 	fake.Server = httptest.NewServer(http.HandlerFunc(fake.serveHTTP))
 	t.Cleanup(fake.Close)
 	t.Cleanup(func() { close(fake.release) })
@@ -64,6 +81,13 @@ func newGmailSendFake(t *testing.T, behavior sendFakeBehavior) *gmailSendFake {
 }
 
 func (fake *gmailSendFake) serveHTTP(response http.ResponseWriter, request *http.Request) {
+	if fake.behavior.rejectedAccessToken != "" && request.Header.Get("Authorization") == "Bearer "+fake.behavior.rejectedAccessToken {
+		fake.mutex.Lock()
+		fake.rejectedTokenRequests++
+		fake.mutex.Unlock()
+		response.WriteHeader(http.StatusUnauthorized)
+		return
+	}
 	switch {
 	case request.Method == http.MethodGet && request.URL.Path == "/users/me/messages/source-1":
 		fake.mutex.Lock()
@@ -82,6 +106,9 @@ func (fake *gmailSendFake) serveHTTP(response http.ResponseWriter, request *http
 		fake.serveSend(response, request)
 	case request.Method == http.MethodGet && request.URL.Path == "/users/me/messages":
 		fake.serveSearch(response, request)
+	case request.Method == http.MethodGet && strings.HasPrefix(request.URL.Path, "/users/me/messages/") &&
+		request.URL.Query().Get("format") == "metadata":
+		fake.serveCandidateHeaders(response, request)
 	case request.Method == http.MethodGet && strings.HasPrefix(request.URL.Path, "/users/me/messages/"):
 		fake.mutex.Lock()
 		fake.threadReads++
@@ -116,6 +143,9 @@ func (fake *gmailSendFake) serveSend(response http.ResponseWriter, request *http
 			fake.rfcMessageID = strings.TrimSuffix(strings.TrimPrefix(value, "<"), ">")
 			fake.rfcMessageIDs = append(fake.rfcMessageIDs, fake.rfcMessageID)
 		}
+		if value, isDexMessageID := strings.CutPrefix(line, "X-Dex-Message-ID: "); isDexMessageID {
+			fake.dexMessageID = value
+		}
 	}
 	fake.mutex.Unlock()
 	switch {
@@ -134,9 +164,11 @@ func (fake *gmailSendFake) serveSearch(response http.ResponseWriter, request *ht
 	fake.mutex.Lock()
 	fake.searches++
 	searchNumber := fake.searches
-	expectedQuery := "in:sent rfc822msgid:" + fake.rfcMessageID
 	query := request.URL.Query().Get("q")
-	if (fake.rfcMessageID != "" && query != expectedQuery) || !strings.HasPrefix(query, "in:sent rfc822msgid:") || !strings.HasSuffix(query, "@dex.superdurable.dev") || request.URL.Query().Get("maxResults") != "1" || request.URL.Query().Get("includeSpamTrash") != "true" {
+	fake.searchQueries = append(fake.searchQueries, query)
+	isExpectedQuery := query == "in:sent newer_than:2d" || query == "in:sent newer_than:2d to:customer@example.com" ||
+		query == "in:sent newer_than:2d to:sender@example.com"
+	if !isExpectedQuery || request.URL.Query().Get("maxResults") != "25" || request.URL.Query().Get("includeSpamTrash") != "true" {
 		fake.rejectedSearchText = request.URL.RawQuery
 		fake.mutex.Unlock()
 		response.WriteHeader(http.StatusBadRequest)
@@ -151,11 +183,92 @@ func (fake *gmailSendFake) serveSearch(response http.ResponseWriter, request *ht
 		fake.hang(request)
 		return
 	}
-	if fake.behavior.searchMatch == "" || (fake.behavior.matchFromSearch > 0 && searchNumber < fake.behavior.matchFromSearch) {
+	match := fake.behavior.searchMatch
+	if queryMatch, isListed := fake.behavior.searchMatchByQuery[query]; isListed {
+		match = queryMatch
+	}
+	if match == "" || (fake.behavior.matchFromSearch > 0 && searchNumber < fake.behavior.matchFromSearch) {
 		_, _ = response.Write([]byte(`{"resultSizeEstimate":0}`))
 		return
 	}
-	_, _ = response.Write([]byte(`{"messages":[` + fake.behavior.searchMatch + `]}`))
+	_, _ = response.Write([]byte(`{"messages":[` + match + `]}`))
+}
+
+// serveCandidateHeaders answers a format=metadata read the way Gmail stores an API-sent message.
+func (fake *gmailSendFake) serveCandidateHeaders(response http.ResponseWriter, request *http.Request) {
+	messageID := strings.TrimPrefix(request.URL.Path, "/users/me/messages/")
+	query := request.URL.Query()
+	fake.mutex.Lock()
+	fake.headerReads++
+	behavior := fake.behavior
+	dexMessageID := fake.dexMessageID
+	fake.mutex.Unlock()
+	if strings.Join(query["metadataHeaders"], ",") != "Message-ID,X-Dex-Message-ID" {
+		fake.t.Errorf("candidate header read requested %q", request.URL.RawQuery)
+		response.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	if behavior.headerReadStatusCode != 0 {
+		response.WriteHeader(behavior.headerReadStatusCode)
+		return
+	}
+	if dexMessageID == "" {
+		dexMessageID = behavior.sentCopyDexMessageID
+	}
+	if dexMessageID == "" && !behavior.decoyCandidateIDs[messageID] {
+		fake.t.Errorf("candidate %s was read before the fake knew the connector's X-Dex-Message-ID", messageID)
+	}
+	headers := []map[string]string{{"name": "Message-Id", "value": "<CAGmail" + messageID + "@mail.gmail.com>"}}
+	switch {
+	case behavior.decoyCandidateIDs[messageID]:
+		headers = append(headers, map[string]string{"name": "X-Dex-Message-ID", "value": "<other-call@dex.superdurable.dev>"})
+	case behavior.keepsClientMessageID:
+		headers = []map[string]string{{"name": "Message-ID", "value": dexMessageID}}
+	default:
+		headers = append(headers, map[string]string{"name": "X-Dex-Message-ID", "value": dexMessageID})
+	}
+	threadID := "thread-1"
+	listedCandidates := behavior.searchMatch
+	for _, queryMatch := range behavior.searchMatchByQuery {
+		listedCandidates += "}," + queryMatch
+	}
+	for _, candidate := range strings.Split(listedCandidates, "},") {
+		if strings.Contains(candidate, `"id":"`+messageID+`"`) {
+			if _, value, hasThread := strings.Cut(candidate, `"threadId":"`); hasThread {
+				threadID, _, _ = strings.Cut(value, `"`)
+			}
+		}
+	}
+	contents, err := json.Marshal(map[string]any{"id": messageID, "threadId": threadID, "labelIds": []string{"SENT"},
+		"payload": map[string]any{"mimeType": "text/plain", "headers": headers}})
+	if err != nil {
+		panic(err)
+	}
+	_, _ = response.Write(contents)
+}
+
+func (fake *gmailSendFake) setSentCopyDexMessageID(dexMessageID string) {
+	fake.mutex.Lock()
+	defer fake.mutex.Unlock()
+	fake.behavior.sentCopyDexMessageID = dexMessageID
+}
+
+func (fake *gmailSendFake) headerReadCount() int {
+	fake.mutex.Lock()
+	defer fake.mutex.Unlock()
+	return fake.headerReads
+}
+
+func (fake *gmailSendFake) rejectedTokenRequestCount() int {
+	fake.mutex.Lock()
+	defer fake.mutex.Unlock()
+	return fake.rejectedTokenRequests
+}
+
+func (fake *gmailSendFake) queries() []string {
+	fake.mutex.Lock()
+	defer fake.mutex.Unlock()
+	return append([]string(nil), fake.searchQueries...)
 }
 
 func (fake *gmailSendFake) hang(request *http.Request) {
@@ -221,6 +334,17 @@ func callIDWithoutProviderRequest(t *testing.T, ctx dex.Context, client *gmail.C
 	return result.Receipt.CallID
 }
 
+// expectedDexMessageID repeats the connector's run-specific X-Dex-Message-ID derivation for a Sent
+// copy that an earlier, unobserved attempt posted.
+func expectedDexMessageID(t *testing.T, stepContext *gmailDexContext, client *gmail.Client, isReply bool) string {
+	t.Helper()
+	sameStep := &gmailDexContext{Context: context.Background(), step: stepContext.step, runID: stepContext.runID, flowStartedAt: stepContext.flowStartedAt}
+	callID := callIDWithoutProviderRequest(t, sameStep, client, isReply)
+	runIdentity := stepContext.RunID() + "\x00" + strconv.FormatInt(stepContext.FlowStartedAt().Unix(), 10)
+	digest := sha256.Sum256([]byte(string(callID) + "\x00" + runIdentity))
+	return "<" + hex.EncodeToString(digest[:]) + "@dex.superdurable.dev>"
+}
+
 func newGmailClientWithHTTPClient(t *testing.T, endpoint string, httpClient *http.Client) *gmail.Client {
 	t.Helper()
 	client, err := gmail.New(gmail.Config{Endpoint: endpoint}, sdkgo.StaticCredentialProvider[gmail.Credentials]{
@@ -244,6 +368,14 @@ func sendBranch(isReply bool, sendBranch sdkgo.BranchID, replyBranch sdkgo.Branc
 		return replyBranch
 	}
 	return sendBranch
+}
+
+// laterAttemptPreSendSearches counts a later attempt's searches before its POST; a reply searches twice.
+func laterAttemptPreSendSearches(isReply bool) int {
+	if isReply {
+		return 2
+	}
+	return 1
 }
 
 func forSendAndReply(t *testing.T, run func(t *testing.T, isReply bool)) {
@@ -344,7 +476,7 @@ func TestGmailAmbiguousWritesSearchSentMail(t *testing.T) {
 				fake := newGmailSendFake(t, behavior)
 				result := runGmailSendAttempt(newGmailDexContext(t.Name()), newGmailClient(t, fake.URL), isReply)
 				sends, searches, _, rejectedSearch := fake.counts()
-				require.Empty(t, rejectedSearch, "the search must use the exact documented rfc822msgid query")
+				require.Empty(t, rejectedSearch, "the search must list recent Sent Mail candidates")
 				require.Equal(t, 1, sends)
 				if test.isFound {
 					require.Equal(t, 1, searches)
@@ -535,7 +667,7 @@ func TestGmailServiceUnavailableSearchMissResendsWithTheSameMessageID(t *testing
 		require.Equal(t, "sent-2", second.value.MessageID)
 		sends, searches, _, _ := fake.counts()
 		require.Equal(t, 2, sends)
-		require.Equal(t, 5, searches)
+		require.Equal(t, 4+laterAttemptPreSendSearches(isReply), searches)
 		messageIDs := fake.messageIDs()
 		require.Len(t, messageIDs, 2)
 		require.Equal(t, messageIDs[0], messageIDs[1])
@@ -573,8 +705,8 @@ func TestGmailUnconfirmedSendResendsBelowTheCapThenSelectsUncertain(t *testing.T
 			}
 			sends, searches, _, _ := fake.counts()
 			require.Equal(t, attempt, sends)
-			// Attempt one polls four times; later attempts search once before the POST, then poll.
-			require.Equal(t, 5*attempt-1, searches)
+			// Attempt one polls four times; later attempts search before the POST, then poll.
+			require.Equal(t, 4+(attempt-1)*(laterAttemptPreSendSearches(isReply)+4), searches)
 			stepContext.AdvanceAttempt()
 			marker := readPersistedMarker(t, stepContext)
 			require.Equal(t, singledispatch.StateClaimed, marker.State)
@@ -585,7 +717,8 @@ func TestGmailUnconfirmedSendResendsBelowTheCapThenSelectsUncertain(t *testing.T
 		require.Contains(t, atCap.failure.Message, "no further")
 		sends, searches, _, _ := fake.counts()
 		require.Equal(t, maxSends, sends)
-		require.Equal(t, 5*maxSends, searches)
+		// At the cap, a reply's search before its source read decides.
+		require.Equal(t, 4+(maxSends-1)*(laterAttemptPreSendSearches(isReply)+4)+1, searches)
 		if isReply {
 			require.Equal(t, maxSends, fake.sourceReadCount())
 		}
@@ -600,10 +733,11 @@ func TestGmailUnconfirmedSendResendsBelowTheCapThenSelectsUncertain(t *testing.T
 // TestGmailFinalSendConfirmedByReadBackIsSent selects sent when Sent Mail confirms the send the cap allows last.
 func TestGmailFinalSendConfirmedByReadBackIsSent(t *testing.T) {
 	forSendAndReply(t, func(t *testing.T, isReply bool) {
-		// Attempts one and two search nine times; attempt three misses before its POST, then matches.
+		// Attempts one and two poll twice; attempt three misses before its POST, then matches.
+		firstMatchingSearch := 9 + 2*laterAttemptPreSendSearches(isReply)
 		fake := newGmailSendFake(t, sendFakeBehavior{
 			answerSend:  writeGmailSendStatus(http.StatusInternalServerError),
-			searchMatch: `{"id":"sent-3","threadId":"thread-1"}`, matchFromSearch: 11,
+			searchMatch: `{"id":"sent-3","threadId":"thread-1"}`, matchFromSearch: firstMatchingSearch,
 		})
 		client := newGmailClient(t, fake.URL)
 		stepContext := singledispatchtest.NewContext("gmail-fence-test", t.Name())
@@ -618,7 +752,7 @@ func TestGmailFinalSendConfirmedByReadBackIsSent(t *testing.T) {
 		require.Equal(t, "sent-3", final.value.MessageID)
 		sends, searches, _, _ := fake.counts()
 		require.Equal(t, 3, sends)
-		require.Equal(t, 11, searches)
+		require.Equal(t, firstMatchingSearch, searches)
 	})
 }
 
@@ -742,7 +876,7 @@ func TestGmailUnprovenRefusalOnFirstSendRetriesUnknown(t *testing.T) {
 				require.Equal(t, sendBranch(isReply, gmail.SendMessageBranchSent, gmail.ReplyToMessageBranchSent), second.branch)
 				sends, searches, _, _ := fake.counts()
 				require.Equal(t, 2, sends)
-				require.Equal(t, 1, searches)
+				require.Equal(t, laterAttemptPreSendSearches(isReply), searches)
 			})
 		})
 	}
@@ -857,7 +991,7 @@ func TestGmailRateLimitCheckpointPermitsOneLaterPost(t *testing.T) {
 		require.Equal(t, sendBranch(isReply, gmail.SendMessageBranchSent, gmail.ReplyToMessageBranchSent), second.branch)
 		sends, searches, _, _ := fake.counts()
 		require.Equal(t, 2, sends)
-		require.Equal(t, 1, searches)
+		require.Equal(t, laterAttemptPreSendSearches(isReply), searches)
 	})
 }
 
@@ -871,7 +1005,7 @@ func TestGmailSecondAttemptWithoutCheckpointSearchesThenResends(t *testing.T) {
 		require.Equal(t, sendBranch(isReply, gmail.SendMessageBranchSent, gmail.ReplyToMessageBranchSent), result.branch)
 		sends, searches, threadReads, _ := fake.counts()
 		require.Equal(t, 1, sends)
-		require.Equal(t, 1, searches)
+		require.Equal(t, laterAttemptPreSendSearches(isReply), searches)
 		require.Zero(t, threadReads)
 		if isReply {
 			require.Equal(t, 1, fake.sourceReadCount())
@@ -1062,7 +1196,7 @@ func TestGmailInconclusiveSearchResendsWithTheSameMessageID(t *testing.T) {
 		require.ErrorAs(t, second.err, &retry)
 		sends, searches, _, _ := fake.counts()
 		require.Equal(t, 2, sends)
-		require.Equal(t, 9, searches)
+		require.Equal(t, 8+laterAttemptPreSendSearches(isReply), searches)
 		messageIDs := fake.messageIDs()
 		require.Len(t, messageIDs, 2)
 		require.Equal(t, messageIDs[0], messageIDs[1])
@@ -1091,10 +1225,13 @@ func TestGmailPreSendMatchSkipsPost(t *testing.T) {
 func TestGmailReplyPreSendMatchPrecedesSourceRead(t *testing.T) {
 	for _, sourceStatus := range []int{http.StatusNotFound, http.StatusForbidden} {
 		t.Run(http.StatusText(sourceStatus), func(t *testing.T) {
+			stepContext := &gmailDexContext{Context: context.Background(), step: t.Name(), attempt: 2}
 			fake := newGmailSendFake(t, sendFakeBehavior{
 				searchMatch: `{"id":"sent-reply","threadId":"sent-thread"}`, sourceReadStatusCode: sourceStatus,
 			})
-			result := runGmailSendAttempt(&gmailDexContext{Context: context.Background(), step: t.Name(), attempt: 2}, newGmailClient(t, fake.URL), true)
+			client := newGmailClient(t, fake.URL)
+			fake.setSentCopyDexMessageID(expectedDexMessageID(t, stepContext, client, true))
+			result := runGmailSendAttempt(stepContext, client, true)
 			require.NoError(t, result.err)
 			require.Equal(t, gmail.ReplyToMessageBranchSent, result.branch)
 			require.Equal(t, "sent-reply", result.value.MessageID)
