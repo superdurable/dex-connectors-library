@@ -23,6 +23,38 @@ var stepCallOccurrences = stepattempt.NewRegistry(func(dex.Context) *callOccurre
 	return &callOccurrences{counts: map[OperationRef]int{}, runningMutations: map[OperationRef]bool{}}
 })
 
+// NextCallID returns the Call ID of the next call of operation in ctx's Step attempt: the
+// Call.ID that RunQuery, RunMutation, a Connector Step, or an agent tool gives that call when
+// it starts. The first call of an operation in a Step attempt gets the four-field derivation
+// of the connector contract, and the n-th call mixes in n; see Call.ID. NextCallID counts
+// nothing, so it never changes the ID of a later call and returns the same ID until that
+// call starts.
+//
+// An application Mutation that runs its own checks before a fenced connector write names
+// the write with NextCallID and passes the ID to singledispatch.MaximumPriorSends. Call it
+// before the wrapped call starts: once it has started, NextCallID names the call after it,
+// and the result's Receipt.CallID names the call that ran. Because the count restarts each
+// attempt, the ID names the same call in every attempt only when the Step makes its
+// connector calls in a deterministic order. It is safe for concurrent callers, but a call
+// of operation that starts concurrently can take the returned ID.
+//
+// It returns an error when ctx is nil, ctx has no Flow ID or no Step execution ID, as in an
+// RPC handler, or operation is invalid.
+func NextCallID(ctx dex.Context, operation OperationRef) (CallID, error) {
+	if err := validateOperationScope(ctx, operation); err != nil {
+		return "", err
+	}
+	return deriveOccurrenceCallID(ctx.FlowID(), ctx.StepExecutionID(), operation, peekCallOccurrence(ctx, operation)), nil
+}
+
+// peekCallOccurrence returns the ordinal the next call of operation in ctx's attempt gets.
+func peekCallOccurrence(ctx dex.Context, operation OperationRef) int {
+	occurrences := stepCallOccurrences.For(ctx)
+	occurrences.mu.Lock()
+	defer occurrences.mu.Unlock()
+	return occurrences.counts[operation] + 1
+}
+
 // nextCallOccurrence returns the one-based ordinal of this call of operation in ctx's attempt.
 func nextCallOccurrence(ctx dex.Context, operation OperationRef) int {
 	occurrences := stepCallOccurrences.For(ctx)

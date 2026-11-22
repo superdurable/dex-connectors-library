@@ -512,6 +512,16 @@ func newMutationCall(ctx dex.Context, operation OperationRef, connection Connect
 }
 
 func validateCallScope(ctx dex.Context, operation OperationRef, connection ConnectionRef) error {
+	if err := validateOperationScope(ctx, operation); err != nil {
+		return err
+	}
+	if err := connection.Validate(); err != nil {
+		return fmt.Errorf("invalid connector connection: %w", err)
+	}
+	return nil
+}
+
+func validateOperationScope(ctx dex.Context, operation OperationRef) error {
 	if ctx == nil {
 		return fmt.Errorf("Dex context is required")
 	}
@@ -523,9 +533,6 @@ func validateCallScope(ctx dex.Context, operation OperationRef, connection Conne
 	}
 	if err := operation.Validate(); err != nil {
 		return fmt.Errorf("invalid connector operation: %w", err)
-	}
-	if err := connection.Validate(); err != nil {
-		return fmt.Errorf("invalid connector connection: %w", err)
 	}
 	return nil
 }

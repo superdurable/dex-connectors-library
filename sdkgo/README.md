@@ -699,6 +699,58 @@ The heartbeat format is internal to the connector SDKs and may change between
 releases. Hosts, including agent hosts, must not parse it; classify a result
 by the connector's selected branch. Connector tests seed a prior attempt's
 checkpoint with `singledispatchtest.Context.SetPersistedMarkers`.
+
+An application Mutation that runs its own checks before it calls a fenced
+connector write, such as a tool that reads an external API and then sends a
+Gmail message, can read how many sends of that write earlier attempts may have
+made. `singledispatch.MaximumPriorSends(ctx, callID)` returns the upper bound
+that `Decide` of the Fence for that Call ID computes in this attempt,
+`Decision.MaximumPriorSends`, without a Fence and without parsing the
+checkpoint. `sdkgo.NextCallID(ctx, operation)` names the write: it returns the
+Call ID that the next call of the operation in the Step attempt gets, and it
+counts nothing, so call it before the write starts. When the application's
+check refuses on a retry whose bound is above zero, an earlier attempt may
+already have sent, so the Mutation selects `uncertain`, which an agent host
+reads as unknown. A definite refusal would let the caller start a new call
+with a new Call ID and an empty fence, which sends again. When the read
+returns an error, the bound is unknown, so return Retry. The read records no
+heartbeat and does not count sends of the current attempt.
+
+From [`singledispatch/prior_sends_example_test.go`](singledispatch/prior_sends_example_test.go):
+
+```go
+func (mutation notifySubscriberMutation) Invoke(call sdkgo.Call, input SendNoteInput) sdkgo.MutationAttempt[NotifySubscriberOutput] {
+	sendCallID, err := sdkgo.NextCallID(call.Context, sendNoteDefinition.Operation)
+	if err != nil {
+		failure := sdkgo.Failure{Kind: sdkgo.FailureLocalDefect, Provider: "example-app", Operation: "notifySubscriber", Message: "the note call cannot be named"}
+		return sdkgo.NewMutationBranch(sdkgo.DefectBranchID, NotifySubscriberOutput{}, &failure, sdkgo.Receipt{})
+	}
+	if !mutation.subscribers[input.Recipient] {
+		failure := sdkgo.Failure{Kind: sdkgo.FailureConflict, Provider: "example-app", Operation: "notifySubscriber", Message: "the recipient is not subscribed"}
+		priorSends, err := singledispatch.MaximumPriorSends(call.Context, sendCallID)
+		if err != nil {
+			return sdkgo.NewMutationRetry[NotifySubscriberOutput](failure, 0)
+		}
+		if priorSends > 0 {
+			// An earlier attempt may have sent the note; a definite refusal would invite a duplicate.
+			return sdkgo.NewMutationUncertain(NotifySubscriberOutput{}, failure, sdkgo.Receipt{})
+		}
+		return sdkgo.NewMutationBranch("unsubscribed", NotifySubscriberOutput{}, &failure, sdkgo.Receipt{})
+	}
+	connection := sdkgo.ConnectionRef{Provider: "example-notes", Name: "work"}
+	result, err := sdkgo.RunMutation(call.Context, mutation.sendNote, connection, input)
+	var retryErr *sdkgo.RetryError
+	if errors.As(err, &retryErr) {
+		return sdkgo.NewMutationRetry[NotifySubscriberOutput](retryErr.Failure, 0)
+	}
+	if err != nil || result.Branch != "sent" {
+		failure := sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "example-app", Operation: "notifySubscriber", Message: "the note may have been sent"}
+		return sdkgo.NewMutationUncertain(NotifySubscriberOutput{}, failure, sdkgo.Receipt{})
+	}
+	return sdkgo.NewMutationBranch("notified", NotifySubscriberOutput{NoteID: result.Value}, nil, sdkgo.Receipt{})
+}
+```
+
 The initial budget is the smaller of Execute timeout and remaining Step time.
 The request context ends after 7/12 of that budget by default, or at the
 fraction selected with `WithWriteWindow` (at most 5/6). A send is refused when

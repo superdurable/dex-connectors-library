@@ -535,6 +535,20 @@ cap, or for a marker from the current or a later attempt, the decision stays
 Fence takes the cap per call, a marker's count stays valid when an application
 changes the cap.
 
+An application Mutation may run its own checks before it calls a fenced
+connector write, such as a tool that reads an external API and then sends an
+email. If such a check refuses on a retry after a possible send, a definite
+refusal tells the caller that nothing was sent. The caller may then start a new
+call, whose new Call ID has an empty fence, and send a second time. So the
+Mutation reads the same bound without parsing the checkpoint: in Go,
+`sdkgo.NextCallID` names the Call ID of the next call of an operation in the
+Step attempt without counting it, and `singledispatch.MaximumPriorSends`
+returns the bound that `Decide` of that Call ID's Fence computes in the
+current attempt. A refusal after a bound above zero selects `uncertain`, and a
+read error returns Retry. The runnable
+[`prior_sends_example_test.go`](../sdkgo/singledispatch/prior_sends_example_test.go)
+shows this wrapper.
+
 `StepOptionsOverride` overlays non-zero Execute fields and can add
 `dex.ProceedToOnExecuteFailure`. That recovery target accepts the original
 `STEP_IN`, whereas Connector branch targets accept the factory output
