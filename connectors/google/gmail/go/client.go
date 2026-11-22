@@ -733,7 +733,7 @@ func validateSendInput(input SendMessageInput, sender string) ([]string, *sdkgo.
 			return nil, gmailFailurePointer(sdkgo.FailureValidation, "recipient email is duplicated")
 		}
 		seen[canonical] = true
-		recipients[index] = address.String()
+		recipients[index] = formatMailbox(address)
 	}
 	return recipients, nil
 }
@@ -747,6 +747,15 @@ func parseMailbox(value string) (*mail.Address, error) {
 		return nil, fmt.Errorf("invalid mailbox")
 	}
 	return address, nil
+}
+
+// formatMailbox B-encodes a non-ASCII name with a backslash, which mail.Address.String leaves literal and ParseAddress rejects.
+func formatMailbox(address *mail.Address) string {
+	formatted := address.String()
+	if !strings.HasPrefix(formatted, "=?utf-8?q?") || !strings.Contains(address.Name, `\`) {
+		return formatted
+	}
+	return mime.BEncoding.Encode("utf-8", address.Name) + " " + (&mail.Address{Address: address.Address}).String()
 }
 
 func buildMIMEMessage(call sdkgo.Call, sender string, recipients []string, input SendMessageInput) ([]byte, error) {

@@ -90,9 +90,8 @@ function decodeRFC2047Header(value: string): string {
 
 function splitAddressHeader(value: string): string[] {
   if (!value || /[\r\n]/.test(value)) return [];
-  const addresses = value.split(/,\s*(?=(?:[^"]*"[^"]*")*[^"]*$)/).map(address => address.trim());
   const canonical: string[] = [];
-  for (const address of addresses) {
+  for (const address of splitAddressList(value)) {
     const parsed = parseMailbox(address);
     if (!parsed) return [];
     canonical.push(formatMailbox(parsed));
@@ -100,28 +99,164 @@ function splitAddressHeader(value: string): string[] {
   return canonical;
 }
 
-/** Parse one safe mailbox, rejecting ambiguous display-name separators. */
+// A comma ends a mailbox unless it is inside a quoted string, where a backslash escapes the next character.
+function splitAddressList(value: string): string[] {
+  const addresses: string[] = [];
+  let isQuoted = false;
+  let start = 0;
+  for (let index = 0; index < value.length; index++) {
+    const character = value[index];
+    if (isQuoted && character === '\\') index++;
+    else if (character === '"') isQuoted = !isQuoted;
+    else if (character === ',' && !isQuoted) {
+      addresses.push(value.slice(start, index).trim());
+      start = index + 1;
+    }
+  }
+  addresses.push(value.slice(start).trim());
+  return addresses;
+}
+
+/**
+ * Parse one safe mailbox, rejecting ambiguous display-name separators.
+ *
+ * A quoted display name is unescaped. An unquoted one is decoded as Go's
+ * `net/mail` does: RFC 2047 encoded words are decoded, adjacent encoded words
+ * are joined without the space between them, and other words are joined by one
+ * space. Valid `utf-8`, `iso-8859-1`, and `us-ascii` words decode as in Go,
+ * but invalid bytes in a `utf-8` word become U+FFFD, where Go keeps the raw
+ * bytes. Another charset decodes with `TextDecoder`, and a word that cannot be
+ * decoded stays literal. A display name made only of empty encoded words reads
+ * as no name, as in Go 1.24; Go 1.26 and later reject that mailbox.
+ */
 export function parseMailbox(value: string): { display: string; address: string } | undefined {
-  if (Array.from(value).some(character => character.charCodeAt(0) < 32 || character.charCodeAt(0) === 127)) return undefined;
+  if (Array.from(value).some(character => (character < ' ' && character !== '\t') || character === '\x7F')) return undefined;
   const trimmed = value.trim();
   const angle = /^(.*?)<([^<>]+)>$/.exec(trimmed);
   if (!angle && /[<>]/.test(trimmed)) return undefined;
   const address = angle?.[2]?.trim() ?? trimmed;
   if (!/^[^<>\s,;@]+@[^<>\s,;@]+$/.test(address)) return undefined;
-  let display = angle?.[1]?.trim() ?? '';
+  const display = angle?.[1]?.trim() ?? '';
   if (display.startsWith('"')) {
     if (!/^"(?:[^"\\]|\\.)*"$/.test(display)) return undefined;
-    display = display.slice(1, -1).replace(/\\(.)/g, '$1');
-  } else if (/[,:;<>@"\\()[\]]/.test(display)) return undefined;
-  return { display, address };
+    return { display: display.slice(1, -1).replace(/\\(.)/g, '$1'), address };
+  }
+  if (/[,:;<>@"\\()[\]]/.test(display)) return undefined;
+  return { display: decodeDisplayNamePhrase(display), address };
+}
+
+function decodeDisplayNamePhrase(phrase: string): string {
+  const words: string[] = [];
+  let encodedRun = '';
+  for (const word of phrase.split(/[ \t]+/)) {
+    if (!word) continue;
+    const decoded = decodeEncodedWord(word);
+    if (decoded !== undefined) {
+      encodedRun += decoded;
+      continue;
+    }
+    if (encodedRun) words.push(encodedRun);
+    encodedRun = '';
+    words.push(word);
+  }
+  if (encodedRun) words.push(encodedRun);
+  return words.join(' ');
+}
+
+const EncodedWordPattern = /^=\?([^?]+)\?([BbQq])\?([^?]*)\?=$/;
+const PaddedBase64Pattern = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
+
+// Go's mime.WordDecoder rules; undefined leaves the word literal.
+function decodeEncodedWord(word: string): string | undefined {
+  const match = EncodedWordPattern.exec(word);
+  if (!match) return undefined;
+  const [, charset = '', encoding = '', text = ''] = match;
+  const bytes = encoding.toUpperCase() === 'B' ? decodeBEncodedText(text) : decodeQEncodedText(text);
+  return bytes && decodeCharsetBytes(charset, bytes);
+}
+
+function decodeBEncodedText(text: string): Buffer | undefined {
+  return PaddedBase64Pattern.test(text) ? Buffer.from(text, 'base64') : undefined;
+}
+
+function decodeQEncodedText(text: string): Buffer | undefined {
+  const bytes: number[] = [];
+  for (let index = 0; index < text.length; index++) {
+    const character = text[index] ?? '';
+    if (character === '_') bytes.push(0x20);
+    else if (character === '=') {
+      const hex = text.slice(index + 1, index + 3);
+      if (!/^[0-9A-Fa-f]{2}$/.test(hex)) return undefined;
+      bytes.push(parseInt(hex, 16));
+      index += 2;
+    } else if (character >= ' ' && character <= '~') bytes.push(character.charCodeAt(0));
+    else return undefined;
+  }
+  return Buffer.from(bytes);
+}
+
+function decodeCharsetBytes(charset: string, bytes: Buffer): string | undefined {
+  switch (charset.toLowerCase()) {
+    case 'utf-8': return bytes.toString('utf8');
+    case 'iso-8859-1': return bytes.toString('latin1');
+    case 'us-ascii': return Array.from(bytes, byte => (byte < 0x80 ? String.fromCharCode(byte) : '\uFFFD')).join('');
+    default:
+      // Go fails other charsets; TextDecoder throws for an unknown label or invalid bytes.
+      try { return new TextDecoder(charset, { fatal: true }).decode(bytes); } catch { return undefined; }
+  }
 }
 
 function formatMailbox(mailbox: { display: string; address: string }): string {
-  if (!mailbox.display) return `<${mailbox.address}>`;
-  const display = /[^\x20-\x7E]/.test(mailbox.display)
-    ? encodeSubject(mailbox.display).replace('=?UTF-8?Q?', '=?utf-8?q?')
-    : `"${mailbox.display.replaceAll('\\', '\\\\').replaceAll('"', '\\"')}"`;
-  return `${display} <${mailbox.address}>`;
+  return mailbox.display ? `${formatDisplayName(mailbox.display)} <${mailbox.address}>` : `<${mailbox.address}>`;
+}
+
+// Go's mail.Address.String keeps printable ASCII, space, and tab in a quoted string.
+const QuotableDisplayName = /^[\t\x20-\x7E]*$/;
+// RFC 2047 5(3) forbids these in a Q-encoded phrase, so Go B-encodes; Go misses the backslash.
+const BEncodedDisplayNameCharacter = /["#$%&'(),.:;<>@[\\\]^`{|}~]/;
+// An encoded word has at most 75 characters, 63 of them between "=?utf-8?q?" and "?=".
+const MaxEncodedWordTextLength = 63;
+// 45 bytes fill 60 Base64 characters, the most that fit in 63.
+const MaxBEncodedWordBytes = 45;
+
+function formatDisplayName(display: string): string {
+  if (QuotableDisplayName.test(display)) return `"${display.replace(/["\\]/g, '\\$&')}"`;
+  return BEncodedDisplayNameCharacter.test(display) ? encodeBWords(display) : encodeQWords(display);
+}
+
+// Go's mime.QEncoding splitting: never inside a character, and only where the next one would pass 63.
+function encodeQWords(display: string): string {
+  const words: string[] = [];
+  let word = '';
+  for (const character of display) {
+    const isLiteral = character >= ' ' && character <= '~' && !'=?_'.includes(character);
+    const encoded = isLiteral
+      ? character.replace(' ', '_')
+      : Array.from(Buffer.from(character, 'utf8'), byte => `=${byte.toString(16).toUpperCase().padStart(2, '0')}`).join('');
+    if (word.length + encoded.length > MaxEncodedWordTextLength) {
+      words.push(word);
+      word = '';
+    }
+    word += encoded;
+  }
+  words.push(word);
+  return words.map(text => `=?utf-8?q?${text}?=`).join(' ');
+}
+
+// Go's mime.BEncoding splitting: whole characters, at most 45 bytes per word.
+function encodeBWords(display: string): string {
+  const words: Buffer[][] = [[]];
+  let wordByteLength = 0;
+  for (const character of display) {
+    const bytes = Buffer.from(character, 'utf8');
+    if (wordByteLength + bytes.length > MaxBEncodedWordBytes) {
+      words.push([]);
+      wordByteLength = 0;
+    }
+    words.at(-1)?.push(bytes);
+    wordByteLength += bytes.length;
+  }
+  return words.map(chunks => `=?utf-8?b?${Buffer.concat(chunks).toString('base64')}?=`).join(' ');
 }
 
 /** Return the safe reply target, preferring Reply-To. */

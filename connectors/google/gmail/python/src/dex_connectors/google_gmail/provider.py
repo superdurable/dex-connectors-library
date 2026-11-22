@@ -14,7 +14,6 @@ from email import policy
 from email.header import decode_header, make_header
 from email.parser import Parser
 from email.quoprimime import header_encode
-from email.utils import getaddresses, parseaddr
 from urllib.parse import quote, urlencode
 
 import httpx
@@ -37,6 +36,13 @@ from dex_connectors.sdk.providerhttp import (
     validate_base_url,
 )
 
+from ._mail_address import (
+    MailAddress,
+    MailAddressSyntaxError,
+    format_mail_address,
+    parse_mail_address,
+    parse_mail_address_list,
+)
 from .models import Config, Credentials, Message, ReplyToMessageInput, SendMessageInput
 from .project_credentials import StoredCredentialMaterialError
 from .refresh import CredentialRefreshDriver as GmailCredentialRefreshDriver
@@ -153,12 +159,7 @@ def decode_message(resource: object) -> Message:
             visit(child)
 
     visit(payload)
-    address_list = getaddresses([header_values.get("to", "")])
-    to = [
-        _format_go_mailbox(f"{name} <{address}>" if name else address)
-        for name, address in address_list
-        if address
-    ]
+    to = _decode_address_header(header_values.get("to", ""))
     try:
         subject = str(make_header(decode_header(header_values.get("subject", ""))))
     except (UnicodeError, LookupError):
@@ -200,15 +201,25 @@ def parse_mailbox(value: str) -> str:
     return str(address)
 
 
+def _parse_go_mailbox(value: str) -> MailAddress:
+    """Validate one mailbox as the Go connector's parseMailbox does."""
+    if "\r" in value or "\n" in value:
+        raise ValueError("mailbox contains a newline")
+    return parse_mail_address(value)
+
+
 def _format_go_mailbox(value: str) -> str:
-    """Format a validated mailbox like Go's mail.Address.String."""
-    name, address = parseaddr(value)
-    if not name:
-        return f"<{address}>"
-    if any(ord(character) < 32 or ord(character) > 126 for character in name):
-        return f"{header_encode(name.encode('utf-8'), charset='utf-8')} <{address}>"
-    escaped_name = name.replace("\\", "\\\\").replace('"', '\\"')
-    return f'"{escaped_name}" <{address}>'
+    """Validate one mailbox and format it as the Go connector sends it."""
+    return format_mail_address(_parse_go_mailbox(value))
+
+
+def _decode_address_header(value: str) -> list[str]:
+    """Format each mailbox of a To header like Go, or none when Go rejects the header."""
+    try:
+        mailboxes = parse_mail_address_list(value)
+    except MailAddressSyntaxError:
+        return []
+    return [format_mail_address(mailbox) for mailbox in mailboxes]
 
 
 def validate_send_input(input_value: SendMessageInput, sender: str) -> list[str]:
@@ -228,14 +239,18 @@ def validate_send_input(input_value: SendMessageInput, sender: str) -> list[str]
         raise ValueError("authorized primary email is invalid") from error
     if sender_address.lower() != sender.strip().lower():
         raise ValueError("authorized primary email is invalid")
-    try:
-        recipients = [parse_mailbox(value) for value in input_value.to]
-    except ValueError as error:
-        raise ValueError("recipient email is invalid") from error
-    canonical = [parseaddr(value)[1].lower() for value in recipients]
-    if len(set(canonical)) != len(canonical):
-        raise ValueError("recipient email is duplicated")
-    return [_format_go_mailbox(value) for value in recipients]
+    recipients: list[str] = []
+    canonical_addresses: set[str] = set()
+    for value in input_value.to:
+        try:
+            mailbox = _parse_go_mailbox(value)
+        except ValueError as error:
+            raise ValueError("recipient email is invalid") from error
+        if mailbox.address.lower() in canonical_addresses:
+            raise ValueError("recipient email is duplicated")
+        canonical_addresses.add(mailbox.address.lower())
+        recipients.append(format_mail_address(mailbox))
+    return recipients
 
 
 def rfc_message_id_address(call: Call, run_id: str | None, flow_started_at: datetime | None = None) -> str:
@@ -270,7 +285,13 @@ def _sent_mail_candidate_query(recipients: list[str]) -> str:
     query = "in:sent " + _SENT_MAIL_CANDIDATE_WINDOW
     if not recipients:
         return query
-    address = parseaddr(recipients[0])[1]
+    # Parse only the angle address, as Go does, so a quoted local part is unquoted.
+    mailbox = recipients[0]
+    mailbox = mailbox[mailbox.rfind("<"):] if "<" in mailbox else mailbox
+    try:
+        address = parse_mail_address(mailbox).address
+    except MailAddressSyntaxError:
+        return query
     if not _SEARCHABLE_RECIPIENT_ADDRESS.fullmatch(address):
         return query
     return query + " to:" + address

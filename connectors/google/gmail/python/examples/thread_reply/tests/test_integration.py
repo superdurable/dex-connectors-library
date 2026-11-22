@@ -3,6 +3,7 @@
 """Real Dex Worker and Client coverage for the Gmail read-and-reply Flow."""
 
 import asyncio
+import base64
 import json
 import os
 from collections.abc import Callable
@@ -71,6 +72,14 @@ async def _run_registered_flow(
         blob_cache.close()
 
 
+# A long name Go splits into three encoded words; the reply must not add spaces where they join.
+_SPLIT_ENCODED_SENDER = (
+    "=?utf-8?b?Wm/DqyDDhW5nc3Ryw7ZtICjDmHJlc3VuZCksIM6VzrvOu863zr3Ouc66zqwg?= "
+    "=?utf-8?b?JiDQmtC40YDQuNC70LvQuNGG0LA6IOS4reaWhyDwn46JIFBhcnR5IFBsYW5u?= "
+    "=?utf-8?b?aW5nIENvbW1pdHRlZSBvZiB0aGUgWWVhcg==?= <ada@example.com>"
+)
+
+
 def _source_response() -> httpx.Response:
     return httpx.Response(
         200,
@@ -80,7 +89,7 @@ def _source_response() -> httpx.Response:
             "internalDate": "1772615700000",
             "payload": {
                 "headers": [
-                    {"name": "From", "value": "Ada <ada@example.com>"},
+                    {"name": "From", "value": _SPLIT_ENCODED_SENDER},
                     {"name": "Message-ID", "value": "<source@example.com>"},
                     {"name": "Subject", "value": "Question"},
                 ]
@@ -111,6 +120,7 @@ async def _provider_flow(
 async def test_real_dex_retries_read_then_sends_one_threaded_reply(tmp_path: Path) -> None:
     """Dex retries the Query Step, then the Mutation Step confirms one reply."""
     requests: list[str] = []
+    posted: list[bytes] = []
 
     def respond(request: httpx.Request) -> httpx.Response:
         request_kind = request.url.params.get("format", "POST") if request.method == "GET" else "POST"
@@ -121,6 +131,7 @@ async def test_real_dex_retries_read_then_sends_one_threaded_reply(tmp_path: Pat
             return _source_response()
         payload = json.loads(request.content)
         assert payload["threadId"] == "thread-1"
+        posted.append(base64.urlsafe_b64decode(payload["raw"] + "=" * (-len(payload["raw"]) % 4)))
         return httpx.Response(200, json={"id": "reply-1", "threadId": "thread-1"})
 
     result = await _provider_flow(
@@ -129,6 +140,7 @@ async def test_real_dex_retries_read_then_sends_one_threaded_reply(tmp_path: Pat
     assert result.status == dex.FlowStatus.COMPLETED
     assert result.single_output(ThreadReplyOutput) == ThreadReplyOutput("thread-1", "reply-1")
     assert requests == ["full", "full", "metadata", "POST"]
+    assert f"\r\nTo: {_SPLIT_ENCODED_SENDER}\r\n".encode() in posted[0]
 
 
 @pytest.mark.asyncio

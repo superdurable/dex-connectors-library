@@ -1,10 +1,10 @@
 # Gmail Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/google/gmail/go@v0.29.1`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/google/gmail/go@v0.29.2`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/google/gmail`.
 
-## TypeScript (v0.5.1)
+## TypeScript (v0.5.2)
 
 Install `@superdurable/connector-google-gmail` with `@superdurable/dex`. The [TypeScript README](typescript/README.md) covers OAuth and Workspace connection setup, the `gmail-inbox` static connection name, the runnable Worker and Client examples, and real Dex tests. The TypeScript package implements `getMessage`, `sendMessage`, and `replyToMessage`, and from 0.3.0 the `messageReceived` and `replyReceived` Triggers at parity with Go: one ordered poller per connection, durable project inboxes, and roots delivered before replies. The [thread reply example](typescript/examples/thread-reply/README.md) mirrors the Go `thread-reply` example. Its manifest-derived npm marker lets Dex CLI render the examples as strict TypeScript FDG 2.0 graphs.
 
@@ -184,6 +184,70 @@ that read-back's remaining reads and every later request before the POST.
 Before these releases the read-back searched `rfc822msgid:`, which never
 matches the rewritten `Message-ID`, so a crash or lost answer after Gmail
 accepted a send was resent up to the send cap.
+
+A recipient's display name is written as Go's `mail.Address.String` writes it:
+printable ASCII as a quoted string, and any other name as RFC 2047 `utf-8`
+encoded words of at most 75 characters, split between characters. A name with a
+character that RFC 2047 forbids in an encoded phrase, such as `,`, `(`, `"`,
+`.`, `@`, or `'`, is B-encoded; any other name is Q-encoded. From Go v0.29.2 a
+non-ASCII name with a backslash is B-encoded too, because `mail.Address.String`
+leaves the backslash literal and `net/mail` then cannot parse the header. Before
+Python v0.5.2 and TypeScript v0.5.2 the ports wrote one unsplit Q-encoded word.
+TypeScript left those specials literal, so a name such as `Zoë (Ops), Inc` could
+read as two recipients; Python encoded them validly but differently from Go. For
+an address whose local part and domain are dot-atoms, written bare or after a
+display name of one quoted string or of plain and encoded words, the `To:`
+header, the `recipients` output, a reply's recipient, and the `getMessage` `to`
+list now match in all three languages, apart from the charset and Go version
+differences below. The read-back `to:` term still names only the address. Reading a header,
+the ports decode encoded words as `net/mail` does, dropping the space between
+adjacent encoded words. Go decodes only `utf-8`, `iso-8859-1`, and `us-ascii`.
+When a word in another charset is the last word of the name and not the first,
+Go drops it and keeps the earlier words; otherwise Go rejects the mailbox, with
+"charset not supported" when the word starts the name. Python and TypeScript
+accept all of these mailboxes: they decode any charset their platform knows and
+keep an unknown one as literal text, so `=?koi8-r?B?8NLJ18XU?= <a@example.com>`
+reads as `Привет` and `=?x-unknown?q?abc?= <a@example.com>` keeps its name as
+written. Go keeps invalid bytes of a `utf-8` encoded word, and the ports
+replace them with U+FFFD.
+
+From Python v0.5.2, recipients, reply targets, and `To` headers are parsed by a
+port of Go's `net/mail` parser, so Python accepts and rejects the mailboxes Go
+does, apart from the charset difference above and the Go version differences
+below. The charset difference also reaches the messageReceived and replyReceived
+sender filter: a From header that Go rejects for its charset still matches in
+Python. It reads groups, comments (a comment after a bare address becomes its
+display name), names that mix quoted and unquoted words, quoted local parts, and
+empty list entries. It rejects
+mailboxes such as `alice.@example.com`, an unclosed `<`, or
+`Alice @ Home <alice@example.com>`, which v0.5.1 sent to `Alice@Home`.
+`getMessage` omits `to` when the port rejects the header, where v0.5.1 returned
+the mailboxes it could read.
+The TypeScript parser reads only a bare address or a display name followed by
+`<address>`, so it rejects groups, comments, mixed names, and empty list
+entries. Its address check also differs from Go's: it accepts
+`a..b@example.com`, `alice.@example.com`, and a space before `>`, and it keeps
+the quotes of `"alice"@example.com`.
+
+Go's `net/mail` parser changed in Go 1.26 and Go 1.27, and the Go connector
+parses as the toolchain it is built with does. Go 1.24 is its `go.mod` minimum
+and CI's toolchain.
+
+- In a display name, Go 1.24 counts an empty encoded word as a word and skips a
+  comment after any word. Go 1.26 and later ignore empty encoded words and skip
+  a comment only after a plain or quoted word. So they reject a name made only
+  of empty encoded words, which some mailers write for a blank name, such as
+  `=?UTF-8?B??= <ada@example.com>`, and a leading encoded word followed by a
+  comment, such as `=?UTF-8?B?5byg5LiJ?= (Zhang San) <zhang@example.com>`. They
+  also drop the space Go 1.24 keeps beside an empty encoded word:
+  `=?utf-8?q??= Ops` reads as `" Ops"` in Go 1.24 and `"Ops"` later. Python
+  accepts both mailboxes, as Go 1.24 and Python v0.5.1 do, and drops the space,
+  as Go 1.26 does. TypeScript reads the blank name as no name, drops the space,
+  and rejects any comment.
+- Go 1.27 accepts a domain literal tagged `IPv6:`, such as `[IPv6:::1]`, and
+  rejects an untagged one that is not an IPv4 or IPv4-mapped address, such as
+  `[::1]`. Go 1.24 and 1.26 reject the tagged form and accept any untagged IP
+  address. Python follows Go 1.27, and TypeScript accepts both forms.
 
 Sends and replies are confirmed as follows:
 

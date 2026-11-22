@@ -2,17 +2,21 @@
 
 `dex-connector-google-gmail` provides typed Gmail reads, sends, and replies for
 Dex Python Flows. The package imports as `dex_connectors.google_gmail`.
-Version 0.5.1 includes `getMessage`, `sendMessage`, and `replyToMessage`, and
+Version 0.5.2 includes `getMessage`, `sendMessage`, and `replyToMessage`, and
 the `messageReceived` and `replyReceived` Triggers at parity with Go. From
 0.4.0 a send or reply whose outcome is unknown may be sent up to three times;
 from 0.5.0 one that Sent Mail cannot confirm at that cap selects `uncertain`.
 From 0.5.1 Sent Mail read-back matches the `X-Dex-Message-ID` header, because
 Gmail replaces `Message-ID` on send, and `getMessage` rejects body data in the
 standard base64 alphabet or with malformed padding, as Go and TypeScript do.
+From 0.5.2 recipients, reply targets, `To` headers, and Trigger sender filters
+are parsed by a port of Go's `net/mail` parser, and recipient display names are RFC 2047 encoded exactly
+as Go writes them, split into words of at most 75 characters; see the
+[connector README](../README.md).
 
 ## Install
 
-After release, install `dex-connector-google-gmail==0.5.1`. The package requires
+After release, install `dex-connector-google-gmail==0.5.2`. The package requires
 `dex-connectors-sdk>=0.12.0,<1` and `dex-python-sdk>=1.28.0`; the latter provides
 Go-compatible JSON field metadata and the Flow start and attempt deadline
 needed for Gmail's duplicate-send fence.

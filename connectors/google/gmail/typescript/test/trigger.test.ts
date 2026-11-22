@@ -232,6 +232,8 @@ describe('Gmail message Trigger runner', () => {
     expect(messageMatcherMatches({ messageContains: '1042\nhas' }, message)).toBe(true);
     expect(messageMatcherMatches({ senderEmails: ['eve@example.com'] }, message)).toBe(false);
     expect(messageMatcherMatches({ senderEmails: ['ada@example.com'] }, { ...message, from: 'not a mailbox' })).toBe(false);
+    // Some mailers write a blank name as an empty encoded word.
+    expect(messageMatcherMatches({ senderEmails: ['ada@example.com'] }, { ...message, from: '=?UTF-8?B??= <ada@example.com>' })).toBe(true);
   });
 
   it('declares the manifest Triggers and binding factories', async () => {

@@ -124,7 +124,7 @@ def test_sent_mail_candidate_query_matches_go_for_formatted_recipients(
     send_input = SendMessageInput(to=[recipient, "bob@example.com"], subject="Progress", text_body="Update")
     send_recipients = validate_send_input(send_input, "owner@example.com")
     assert _sent_mail_candidate_query(send_recipients) == expected_query
-    assert _sent_mail_candidate_query([_format_go_mailbox(parse_mailbox(recipient))]) == expected_query
+    assert _sent_mail_candidate_query([_format_go_mailbox(recipient)]) == expected_query
 
 
 def test_sent_message_search_query_stays_importable(call: Call) -> None:

@@ -1,10 +1,10 @@
 {
   "connectorId": "gmail",
-  "releaseTag": "connectors/google/gmail/go/v0.29.1",
+  "releaseTag": "connectors/google/gmail/go/v0.29.2",
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-google-gmail",
-    "version": "0.5.1"
+    "version": "0.5.2"
   },
   "factories": [
     {
