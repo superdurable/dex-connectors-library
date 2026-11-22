@@ -32,6 +32,7 @@ jobs:
       connector_scope: ${{ steps.plan.outputs.connector_scope }}
       connector_base: ${{ steps.plan.outputs.connector_base }}
       conformance_matrix: ${{ steps.conformance.outputs.matrix }}
+      language_connector_matrix: ${{ steps.plan.outputs.language_connector_matrix }}
     env:
       CONNECTOR_SCOPE: ${{ (github.event_name == 'pull_request' || github.event_name == 'merge_group' || github.event_name == 'push') && 'changed' || 'all' }}
       CONNECTOR_BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before || '' }}
@@ -418,10 +419,14 @@ jobs:
           cat "$RUNNER_TEMP/sdkts-dex/server.log"
           exit 1
 
+  # Serial package tests of the whole catalog took 2.5 hours in one job; each shard tests one language's share.
   language-connectors:
     needs: [connector-plan, local-verification]
     if: "!cancelled() && needs.connector-plan.result == 'success' && needs.connector-plan.outputs.count != '0' && needs.local-verification.outputs.trusted != 'true'"
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.connector-plan.outputs.language_connector_matrix) }}
     env:
       GH_TOKEN: ${{ github.token }}
       GH_SDK_RELEASE_CACHE_PATH: /tmp/sdk-release-cache.json
@@ -429,6 +434,8 @@ jobs:
       CONNECTOR_SCOPE: ${{ needs.connector-plan.outputs.connector_scope }}
       CONNECTOR_BASE: ${{ needs.connector-plan.outputs.connector_base }}
       CONNECTOR_HEAD: ${{ github.sha }}
+      CONNECTOR_SHARD_INDEX: ${{ matrix.shard_index }}
+      CONNECTOR_SHARD_COUNT: ${{ matrix.shard_count }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -447,9 +454,9 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 24
-      - run: make test-python-connectors test-typescript-connectors
+      - run: make test-${{ matrix.language }}-connectors
 
-  # Package tests (up to about 61 minutes) and replay (up to about 39) run in parallel so the
+  # Package test shards (about 20 minutes each) and replay (up to about 39) run in parallel so the
   # 120-minute merge queue waits for the longer one. The hours-long mutation self-test never runs there.
   connector-conformance:
     needs: [connector-plan, local-verification]

@@ -155,6 +155,156 @@ func TestEmptyConnectorTestMatrixHasNoJobs(t *testing.T) {
 	require.Equal(t, connectorTestMatrix{Include: []connectorTestShard{}}, buildConnectorTestMatrix(nil, 256))
 }
 
+func TestLanguageConnectorTestMatrixTestsEachPackageInExactlyOneShard(t *testing.T) {
+	for _, connectorCount := range []int{1, 59, 60, 61, 300, 700} {
+		t.Run(fmt.Sprintf("%d connectors", connectorCount), func(t *testing.T) {
+			repositoryRoot := t.TempDir()
+			directories := make([]string, 0, connectorCount)
+			packages := map[string]map[string]bool{"python": {}, "typescript": {}}
+			for index := range connectorCount {
+				directory := fmt.Sprintf("connectors/company/connector-%04d", index)
+				directories = append(directories, directory)
+				// Some connectors lack one or both packages; the loops skip them.
+				for language, packageFile := range map[string]string{"python": "python/pyproject.toml", "typescript": "typescript/package.json"} {
+					if (language == "python" && index%5 == 4) || (language == "typescript" && index%3 == 2) {
+						continue
+					}
+					writeTestFile(t, filepath.Join(repositoryRoot, directory, packageFile))
+					packages[language][directory] = true
+				}
+			}
+			matrix, err := buildLanguageConnectorTestMatrix(repositoryRoot, directories)
+			require.NoError(t, err)
+			require.Equal(t, matrix, mustBuildLanguageConnectorTestMatrix(t, repositoryRoot, directories), "the plan is deterministic")
+			for _, language := range languageConnectorTestLanguages {
+				packageCount := len(packages[language.name])
+				expectedShardCount := max(1, (packageCount+language.packagesPerShard-1)/language.packagesPerShard)
+				tested := map[string]int{}
+				var indices []int
+				for _, shard := range matrix.Include {
+					if shard.Language != language.name {
+						continue
+					}
+					require.Equal(t, expectedShardCount, shard.Count, language.name)
+					indices = append(indices, shard.Index)
+					for _, directory := range directoriesInConnectorTestShard(directories, shard.Index, shard.Count) {
+						if packages[language.name][directory] {
+							tested[directory]++
+						}
+					}
+				}
+				// Every index exists, so shard 0, which runs the shared runner checks, always runs.
+				expectedIndices := make([]int, expectedShardCount)
+				for index := range expectedIndices {
+					expectedIndices[index] = index
+				}
+				require.Equal(t, expectedIndices, indices, language.name)
+				require.Len(t, tested, packageCount, language.name)
+				for directory, timesTested := range tested {
+					require.Equal(t, 1, timesTested, "%s %s", language.name, directory)
+				}
+			}
+		})
+	}
+}
+
+func TestLanguageConnectorTestMatrixShardsTheWholeCatalogWithinTheQueueTimeout(t *testing.T) {
+	repositoryRoot := filepath.Join("..", "..")
+	catalog, err := loadConnectorCatalogSource(filepath.Join(repositoryRoot, "catalog.yaml"))
+	require.NoError(t, err)
+	matrix := mustBuildLanguageConnectorTestMatrix(t, repositoryRoot, catalog.Directories)
+	// Serial seconds per package in the unsharded job of CI run 44695904268, a slow run.
+	measuredSecondsPerPackage := map[string]float64{"python": 4.7, "typescript": 18.1}
+	for _, language := range languageConnectorTestLanguages {
+		require.Contains(t, measuredSecondsPerPackage, language.name)
+		tested := map[string]int{}
+		packageCount := 0
+		for _, directory := range catalog.Directories {
+			hasPackage, err := isRegularFile(filepath.Join(repositoryRoot, directory, language.packageFile))
+			require.NoError(t, err)
+			if hasPackage {
+				packageCount++
+			}
+		}
+		require.Positive(t, packageCount, language.name)
+		for _, shard := range matrix.Include {
+			if shard.Language != language.name {
+				continue
+			}
+			shardPackageCount := 0
+			for _, directory := range directoriesInConnectorTestShard(catalog.Directories, shard.Index, shard.Count) {
+				hasPackage, err := isRegularFile(filepath.Join(repositoryRoot, directory, language.packageFile))
+				require.NoError(t, err)
+				if hasPackage {
+					tested[directory]++
+					shardPackageCount++
+				}
+			}
+			// A third of the 120-minute merge queue timeout leaves room for setup, queueing, and slower runners.
+			require.LessOrEqual(t, float64(shardPackageCount)*measuredSecondsPerPackage[language.name], 40*60.0,
+				"%s shard %d tests %d packages", language.name, shard.Index, shardPackageCount)
+		}
+		require.Len(t, tested, packageCount, language.name)
+		for directory, timesTested := range tested {
+			require.Equal(t, 1, timesTested, "%s %s", language.name, directory)
+		}
+	}
+}
+
+func TestEmptyLanguageConnectorTestMatrixHasNoJobs(t *testing.T) {
+	require.Equal(t, languageConnectorTestMatrix{Include: []languageConnectorTestShard{}}, mustBuildLanguageConnectorTestMatrix(t, t.TempDir(), nil))
+}
+
+func TestLanguageConnectorTestMatrixKeepsOneShardPerLanguageWithoutPackages(t *testing.T) {
+	// Python shard 0 still runs the shared runner checks, as the unsharded job did.
+	require.Equal(t, languageConnectorTestMatrix{Include: []languageConnectorTestShard{
+		{Language: "python", Index: 0, Count: 1}, {Language: "typescript", Index: 0, Count: 1},
+	}}, mustBuildLanguageConnectorTestMatrix(t, t.TempDir(), []string{"connectors/acme/go-only"}))
+}
+
+func TestLanguageConnectorTestLanguagesMatchTheMakefileLoops(t *testing.T) {
+	makefile, err := os.ReadFile(filepath.Join("..", "..", "Makefile"))
+	require.NoError(t, err)
+	for _, language := range languageConnectorTestLanguages {
+		target := regexp.MustCompile(`(?m)^test-` + language.name + `-connectors: download-root-go-modules\n((?:\t.*\n)+)`).FindSubmatch(makefile)
+		require.NotNil(t, target, "ci.yml runs make test-%s-connectors", language.name)
+		require.Contains(t, string(target[1]), `test-matrix $(CONNECTOR_SELECTION_ARGUMENTS))"`, language.name)
+		require.Contains(t, string(target[1]), `if [ ! -f "$$module/`+language.packageFile+`" ]; then continue; fi;`, language.name)
+	}
+}
+
+func TestTestMatrixGitHubOutputListsLanguageConnectorShards(t *testing.T) {
+	repositoryRoot := t.TempDir()
+	writeTestFile(t, filepath.Join(repositoryRoot, "connectors", "acme", "python", "pyproject.toml"))
+	writeTestFile(t, filepath.Join(repositoryRoot, "connectors", "acme", "typescript", "package.json"))
+	catalogPath := filepath.Join(repositoryRoot, "catalog.yaml")
+	require.NoError(t, os.WriteFile(catalogPath, []byte("apiVersion: "+connectorCatalogSourceAPIVersion+
+		"\nkind: ConnectorCatalogSource\ndirectories:\n  - connectors/acme\n  - connectors/goonly\n"), 0o644))
+	outputPath := filepath.Join(repositoryRoot, "github-output")
+	require.NoError(t, testMatrixCommand([]string{"--catalog", catalogPath, "--scope", "all", "--github-output", outputPath}))
+	output, err := os.ReadFile(outputPath)
+	require.NoError(t, err)
+	require.Contains(t, string(output), "\ncount=2\n")
+	require.Contains(t, string(output), "\nlanguage_connector_matrix="+
+		`{"include":[{"language":"python","shard_index":0,"shard_count":1},{"language":"typescript","shard_index":0,"shard_count":1}]}`+"\n")
+	workflow, err := os.ReadFile(filepath.Join("..", "..", ".github", "workflows", "ci.yml"))
+	require.NoError(t, err)
+	require.Contains(t, string(workflow), "language_connector_matrix: ${{ steps.plan.outputs.language_connector_matrix }}")
+}
+
+func mustBuildLanguageConnectorTestMatrix(t *testing.T, repositoryRoot string, directories []string) languageConnectorTestMatrix {
+	t.Helper()
+	matrix, err := buildLanguageConnectorTestMatrix(repositoryRoot, directories)
+	require.NoError(t, err)
+	return matrix
+}
+
+func writeTestFile(t *testing.T, path string) {
+	t.Helper()
+	require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o755))
+	require.NoError(t, os.WriteFile(path, []byte("{}\n"), 0o644))
+}
+
 func TestCIJobsSelectOnlyChangedInputs(t *testing.T) {
 	allJobs := selectAllCIJobs()
 	python := ciJobSelection{CommonPythonScripts: true}

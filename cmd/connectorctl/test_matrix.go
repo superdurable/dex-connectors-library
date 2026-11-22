@@ -10,6 +10,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -26,6 +27,31 @@ type connectorTestMatrix struct {
 type connectorTestShard struct {
 	Index int `json:"shard_index"`
 	Count int `json:"shard_count"`
+}
+
+// languageConnectorTestMatrix lists the language-connectors CI shards; each runs make test-<language>-connectors.
+type languageConnectorTestMatrix struct {
+	Include []languageConnectorTestShard `json:"include"`
+}
+
+type languageConnectorTestShard struct {
+	Language string `json:"language"`
+	Index    int    `json:"shard_index"`
+	Count    int    `json:"shard_count"`
+}
+
+// languageConnectorTestLanguage is one language-connectors Makefile loop and how many packages one shard tests.
+type languageConnectorTestLanguage struct {
+	name string
+	// packageFile marks a connector's package, as the Makefile loop checks it.
+	packageFile      string
+	packagesPerShard int
+}
+
+// Shards hold about 20 minutes each: CI run 44695904268 took 4.7 s per Python package, 18 per TypeScript.
+var languageConnectorTestLanguages = []languageConnectorTestLanguage{
+	{name: "python", packageFile: "python/pyproject.toml", packagesPerShard: 240},
+	{name: "typescript", packageFile: "typescript/package.json", packagesPerShard: 60},
 }
 
 type ciJobSelection struct {
@@ -151,8 +177,21 @@ func testMatrixCommand(args []string) error {
 		_, err = fmt.Fprintln(os.Stdout, string(encoded))
 		return err
 	}
+	absoluteCatalogPath, err := filepath.Abs(*catalogPath)
+	if err != nil {
+		return fmt.Errorf("resolve connector catalog path: %w", err)
+	}
+	languageMatrix, err := buildLanguageConnectorTestMatrix(filepath.Dir(absoluteCatalogPath), directories)
+	if err != nil {
+		return err
+	}
+	languageEncoded, err := json.Marshal(languageMatrix)
+	if err != nil {
+		return fmt.Errorf("encode language connector test matrix: %w", err)
+	}
 	ciJobs := selectCIJobsForPaths(*scope, changedPaths)
-	contents := fmt.Sprintf("matrix=%s\ncount=%d\njobs=%d\n%s", encoded, len(directories), len(matrix.Include), ciJobs.githubOutputLines())
+	contents := fmt.Sprintf("matrix=%s\ncount=%d\njobs=%d\nlanguage_connector_matrix=%s\n%s",
+		encoded, len(directories), len(matrix.Include), languageEncoded, ciJobs.githubOutputLines())
 	if err := os.WriteFile(*githubOutputPath, []byte(contents), 0o644); err != nil {
 		return fmt.Errorf("write GitHub output: %w", err)
 	}
@@ -465,6 +504,48 @@ func buildConnectorTestMatrix(directories []string, maximumShards int) connector
 		matrix.Include = append(matrix.Include, connectorTestShard{Index: index, Count: shardCount})
 	}
 	return matrix
+}
+
+// buildLanguageConnectorTestMatrix lists every shard of each language, at least one,
+// so Python shard 0 always runs the shared checks.
+func buildLanguageConnectorTestMatrix(repositoryRoot string, directories []string) (languageConnectorTestMatrix, error) {
+	matrix := languageConnectorTestMatrix{Include: []languageConnectorTestShard{}}
+	if len(directories) == 0 {
+		return matrix, nil
+	}
+	for _, language := range languageConnectorTestLanguages {
+		packageCount := 0
+		for _, directory := range directories {
+			hasPackage, err := isRegularFile(filepath.Join(repositoryRoot, filepath.FromSlash(directory), filepath.FromSlash(language.packageFile)))
+			if err != nil {
+				return languageConnectorTestMatrix{}, err
+			}
+			if hasPackage {
+				packageCount++
+			}
+		}
+		shardCount := max(1, (packageCount+language.packagesPerShard-1)/language.packagesPerShard)
+		for index := range shardCount {
+			matrix.Include = append(matrix.Include, languageConnectorTestShard{Language: language.name, Index: index, Count: shardCount})
+		}
+	}
+	if len(matrix.Include) > maximumGitHubActionsMatrixJobs {
+		return languageConnectorTestMatrix{}, fmt.Errorf("language connector test matrix needs %d jobs, over the GitHub Actions limit of %d",
+			len(matrix.Include), maximumGitHubActionsMatrixJobs)
+	}
+	return matrix, nil
+}
+
+// isRegularFile reports whether path names a regular file, following symbolic links as `test -f` does.
+func isRegularFile(path string) (bool, error) {
+	info, err := os.Stat(path)
+	if errors.Is(err, fs.ErrNotExist) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("inspect %s: %w", path, err)
+	}
+	return info.Mode().IsRegular(), nil
 }
 
 func directoriesInConnectorTestShard(directories []string, shardIndex int, shardCount int) []string {
