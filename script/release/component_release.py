@@ -31,6 +31,11 @@ else:
                                           is_certificate_verification_failure, release_assets)
 
 PYPI_LOOKUP_ATTEMPTS = 4
+GO_DIRECT_DOWNLOAD_ATTEMPTS = 3
+GO_DIRECT_DOWNLOAD_INITIAL_DELAY_SECONDS = 5.0
+# Git's text for GitHub throttling or an outage; Go wraps it as "invalid version".
+TRANSIENT_GIT_HTTP_ERRORS = tuple(f"the requested url returned error: {status}"
+                                  for status in (403, 429, 500, 502, 503, 504))
 NPM_LOOKUP_ATTEMPTS = 4
 # npm error codes for a dropped or refused connection, DNS failure, timeout, rate limit, or registry outage.
 TRANSIENT_NPM_ERROR_CODES = ("ECONNRESET", "ECONNREFUSED", "ETIMEDOUT", "ESOCKETTIMEDOUT", "EAI_AGAIN", "EPIPE",
@@ -140,19 +145,24 @@ class DependencyReleaseLookup:
         environment["GOWORK"] = "off"
         environment["GOPROXY"] = "direct"
         environment["GONOSUMDB"] = LIBRARY_MODULE_PATH
-        result = subprocess.run(
-            ("go", "mod", "download", f"{module}@{version}"),
-            cwd=component_path,
-            env=environment,
-            check=False,
-            text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-        )
-        if result.returncode != 0:
-            raise ValueError(
-                f"{module}@{version} is not downloadable with GOWORK=off GOPROXY=direct: {result.stderr.strip()}"
+        for attempt in range(1, GO_DIRECT_DOWNLOAD_ATTEMPTS + 1):
+            result = subprocess.run(
+                ("go", "mod", "download", f"{module}@{version}"),
+                cwd=component_path,
+                env=environment,
+                check=False,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
             )
+            if result.returncode == 0:
+                return
+            is_transient = any(marker in result.stderr.lower() for marker in TRANSIENT_GIT_HTTP_ERRORS)
+            if attempt == GO_DIRECT_DOWNLOAD_ATTEMPTS or not is_transient:
+                raise ValueError(
+                    f"{module}@{version} is not downloadable with GOWORK=off GOPROXY=direct: {result.stderr.strip()}"
+                )
+            time.sleep(GO_DIRECT_DOWNLOAD_INITIAL_DELAY_SECONDS * 2 ** (attempt - 1))
 
 
 def git(*arguments: str, check: bool = True) -> subprocess.CompletedProcess[str]:

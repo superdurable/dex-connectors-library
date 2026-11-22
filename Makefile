@@ -129,6 +129,7 @@ test-sdkpython-integration:
 test-sdkts:
 	@if [ -f sdkts/package.json ]; then test -f sdkts/package-lock.json || { echo 'sdkts/package-lock.json is missing' >&2; exit 1; }; npm ci --prefix sdkts && npm run check --prefix sdkts; fi
 
+# CI shards these loops with CONNECTOR_SHARD_INDEX and CONNECTOR_SHARD_COUNT; shard 0 alone runs the shared runner checks.
 test-python-connectors: download-root-go-modules
 	@directories="$$(GOWORK=off go run ./cmd/connectorctl test-matrix $(CONNECTOR_SELECTION_ARGUMENTS))" || exit 1; \
 	for module in $$directories; do \
@@ -141,8 +142,10 @@ test-python-connectors: download-root-go-modules
 		uv run --project "$$module/python" python script/python_model_drift_test.py "$$module/python" && \
 		uv run --project "$$module/python" python script/python_input_schema_test.py "$$module/python" || exit 1; \
 	done
-	uv run --project connectors/airtable/python python conformance/runners/python/clock_test.py
-	@python3 script/python_slice_wire_test.py
+	if [ "$(CONNECTOR_SHARD_INDEX)" = 0 ]; then \
+		uv run --project connectors/airtable/python python conformance/runners/python/clock_test.py && \
+		python3 script/python_slice_wire_test.py; \
+	fi
 
 test-python-connectors-latest-sdk: download-root-go-modules
 	@directories="$$(GOWORK=off go run ./cmd/connectorctl test-matrix $(CONNECTOR_SELECTION_ARGUMENTS))" || exit 1; \

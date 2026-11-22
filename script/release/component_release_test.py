@@ -1411,6 +1411,26 @@ class ComponentReleaseTest(unittest.TestCase):
         self.assertEqual(environment["GOPROXY"], "direct")
         self.assertEqual(environment["GONOSUMDB"], LIBRARY)
 
+    def test_direct_download_retries_github_throttling(self) -> None:
+        throttled = ("go: example@v0.38.0: invalid version: git ls-remote -q --end-of-options origin in /cache\n"
+                     "\tfatal: unable to access 'https://github.com/superdurable/dex-connectors-library/': "
+                     "The requested URL returned error: 403\n")
+        module = f"{LIBRARY}/sdkgo"
+        lookup = release.DependencyReleaseLookup("main")
+        for outcomes, should_raise in (((1, 0), False), ((1, 1, 1), True)):
+            with self.subTest(outcomes=outcomes):
+                results = [subprocess.CompletedProcess((), code, "", throttled if code else "") for code in outcomes]
+                with mock.patch.object(release.subprocess, "run", lambda command, **_: results.pop(0)), \
+                        mock.patch.object(release.time, "sleep") as sleep:
+                    if should_raise:
+                        with self.assertRaisesRegex(ValueError, "(?s)not downloadable .*returned error: 403"):
+                            lookup.download_module_directly(self.repository, module, "v0.38.0")
+                    else:
+                        lookup.download_module_directly(self.repository, module, "v0.38.0")
+                self.assertEqual(results, [])
+                self.assertEqual([call.args[0] for call in sleep.call_args_list],
+                                 [5.0, 10.0][:len(outcomes) - 1])
+
     def test_connector_plan_ignores_other_component_tags(self) -> None:
         self.connector()
         self.git("tag", "connectors/linkedin/v9.9.9")

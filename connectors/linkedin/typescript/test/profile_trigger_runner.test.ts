@@ -55,6 +55,8 @@ describe('profileChanged runners', () => {
     const cursor = project.pollCursorStore(key);
     const commitCount = async () => (await cursor.readPollCursor()).state?.commitCount ?? 0;
     const process = running(runner);
+    // The first poll otherwise waits a random jitter of up to 6 seconds, past Vitest's 5-second timeout.
+    runner.wakePoller('ownProfile');
     try {
       await eventually(async () => await commitCount() >= 1);
       expect(target.events, 'the baseline starts nothing').toEqual([]);

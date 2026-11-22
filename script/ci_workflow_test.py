@@ -289,10 +289,11 @@ class GoDownloadRetryTest(unittest.TestCase):
 
     def test_ci_jobs_run_the_targets_that_download_before_testing(self) -> None:
         for job_name, target in (("connectors", "test-connectors"), ("dex-integration-connectors", "test-connector-integration"),
-                                 ("dex-compat-current", "test-dex-compat-current"), ("language-connectors", "test-typescript-connectors"),
-                                 ("language-connectors", "test-python-connectors")):
+                                 ("dex-compat-current", "test-dex-compat-current")):
             with self.subTest(job=job_name):
                 self.assertRegex(workflow_job(self.workflow, job_name), rf"make [^\n]*\b{target}\b")
+        # Each language shard runs test-python-connectors or test-typescript-connectors.
+        self.assertIn("- run: make test-${{ matrix.language }}-connectors\n", workflow_job(self.workflow, "language-connectors"))
 
     def test_connector_go_modules_download_before_their_tests(self) -> None:
         self.assertIn("GO_DOWNLOAD_RETRY = python3 script/go_download_retry.py\n", self.makefile)
@@ -491,7 +492,7 @@ class QueueOnlyJobsTest(unittest.TestCase):
     def test_package_tests_and_conformance_replay_run_in_parallel_jobs(self) -> None:
         # Package tests took about 61 minutes (run 43271436573) and every-fixture replay about 39
         # (run 43339498254); in one job they would approach the 120-minute merge queue timeout.
-        self.assertEqual({"make test-python-connectors test-typescript-connectors": ""}, self.step_conditions("language-connectors"))
+        self.assertEqual({"make test-${{ matrix.language }}-connectors": ""}, self.step_conditions("language-connectors"))
         for job_name in ("language-connectors", "connector-conformance"):
             header = workflow_job(self.workflow, job_name).split("\n    steps:\n", 1)[0]
             self.assertIn("\n    needs: [connector-plan, local-verification]\n"
@@ -538,6 +539,133 @@ class QueueOnlyJobsTest(unittest.TestCase):
     def test_released_compatibility_runs_only_on_schedule_and_manual_runs(self) -> None:
         self.assertEqual("(github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && needs.connector-plan.outputs.count != '0'",
                          self.job_condition("dex-compat-released"))
+
+
+class LanguageConnectorShardsTest(unittest.TestCase):
+    """Language package tests run in plan-sized shards that together test each package once."""
+
+    workflow = WORKFLOW_PATH.read_text(encoding="utf-8")
+    makefile = MAKEFILE_PATH.read_text(encoding="utf-8")
+    clock_test = "uv run --project connectors/airtable/python python conformance/runners/python/clock_test.py"
+    slice_wire_test = "python3 script/python_slice_wire_test.py"
+
+    def test_shards_come_from_the_plan_and_the_summary_requires_every_shard(self) -> None:
+        plan = workflow_job(self.workflow, "connector-plan")
+        self.assertIn("language_connector_matrix: ${{ steps.plan.outputs.language_connector_matrix }}", plan)
+        job = workflow_job(self.workflow, "language-connectors")
+        header = job.split("\n    steps:\n", 1)[0]
+        self.assertIn("    strategy:\n      fail-fast: false\n"
+                      "      matrix: ${{ fromJSON(needs.connector-plan.outputs.language_connector_matrix) }}\n", header)
+        self.assertIn("CONNECTOR_SHARD_INDEX: ${{ matrix.shard_index }}", header)
+        self.assertIn("CONNECTOR_SHARD_COUNT: ${{ matrix.shard_count }}", header)
+        # A matrix job's result is failure when any shard fails, unless a shard may continue on error.
+        self.assertNotIn("continue-on-error", job)
+        self.assertIn("      - language-connectors\n", workflow_job(self.workflow, "ci-summary"))
+
+    def test_shards_test_each_package_once_and_run_the_shared_checks_once(self) -> None:
+        root, directories, packages = self.make_fixture_repository()
+        for shard_count in (1, 2, 3, 7):
+            with self.subTest(shard_count=shard_count):
+                runs = [self.run_language_targets(root, {"CONNECTOR_SHARD_INDEX": str(index), "CONNECTOR_SHARD_COUNT": str(shard_count)})
+                        for index in range(shard_count)]
+                for language in ("python", "typescript"):
+                    tested = [module for run in runs for module in run[language]]
+                    self.assertEqual(sorted(packages[language]), sorted(tested), language)
+                if shard_count > 1:
+                    self.assertGreater(sum(1 for run in runs if run["typescript"]), 1, "the shards split the packages")
+                self.assertEqual([1] + [0] * (shard_count - 1), [run["shared"] for run in runs])
+                for index, run in enumerate(runs):
+                    self.assertEqual([f"--shard-index {index} --shard-count {shard_count}"] * 2, run["matrix"])
+        # Without CI's shard variables, make tests every package and the shared checks once, as before.
+        local = self.run_language_targets(root, {})
+        self.assertEqual((sorted(packages["python"]), sorted(packages["typescript"]), 1),
+                         (sorted(local["python"]), sorted(local["typescript"]), local["shared"]))
+        self.assertEqual(["--shard-index 0 --shard-count 1"] * 2, local["matrix"])
+        self.assertLess(set(packages["python"]), set(directories))
+
+    def test_a_failing_shared_check_fails_shard_zero(self) -> None:
+        root, _, _ = self.make_fixture_repository()
+        for failing_command in ("clock_test.py", "python_slice_wire_test.py"):
+            with self.subTest(failing_command=failing_command):
+                result = self.run_make(root, "test-python-connectors", {"CONNECTOR_SHARD_INDEX": "0", "CONNECTOR_SHARD_COUNT": "2",
+                                                                        "STUB_FAILING_COMMAND": failing_command})
+                self.assertNotEqual(0, result.returncode)
+
+    def make_fixture_repository(self) -> tuple[Path, list[str], dict[str, list[str]]]:
+        """Writes connector directories, some without a Python or TypeScript package, and the stubbed tools."""
+        root = Path(tempfile.mkdtemp())
+        directories = [f"connectors/company/connector-{index:02d}" for index in range(24)]
+        packages: dict[str, list[str]] = {"python": [], "typescript": []}
+        for index, directory in enumerate(directories):
+            if index % 5 != 4:
+                (root / directory / "python").mkdir(parents=True)
+                (root / directory / "python/pyproject.toml").write_text("")
+                (root / directory / "python/uv.lock").write_text("")
+                packages["python"].append(directory)
+            if index % 3 != 2:
+                (root / directory / "typescript/node_modules/.bin").mkdir(parents=True)
+                (root / directory / "typescript/package.json").write_text("{}")
+                (root / directory / "typescript/package-lock.json").write_text("{}")
+                self.write_stub(root / directory / "typescript/node_modules/.bin/tsx", "#!/bin/sh\necho \"tsx $*\" >> \"$STUB_LOG\"\n")
+                packages["typescript"].append(directory)
+        (root / "catalog.yaml").write_text("directories:\n" + "".join(f"  - {directory}\n" for directory in directories))
+        stubs = root / "bin"
+        stubs.mkdir()
+        # Like connectorctl test-matrix, the go stub lists each catalog directory in one SHA-256 bucket.
+        self.write_stub(stubs / "go", f"#!{sys.executable}\n" + """import hashlib, os, sys
+arguments = sys.argv[1:]
+with open(os.environ["STUB_LOG"], "a") as log:
+    log.write("go " + " ".join(arguments) + "\\n")
+if arguments[:3] != ["run", "./cmd/connectorctl", "test-matrix"]:
+    sys.exit(1)
+options = dict(zip(arguments[3::2], arguments[4::2]))
+index, count = int(options["--shard-index"]), int(options["--shard-count"])
+with open(options["--catalog"]) as catalog:
+    for line in catalog:
+        directory = line.strip().removeprefix("- ")
+        if directory.startswith("connectors/") and int.from_bytes(hashlib.sha256(directory.encode()).digest()[:8], "big") % count == index:
+            print(directory)
+""")
+        for tool in ("uv", "npm", "python3"):
+            self.write_stub(stubs / tool, '#!/bin/sh\necho "$(basename "$0") $*" >> "$STUB_LOG"\n'
+                                          'case "$*" in *"${STUB_FAILING_COMMAND:-no failing command}"*) exit 1;; esac\n')
+        variables = re.search(r"(?ms)^CONNECTOR_CATALOG \?=.*?^endif\n", self.makefile)
+        self.assertIsNotNone(variables)
+        targets = "".join(f"{target}:\n{makefile_target(self.makefile, target)[1]}"
+                          for target in ("test-python-connectors", "test-typescript-connectors"))
+        (root / "Makefile").write_text(variables.group(0) + targets)
+        return root, directories, packages
+
+    @staticmethod
+    def write_stub(path: Path, contents: str) -> None:
+        path.write_text(contents)
+        path.chmod(0o755)
+
+    def run_make(self, root: Path, target: str, variables: dict[str, str]) -> subprocess.CompletedProcess:
+        log = root / "log"
+        log.write_text("")
+        environment = {name: value for name, value in os.environ.items() if not name.startswith(("CONNECTOR_", "MAKE"))}
+        environment.update({"PATH": f"{root / 'bin'}{os.pathsep}{os.environ['PATH']}", "STUB_LOG": str(log), **variables})
+        return subprocess.run(["make", "-s", target], cwd=root, capture_output=True, text=True, env=environment)
+
+    def run_language_targets(self, root: Path, variables: dict[str, str]) -> dict:
+        """Runs both language targets for one shard; returns the packages each tested and the shared-check count."""
+        run: dict = {"python": [], "typescript": [], "shared": 0, "matrix": []}
+        for target in ("test-python-connectors", "test-typescript-connectors"):
+            result = self.run_make(root, target, variables)
+            self.assertEqual(0, result.returncode, result.stderr)
+            log = (root / "log").read_text().splitlines()
+            for line in log:
+                if line.startswith("go run ./cmd/connectorctl test-matrix "):
+                    run["matrix"].append(re.search(r"--shard-index \d+ --shard-count \d+", line).group(0))
+                elif python := re.fullmatch(r"uv run --project (\S+)/python pytest \1/python/tests", line):
+                    run["python"].append(python.group(1))
+                elif typescript := re.fullmatch(r"npm test --prefix (\S+)/typescript", line):
+                    run["typescript"].append(typescript.group(1))
+            if target == "test-python-connectors":
+                self.assertEqual(log.count(self.clock_test), log.count(self.slice_wire_test))
+                run["shared"] = log.count(self.clock_test)
+        return run
 
 
 class LocalVerificationJobsTest(unittest.TestCase):

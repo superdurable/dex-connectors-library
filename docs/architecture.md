@@ -230,9 +230,15 @@ to be skipped, and in the merge queue it requires each selected one to succeed.
 Every merge queue job must finish well inside the 120-minute queue timeout. On
 every event, `connector-conformance` replays the scenarios of every connector the
 plan selects, and every fixture after a shared runner change, in parallel with
-the `language-connectors` package tests: each takes about an hour at most for
-the full catalog, so the queue waits for the longer one instead of their sum.
-When most fixtures are selected, `connector-conformance` splits into up to six
+the `language-connectors` package tests, so the queue waits for the longer one
+instead of their sum. Those tests check one package at a time, about 5 seconds
+per Python package and 18 per TypeScript package, so the plan splits each
+language into shards of about 20 minutes: one per 240 selected Python packages
+and one per 60 TypeScript packages, at least one each. A shard tests the
+packages in its SHA-256 bucket of the selected connectors, through
+`CONNECTOR_SHARD_INDEX` and `CONNECTOR_SHARD_COUNT`, and Python shard 0 also runs
+the shared runner checks; without those variables, `make` tests every selected
+package. When most fixtures are selected, `connector-conformance` splits into up to six
 shard jobs, each checking several connectors at once. The conformance mutation
 self-test still costs hours of runner time, so it runs only on pull requests,
 scheduled runs, and manual runs. To run every job, including the
