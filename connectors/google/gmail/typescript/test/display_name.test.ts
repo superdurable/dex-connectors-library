@@ -83,17 +83,26 @@ describe('display name decoding', () => {
     expect(parseMailbox('=?koi8-r?b?8M/Q?= <zoe@example.com>')?.display).toBe('Поп');
   });
 
-  it('keeps an invalid or quoted encoded word literal and rejects a name that decodes to nothing', () => {
+  it('keeps an invalid or quoted encoded word literal', () => {
     expect(parseMailbox('=?utf-8?q?bad=ZZ?= <zoe@example.com>')?.display).toBe('=?utf-8?q?bad=ZZ?=');
     expect(parseMailbox('=?utf-8?b?WsO2?=x <zoe@example.com>')?.display).toBe('=?utf-8?b?WsO2?=x');
     expect(parseMailbox('=?utf-8?b?WsO2?= <zoe@example.com>')?.display).toBe('Zö');
     expect(parseMailbox('=?utf-8?b?WsO2?== <zoe@example.com>')?.display).toBe('=?utf-8?b?WsO2?==');
     expect(parseMailbox('=?x-unknown?q?Z?= <zoe@example.com>')?.display).toBe('=?x-unknown?q?Z?=');
     expect(parseMailbox('"=?utf-8?q?Zo=C3=AB?=" <zoe@example.com>')?.display).toBe('=?utf-8?q?Zo=C3=AB?=');
-    expect(parseMailbox('=?utf-8?q??= <zoe@example.com>')).toBeUndefined();
     expect(parseMailbox('=?utf-8?q??= Ops <zoe@example.com>')?.display).toBe('Ops');
     expect(parseMailbox('=?utf-8?q?Zo=C3=AB\\Ops?= <zoe@example.com>')).toBeUndefined();
     expect(parseMailbox('Zoë\x01Ops <zoe@example.com>')).toBeUndefined();
+  });
+
+  // Go 1.24, the Go connector's go.mod minimum and CI toolchain, reads this name as empty; Go 1.26 rejects it.
+  it('reads a display name made only of empty encoded words as no name', () => {
+    for (const sender of ['=?UTF-8?B??= <ada@example.com>', '=?utf-8?q??= =?utf-8?q??= <ada@example.com>']) {
+      expect(parseMailbox(sender)).toEqual({ display: '', address: 'ada@example.com' });
+      expect(replyRecipient({ from: sender } as Message)).toBe('<ada@example.com>');
+      expect(formatRecipient(sender)).toBe('<ada@example.com>');
+      expect(decodeToHeader(`${sender}, bob@example.com`)).toEqual(['<ada@example.com>', '<bob@example.com>']);
+    }
   });
 
   it('splits a To header only at commas outside quoted strings', () => {

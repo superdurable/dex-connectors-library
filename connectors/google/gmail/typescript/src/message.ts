@@ -123,10 +123,11 @@ function splitAddressList(value: string): string[] {
  * A quoted display name is unescaped. An unquoted one is decoded as Go's
  * `net/mail` does: RFC 2047 encoded words are decoded, adjacent encoded words
  * are joined without the space between them, and other words are joined by one
- * space. Go's `utf-8`, `iso-8859-1`, and `us-ascii` decoding is matched exactly;
- * another charset decodes with `TextDecoder`, and a word that cannot be decoded
- * stays literal. A display name whose words all decode to nothing is rejected,
- * as in Go.
+ * space. Valid `utf-8`, `iso-8859-1`, and `us-ascii` words decode as in Go,
+ * but invalid bytes in a `utf-8` word become U+FFFD, where Go keeps the raw
+ * bytes. Another charset decodes with `TextDecoder`, and a word that cannot be
+ * decoded stays literal. A display name made only of empty encoded words reads
+ * as no name, as in Go 1.24; Go 1.26 and later reject that mailbox.
  */
 export function parseMailbox(value: string): { display: string; address: string } | undefined {
   if (Array.from(value).some(character => (character < ' ' && character !== '\t') || character === '\x7F')) return undefined;
@@ -141,12 +142,10 @@ export function parseMailbox(value: string): { display: string; address: string 
     return { display: display.slice(1, -1).replace(/\\(.)/g, '$1'), address };
   }
   if (/[,:;<>@"\\()[\]]/.test(display)) return undefined;
-  const decodedDisplay = display ? decodeDisplayNamePhrase(display) : '';
-  return decodedDisplay === undefined ? undefined : { display: decodedDisplay, address };
+  return { display: decodeDisplayNamePhrase(display), address };
 }
 
-// Go's net/mail rejects a phrase whose words all decode to nothing.
-function decodeDisplayNamePhrase(phrase: string): string | undefined {
+function decodeDisplayNamePhrase(phrase: string): string {
   const words: string[] = [];
   let encodedRun = '';
   for (const word of phrase.split(/[ \t]+/)) {
@@ -161,7 +160,7 @@ function decodeDisplayNamePhrase(phrase: string): string | undefined {
     words.push(word);
   }
   if (encodedRun) words.push(encodedRun);
-  return words.length ? words.join(' ') : undefined;
+  return words.join(' ');
 }
 
 const EncodedWordPattern = /^=\?([^?]+)\?([BbQq])\?([^?]*)\?=$/;

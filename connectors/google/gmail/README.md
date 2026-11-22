@@ -212,9 +212,11 @@ display name), names that mix quoted and unquoted words, quoted local parts, and
 empty list entries. It rejects mailboxes such as `alice.@example.com`, an
 unclosed `<`, or `Alice @ Home <alice@example.com>`, which v0.5.1 sent to
 `Alice@Home`. `getMessage` omits `to` when Go rejects the header, where v0.5.1
-returned the mailboxes it could read. The port follows Go 1.27: Go 1.24 also
-accepts a display name made only of empty encoded words, and Go before 1.27
-accepts an IPv6 domain literal without the `IPv6:` tag. The TypeScript parser
+returned the mailboxes it could read. The port follows Go 1.27 with one
+exception: a display name made only of empty encoded words, which some mailers
+write for a blank name, reads as no name in Python and TypeScript, as in Go
+1.24, where Go 1.26 and later reject the mailbox. Go before 1.27 also accepts
+an IPv6 domain literal without the `IPv6:` tag. The TypeScript parser
 reads only a bare address or a display name followed by `<address>`, so it
 rejects groups, comments, mixed names, and empty list entries, and its address
 check differs from Go's for unusual local parts such as `alice.@example.com`.

@@ -254,6 +254,9 @@ def test_matches_like_the_go_matcher() -> None:
     assert not matches_message_event(MessageMatcher(sender_emails=("eve@example.com",)), event)
     not_a_mailbox = MessageEvent(from_="not a mailbox")
     assert not matches_message_event(MessageMatcher(sender_emails=("ada@example.com",)), not_a_mailbox)
+    # Some mailers write a blank name as an empty encoded word.
+    blank_name = MessageEvent(from_="=?UTF-8?B??= <ada@example.com>")
+    assert matches_message_event(MessageMatcher(sender_emails=("ada@example.com",)), blank_name)
 
 
 def test_declares_the_manifest_triggers_and_binding_factories() -> None:

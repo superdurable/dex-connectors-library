@@ -42,7 +42,8 @@ it('starts one Flow per Gmail root, replies after the matching reply, and consum
   // A root with a non-matching sender and a reply in a thread whose Flow never started arrive first.
   gmail.receive(rootMessage(`ignored-${suffix}`, `ignored-thread-${suffix}`, { from: 'Eve <eve@example.com>' }));
   gmail.receive(replyMessage(`orphan-${suffix}`, `orphan-thread-${suffix}`));
-  gmail.receive(rootMessage(`root-${suffix}`, thread));
+  // The allowlisted sender writes a blank name as an empty encoded word.
+  gmail.receive(rootMessage(`root-${suffix}`, thread, { from: '=?UTF-8?B??= <ada@example.com>' }));
   const running = runThreadReplyApplication(project, { serverAddress: dexAddress(), logger, gmailOptions: { transport: gmail.transport }, onReady: resolveReady }, stop.signal);
   try {
     const { client, flow } = await ready;

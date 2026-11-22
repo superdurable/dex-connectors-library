@@ -3,6 +3,8 @@
 """Mailbox parsing and formatting ported from Go 1.27's net/mail, so Python reads mailboxes as Go does.
 
 Unlike Go, other charsets decode through Python codecs, or stay literal when unknown, as in TypeScript.
+Invalid bytes in a utf-8 encoded word become U+FFFD, where Go keeps them, as in TypeScript.
+A display name made only of empty encoded words reads as no name, as in Go 1.24 and TypeScript.
 """
 
 import base64
@@ -172,6 +174,8 @@ class _MailAddressParser:
         words: list[str] = []
         encoded_run = ""
         is_word_missing = False
+        # Like Go 1.24, a phrase of only empty encoded words is an empty name; Go 1.26 rejects it.
+        is_encoded_word_read = False
         while True:
             # Go allows CFWS between phrase words (obs-phrase).
             if words:
@@ -186,6 +190,7 @@ class _MailAddressParser:
                 break
             if is_encoded:
                 encoded_run += word
+                is_encoded_word_read = True
                 continue
             if encoded_run:
                 words.append(encoded_run)
@@ -193,7 +198,7 @@ class _MailAddressParser:
             words.append(word)
         if encoded_run:
             words.append(encoded_run)
-        if is_word_missing and not words:
+        if is_word_missing and not words and not is_encoded_word_read:
             raise MailAddressSyntaxError("missing word in phrase")
         return " ".join(words)
 

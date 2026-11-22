@@ -141,7 +141,6 @@ def test_to_header_splits_only_outside_quoted_strings() -> None:
         '"Doe, John" <j@example.com>', "<ada@example.com>",
     ]
     assert _decode_to_header('"Doe, John" <j@example.com>, not-an-address') == []
-    assert _decode_to_header("=?utf-8?q??= <zoe@example.com>") == []
     assert _decode_to_header("undisclosed-recipients:;") == []
 
 
@@ -173,7 +172,6 @@ RFC_5322_TO_HEADERS = [
 GO_REJECTED_MAILBOXES = [
     # The form the Go connector v0.29.1 wrote for a non-ASCII name with a backslash.
     "=?utf-8?q?Zo=C3=AB\\Ops?= <zoe@example.com>",
-    "=?utf-8?q??= <zoe@example.com>",
     "Alice <alice@example.com",
     "Alice @ Home <alice@example.com>",
     "alice@exa mple.com",
@@ -205,6 +203,16 @@ def test_mailboxes_go_rejects_are_rejected_everywhere(value: str) -> None:
         _format_go_mailbox(value)
     with pytest.raises(ValueError, match="recipient email is invalid"):
         _format_recipient(value)
+
+
+@pytest.mark.parametrize(
+    "value", ["=?UTF-8?B??= <ada@example.com>", "=?utf-8?q??= =?utf-8?q??= <ada@example.com>"]
+)
+def test_display_name_of_only_empty_encoded_words_reads_as_no_name(value: str) -> None:
+    """Go 1.24, the Go connector's go.mod minimum and CI toolchain, reads it so; Go 1.26 rejects it."""
+    assert _format_go_mailbox(value) == "<ada@example.com>"
+    assert _format_recipient(value) == "<ada@example.com>"
+    assert _decode_to_header(f"{value}, bob@example.com") == ["<ada@example.com>", "<bob@example.com>"]
 
 
 def test_recipients_are_duplicates_by_unquoted_address() -> None:
