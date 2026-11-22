@@ -398,7 +398,7 @@ def _decode_charset_bytes(charset: str, content: bytes) -> str | None:
             return content.decode("latin-1")
         case "us-ascii":
             return "".join(chr(byte) if byte < 0x80 else "�" for byte in content)
-    # Go rejects other charsets; a known codec decodes them, as TypeScript's TextDecoder does.
+    # Go fails other charsets; a known codec decodes them, as TypeScript's TextDecoder does.
     try:
         return content.decode(charset)
     except (LookupError, ValueError):

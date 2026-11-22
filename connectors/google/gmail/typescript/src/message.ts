@@ -201,7 +201,7 @@ function decodeCharsetBytes(charset: string, bytes: Buffer): string | undefined 
     case 'iso-8859-1': return bytes.toString('latin1');
     case 'us-ascii': return Array.from(bytes, byte => (byte < 0x80 ? String.fromCharCode(byte) : '\uFFFD')).join('');
     default:
-      // Go rejects other charsets; TextDecoder throws for an unknown label or invalid bytes.
+      // Go fails other charsets; TextDecoder throws for an unknown label or invalid bytes.
       try { return new TextDecoder(charset, { fatal: true }).decode(bytes); } catch { return undefined; }
   }
 }

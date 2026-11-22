@@ -201,10 +201,12 @@ header, the `recipients` output, a reply's recipient, and the `getMessage` `to`
 list now match in all three languages, apart from the Go version differences
 below. The read-back `to:` term still names only the address. Reading a header,
 the ports decode encoded words as `net/mail` does, dropping the space between
-adjacent encoded words. Go decodes only `utf-8`, `iso-8859-1`, and `us-ascii`
-and rejects a mailbox in another charset; Python and TypeScript decode any
-charset their platform knows. Go keeps invalid bytes of a `utf-8` encoded word,
-and the ports replace them with U+FFFD.
+adjacent encoded words. Go decodes only `utf-8`, `iso-8859-1`, and `us-ascii`.
+When a word in another charset is the last word of the name and not the first,
+Go drops it and keeps the earlier words; otherwise Go rejects the mailbox. Python
+and TypeScript decode any charset their platform knows and keep an unknown one
+as literal text. Go keeps invalid bytes of a `utf-8` encoded word, and the ports
+replace them with U+FFFD.
 
 From Python v0.5.2, recipients, reply targets, and `To` headers are parsed by a
 port of Go's `net/mail` parser, so Python accepts and rejects the mailboxes Go
