@@ -3,9 +3,12 @@
 """Trigger delivery, runner, and Dex target behavior ported from the TypeScript and Go SDKs."""
 
 import asyncio
+import dataclasses
+import functools
 import json
 import logging
 import pickle
+import re
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
@@ -17,6 +20,7 @@ import pytest
 from dex.runtime_errors import ErrorSubStatus
 
 from dex_connectors.sdk import (
+    TRIGGER_RPC_REQUEST_ID_PREFIX,
     UNDELIVERABLE_TRIGGER_ERROR_TYPE,
     ConnectionRef,
     StandardLoggingTriggerLogger,
@@ -31,6 +35,7 @@ from dex_connectors.sdk import (
     TriggerLogLevel,
     TriggerLogValue,
     TriggerRef,
+    TriggerRPCRequestConflictError,
     TriggerTarget,
     UndeliverableTriggerError,
     classify_dex_trigger_error,
@@ -43,8 +48,10 @@ from dex_connectors.sdk import (
     new_trigger,
     start_trigger_attempt,
     trigger_error_attributes,
+    trigger_rpc_request_id,
 )
 from dex_connectors.sdk import trigger_delivery as delivery_module
+from dex_connectors.sdk.projectconfig import decode_trigger_event, encode_trigger_event
 from dex_connectors.sdk.trigger import _is_trigger_delivery_aborted
 
 
@@ -543,7 +550,7 @@ class RPCFlow:
         """Take no input."""
 
 
-async def test_rpc_target_delivers_undecodable_responses_and_never_sends_request_ids() -> None:
+async def test_rpc_target_delivers_undecodable_responses_and_sends_one_request_id_per_event() -> None:
     other = _worker_failure(grpc.StatusCode.UNKNOWN, "builtins.RuntimeError", "loading")
     client = FakeRPCClient([dex.ValueMappingError("decode", "bad output"), other])
     logger = RecordingTriggerLogger()
@@ -556,19 +563,32 @@ async def test_rpc_target_delivers_undecodable_responses_and_never_sends_request
         map_to_rpc_input=lambda event: event.payload["text"],
         logger=logger,
     )
+    request_id = trigger_rpc_request_id("send_reply", "Ev1")
     await target.handle_trigger(TriggerContext(), EVENT)
     assert logger.records[0].message == "trigger event delivered; rpc response undecodable"
     assert logger.records[0].attributes == {
         "target": "rpc",
         "event_id": "Ev1",
         "flow_id": "flow-1",
+        "request_id": request_id,
         "error_type": "ValueMappingError",
     }
     with pytest.raises(dex.WorkerInvocationError):
         await target.handle_trigger(TriggerContext(), EVENT)
     await target.handle_trigger(TriggerContext(), EVENT)
-    assert logger.records[-1].attributes == {"target": "rpc", "event_id": "Ev1", "flow_id": "flow-1"}
-    assert all(call == ((flow.send_reply, "flow-1", "SENTINEL payload"), {}) for call in client.calls)
+    assert logger.records[-1].attributes == {
+        "target": "rpc",
+        "event_id": "Ev1",
+        "flow_id": "flow-1",
+        "request_id": request_id,
+    }
+    # Every attempt of one event sends the same request ID; another event gets its own.
+    expected_options = dex.RPCInvokeOptions(request_id=request_id)
+    assert (
+        client.calls == [((flow.send_reply, "flow-1", "SENTINEL payload"), {"options": expected_options})] * 3
+    )
+    await target.handle_trigger(TriggerContext(), dataclasses.replace(EVENT, id="Ev2"))
+    assert client.calls[-1][1]["options"].request_id == trigger_rpc_request_id("send_reply", "Ev2")
     no_input = FakeRPCClient([])
     input_free: TriggerTarget[dict[str, str]] = new_dex_rpc_trigger_target(
         cast(dex.AsyncClient, no_input),
@@ -577,7 +597,12 @@ async def test_rpc_target_delivers_undecodable_responses_and_never_sends_request
         resolve_flow_id=lambda event: "flow-1",
     )
     await input_free.handle_trigger(TriggerContext(), EVENT)
-    assert no_input.calls == [((flow.describe_status, "flow-1"), {})]
+    assert no_input.calls == [
+        (
+            (flow.describe_status, "flow-1"),
+            {"options": dex.RPCInvokeOptions(request_id=trigger_rpc_request_id("describe_status", "Ev1"))},
+        )
+    ]
     with pytest.raises(UndeliverableTriggerError, match="RPC trigger requires Flow ID and event ID"):
         blank: TriggerTarget[dict[str, str]] = new_dex_rpc_trigger_target(
             cast(dex.AsyncClient, no_input),
@@ -586,6 +611,180 @@ async def test_rpc_target_delivers_undecodable_responses_and_never_sends_request
             resolve_flow_id=lambda event: "",
         )
         await blank.handle_trigger(TriggerContext(), EVENT)
+
+
+# triggerRPCRequestId (sdkts) and TriggerRPCRequestID (sdkgo) yield these IDs for the same inputs.
+@pytest.mark.parametrize(
+    ("rpc_name", "event_id", "request_id"),
+    [
+        ("receiveReply", "Ev1", "trigger-rpc-kDFFz9I4ELDtzXkmvRTzlA"),
+        ("Approve", "Ev1", "trigger-rpc-NCT4ExQx0Ahaf4r71ej-1g"),
+        ("send_user_message", "Ev1", "trigger-rpc-nvt7sgyIgs8au6Su_i3G_A"),
+        ("send_user_message", "1710000200.000200", "trigger-rpc-jULspDTupwRV1mIcS03qUg"),
+        ("ReceiveEnvelopeEvent", "evt_0123456789abcdef", "trigger-rpc-N-9RTMPf6sXlUYgoeYwLfg"),
+        ("recordLedgerEntry", "caf\u00e9-\u4e8b\u4ef6-\U0001f600", "trigger-rpc-cVlFUH2QCxK31tF2KjqSUA"),
+        ("receiveReply", "", "trigger-rpc-hBjdrS1VKDIhGHGRhqXIxw"),
+        # TypeScript hashes the unpaired surrogate in "a\ud800b" as U+FFFD, and Go an invalid byte.
+        ("receiveReply", "a\ud800b", "trigger-rpc--DMh9mmLQmtdCEEqMlYxWA"),
+        ("receiveReply", b"a\xffb".decode("utf-8", "surrogateescape"), "trigger-rpc--DMh9mmLQmtdCEEqMlYxWA"),
+        ("receiveReply", "a\ufffdb", "trigger-rpc--DMh9mmLQmtdCEEqMlYxWA"),
+        # Go's truncated sequence "x\xe2\x82y" hashes as two U+FFFD, as TypeScript hashes "x\ufffd\ufffdy".
+        (
+            "receiveReply",
+            b"x\xe2\x82y".decode("utf-8", "surrogateescape"),
+            "trigger-rpc-8RndI-WQcs_0IiUPVanorg",
+        ),
+    ],
+)
+def test_trigger_rpc_request_id_matches_the_typescript_and_go_vectors(
+    rpc_name: str, event_id: str, request_id: str
+) -> None:
+    assert trigger_rpc_request_id(rpc_name, event_id) == request_id
+    assert re.fullmatch(f"{TRIGGER_RPC_REQUEST_ID_PREFIX}[A-Za-z0-9_-]{{22}}", request_id)
+
+
+def test_trigger_rpc_request_id_separates_name_and_event_and_rejects_unusable_names() -> None:
+    # The NUL separator keeps the split between RPC name and event ID unambiguous.
+    assert trigger_rpc_request_id("receiveReplyE", "v1") != trigger_rpc_request_id("receiveReply", "Ev1")
+    assert trigger_rpc_request_id("receiveReply", "Ev1\0x") != trigger_rpc_request_id("receiveReply", "Ev1")
+    for rpc_name in ("", "receive\0Reply"):
+        with pytest.raises(ValueError, match="RPC request ID requires an RPC name without NUL characters"):
+            trigger_rpc_request_id(rpc_name, "Ev1")
+
+
+def test_trigger_rpc_request_id_survives_durable_inbox_encoding() -> None:
+    event = TriggerEvent(
+        b"Ev\xe2\x82\xff1".decode("utf-8", "surrogateescape"), datetime(2025, 10, 12, tzinfo=UTC), "hello"
+    )
+    replayed = decode_trigger_event(encode_trigger_event(event))
+    assert replayed.id != event.id
+    assert trigger_rpc_request_id("approve", replayed.id) == trigger_rpc_request_id("approve", event.id)
+
+
+async def test_rpc_target_derives_the_request_id_from_rpc_name_or_the_method_name() -> None:
+    client = FakeRPCClient([])
+    flow = RPCFlow()
+
+    def deliver_with(rpc_method: Any, rpc_name: str | None) -> TriggerTarget[dict[str, str]]:
+        return new_dex_rpc_trigger_target(
+            cast(dex.AsyncClient, client),
+            rpc_method,
+            accepts_event=lambda event: True,
+            resolve_flow_id=lambda event: "flow-1",
+            map_to_rpc_input=lambda event: event.payload["text"],
+            rpc_name=rpc_name,
+        )
+
+    unnamed = functools.partial(flow.send_reply)
+    for rpc_method, rpc_name in (
+        (flow.send_reply, "receiveReply"),
+        (flow.send_reply, None),
+        (unnamed, "receiveReply"),
+        (unnamed, None),
+    ):
+        await deliver_with(rpc_method, rpc_name).handle_trigger(TriggerContext(), EVENT)
+    receive_reply_options = {"options": dex.RPCInvokeOptions(request_id="trigger-rpc-kDFFz9I4ELDtzXkmvRTzlA")}
+    assert [keywords for _, keywords in client.calls] == [
+        receive_reply_options,
+        {"options": dex.RPCInvokeOptions(request_id=trigger_rpc_request_id("send_reply", "Ev1"))},
+        receive_reply_options,
+        # A handler without a usable name and without rpc_name keeps a new request ID per attempt.
+        {},
+    ]
+    for rpc_name in ("", "   ", "receive\0Reply"):
+        with pytest.raises(ValueError, match="rpc_name must contain a non-blank character and no NUL"):
+            deliver_with(flow.send_reply, rpc_name)
+
+
+async def test_rpc_target_drops_the_event_on_its_first_request_id_conflict() -> None:
+    request_id = trigger_rpc_request_id("send_reply", "Ev1")
+
+    def service_failure(code: grpc.StatusCode, detail: str) -> dex.DexServiceError:
+        return dex.DexServiceError(code, ErrorSubStatus.UNCATEGORIZED, detail, "invoke_rpc", "flow-1")
+
+    conflict = service_failure(
+        grpc.StatusCode.INVALID_ARGUMENT, f"request ID {request_id} was already used for a different request"
+    )
+    client = FakeRPCClient([conflict, conflict])
+    logger = RecordingTriggerLogger()
+    flow = RPCFlow()
+    target: TriggerTarget[dict[str, str]] = new_dex_rpc_trigger_target(
+        cast(dex.AsyncClient, client),
+        flow.send_reply,
+        accepts_event=lambda event: True,
+        resolve_flow_id=lambda event: "flow-1",
+        map_to_rpc_input=lambda event: event.payload["text"],
+        logger=logger,
+    )
+    with pytest.raises(TriggerRPCRequestConflictError) as raised:
+        await target.handle_trigger(TriggerContext(), EVENT)
+    dropped = raised.value
+    assert isinstance(dropped, UndeliverableTriggerError)
+    assert is_trigger_undeliverable(dropped)
+    assert dropped.cause is conflict
+    assert dropped.__cause__ is conflict
+    assert (dropped.event_id, dropped.flow_id, dropped.rpc_name, dropped.request_id) == (
+        "Ev1",
+        "flow-1",
+        "send_reply",
+        request_id,
+    )
+    assert str(dropped).startswith("Trigger event is undeliverable: RPC trigger event Ev1 for RPC send_reply")
+    assert "mapped to a different RPC request than an earlier attempt" in str(dropped)
+    assert str(dropped).endswith("the event was dropped")
+    assert logger.records == [
+        RecordedLog(
+            TriggerLogLevel.ERROR,
+            "trigger rpc request conflict; event dropped",
+            {
+                "target": "rpc",
+                "event_id": "Ev1",
+                "request_id": request_id,
+                "rpc_name": "send_reply",
+                "flow_id": "flow-1",
+            },
+        )
+    ]
+    assert "SENTINEL" not in repr(logger.records) + str(dropped)
+    restored = pickle.loads(pickle.dumps(dropped))
+    assert isinstance(restored, TriggerRPCRequestConflictError)
+    assert (str(restored), restored.request_id, restored.cause) == (str(dropped), request_id, str(conflict))
+
+    # deliver_trigger consumes it on the first attempt instead of retrying.
+    delivery_logger = RecordingTriggerLogger()
+    await deliver_trigger(TriggerContext(), target, EVENT, logger=delivery_logger)
+    assert len(client.calls) == 2
+    assert [(record.level, record.message) for record in delivery_logger.records] == [
+        (TriggerLogLevel.WARN, "trigger event skipped: undeliverable")
+    ]
+    assert delivery_logger.records[0].attributes["error_type"] == "TriggerRPCRequestConflictError"
+    assert delivery_logger.records[0].attributes["error_cause_type"] == "DexServiceError"
+
+    # Only this request ID's conflict counts; every other INVALID_ARGUMENT and code keeps its classification.
+    for failure in (
+        service_failure(
+            grpc.StatusCode.INVALID_ARGUMENT,
+            "request ID trigger-rpc-other was already used for a different request",
+        ),
+        service_failure(
+            grpc.StatusCode.FAILED_PRECONDITION,
+            f"request ID {request_id} was already used for a different request",
+        ),
+        service_failure(grpc.StatusCode.INVALID_ARGUMENT, "RPC input is invalid"),
+    ):
+        failing: TriggerTarget[dict[str, str]] = new_dex_rpc_trigger_target(
+            cast(dex.AsyncClient, FakeRPCClient([failure])),
+            flow.send_reply,
+            accepts_event=lambda event: True,
+            resolve_flow_id=lambda event: "flow-1",
+            map_to_rpc_input=lambda event: event.payload["text"],
+            logger=RecordingTriggerLogger(),
+        )
+        with pytest.raises(dex.DexServiceError) as kept:
+            await failing.handle_trigger(TriggerContext(), EVENT)
+        assert kept.value is failure
+    # The exported classifier cannot see the request ID, so it keeps every INVALID_ARGUMENT retryable.
+    assert not is_trigger_undeliverable(classify_dex_trigger_error(conflict))
 
 
 def test_target_constructors_reject_missing_arguments_and_missing_mappers() -> None:

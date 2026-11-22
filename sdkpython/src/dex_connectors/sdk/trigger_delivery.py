@@ -162,7 +162,7 @@ class TriggerLogLevel(StrEnum):
     WARN = "warn"
     """Retried failures and undeliverable events."""
     ERROR = "error"
-    """Inbox read, write, and removal failures."""
+    """Inbox read, write, and removal failures, and RPC request ID conflicts."""
 
 
 class TriggerLogger(Protocol):

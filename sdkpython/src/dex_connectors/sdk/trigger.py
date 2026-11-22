@@ -12,10 +12,12 @@ Type aliases:
 | `RPCInputMapper` | Maps an event to an application RPC's input. |
 """
 
+import base64
+import hashlib
 import inspect
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Generic, Protocol, TypeVar, cast, overload
+from typing import Any, Final, Generic, Protocol, TypeVar, cast, overload
 
 import dex
 
@@ -29,6 +31,7 @@ from .trigger_delivery import (
     TriggerEvent,
     TriggerLogger,
     TriggerLogLevel,
+    TriggerLogValue,
     TriggerTarget,
     UndeliverableTriggerError,
     bind_trigger_log_attributes,
@@ -45,6 +48,11 @@ P_co = TypeVar("P_co", covariant=True)
 InputT = TypeVar("InputT")
 
 _MAXIMUM_CAUSE_DEPTH = 32
+
+TRIGGER_RPC_REQUEST_ID_PREFIX: Final = "trigger-rpc-"
+"""Prefix of every request ID that `new_dex_rpc_trigger_target` derives."""
+
+_INVALID_ARGUMENT_STATUS_NAME = "INVALID_ARGUMENT"
 
 
 @dataclass(frozen=True, slots=True)
@@ -385,6 +393,117 @@ def _declares_rpc_input(rpc_method: Callable[..., Any]) -> bool:
     return len(parameters) >= 2
 
 
+def _restore_trigger_rpc_request_conflict_error(
+    event_id: str, flow_id: str, rpc_name: str, request_id: str, cause: str | None
+) -> "TriggerRPCRequestConflictError":
+    return TriggerRPCRequestConflictError(event_id, flow_id, rpc_name, request_id, cause)
+
+
+class TriggerRPCRequestConflictError(UndeliverableTriggerError):
+    """The undeliverable failure of an RPC Trigger target whose request ID holds a different request.
+
+    Dex Server 0.1.36 and earlier compare the whole RPC request. They reject an attempt that sends a
+    different request under a recorded request ID with a `dex.DexServiceError` whose code is
+    INVALID_ARGUMENT and whose detail says the request ID "was already used for a different request".
+    `new_dex_rpc_trigger_target` raises this error for that rejection, so Trigger delivery drops the
+    event instead of retrying it. Those servers also report the conflict while the earlier request is
+    still in flight, so when that request later fails without committing, the event is lost.
+
+    The cause is a non-deterministic or changed input mapper, another binding that routes the same event
+    to the same RPC on the same Flow, changed RPC options such as the timeout or locks, or Dex payload
+    encryption, which encrypts each attempt's input with a new nonce and so makes every repeat a
+    different request. Dex Server 0.1.37 and later compare only the request ID and answer such a repeat
+    with the first request's reply instead, so this error does not occur with them.
+
+    The message names the event, RPC, Flow, and request IDs, never the input. The DexServiceError is the
+    `cause` and `__cause__`. Instances pickle with their cause reduced to text.
+    """
+
+    def __init__(
+        self, event_id: str, flow_id: str, rpc_name: str, request_id: str, cause: BaseException | str | None
+    ) -> None:
+        """Describe the conflict of one delivery attempt.
+
+        `rpc_name` is the RPC name in the request ID: the target's `rpc_name` or the handler's method
+        name. `request_id` is the ID this attempt sent, from `trigger_rpc_request_id`. `cause` is the
+        `dex.DexServiceError` that reported the conflict.
+        """
+        super().__init__(cause)
+        self.args = (
+            f"{UNDELIVERABLE_TRIGGER_MESSAGE}: RPC trigger event {event_id} for RPC {rpc_name} on Flow "
+            f"{flow_id} mapped to a different RPC request than an earlier attempt with request ID "
+            f"{request_id} (non-deterministic or changed input mapper, another binding, changed RPC options, "
+            "or Dex payload encryption on a Dex Server before 0.1.37); the event was dropped",
+        )
+        self.event_id = event_id
+        """The Trigger event ID."""
+        self.flow_id = flow_id
+        """The resolved Flow ID."""
+        self.rpc_name = rpc_name
+        """The RPC name in the request ID."""
+        self.request_id = request_id
+        """The request ID this attempt sent."""
+
+    def __reduce__(self) -> tuple[Any, ...]:
+        """Pickle the identifiers and the cause as text, so arbitrary causes never need to pickle."""
+        return (
+            _restore_trigger_rpc_request_conflict_error,
+            (
+                self.event_id,
+                self.flow_id,
+                self.rpc_name,
+                self.request_id,
+                None if self.cause is None else str(self.cause),
+            ),
+        )
+
+
+def trigger_rpc_request_id(rpc_name: str, event_id: str) -> str:
+    """Derive the Dex request ID that `new_dex_rpc_trigger_target` sends on every attempt for one event.
+
+    The ID is `TRIGGER_RPC_REQUEST_ID_PREFIX` followed by the first 16 bytes, as unpadded base64url (22
+    characters), of the SHA-256 digest of the UTF-8 bytes of `rpc_name`, one 0x00 byte, and the UTF-8
+    bytes of `event_id`. It matches the TypeScript SDK's `triggerRPCRequestId` and the Go SDK's
+    `TriggerRPCRequestID` byte for byte. Each surrogate code point, such as one that `surrogateescape`
+    decoding or a lone `\\ud800` JSON escape leaves in a string, counts as U+FFFD, as the durable Trigger
+    inbox stores it and as TypeScript encodes an unpaired surrogate and Go an invalid UTF-8 byte.
+
+    For example, `trigger_rpc_request_id("receiveReply", "Ev1")` hashes the 16 bytes
+    `receiveReply\\x00Ev1` and returns `"trigger-rpc-kDFFz9I4ELDtzXkmvRTzlA"`.
+
+    Raises ValueError when `rpc_name` is empty or contains a NUL character.
+    """
+    if not rpc_name or "\0" in rpc_name:
+        raise ValueError("RPC request ID requires an RPC name without NUL characters")
+    return _derive_trigger_rpc_request_id(rpc_name, event_id)
+
+
+def _derive_trigger_rpc_request_id(rpc_name: str, event_id: str) -> str:
+    digest = hashlib.sha256(_well_formed_utf8(rpc_name) + b"\0" + _well_formed_utf8(event_id)).digest()
+    return TRIGGER_RPC_REQUEST_ID_PREFIX + base64.urlsafe_b64encode(digest[:16]).rstrip(b"=").decode("ascii")
+
+
+def _well_formed_utf8(text: str) -> bytes:
+    if not any(0xD800 <= ord(character) <= 0xDFFF for character in text):
+        return text.encode("utf-8")
+    return "".join(
+        "\ufffd" if 0xD800 <= ord(character) <= 0xDFFF else character for character in text
+    ).encode("utf-8")
+
+
+def _is_trigger_rpc_name_usable(rpc_name: object) -> bool:
+    return isinstance(rpc_name, str) and bool(rpc_name.strip()) and "\0" not in rpc_name
+
+
+def _is_request_id_used_for_different_request(error: BaseException, request_id: str) -> bool:
+    """Match only a conflict whose detail names this call's own request ID."""
+    return (
+        isinstance(error, dex.DexServiceError)
+        and getattr(error.code, "name", None) == _INVALID_ARGUMENT_STATUS_NAME
+        and f"request ID {request_id} was already used for a different request" in error.detail
+    )
+
+
 class _DexRPCTriggerTarget(Generic[P]):
     def __init__(
         self,
@@ -393,6 +512,7 @@ class _DexRPCTriggerTarget(Generic[P]):
         accepts_event: TriggerFilter[P],
         resolve_flow_id: FlowIdResolver[P],
         map_to_rpc_input: RPCInputMapper[P, Any] | None,
+        rpc_name: str | None,
         logger: TriggerLogger,
     ) -> None:
         self._client = client
@@ -400,6 +520,8 @@ class _DexRPCTriggerTarget(Generic[P]):
         self._accepts_event = accepts_event
         self._resolve_flow_id = resolve_flow_id
         self._map_to_rpc_input = map_to_rpc_input
+        # None sends no request ID.
+        self._rpc_name = rpc_name
         self._logger = logger
 
     async def handle_trigger(self, context: TriggerContext, event: TriggerEvent[P]) -> None:
@@ -415,13 +537,24 @@ class _DexRPCTriggerTarget(Generic[P]):
         flow_id = self._resolve_flow_id(event)
         if _is_blank(flow_id) or _is_blank(event.id):
             raise UndeliverableTriggerError(ValueError("RPC trigger requires Flow ID and event ID"))
+        request_id = (
+            None if self._rpc_name is None else _derive_trigger_rpc_request_id(self._rpc_name, event.id)
+        )
+        request_attributes: dict[str, TriggerLogValue] = (
+            {} if request_id is None else {"request_id": request_id}
+        )
+        invoke_keywords: dict[str, Any] = (
+            {} if request_id is None else {"options": dex.RPCInvokeOptions(request_id=request_id)}
+        )
         # The Client overloads cannot type a handler chosen at run time.
         rpc_client = cast(Any, self._client)
         try:
             if self._map_to_rpc_input is None:
-                await rpc_client.invoke_rpc(self._rpc_method, flow_id)
+                await rpc_client.invoke_rpc(self._rpc_method, flow_id, **invoke_keywords)
             else:
-                await rpc_client.invoke_rpc(self._rpc_method, flow_id, self._map_to_rpc_input(event))
+                await rpc_client.invoke_rpc(
+                    self._rpc_method, flow_id, self._map_to_rpc_input(event), **invoke_keywords
+                )
         except dex.ValueMappingError as error:
             if error.operation != "decode":
                 raise _classified(error)  # noqa: B904
@@ -430,17 +563,42 @@ class _DexRPCTriggerTarget(Generic[P]):
                 context,
                 TriggerLogLevel.WARN,
                 "trigger event delivered; rpc response undecodable",
-                {"event_id": event.id, "flow_id": flow_id, **trigger_error_attributes(error)},
+                {
+                    "event_id": event.id,
+                    "flow_id": flow_id,
+                    **request_attributes,
+                    **trigger_error_attributes(error),
+                },
             )
             return
         except Exception as error:
+            if (
+                self._rpc_name is not None
+                and request_id is not None
+                and _is_request_id_used_for_different_request(error, request_id)
+            ):
+                log_trigger_record(
+                    self._logger,
+                    context,
+                    TriggerLogLevel.ERROR,
+                    "trigger rpc request conflict; event dropped",
+                    {
+                        "event_id": event.id,
+                        "request_id": request_id,
+                        "rpc_name": self._rpc_name,
+                        "flow_id": flow_id,
+                    },
+                )
+                raise TriggerRPCRequestConflictError(
+                    event.id, flow_id, self._rpc_name, request_id, error
+                ) from error
             raise _classified(error)  # noqa: B904
         log_trigger_record(
             self._logger,
             context,
             TriggerLogLevel.DEBUG,
             "trigger event delivered",
-            {"event_id": event.id, "flow_id": flow_id},
+            {"event_id": event.id, "flow_id": flow_id, **request_attributes},
         )
 
 
@@ -452,6 +610,7 @@ def new_dex_rpc_trigger_target(
     accepts_event: TriggerFilter[P],
     resolve_flow_id: FlowIdResolver[P],
     map_to_rpc_input: RPCInputMapper[P, InputT],
+    rpc_name: str | None = None,
     logger: TriggerLogger | None = None,
 ) -> TriggerTarget[P]: ...
 
@@ -464,6 +623,7 @@ def new_dex_rpc_trigger_target(
     accepts_event: TriggerFilter[P],
     resolve_flow_id: FlowIdResolver[P],
     map_to_rpc_input: None = None,
+    rpc_name: str | None = None,
     logger: TriggerLogger | None = None,
 ) -> TriggerTarget[P]: ...
 
@@ -475,6 +635,7 @@ def new_dex_rpc_trigger_target(
     accepts_event: TriggerFilter[P],
     resolve_flow_id: FlowIdResolver[P],
     map_to_rpc_input: RPCInputMapper[P, Any] | None = None,
+    rpc_name: str | None = None,
     logger: TriggerLogger | None = None,
 ) -> TriggerTarget[P]:
     """Create a filtered target that invokes one RPC on the resolved Flow.
@@ -483,17 +644,51 @@ def new_dex_rpc_trigger_target(
     `AsyncClient.invoke_rpc` accepts it. Without `map_to_rpc_input` the RPC is invoked without input;
     a handler declared with `(ctx, input)` requires a mapper.
 
-    Delivery is at least once: every attempt sends a new Dex request ID, so a retry after a lost response
-    invokes the RPC again, and the handler deduplicates by event ID, as with Go. The TypeScript target's
-    stable request ID (sdkts 0.10.1) is not available because dex-python-sdk cannot send one yet.
+    Every delivery attempt of an event sends the same Dex request ID, `trigger_rpc_request_id(rpc_name,
+    event.id)`, through `dex.RPCInvokeOptions.request_id`, so Dex Server applies the RPC's Flow changes
+    at most once per event while the Flow run keeps that request ID: after a durable inbox replay, a
+    provider or relay retry, or a retry after a timeout that hid an applied RPC. The RPC name is
+    `rpc_name` when given, and otherwise the handler's Python method name, `rpc_method.__name__`. The IDs
+    therefore match the TypeScript and Go RPC targets for the same RPC name. Set `rpc_name` to the RPC's
+    wire name when the RPC has an `@dex.rpc(name=...)` override; without it, renaming the method changes
+    the IDs of events still being redelivered. `rpc_name` must contain a non-blank character and no NUL
+    character. Without `rpc_name`, a handler whose name is missing, blank, or contains NUL, such as a
+    `functools.partial`, is invoked without a request ID, so every attempt is a new request.
 
-    It raises UndeliverableTriggerError when the Flow has closed or never started, when the handler
-    raises UndeliverableTriggerError, when the input cannot be encoded, or when the Flow ID or event ID
-    is blank. Python and TypeScript handler markers are recognized; Go handler markers are not, and Go
-    targets do not recognize Python markers, so a polyglot handler returns success for an event it
-    rejects. A response that cannot be decoded after Dex applied the RPC is delivered with a WARN record.
-    Every other error propagates for a retry. Raises ValueError at construction when an argument is
-    missing or a mapper is required.
+    A Flow run keeps only its newest request IDs, as many as the Dex Server limit
+    `limits.maxRequestIdsPerRun` (1000 by default), shared with its other requests that carry request
+    IDs, such as Client Attribute writes; a redelivery after its ID was evicted applies again. Declare the
+    handler with `@dex.rpc(is_transactional=True)` or with Attribute locks, so Dex answers a repeat with
+    the recorded reply without running the handler again. Any other handler runs again on a repeat, and
+    Dex discards that attempt's Flow changes when it makes any. Dex answers a repeat this way also after
+    the Flow closed, until it deletes the closed run, so the target consumes such a redelivery as
+    delivered. A handler that must also ignore repeats beyond the request-ID window keeps its own record
+    of event IDs. The ID covers the RPC name and the event ID only, never the mapped input or the binding,
+    so two bindings that route one event to the same RPC on the same Flow share one ID and Dex applies
+    only the first; give each such binding its own RPC.
+
+    Keep `map_to_rpc_input` deterministic. Dex Server 0.1.37 and later answer a repeat whose request
+    differs, such as one whose mapper returned another input, with the first request's reply and apply
+    none of its changes. Earlier servers reject it with INVALID_ARGUMENT "request ID ... was already used
+    for a different request", also while the earlier request is still in flight. The target then logs an
+    ERROR "trigger rpc request conflict; event dropped" record with the event, request, RPC, and Flow IDs
+    and raises `TriggerRPCRequestConflictError`, an UndeliverableTriggerError, so delivery drops the
+    event; when that earlier request later fails without committing, the event is lost. Dex payload
+    encryption (`dex.ClientOptions.payload_encryption`) encrypts each attempt's input with a new nonce,
+    so to those earlier servers every repeat is a different request, even from a deterministic mapper:
+    every redelivery of an applied event is dropped as a conflict. Use Dex Server 0.1.37 or later with
+    payload encryption.
+
+    It raises UndeliverableTriggerError when the Flow was never started, when the Flow has closed and
+    does not hold the event's request ID, when the handler raises UndeliverableTriggerError, when the
+    input cannot be encoded, when the Flow ID or event ID is blank, or on a request ID conflict. Python
+    and TypeScript handler markers are recognized; Go handler markers are not, and Go targets do not
+    recognize Python markers, so a polyglot handler returns success for an event it rejects. A response
+    that cannot be decoded after Dex applied the RPC is delivered with a WARN record. Every other error
+    propagates for a retry. The DEBUG "trigger event delivered" record, the WARN record, and the conflict
+    record carry the `request_id` the target sent. Raises ValueError at construction when an argument is
+    missing, a mapper is required, or `rpc_name` is blank or contains NUL. Requires dex-python-sdk 1.45.17
+    or later, the first release with `RPCInvokeOptions.request_id`.
     """
     if client is None or rpc_method is None or accepts_event is None or resolve_flow_id is None:
         raise ValueError("Dex client, RPC, Trigger filter, and Flow ID resolver are required")
@@ -501,12 +696,18 @@ def new_dex_rpc_trigger_target(
         raise ValueError(
             "RPC trigger requires an RPC input mapper for a handler declared with (context, input) parameters"
         )
+    if rpc_name is not None and not _is_trigger_rpc_name_usable(rpc_name):
+        raise ValueError("RPC trigger rpc_name must contain a non-blank character and no NUL characters")
+    if rpc_name is None:
+        method_name = getattr(rpc_method, "__name__", None)
+        rpc_name = method_name if _is_trigger_rpc_name_usable(method_name) else None
     return _DexRPCTriggerTarget(
         client,
         rpc_method,
         accepts_event,
         resolve_flow_id,
         map_to_rpc_input,
+        rpc_name,
         bind_trigger_log_attributes(logger, {"target": "rpc"}),
     )
 

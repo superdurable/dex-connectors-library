@@ -199,6 +199,16 @@ payload encryption encrypts each attempt's input with a fresh nonce, so an
 earlier server reports every repeat as a conflict, even from a deterministic
 mapper; use server-zd 0.1.37 or later with payload encryption.
 
+The Python SDK RPC target, `new_dex_rpc_trigger_target`, sends the same ID on
+every delivery attempt, with the Python method name as the default RPC name and
+its `rpc_name` argument in place of `rpcName`, and drops a conflict with
+`TriggerRPCRequestConflictError`. It sends the ID for every handler shape. Dex
+Server 0.1.37 and later compare only the request ID: they answer a repeat whose
+request differs with the first request's reply and report no conflict. Dex
+payload encryption encrypts each attempt's input with a fresh nonce, so an
+earlier server reports every repeat as a conflict, even from a deterministic
+mapper; use server-zd 0.1.37 or later with payload encryption.
+
 Trigger binding configuration is separate from connection configuration and
 credentials. Its identity is connector ID, connection name, trigger name, and
 binding name. One OAuth connection may therefore serve several independently

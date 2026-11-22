@@ -2,9 +2,8 @@
 # SPDX-License-Identifier: MIT
 """Real dexcli dev verification of Trigger delivery into Flows and RPCs.
 
-The TypeScript suite's stable RPC request ID scenarios (sdkts 0.10.1) are not ported: dex-python-sdk
-cannot send a request ID with `invoke_rpc`, so Python RPC Trigger delivery is at least once and the
-handler deduplicates by event ID.
+The RPC request ID scenarios port the TypeScript suite's (sdkts 0.10.1). They adapt to the Dex Server:
+0.1.37 and later answer a changed repeat with the first reply, and earlier servers report a conflict.
 """
 
 import asyncio
@@ -38,6 +37,7 @@ from dex_connectors.sdk import (
     TriggerLogLevel,
     TriggerLogValue,
     TriggerRef,
+    TriggerRPCRequestConflictError,
     TriggerSource,
     TriggerTarget,
     UndeliverableTriggerError,
@@ -46,6 +46,8 @@ from dex_connectors.sdk import (
     new_dex_flow_trigger_target,
     new_dex_rpc_trigger_target,
     new_trigger,
+    prepare_trigger_delivery,
+    trigger_rpc_request_id,
 )
 from dex_connectors.sdk.projectconfig import (
     InMemoryObjectStore,
@@ -209,9 +211,112 @@ class ApprovalFlow(dex.Flow[None]):
         return dex.RPCResult(RECEIVED_REPLIES.get(context) or [])
 
 
+@dataclass(frozen=True)
+class LedgerEntry:
+    """One amount an event adds to the ledger; `mapped_at` lets a mapper change the request."""
+
+    amount: int
+    mapped_at: int = 0
+
+
+@dataclass
+class LedgerGate:
+    """Holds one `record_gated` run in flight until the test settles it."""
+
+    entered: asyncio.Event = field(default_factory=asyncio.Event)
+    settled: asyncio.Event = field(default_factory=asyncio.Event)
+    is_failing: bool = False
+
+
+LEDGER_TOTAL: dex.Attribute[int] = dex.Attribute("ledgerTotal", int)
+# Counts handler runs per RPC; the Worker runs in this process.
+LEDGER_HANDLER_CALLS: dict[str, int] = {
+    "record_transactional": 0,
+    "record_non_transactional": 0,
+    "increment_total": 0,
+    "record_wired": 0,
+}
+LEDGER_GATES: list[LedgerGate] = []
+
+
+class AwaitLedgerEntries(dex.Step[None]):
+    """Keeps the ledger Flow open for RPCs."""
+
+    def get_step_type(self) -> str:
+        """Name the waiting Step."""
+        return "AwaitLedgerEntries"
+
+    def execute(self, context: dex.Context, input: None) -> dex.StepDecision:
+        """Wait for RPCs."""
+        return dex.dead_end()
+
+
+class LedgerFlow(dex.Flow[None]):
+    """Adds event amounts to a total through RPCs that rely on the Trigger request ID alone."""
+
+    def get_flow_type(self) -> str:
+        """Return a run-unique Flow type."""
+        return f"SdkpythonTriggerLedger{SUFFIX}"
+
+    def get_steps(self) -> dex.StepList[None]:
+        """Register the waiting Step."""
+        return dex.StepList.start_step(AwaitLedgerEntries())
+
+    def get_persistence_schema(self) -> dex.PersistenceSchema:
+        """Register the total."""
+        return dex.PersistenceSchema.of(LEDGER_TOTAL)
+
+    @dex.rpc(is_transactional=True)
+    def record_transactional(self, context: dex.Context, entry: LedgerEntry) -> dex.RPCResult[int]:
+        """Add one entry; a repeat is answered from the recorded reply."""
+        LEDGER_HANDLER_CALLS["record_transactional"] += 1
+        return _add_to_ledger(context, entry.amount)
+
+    @dex.rpc
+    def record_non_transactional(self, context: dex.Context, entry: LedgerEntry) -> dex.RPCResult[int]:
+        """Add one entry; a repeat runs again and Dex discards its changes."""
+        LEDGER_HANDLER_CALLS["record_non_transactional"] += 1
+        return _add_to_ledger(context, entry.amount)
+
+    @dex.rpc(is_transactional=True)
+    def increment_total(self, context: dex.Context) -> dex.RPCResult[int]:
+        """Add one without input."""
+        LEDGER_HANDLER_CALLS["increment_total"] += 1
+        return _add_to_ledger(context, 1)
+
+    @dex.rpc(name="record_ledger_entry", is_transactional=True)
+    def record_wired(self, context: dex.Context, entry: LedgerEntry) -> dex.RPCResult[int]:
+        """Add one entry under a wire name that differs from the method name."""
+        LEDGER_HANDLER_CALLS["record_wired"] += 1
+        return _add_to_ledger(context, entry.amount)
+
+    @dex.rpc(is_transactional=True, timeout=timedelta(seconds=30))
+    async def record_gated(self, context: dex.Context, entry: LedgerEntry) -> dex.RPCResult[int]:
+        """Add one entry once the queued gate, if any, settles."""
+        if LEDGER_GATES:
+            gate = LEDGER_GATES.pop(0)
+            gate.entered.set()
+            await gate.settled.wait()
+            if gate.is_failing:
+                raise RuntimeError("earlier attempt failed")
+        return _add_to_ledger(context, entry.amount)
+
+    @dex.rpc
+    def get_total(self, context: dex.Context) -> dex.RPCResult[int]:
+        """Return the total."""
+        return dex.RPCResult(LEDGER_TOTAL.get(context) or 0)
+
+
+def _add_to_ledger(context: dex.Context, amount: int) -> dex.RPCResult[int]:
+    total = (LEDGER_TOTAL.get(context) or 0) + amount
+    LEDGER_TOTAL.set(context, total)
+    return dex.RPCResult(total)
+
+
 ITEM_FLOW = ItemFlow()
 RAW_FLOW = RawPayloadFlow()
 APPROVAL_FLOW = ApprovalFlow()
+LEDGER_FLOW = LedgerFlow()
 
 
 @dataclass(frozen=True)
@@ -228,7 +333,7 @@ async def stack() -> AsyncIterator[DexStack]:
     cache_root.mkdir(exist_ok=True)
     with tempfile.TemporaryDirectory(dir=cache_root) as directory:
         cache = dex.open_blob_cache(dex.BlobCacheConfig(directory, 16 * 1024 * 1024))
-        registry = dex.Registry([ITEM_FLOW, RAW_FLOW, APPROVAL_FLOW], allow_async_handlers=True)
+        registry = dex.Registry([ITEM_FLOW, RAW_FLOW, APPROVAL_FLOW, LEDGER_FLOW], allow_async_handlers=True)
         async with dex.AsyncWorker(
             registry, cache, dex.WorkerOptions(server_address=SERVER_ADDRESS)
         ) as worker:
@@ -313,7 +418,7 @@ async def test_rpc_target_routes_replies_and_classifies_handler_failures(
     )
     reply = _event(f"Ev-{SUFFIX}-reply", {"flow_id": approval_id, "kind": "approve"})
     await reply_target.handle_trigger(TriggerContext(), reply)
-    # Python RPC delivery is at least once; the handler's event ID record makes the repeat a no-op.
+    # The redelivery repeats the request ID, so Dex answers it from the recorded reply.
     await reply_target.handle_trigger(TriggerContext(), reply)
     assert await client.invoke_rpc(APPROVAL_FLOW.list_replies, approval_id) == [reply.id]
 
@@ -349,6 +454,173 @@ async def test_rpc_target_routes_replies_and_classifies_handler_failures(
         await reply_target.handle_trigger(TriggerContext(), orphan)
     assert is_trigger_undeliverable(missing.value)
     await client.stop_flow(approval_id)
+
+
+def _ledger_target(
+    client: dex.AsyncClient,
+    rpc_method: Any,
+    ledger_id: str,
+    logger: RecordingLogger | None = None,
+    rpc_name: str | None = None,
+    map_to_entry: Any = None,
+) -> TriggerTarget[dict[str, int]]:
+    return new_dex_rpc_trigger_target(
+        client,
+        rpc_method,
+        accepts_event=lambda event: True,
+        resolve_flow_id=lambda event: ledger_id,
+        map_to_rpc_input=map_to_entry or (lambda event: LedgerEntry(event.payload["amount"])),
+        rpc_name=rpc_name,
+        logger=logger or RecordingLogger(),
+    )
+
+
+async def test_rpc_target_sends_one_request_id_for_every_delivery_of_an_event(stack: DexStack) -> None:
+    client = stack.client
+    ledger_id = f"ledger-{SUFFIX}"
+    await client.start_flow(LEDGER_FLOW, ledger_id, None)
+    quiet = RecordingLogger()
+
+    transactional_target = _ledger_target(client, LEDGER_FLOW.record_transactional, ledger_id)
+    payment = _event(f"Ev-{SUFFIX}-payment", {"amount": 5})
+    await deliver_trigger(TriggerContext(), transactional_target, payment, logger=quiet)
+    await deliver_trigger(TriggerContext(), transactional_target, payment, logger=quiet)
+    assert LEDGER_HANDLER_CALLS["record_transactional"] == 1, "a transactional repeat gets the recorded reply"
+    assert await client.invoke_rpc(LEDGER_FLOW.get_total, ledger_id) == 5
+
+    # A mapper whose input changes on every call applies its first delivery once. Its redelivery maps the
+    # event to a different request under the one request ID: Dex Server 0.1.37 and later answer it with the
+    # first reply, and earlier servers refuse it, which the target logs at ERROR before it drops the event.
+    # Either way the durable inbox consumes the redelivery and the event applies once.
+    bonus = _event(f"Ev-{SUFFIX}-bonus", {"amount": 3})
+    mappings = iter(range(1, 100))
+    conflict_logger = RecordingLogger()
+    changing_target = _ledger_target(
+        client,
+        LEDGER_FLOW.record_transactional,
+        ledger_id,
+        conflict_logger,
+        map_to_entry=lambda event: LedgerEntry(event.payload["amount"], next(mappings)),
+    )
+    bonus_inbox = TriggerInbox(
+        InMemoryObjectStore(),
+        Scope("bonus", "live"),
+        TriggerInboxKey("sample", "workspace", "bonusCreated", "bonus"),
+    )
+    durable_changing_target = new_durable_trigger_target(
+        bonus_inbox, changing_target, decode_payload=lambda text, raw: json.loads(text), logger=quiet
+    )
+    for _ in range(2):
+        await prepare_trigger_delivery(TriggerContext(), durable_changing_target, bonus)
+        await durable_changing_target.handle_trigger(TriggerContext(), bonus)
+        assert await bonus_inbox.pending() == ()
+    assert LEDGER_HANDLER_CALLS["record_transactional"] == 2, "only the first changing delivery ran"
+    assert await client.invoke_rpc(LEDGER_FLOW.get_total, ledger_id) == 8
+    bonus_request_id = trigger_rpc_request_id("record_transactional", bonus.id)
+    drops = [
+        record
+        for record in conflict_logger.records
+        if record[1] == "trigger rpc request conflict; event dropped"
+    ]
+    # Only a server before 0.1.37 compares the whole request and reports the conflict.
+    is_request_conflict_reported = bool(drops)
+    try:
+        await changing_target.handle_trigger(TriggerContext(), bonus)
+        bonus_redelivery: BaseException | None = None
+    except Exception as error:
+        bonus_redelivery = error
+    if is_request_conflict_reported:
+        assert drops == [
+            (
+                TriggerLogLevel.ERROR,
+                "trigger rpc request conflict; event dropped",
+                {
+                    "target": "rpc",
+                    "event_id": bonus.id,
+                    "request_id": bonus_request_id,
+                    "rpc_name": "record_transactional",
+                    "flow_id": ledger_id,
+                },
+            )
+        ]
+        assert isinstance(bonus_redelivery, TriggerRPCRequestConflictError)
+        assert is_trigger_undeliverable(bonus_redelivery)
+        assert isinstance(bonus_redelivery.__cause__, dex.DexServiceError)
+        assert "was already used for a different request" in bonus_redelivery.__cause__.detail
+    else:
+        assert bonus_redelivery is None, "a changed redelivery is answered with the first reply"
+    assert LEDGER_HANDLER_CALLS["record_transactional"] == 2
+    assert await client.invoke_rpc(LEDGER_FLOW.get_total, ledger_id) == 8
+
+    # An input-free RPC without a mapper also applies a redelivery once.
+    tick = _event(f"Ev-{SUFFIX}-tick", {})
+    input_free_target: TriggerTarget[dict[str, int]] = new_dex_rpc_trigger_target(
+        client,
+        LEDGER_FLOW.increment_total,
+        accepts_event=lambda event: True,
+        resolve_flow_id=lambda event: ledger_id,
+        logger=quiet,
+    )
+    await deliver_trigger(TriggerContext(), input_free_target, tick, logger=quiet)
+    await deliver_trigger(TriggerContext(), input_free_target, tick, logger=quiet)
+    assert LEDGER_HANDLER_CALLS["increment_total"] == 1
+    assert await client.invoke_rpc(LEDGER_FLOW.get_total, ledger_id) == 9
+
+    # rpc_name replaces the method name in the request ID, so the wire name keeps the IDs stable.
+    wired = _event(f"Ev-{SUFFIX}-wired", {"amount": 4})
+    wired_target = _ledger_target(client, LEDGER_FLOW.record_wired, ledger_id, rpc_name="record_ledger_entry")
+    await deliver_trigger(TriggerContext(), wired_target, wired, logger=quiet)
+    wired_options = dex.RPCInvokeOptions(request_id=trigger_rpc_request_id("record_ledger_entry", wired.id))
+    assert (
+        await client.invoke_rpc(LEDGER_FLOW.record_wired, ledger_id, LedgerEntry(4), options=wired_options)
+        == 13
+    )
+    assert LEDGER_HANDLER_CALLS["record_wired"] == 1, "the wire-name request ID matched the target delivery"
+
+    # The same event to another RPC on the same Flow is a different request.
+    non_transactional_target = _ledger_target(client, LEDGER_FLOW.record_non_transactional, ledger_id)
+    await deliver_trigger(TriggerContext(), non_transactional_target, payment, logger=quiet)
+    await deliver_trigger(TriggerContext(), non_transactional_target, payment, logger=quiet)
+    assert LEDGER_HANDLER_CALLS["record_non_transactional"] == 2, "a non-transactional repeat reruns"
+    assert await client.invoke_rpc(LEDGER_FLOW.get_total, ledger_id) == 18, "each RPC applied the event once"
+
+    # An earlier attempt with another input, such as one a crashed process sent, is still in flight. A server
+    # before 0.1.37 reports the same conflict, so the target drops the event, and when that attempt then fails
+    # without committing, this delivery is lost. A later server reports no conflict, so this delivery is never
+    # dropped: it either fails for a retry or applies the event.
+    deposit = _event(f"Ev-{SUFFIX}-deposit", {"amount": 7})
+    gate = LedgerGate(is_failing=True)
+    LEDGER_GATES.append(gate)
+    deposit_options = dex.RPCInvokeOptions(request_id=trigger_rpc_request_id("record_gated", deposit.id))
+    # The AsyncClient overloads do not type an async handler.
+    record_gated: Any = LEDGER_FLOW.record_gated
+    earlier_attempt: asyncio.Task[int] = asyncio.create_task(
+        client.invoke_rpc(record_gated, ledger_id, LedgerEntry(100), options=deposit_options)
+    )
+    async with asyncio.timeout(30):
+        await gate.entered.wait()
+    gated_target = _ledger_target(client, LEDGER_FLOW.record_gated, ledger_id)
+    in_flight_delivery = asyncio.create_task(gated_target.handle_trigger(TriggerContext(), deposit))
+    if is_request_conflict_reported:
+        with pytest.raises(TriggerRPCRequestConflictError) as in_flight_rejection:
+            await in_flight_delivery
+        assert is_trigger_undeliverable(in_flight_rejection.value)
+        gate.settled.set()
+        with pytest.raises(dex.WorkerInvocationError):
+            await earlier_attempt
+        assert await client.invoke_rpc(LEDGER_FLOW.get_total, ledger_id) == 18, "the dropped deposit was lost"
+    else:
+        gate.settled.set()
+        with pytest.raises(dex.WorkerInvocationError):
+            await earlier_attempt
+        try:
+            await in_flight_delivery
+        except Exception as error:
+            assert not is_trigger_undeliverable(error), f"an in-flight repeat is never dropped: {error!r}"
+    # A later redelivery of the same event, such as a provider retry, applies the deposit exactly once.
+    await deliver_trigger(TriggerContext(), gated_target, deposit, logger=quiet)
+    assert await client.invoke_rpc(LEDGER_FLOW.get_total, ledger_id) == 25
+    await client.stop_flow(ledger_id)
 
 
 class NoEventSource:

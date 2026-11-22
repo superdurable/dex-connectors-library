@@ -56,9 +56,9 @@ class ApprovalFlow(dex.Flow[ApprovalRequest]):
         """Register the waiting Step."""
         return dex.StepList.start_step(AwaitDecision())
 
-    @dex.rpc
+    @dex.rpc(is_transactional=True)
     def record_decision(self, context: dex.Context, decision: str) -> None:
-        """Record one decision; a repeated event ID must not apply twice."""
+        """Record one decision; Dex answers a redelivered event from the recorded reply."""
 
     @dex.rpc
     def send_reminder(self, context: dex.Context) -> None:
