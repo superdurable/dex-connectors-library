@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import base64
 import importlib.util
 import io
 import hashlib
@@ -1417,7 +1418,7 @@ class ComponentReleaseTest(unittest.TestCase):
                      "The requested URL returned error: 403\n")
         module = f"{LIBRARY}/sdkgo"
         lookup = release.DependencyReleaseLookup("main")
-        for outcomes, should_raise in (((1, 0), False), ((1, 1, 1), True)):
+        for outcomes, should_raise in (((1, 0), False), ((1, 1, 1, 1, 1), True)):
             with self.subTest(outcomes=outcomes):
                 results = [subprocess.CompletedProcess((), code, "", throttled if code else "") for code in outcomes]
                 with mock.patch.object(release.subprocess, "run", lambda command, **_: results.pop(0)), \
@@ -1429,7 +1430,30 @@ class ComponentReleaseTest(unittest.TestCase):
                         lookup.download_module_directly(self.repository, module, "v0.38.0")
                 self.assertEqual(results, [])
                 self.assertEqual([call.args[0] for call in sleep.call_args_list],
-                                 [5.0, 10.0][:len(outcomes) - 1])
+                                 [5.0, 10.0, 20.0, 40.0][:len(outcomes) - 1])
+
+    def test_direct_download_authenticates_github_reads_with_the_ci_token(self) -> None:
+        invocations: list[dict[str, str]] = []
+
+        def run_go(command: object, **keywords: object) -> subprocess.CompletedProcess[str]:
+            environment = keywords["env"]
+            assert isinstance(environment, dict)
+            invocations.append(environment)
+            return subprocess.CompletedProcess((), 0, "", "")
+
+        lookup = release.DependencyReleaseLookup("main")
+        module = f"{LIBRARY}/sdkgo"
+        with mock.patch.object(release.subprocess, "run", run_go):
+            with mock.patch.dict(os.environ, {"GH_TOKEN": "token-value", "GIT_CONFIG_COUNT": "2"}):
+                lookup.download_module_directly(self.repository, module, "v0.38.0")
+            with mock.patch.dict(os.environ, {}, clear=True):
+                lookup.download_module_directly(self.repository, module, "v0.38.0")
+        authenticated, anonymous = invocations
+        self.assertEqual(authenticated["GIT_CONFIG_COUNT"], "3")
+        self.assertEqual(authenticated["GIT_CONFIG_KEY_2"], "http.https://github.com/.extraheader")
+        self.assertEqual(authenticated["GIT_CONFIG_VALUE_2"],
+                         "AUTHORIZATION: basic " + base64.b64encode(b"x-access-token:token-value").decode())
+        self.assertNotIn("GIT_CONFIG_COUNT", anonymous)
 
     def test_connector_plan_ignores_other_component_tags(self) -> None:
         self.connector()
