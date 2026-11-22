@@ -32,3 +32,20 @@ func SentMailCandidateQueryForReplyForTest(source Message) (string, bool) {
 	}
 	return sentMailCandidateQuery([]string{recipient}), true
 }
+
+// FormatRecipientsForTest returns the To: mailboxes a send to these recipients writes.
+func FormatRecipientsForTest(to []string) ([]string, bool) {
+	recipients, failure := validateSendInput(SendMessageInput{To: to, Subject: "Progress", TextBody: "Update"}, "owner@example.com")
+	return recipients, failure == nil
+}
+
+// DecodeToHeaderForTest returns the getMessage to: list of one To header.
+func DecodeToHeaderForTest(value string) []string {
+	return splitAddressHeader(value)
+}
+
+// ReplyRecipientForTest returns the To: mailbox of a reply to this source.
+func ReplyRecipientForTest(source Message) (string, bool) {
+	recipient, err := replyRecipient(source)
+	return recipient, err == nil
+}

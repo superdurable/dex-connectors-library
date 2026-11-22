@@ -10196,6 +10196,500 @@
         "sendCount": 3,
         "state": "claimed"
       }
+    },
+    {
+      "callId": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"sent-1\",\"threadId\":\"thread-1\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users/me/messages/send",
+          "requestBody": {
+            "$rawMime": "From: owner@example.com\r\nTo: =?utf-8?b?Wm/DqyAoT3BzKSwgSW5j?= \u003czoe@example.com\u003e, =?utf-8?b?Wm/DqyAiUSIgT3Bz?= \u003cquote@example.com\u003e, =?utf-8?b?Wm/Dq1xPcHM=?= \u003cbackslash@example.com\u003e, =?utf-8?b?Wm/DqyA8T3BzPg==?= \u003cangle@example.com\u003e, =?utf-8?b?Wm/Dq0BPcHM6IFRlYW07IExlYWRzLiBbRVVd?= \u003cspecials@example.com\u003e, =?utf-8?b?UmVuw6llIE8nQnJpZW4gIzEgJiB7T3BzfQ==?= \u003capostrophe@example.com\u003e, =?utf-8?q?Zo=C3=AB/Ops+1-2*3!=3D=3F=5F?= \u003cliteral@example.com\u003e, \"Doe, \\\"JD\\\" \\\\ John\" \u003cascii@example.com\u003e\r\nSubject: Progress\r\nMessage-ID: \u003cfbce9b7fa05ed91cccb7890696a08be59f5a07560806df867dec464511549402@dex.superdurable.dev\u003e\r\nX-Dex-Message-ID: \u003cfbce9b7fa05ed91cccb7890696a08be59f5a07560806df867dec464511549402@dex.superdurable.dev\u003e\r\nX-Dex-Call-ID: 9d2167f5-ff7c-53fa-b238-886c4dcac6e9\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=\"UTF-8\"\r\nContent-Transfer-Encoding: 8bit\r\n\r\nUpdate"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer gmail-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
+          "providerId": "sent-1",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "messageId": "sent-1",
+          "recipients": [
+            "=?utf-8?b?Wm/DqyAoT3BzKSwgSW5j?= \u003czoe@example.com\u003e",
+            "=?utf-8?b?Wm/DqyAiUSIgT3Bz?= \u003cquote@example.com\u003e",
+            "=?utf-8?b?Wm/Dq1xPcHM=?= \u003cbackslash@example.com\u003e",
+            "=?utf-8?b?Wm/DqyA8T3BzPg==?= \u003cangle@example.com\u003e",
+            "=?utf-8?b?Wm/Dq0BPcHM6IFRlYW07IExlYWRzLiBbRVVd?= \u003cspecials@example.com\u003e",
+            "=?utf-8?b?UmVuw6llIE8nQnJpZW4gIzEgJiB7T3BzfQ==?= \u003capostrophe@example.com\u003e",
+            "=?utf-8?q?Zo=C3=AB/Ops+1-2*3!=3D=3F=5F?= \u003cliteral@example.com\u003e",
+            "\"Doe, \\\"JD\\\" \\\\ John\" \u003cascii@example.com\u003e"
+          ],
+          "sender": "owner@example.com",
+          "threadId": "thread-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
+      "input": {
+        "subject": "Progress",
+        "textBody": "Update",
+        "to": [
+          "\"Zoë (Ops), Inc\" \u003czoe@example.com\u003e",
+          "\"Zoë \\\"Q\\\" Ops\" \u003cquote@example.com\u003e",
+          "\"Zoë\\\\Ops\" \u003cbackslash@example.com\u003e",
+          "\"Zoë \u003cOps\u003e\" \u003cangle@example.com\u003e",
+          "\"Zoë@Ops: Team; Leads. [EU]\" \u003cspecials@example.com\u003e",
+          "\"Renée O'Brien #1 \u0026 {Ops}\" \u003capostrophe@example.com\u003e",
+          "\"Zoë/Ops+1-2*3!=?_\" \u003cliteral@example.com\u003e",
+          "\"Doe, \\\"JD\\\" \\\\ John\" \u003cascii@example.com\u003e"
+        ]
+      },
+      "name": "sendMessage-sent-non-ascii-display-names-with-specials",
+      "operation": "sendMessage"
+    },
+    {
+      "callId": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"sent-1\",\"threadId\":\"thread-1\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users/me/messages/send",
+          "requestBody": {
+            "$rawMime": "From: owner@example.com\r\nTo: =?utf-8?q?Zo=C3=AB_=C3=85ngstr=C3=B6m-=C3=98resund_=CE=95=CE=BB=CE=BB?= =?utf-8?q?=CE=B7=CE=BD=CE=B9=CE=BA=CE=AC_=D0=9A=D0=B8=D1=80=D0=B8=D0=BB?= =?utf-8?q?=D0=BB=D0=B8=D1=86=D0=B0_=E4=B8=AD=E6=96=87_=F0=9F=8E=89_Party_?= =?utf-8?q?Planning_Committee_of_the_Year?= \u003clong.q@example.com\u003e, =?utf-8?b?Wm/DqyDDhW5nc3Ryw7ZtICjDmHJlc3VuZCksIM6VzrvOu863zr3Ouc66zqwg?= =?utf-8?b?JiDQmtC40YDQuNC70LvQuNGG0LA6IOS4reaWhyDwn46JIFBhcnR5IFBsYW5u?= =?utf-8?b?aW5nIENvbW1pdHRlZSBvZiB0aGUgWWVhcg==?= \u003clong.b@example.com\u003e, =?utf-8?b?Wm/Dq1xPcHMgw4VuZ3N0csO2bS3DmHJlc3VuZCDOlc67zrvOt869zrnOus6s?= =?utf-8?b?INCa0LjRgNC40LvQu9C40YbQsCDkuK3mlocgUGFydHkgUGxhbm5pbmc=?= \u003clong.backslash@example.com\u003e, =?utf-8?q?=E6=97=A5=E6=9C=AC=E8=AA=9E=E3=81=AE=E5=90=8D=E5=89=8D=E3=81=A8?= =?utf-8?q?=E3=81=A6=E3=82=82=E9=95=B7=E3=81=84=E5=90=8D=E5=89=8D=E3=81=A7?= =?utf-8?q?=E3=81=99=E6=97=A5=E6=9C=AC=E8=AA=9E=E3=81=AE=E5=90=8D=E5=89=8D?= =?utf-8?q?=E3=81=A8=E3=81=A6=E3=82=82=E9=95=B7=E3=81=84=E5=90=8D=E5=89=8D?= =?utf-8?q?=E3=81=A7=E3=81=99?= \u003ccjk@example.com\u003e, =?utf-8?q?Team_=F0=9F=91=A9=E2=80=8D=F0=9F=92=BB_=F0=9F=91=A8=F0=9F=8F=BD?= =?utf-8?q?=E2=80=8D=F0=9F=9A=80?= \u003cemoji@example.com\u003e, =?utf-8?q?=D7=A9=D7=9C=D7=95=D7=9D_Zo=C3=AB_=D9=85=D8=B1=D8=AD=D8=A8?= =?utf-8?q?=D8=A7?= \u003crtl@example.com\u003e, =?utf-8?q?Zo=C3=AB_Ops?= \u003cunquoted@example.com\u003e, =?utf-8?q?Zo=C3=AB_Ops?= \u003cencoded@example.com\u003e\r\nSubject: Progress\r\nMessage-ID: \u003cfbce9b7fa05ed91cccb7890696a08be59f5a07560806df867dec464511549402@dex.superdurable.dev\u003e\r\nX-Dex-Message-ID: \u003cfbce9b7fa05ed91cccb7890696a08be59f5a07560806df867dec464511549402@dex.superdurable.dev\u003e\r\nX-Dex-Call-ID: 9d2167f5-ff7c-53fa-b238-886c4dcac6e9\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=\"UTF-8\"\r\nContent-Transfer-Encoding: 8bit\r\n\r\nUpdate"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer gmail-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
+          "providerId": "sent-1",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "messageId": "sent-1",
+          "recipients": [
+            "=?utf-8?q?Zo=C3=AB_=C3=85ngstr=C3=B6m-=C3=98resund_=CE=95=CE=BB=CE=BB?= =?utf-8?q?=CE=B7=CE=BD=CE=B9=CE=BA=CE=AC_=D0=9A=D0=B8=D1=80=D0=B8=D0=BB?= =?utf-8?q?=D0=BB=D0=B8=D1=86=D0=B0_=E4=B8=AD=E6=96=87_=F0=9F=8E=89_Party_?= =?utf-8?q?Planning_Committee_of_the_Year?= \u003clong.q@example.com\u003e",
+            "=?utf-8?b?Wm/DqyDDhW5nc3Ryw7ZtICjDmHJlc3VuZCksIM6VzrvOu863zr3Ouc66zqwg?= =?utf-8?b?JiDQmtC40YDQuNC70LvQuNGG0LA6IOS4reaWhyDwn46JIFBhcnR5IFBsYW5u?= =?utf-8?b?aW5nIENvbW1pdHRlZSBvZiB0aGUgWWVhcg==?= \u003clong.b@example.com\u003e",
+            "=?utf-8?b?Wm/Dq1xPcHMgw4VuZ3N0csO2bS3DmHJlc3VuZCDOlc67zrvOt869zrnOus6s?= =?utf-8?b?INCa0LjRgNC40LvQu9C40YbQsCDkuK3mlocgUGFydHkgUGxhbm5pbmc=?= \u003clong.backslash@example.com\u003e",
+            "=?utf-8?q?=E6=97=A5=E6=9C=AC=E8=AA=9E=E3=81=AE=E5=90=8D=E5=89=8D=E3=81=A8?= =?utf-8?q?=E3=81=A6=E3=82=82=E9=95=B7=E3=81=84=E5=90=8D=E5=89=8D=E3=81=A7?= =?utf-8?q?=E3=81=99=E6=97=A5=E6=9C=AC=E8=AA=9E=E3=81=AE=E5=90=8D=E5=89=8D?= =?utf-8?q?=E3=81=A8=E3=81=A6=E3=82=82=E9=95=B7=E3=81=84=E5=90=8D=E5=89=8D?= =?utf-8?q?=E3=81=A7=E3=81=99?= \u003ccjk@example.com\u003e",
+            "=?utf-8?q?Team_=F0=9F=91=A9=E2=80=8D=F0=9F=92=BB_=F0=9F=91=A8=F0=9F=8F=BD?= =?utf-8?q?=E2=80=8D=F0=9F=9A=80?= \u003cemoji@example.com\u003e",
+            "=?utf-8?q?=D7=A9=D7=9C=D7=95=D7=9D_Zo=C3=AB_=D9=85=D8=B1=D8=AD=D8=A8?= =?utf-8?q?=D8=A7?= \u003crtl@example.com\u003e",
+            "=?utf-8?q?Zo=C3=AB_Ops?= \u003cunquoted@example.com\u003e",
+            "=?utf-8?q?Zo=C3=AB_Ops?= \u003cencoded@example.com\u003e"
+          ],
+          "sender": "owner@example.com",
+          "threadId": "thread-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
+      "input": {
+        "subject": "Progress",
+        "textBody": "Update",
+        "to": [
+          "\"Zoë Ångström-Øresund Ελληνικά Кириллица 中文 🎉 Party Planning Committee of the Year\" \u003clong.q@example.com\u003e",
+          "\"Zoë Ångström (Øresund), Ελληνικά \u0026 Кириллица: 中文 🎉 Party Planning Committee of the Year\" \u003clong.b@example.com\u003e",
+          "\"Zoë\\\\Ops Ångström-Øresund Ελληνικά Кириллица 中文 Party Planning\" \u003clong.backslash@example.com\u003e",
+          "\"日本語の名前とても長い名前です日本語の名前とても長い名前です\" \u003ccjk@example.com\u003e",
+          "\"Team 👩‍💻 👨🏽‍🚀\" \u003cemoji@example.com\u003e",
+          "\"שלום Zoë مرحبا\" \u003crtl@example.com\u003e",
+          "Zoë   Ops \u003cunquoted@example.com\u003e",
+          "=?utf-8?q?Zo=C3=AB?= =?utf-8?q?_Ops?= \u003cencoded@example.com\u003e"
+        ]
+      },
+      "name": "sendMessage-sent-long-mixed-script-display-names",
+      "operation": "sendMessage"
+    },
+    {
+      "callId": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
+      "exchanges": [
+        {
+          "body": "{\"resultSizeEstimate\": 0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/me/messages",
+          "query": {
+            "includeSpamTrash": [
+              "true"
+            ],
+            "maxResults": [
+              "25"
+            ],
+            "q": [
+              "in:sent newer_than:2d to:zoe.angstrom+ops@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer gmail-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"id\": \"sent-2\", \"threadId\": \"thread-2\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users/me/messages/send",
+          "requestBody": {
+            "$rawMime": "From: owner@example.com\r\nTo: =?utf-8?b?Wm/DqyDDhW5nc3Ryw7ZtICjDmHJlc3VuZCksIM6VzrvOu863zr3Ouc66zqwg?= =?utf-8?b?JiDQmtC40YDQuNC70LvQuNGG0LA6IOS4reaWhyDwn46JIFBhcnR5IFBsYW5u?= =?utf-8?b?aW5nIENvbW1pdHRlZSBvZiB0aGUgWWVhcg==?= \u003czoe.angstrom+ops@example.com\u003e, =?utf-8?b?Wm/Dq1xPcHM=?= \u003cbackslash@example.com\u003e\r\nSubject: Progress\r\nMessage-ID: \u003cfbce9b7fa05ed91cccb7890696a08be59f5a07560806df867dec464511549402@dex.superdurable.dev\u003e\r\nX-Dex-Message-ID: \u003cfbce9b7fa05ed91cccb7890696a08be59f5a07560806df867dec464511549402@dex.superdurable.dev\u003e\r\nX-Dex-Call-ID: 9d2167f5-ff7c-53fa-b238-886c4dcac6e9\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=\"UTF-8\"\r\nContent-Transfer-Encoding: 8bit\r\n\r\nUpdate"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer gmail-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
+          "providerId": "sent-2",
+          "sendCount": 2,
+          "state": "claimed"
+        },
+        "output": {
+          "messageId": "sent-2",
+          "recipients": [
+            "=?utf-8?b?Wm/DqyDDhW5nc3Ryw7ZtICjDmHJlc3VuZCksIM6VzrvOu863zr3Ouc66zqwg?= =?utf-8?b?JiDQmtC40YDQuNC70LvQuNGG0LA6IOS4reaWhyDwn46JIFBhcnR5IFBsYW5u?= =?utf-8?b?aW5nIENvbW1pdHRlZSBvZiB0aGUgWWVhcg==?= \u003czoe.angstrom+ops@example.com\u003e",
+            "=?utf-8?b?Wm/Dq1xPcHM=?= \u003cbackslash@example.com\u003e"
+          ],
+          "sender": "owner@example.com",
+          "threadId": "thread-2"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
+      "input": {
+        "subject": "Progress",
+        "textBody": "Update",
+        "to": [
+          "\"Zoë Ångström (Øresund), Ελληνικά \u0026 Кириллица: 中文 🎉 Party Planning Committee of the Year\" \u003czoe.angstrom+ops@example.com\u003e",
+          "\"Zoë\\\\Ops\" \u003cbackslash@example.com\u003e"
+        ]
+      },
+      "name": "sendMessage-readback-long-encoded-display-name-recipient",
+      "operation": "sendMessage",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
+        "sendCount": 1,
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "d7b3cda7-c00c-5757-a41a-7b0109f0ede9",
+      "exchanges": [
+        {
+          "body": "{\"id\": \"message-1\", \"threadId\": \"thread-1\", \"internalDate\": \"1000\", \"payload\": {\"mimeType\": \"text/plain\", \"headers\": [{\"name\": \"Message-ID\", \"value\": \"\u003cmessage-1@example.com\u003e\"}, {\"name\": \"From\", \"value\": \"Sender \u003csender@example.com\u003e\"}, {\"name\": \"To\", \"value\": \"owner@example.com\"}, {\"name\": \"Subject\", \"value\": \"Question\"}, {\"name\": \"Reply-To\", \"value\": \"=?utf-8?b?Wm/DqyDDhW5nc3Ryw7ZtICjDmHJlc3VuZCksIM6VzrvOu863zr3Ouc66zqwg?= =?utf-8?b?JiDQmtC40YDQuNC70LvQuNGG0LA6IOS4reaWhyDwn46JIFBhcnR5IFBsYW5u?= =?utf-8?b?aW5nIENvbW1pdHRlZSBvZiB0aGUgWWVhcg==?= \u003czoe.angstrom+ops@example.com\u003e\"}], \"body\": {\"data\": \"SGVsbG8\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/me/messages/message-1",
+          "query": {
+            "format": [
+              "metadata"
+            ],
+            "metadataHeaders": [
+              "Message-ID",
+              "In-Reply-To",
+              "References",
+              "From",
+              "Reply-To",
+              "To",
+              "Subject"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer gmail-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"id\":\"sent-1\",\"threadId\":\"thread-1\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users/me/messages/send",
+          "requestBody": {
+            "$rawMime": "From: owner@example.com\r\nTo: =?utf-8?b?Wm/DqyDDhW5nc3Ryw7ZtICjDmHJlc3VuZCksIM6VzrvOu863zr3Ouc66zqwg?= =?utf-8?b?JiDQmtC40YDQuNC70LvQuNGG0LA6IOS4reaWhyDwn46JIFBhcnR5IFBsYW5u?= =?utf-8?b?aW5nIENvbW1pdHRlZSBvZiB0aGUgWWVhcg==?= \u003czoe.angstrom+ops@example.com\u003e\r\nSubject: Re: Question\r\nMessage-ID: \u003cadafd8b7bb2c07ba45e22e6ff0ac0de59c00122a8ec0781fd90d2f07a8409767@dex.superdurable.dev\u003e\r\nX-Dex-Message-ID: \u003cadafd8b7bb2c07ba45e22e6ff0ac0de59c00122a8ec0781fd90d2f07a8409767@dex.superdurable.dev\u003e\r\nIn-Reply-To: \u003cmessage-1@example.com\u003e\r\nReferences: \u003cmessage-1@example.com\u003e\r\nX-Dex-Call-ID: d7b3cda7-c00c-5757-a41a-7b0109f0ede9\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=\"UTF-8\"\r\nContent-Transfer-Encoding: 8bit\r\n\r\nReply",
+            "threadId": "thread-1"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer gmail-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "d7b3cda7-c00c-5757-a41a-7b0109f0ede9",
+          "providerId": "sent-1",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "messageId": "sent-1",
+          "recipients": [
+            "=?utf-8?b?Wm/DqyDDhW5nc3Ryw7ZtICjDmHJlc3VuZCksIM6VzrvOu863zr3Ouc66zqwg?= =?utf-8?b?JiDQmtC40YDQuNC70LvQuNGG0LA6IOS4reaWhyDwn46JIFBhcnR5IFBsYW5u?= =?utf-8?b?aW5nIENvbW1pdHRlZSBvZiB0aGUgWWVhcg==?= \u003czoe.angstrom+ops@example.com\u003e"
+          ],
+          "sender": "owner@example.com",
+          "threadId": "thread-1"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d7b3cda7-c00c-5757-a41a-7b0109f0ede9",
+      "input": {
+        "messageId": "message-1",
+        "textBody": "Reply"
+      },
+      "name": "replyToMessage-sent-split-encoded-reply-to-display-name",
+      "operation": "replyToMessage"
+    },
+    {
+      "callId": "d7b3cda7-c00c-5757-a41a-7b0109f0ede9",
+      "exchanges": [
+        {
+          "body": "{\"id\": \"message-1\", \"threadId\": \"thread-1\", \"internalDate\": \"1000\", \"payload\": {\"mimeType\": \"text/plain\", \"headers\": [{\"name\": \"Message-ID\", \"value\": \"\u003cmessage-1@example.com\u003e\"}, {\"name\": \"From\", \"value\": \"=?UTF-8?Q?Ren=C3=A9e_O=27Brien?= \u003crenee@example.com\u003e\"}, {\"name\": \"To\", \"value\": \"owner@example.com\"}, {\"name\": \"Subject\", \"value\": \"Question\"}], \"body\": {\"data\": \"SGVsbG8\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/me/messages/message-1",
+          "query": {
+            "format": [
+              "metadata"
+            ],
+            "metadataHeaders": [
+              "Message-ID",
+              "In-Reply-To",
+              "References",
+              "From",
+              "Reply-To",
+              "To",
+              "Subject"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer gmail-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"id\":\"sent-1\",\"threadId\":\"thread-1\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users/me/messages/send",
+          "requestBody": {
+            "$rawMime": "From: owner@example.com\r\nTo: =?utf-8?b?UmVuw6llIE8nQnJpZW4=?= \u003crenee@example.com\u003e\r\nSubject: Re: Question\r\nMessage-ID: \u003cadafd8b7bb2c07ba45e22e6ff0ac0de59c00122a8ec0781fd90d2f07a8409767@dex.superdurable.dev\u003e\r\nX-Dex-Message-ID: \u003cadafd8b7bb2c07ba45e22e6ff0ac0de59c00122a8ec0781fd90d2f07a8409767@dex.superdurable.dev\u003e\r\nIn-Reply-To: \u003cmessage-1@example.com\u003e\r\nReferences: \u003cmessage-1@example.com\u003e\r\nX-Dex-Call-ID: d7b3cda7-c00c-5757-a41a-7b0109f0ede9\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=\"UTF-8\"\r\nContent-Transfer-Encoding: 8bit\r\n\r\nReply",
+            "threadId": "thread-1"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer gmail-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "d7b3cda7-c00c-5757-a41a-7b0109f0ede9",
+          "providerId": "sent-1",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "messageId": "sent-1",
+          "recipients": [
+            "=?utf-8?b?UmVuw6llIE8nQnJpZW4=?= \u003crenee@example.com\u003e"
+          ],
+          "sender": "owner@example.com",
+          "threadId": "thread-1"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d7b3cda7-c00c-5757-a41a-7b0109f0ede9",
+      "input": {
+        "messageId": "message-1",
+        "textBody": "Reply"
+      },
+      "name": "replyToMessage-sent-encoded-sender-display-name",
+      "operation": "replyToMessage"
+    },
+    {
+      "callId": "gmail-getMessage-read-encoded-display-names",
+      "exchanges": [
+        {
+          "body": "{\"id\": \"message-1\", \"threadId\": \"thread-1\", \"internalDate\": \"1000\", \"payload\": {\"mimeType\": \"text/plain\", \"headers\": [{\"name\": \"Message-ID\", \"value\": \"\u003cmessage-1@example.com\u003e\"}, {\"name\": \"From\", \"value\": \"=?UTF-8?Q?Ren=C3=A9e_O=27Brien?= \u003crenee@example.com\u003e\"}, {\"name\": \"To\", \"value\": \"=?utf-8?b?Wm/DqyAoT3BzKSwgSW5j?= \u003czoe@example.com\u003e, =?utf-8?q?Zo=C3=AB_=C3=85ngstr=C3=B6m-=C3=98resund_=CE=95=CE=BB=CE=BB?= =?utf-8?q?=CE=B7=CE=BD=CE=B9=CE=BA=CE=AC_=D0=9A=D0=B8=D1=80=D0=B8=D0=BB?= =?utf-8?q?=D0=BB=D0=B8=D1=86=D0=B0_=E4=B8=AD=E6=96=87_=F0=9F=8E=89_Party_?= =?utf-8?q?Planning_Committee_of_the_Year?= \u003clong@example.com\u003e, \\\"Doe, \\\\\\\"JD\\\\\\\" \\\\\\\\ John\\\" \u003cascii@example.com\u003e, =?UTF-8?Q?Ren=C3=A9e_O=27Brien?= \u003crenee@example.com\u003e, =?iso-8859-1?q?Z=F6e?= \u003clatin@example.com\u003e, =?utf-8?b?Wm/Dq1xPcHM=?= \u003cbackslash@example.com\u003e, Ada   Lovelace \u003cada@example.com\u003e\"}, {\"name\": \"Subject\", \"value\": \"Question\"}], \"body\": {\"data\": \"SGVsbG8\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/me/messages/message-1",
+          "query": {
+            "format": [
+              "full"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer gmail-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "read",
+        "failureKind": "",
+        "output": {
+          "from": "=?UTF-8?Q?Ren=C3=A9e_O=27Brien?= \u003crenee@example.com\u003e",
+          "messageId": "message-1",
+          "receivedAt": "1970-01-01T00:00:01Z",
+          "rfcMessageId": "\u003cmessage-1@example.com\u003e",
+          "subject": "Question",
+          "textBody": "Hello",
+          "threadId": "thread-1",
+          "to": [
+            "=?utf-8?b?Wm/DqyAoT3BzKSwgSW5j?= \u003czoe@example.com\u003e",
+            "=?utf-8?q?Zo=C3=AB_=C3=85ngstr=C3=B6m-=C3=98resund_=CE=95=CE=BB=CE=BB?= =?utf-8?q?=CE=B7=CE=BD=CE=B9=CE=BA=CE=AC_=D0=9A=D0=B8=D1=80=D0=B8=D0=BB?= =?utf-8?q?=D0=BB=D0=B8=D1=86=D0=B0_=E4=B8=AD=E6=96=87_=F0=9F=8E=89_Party_?= =?utf-8?q?Planning_Committee_of_the_Year?= \u003clong@example.com\u003e",
+            "\"Doe, \\\"JD\\\" \\\\ John\" \u003cascii@example.com\u003e",
+            "=?utf-8?b?UmVuw6llIE8nQnJpZW4=?= \u003crenee@example.com\u003e",
+            "=?utf-8?q?Z=C3=B6e?= \u003clatin@example.com\u003e",
+            "=?utf-8?b?Wm/Dq1xPcHM=?= \u003cbackslash@example.com\u003e",
+            "\"Ada Lovelace\" \u003cada@example.com\u003e"
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "messageId": "message-1"
+      },
+      "name": "getMessage-read-encoded-display-names",
+      "operation": "getMessage"
+    },
+    {
+      "callId": "gmail-getMessage-read-invalid-to-mailbox-omits-recipients",
+      "exchanges": [
+        {
+          "body": "{\"id\": \"message-1\", \"threadId\": \"thread-1\", \"internalDate\": \"1000\", \"payload\": {\"mimeType\": \"text/plain\", \"headers\": [{\"name\": \"Message-ID\", \"value\": \"\u003cmessage-1@example.com\u003e\"}, {\"name\": \"From\", \"value\": \"Sender \u003csender@example.com\u003e\"}, {\"name\": \"To\", \"value\": \"\\\"Doe, John\\\" \u003cj@example.com\u003e, not-an-address\"}, {\"name\": \"Subject\", \"value\": \"Question\"}], \"body\": {\"data\": \"SGVsbG8\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/me/messages/message-1",
+          "query": {
+            "format": [
+              "full"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer gmail-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "read",
+        "failureKind": "",
+        "output": {
+          "from": "Sender \u003csender@example.com\u003e",
+          "messageId": "message-1",
+          "receivedAt": "1970-01-01T00:00:01Z",
+          "rfcMessageId": "\u003cmessage-1@example.com\u003e",
+          "subject": "Question",
+          "textBody": "Hello",
+          "threadId": "thread-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "messageId": "message-1"
+      },
+      "name": "getMessage-read-invalid-to-mailbox-omits-recipients",
+      "operation": "getMessage"
     }
   ],
   "schemaVersion": 1

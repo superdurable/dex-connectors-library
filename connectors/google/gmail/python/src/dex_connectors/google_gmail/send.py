@@ -38,7 +38,6 @@ from .provider import (
     build_reply_message,
     build_send_message,
     decode_message,
-    parse_mailbox,
     rfc_message_id_address,
     validate_send_input,
 )
@@ -387,7 +386,7 @@ class SendService:
                 _receipt(execution, headers, input.message_id),
             )
         try:
-            recipient = _format_go_mailbox(parse_mailbox(message.reply_to or message.from_address))
+            recipient = _format_go_mailbox(message.reply_to or message.from_address)
         except ValueError:
             return await self._reject_unless_earlier_send_is_unconfirmed(
                 execution,

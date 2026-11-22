@@ -50,13 +50,15 @@ it('starts one Flow per Gmail root, replies after the matching reply, and consum
     await waitForFlowToExist(client, flowId);
     await expect.poll(async () => (await client.invokeRPC(flow.getThreadStatus, flowId) as unknown as ThreadState).status, { timeout: 30_000 }).toBe('waitingForReply');
     gmail.receive(replyMessage(`reply-${suffix}`, thread, { snippet: 'Not yet' }));
-    gmail.receive(replyMessage(`approved-${suffix}`, thread));
+    // The reply goes to this sender, whose encoded name holds a comma and parentheses.
+    gmail.receive(replyMessage(`approved-${suffix}`, thread, { from: '=?UTF-8?Q?Zo=C3=AB_=28Ops=29=2C_Inc?= <ada@example.com>' }));
     const completed = await client.waitForFlow(flowId, 60_000);
     expect(completed.status, completed.errorMessage).toBe('completed');
     const state = completed.singleOutput() as ThreadState;
     expect([state.replyEventId, state.replyMessageId, state.rootMessage?.messageId]).toEqual([`approved-${suffix}`, `approved-${suffix}`, `root-${suffix}`]);
     expect(gmail.sent).toHaveLength(1);
     expect(gmail.sent[0]).toContain(`In-Reply-To: <approved-${suffix}@mail.example.com>`);
+    expect(gmail.sent[0]).toContain('\r\nTo: =?utf-8?b?Wm/DqyAoT3BzKSwgSW5j?= <ada@example.com>\r\n');
     expect(gmail.sent[0]).toContain(replyBody);
     await expect.poll(() => logger.find('trigger event skipped: undeliverable', { event_id: `orphan-${suffix}` }).length, { timeout: 30_000 }).toBe(1);
     expect(logger.find('trigger event ignored', { event_id: `ignored-${suffix}`, reason: 'matcher_mismatch' })).toHaveLength(1);

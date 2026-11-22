@@ -80,6 +80,8 @@ func TestThreadReplyExampleReadsBackAfterUnavailableWithoutResendWithRealDex(t *
 	require.Equal(t, StatusCompleted, completedState.Status)
 	require.Equal(t, successReplyMessageID, completedState.ReplyMessageID)
 	require.Equal(t, 1, provider.sendCount(successThreadID))
+	// mail.Address.String would Q-encode the backslash literally, which net/mail cannot parse.
+	require.Equal(t, "=?utf-8?b?Wm/Dq1xPcHM=?= <sender@example.com>", provider.sentTo(successThreadID))
 
 	retriedRootMessageID := "root-retried-" + testRunID
 	retriedReplyMessageID := "reply-retried-" + testRunID
@@ -261,6 +263,7 @@ type gmailProvider struct {
 	mutex            sync.Mutex
 	sendsByThread    map[string]int
 	searchesByThread map[string]int
+	sentToByThread   map[string]string
 	sentCopies       []*gmailSentCopy
 	// lastSentThreadID receives the searches, because a read-back query names no thread.
 	lastSentThreadID string
@@ -277,6 +280,7 @@ func newGmailProvider(t *testing.T) *gmailProvider {
 	t.Helper()
 	provider := &gmailProvider{
 		release: make(chan struct{}), sendsByThread: map[string]int{}, searchesByThread: map[string]int{},
+		sentToByThread: map[string]string{},
 	}
 	provider.Server = httptest.NewServer(http.HandlerFunc(provider.serveHTTP))
 	return provider
@@ -382,6 +386,9 @@ func (provider *gmailProvider) serveSend(response http.ResponseWriter, request *
 	provider.lastSentThreadID = threadID
 	sentCopyID := "sent-" + strconv.Itoa(len(provider.sentCopies)+1)
 	for _, line := range strings.Split(string(raw), "\r\n") {
+		if value, isTo := strings.CutPrefix(line, "To: "); isTo {
+			provider.sentToByThread[threadID] = value
+		}
 		if value, isDexMessageID := strings.CutPrefix(line, "X-Dex-Message-ID: "); isDexMessageID {
 			sentCopy := &gmailSentCopy{id: sentCopyID, threadID: threadID, dexMessageID: value}
 			switch {
@@ -429,6 +436,12 @@ func (provider *gmailProvider) sendCount(threadID string) int {
 	return provider.sendsByThread[threadID]
 }
 
+func (provider *gmailProvider) sentTo(threadID string) string {
+	provider.mutex.Lock()
+	defer provider.mutex.Unlock()
+	return provider.sentToByThread[threadID]
+}
+
 func (provider *gmailProvider) searchCount(threadID string) int {
 	provider.mutex.Lock()
 	defer provider.mutex.Unlock()
@@ -438,7 +451,8 @@ func (provider *gmailProvider) searchCount(threadID string) int {
 func gmailIntegrationMessageJSON(messageID string, threadID string, isReply bool) string {
 	headers := []map[string]string{
 		{"name": "Message-ID", "value": "<" + messageID + "@example.com>"},
-		{"name": "From", "value": "Sender <sender@example.com>"},
+		// The reply goes to this sender, whose non-ASCII name holds a backslash.
+		{"name": "From", "value": `"Zoë\\Ops" <sender@example.com>`},
 		{"name": "To", "value": "owner@example.com"},
 		{"name": "Subject", "value": "SENTINEL-SUBJECT Approval request"},
 	}

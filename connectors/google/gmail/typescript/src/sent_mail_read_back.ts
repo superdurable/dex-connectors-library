@@ -13,7 +13,7 @@ const SentMailCandidateWindow = 'newer_than:2d';
 const SentMailCandidateLimit = 25;
 // Admits only characters that Gmail search reads literally in a to: term.
 const SearchableRecipientAddress = /^[A-Za-z0-9._+-]+@[A-Za-z0-9.-]+$/;
-// The formatted mailbox ends with its addr-spec; a Q-encoded display name may not parse again.
+// The formatted mailbox ends with its addr-spec.
 const FormattedMailboxAddrSpec = /<([^<>]+)>$/;
 const QuotedLocalPart = /^"((?:[^"\\]|\\.)*)"(@.*)$/;
 // Go decodes a null document, list, entry, ID, or thread ID as empty, and rejects other types.

@@ -305,7 +305,7 @@ func splitAddressHeader(value string) []string {
 	}
 	result := make([]string, len(addresses))
 	for index, address := range addresses {
-		result[index] = address.String()
+		result[index] = formatMailbox(address)
 	}
 	return result
 }
@@ -327,7 +327,7 @@ func replyRecipient(message Message) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return address.String(), nil
+	return formatMailbox(address), nil
 }
 
 func buildReplyMIMEMessage(call sdkgo.Call, sender string, recipient string, source Message, input ReplyToMessageInput) ([]byte, error) {
