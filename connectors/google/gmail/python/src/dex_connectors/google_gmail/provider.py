@@ -12,10 +12,8 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from email import policy
 from email.header import decode_header, make_header
-from email.headerregistry import Address
 from email.parser import Parser
 from email.quoprimime import header_encode
-from email.utils import parseaddr
 from urllib.parse import quote, urlencode
 
 import httpx
@@ -38,6 +36,13 @@ from dex_connectors.sdk.providerhttp import (
     validate_base_url,
 )
 
+from ._mail_address import (
+    MailAddress,
+    MailAddressSyntaxError,
+    format_mail_address,
+    parse_mail_address,
+    parse_mail_address_list,
+)
 from .models import Config, Credentials, Message, ReplyToMessageInput, SendMessageInput
 from .project_credentials import StoredCredentialMaterialError
 from .refresh import CredentialRefreshDriver as GmailCredentialRefreshDriver
@@ -84,23 +89,6 @@ _SENT_MAIL_CANDIDATE_LIMIT = 25
 _SEARCHABLE_RECIPIENT_ADDRESS = re.compile(r"[A-Za-z0-9._+-]+@[A-Za-z0-9.-]+")
 _UNPADDED_BASE64URL = re.compile(r"[A-Za-z0-9_-]*")
 _PADDED_BASE64URL = re.compile(r"[A-Za-z0-9_-]+={1,2}")
-# Go's net/mail admits a tab but no other control character outside an encoded word.
-_CONTROL_CHARACTER = re.compile(r"[\x00-\x08\x0a-\x1f\x7f]")
-_MAILBOX_WITH_ANGLE_ADDRESS = re.compile(r"(.*?)<([^<>]+)>")
-_PLAIN_MAILBOX_ADDRESS = re.compile(r"[^<>\s,;@]+@[^<>\s,;@]+")
-_QUOTED_DISPLAY_NAME = re.compile(r'"(?:[^"\\]|\\.)*"', re.DOTALL)
-_UNQUOTED_DISPLAY_NAME_SPECIAL = re.compile(r'[,:;<>@"\\()\[\]]')
-_ENCODED_WORD = re.compile(r"=\?([^?]+)\?([BbQq])\?([^?]*)\?=")
-_PADDED_BASE64 = re.compile(r"(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?")
-_Q_ENCODED_BYTE = re.compile(r"[0-9A-Fa-f]{2}")
-# Go's mail.Address.String keeps printable ASCII, space, and tab in a quoted string.
-_QUOTABLE_DISPLAY_NAME = re.compile(r"[\t\x20-\x7e]*")
-# RFC 2047 5(3) forbids these in a Q-encoded phrase, so Go B-encodes; Go misses the backslash.
-_B_ENCODED_DISPLAY_NAME_CHARACTER = re.compile(r"[\"#$%&'(),.:;<>@\[\\\]^`{|}~]")
-# An encoded word has at most 75 characters, 63 of them between "=?utf-8?q?" and "?=".
-_MAX_ENCODED_WORD_TEXT_LENGTH = 63
-# 45 bytes fill 60 Base64 characters, the most that fit in 63.
-_MAX_B_ENCODED_WORD_BYTES = 45
 
 
 def _base64url_decode(value: str) -> str:
@@ -203,198 +191,35 @@ def decode_message(resource: object) -> Message:
 
 def parse_mailbox(value: str) -> str:
     """Validate one RFC mailbox while refusing header injection and empty addresses."""
-    return str(_parse_mailbox_address(value))
-
-
-def _parse_mailbox_address(value: str) -> Address:
     if "\r" in value or "\n" in value:
         raise ValueError("mailbox contains a newline")
-    if _CONTROL_CHARACTER.search(value) is not None:
-        raise ValueError("mailbox contains a control character")
     parsed = Parser(policy=policy.default).parsestr(f"To: {value}\n\n")
-    addresses: list[Address] = list(parsed["To"].addresses) if parsed["To"] is not None else []
+    addresses = list(parsed["To"].addresses) if parsed["To"] is not None else []
     if len(addresses) != 1 or not addresses[0].addr_spec or "@" not in addresses[0].addr_spec:
         raise ValueError("invalid mailbox")
-    return addresses[0]
+    address = addresses[0]
+    return str(address)
+
+
+def _parse_go_mailbox(value: str) -> MailAddress:
+    """Validate one mailbox as the Go connector's parseMailbox does."""
+    if "\r" in value or "\n" in value:
+        raise ValueError("mailbox contains a newline")
+    return parse_mail_address(value)
 
 
 def _format_go_mailbox(value: str) -> str:
-    """Validate one mailbox and format it like Go's mail.Address.String, as the Go connector sends it."""
-    parsed = _parse_mailbox_address(value)
-    plain_mailbox = _parse_plain_mailbox(value)
-    # The standard parser keeps the space between adjacent encoded words, which Go and RFC 2047 drop.
-    display_name = plain_mailbox[0] if plain_mailbox is not None else parsed.display_name
-    return _format_go_display_name_and_address(display_name, parseaddr(str(parsed))[1])
+    """Validate one mailbox and format it as the Go connector sends it."""
+    return format_mail_address(_parse_go_mailbox(value))
 
 
 def _decode_address_header(value: str) -> list[str]:
-    """Format each mailbox of a To header like Go, or none when any of them is invalid."""
-    if not value or "\r" in value or "\n" in value:
-        return []
-    mailboxes: list[str] = []
-    for entry in _split_address_list(value):
-        plain_mailbox = _parse_plain_mailbox(entry)
-        if plain_mailbox is None:
-            return []
-        mailboxes.append(_format_go_display_name_and_address(*plain_mailbox))
-    return mailboxes
-
-
-def _split_address_list(value: str) -> list[str]:
-    # A comma outside a quoted string ends a mailbox; inside one, a backslash escapes the next character.
-    addresses: list[str] = []
-    is_quoted = False
-    start = 0
-    index = 0
-    while index < len(value):
-        character = value[index]
-        if is_quoted and character == "\\":
-            index += 1
-        elif character == '"':
-            is_quoted = not is_quoted
-        elif character == "," and not is_quoted:
-            addresses.append(value[start:index].strip())
-            start = index + 1
-        index += 1
-    addresses.append(value[start:].strip())
-    return addresses
-
-
-def _parse_plain_mailbox(value: str) -> tuple[str, str] | None:
-    """Return the name and address of a mailbox the TypeScript port accepts, decoding the name like Go."""
-    if _CONTROL_CHARACTER.search(value) is not None:
-        return None
-    trimmed = value.strip()
-    angle = _MAILBOX_WITH_ANGLE_ADDRESS.fullmatch(trimmed)
-    if angle is None and ("<" in trimmed or ">" in trimmed):
-        return None
-    address = angle.group(2).strip() if angle is not None else trimmed
-    if _PLAIN_MAILBOX_ADDRESS.fullmatch(address) is None:
-        return None
-    display = angle.group(1).strip() if angle is not None else ""
-    if display.startswith('"'):
-        if _QUOTED_DISPLAY_NAME.fullmatch(display) is None:
-            return None
-        return re.sub(r"\\(.)", r"\1", display[1:-1], flags=re.DOTALL), address
-    if _UNQUOTED_DISPLAY_NAME_SPECIAL.search(display) is not None:
-        return None
-    decoded_display = _decode_display_name_phrase(display) if display else ""
-    return None if decoded_display is None else (decoded_display, address)
-
-
-def _decode_display_name_phrase(phrase: str) -> str | None:
-    # Go's net/mail joins words by one space, adjacent encoded words by none, and rejects an empty result.
-    words: list[str] = []
-    encoded_run = ""
-    for word in re.split(r"[ \t]+", phrase):
-        if not word:
-            continue
-        decoded = _decode_encoded_word(word)
-        if decoded is not None:
-            encoded_run += decoded
-            continue
-        if encoded_run:
-            words.append(encoded_run)
-        encoded_run = ""
-        words.append(word)
-    if encoded_run:
-        words.append(encoded_run)
-    return " ".join(words) if words else None
-
-
-def _decode_encoded_word(word: str) -> str | None:
-    # Go's mime.WordDecoder rules; None leaves the word literal.
-    match = _ENCODED_WORD.fullmatch(word)
-    if match is None:
-        return None
-    charset, encoding, text = match.groups()
-    content = _decode_b_encoded_text(text) if encoding in "Bb" else _decode_q_encoded_text(text)
-    return None if content is None else _decode_charset_bytes(charset, content)
-
-
-def _decode_b_encoded_text(text: str) -> bytes | None:
-    return base64.b64decode(text) if _PADDED_BASE64.fullmatch(text) is not None else None
-
-
-def _decode_q_encoded_text(text: str) -> bytes | None:
-    content = bytearray()
-    index = 0
-    while index < len(text):
-        character = text[index]
-        if character == "_":
-            content.append(0x20)
-        elif character == "=":
-            hex_digits = text[index + 1:index + 3]
-            if _Q_ENCODED_BYTE.fullmatch(hex_digits) is None:
-                return None
-            content.append(int(hex_digits, 16))
-            index += 2
-        elif " " <= character <= "~":
-            content.append(ord(character))
-        else:
-            return None
-        index += 1
-    return bytes(content)
-
-
-def _decode_charset_bytes(charset: str, content: bytes) -> str | None:
-    match charset.lower():
-        case "utf-8":
-            return content.decode("utf-8", errors="replace")
-        case "iso-8859-1":
-            return content.decode("latin-1")
-        case "us-ascii":
-            return "".join(chr(byte) if byte < 0x80 else "\ufffd" for byte in content)
-    # Go rejects other charsets; a known codec decodes them, as TypeScript's TextDecoder does.
+    """Format each mailbox of a To header like Go, or none when Go rejects the header."""
     try:
-        return content.decode(charset)
-    except (LookupError, ValueError):
-        # An unknown charset, invalid bytes, or a codec such as idna that raises UnicodeError.
-        return None
-
-
-def _format_go_display_name_and_address(display_name: str, address: str) -> str:
-    if not display_name:
-        return f"<{address}>"
-    return f"{_format_go_display_name(display_name)} <{address}>"
-
-
-def _format_go_display_name(display_name: str) -> str:
-    # A lone surrogate becomes U+FFFD, as Go's JSON decoder and the TypeScript UTF-8 encoder make it.
-    display_name = display_name.encode("utf-16", "surrogatepass").decode("utf-16", "replace")
-    if _QUOTABLE_DISPLAY_NAME.fullmatch(display_name) is not None:
-        return '"' + display_name.replace("\\", "\\\\").replace('"', '\\"') + '"'
-    if _B_ENCODED_DISPLAY_NAME_CHARACTER.search(display_name) is not None:
-        return _encode_b_words(display_name)
-    return _encode_q_words(display_name)
-
-
-def _encode_q_words(display_name: str) -> str:
-    # Go's mime.QEncoding splitting: never inside a character, and only where the next one would pass 63.
-    words: list[str] = []
-    word = ""
-    for character in display_name:
-        if " " <= character <= "~" and character not in "=?_":
-            encoded = "_" if character == " " else character
-        else:
-            encoded = "".join(f"={byte:02X}" for byte in character.encode("utf-8"))
-        if len(word) + len(encoded) > _MAX_ENCODED_WORD_TEXT_LENGTH:
-            words.append(word)
-            word = ""
-        word += encoded
-    words.append(word)
-    return " ".join(f"=?utf-8?q?{text}?=" for text in words)
-
-
-def _encode_b_words(display_name: str) -> str:
-    # Go's mime.BEncoding splitting: whole characters, at most 45 bytes per word.
-    words: list[bytes] = [b""]
-    for character in display_name:
-        encoded = character.encode("utf-8")
-        if len(words[-1]) + len(encoded) > _MAX_B_ENCODED_WORD_BYTES:
-            words.append(b"")
-        words[-1] += encoded
-    return " ".join(f"=?utf-8?b?{base64.b64encode(word).decode()}?=" for word in words)
+        mailboxes = parse_mail_address_list(value)
+    except MailAddressSyntaxError:
+        return []
+    return [format_mail_address(mailbox) for mailbox in mailboxes]
 
 
 def validate_send_input(input_value: SendMessageInput, sender: str) -> list[str]:
@@ -414,14 +239,18 @@ def validate_send_input(input_value: SendMessageInput, sender: str) -> list[str]
         raise ValueError("authorized primary email is invalid") from error
     if sender_address.lower() != sender.strip().lower():
         raise ValueError("authorized primary email is invalid")
-    try:
-        recipients = [parse_mailbox(value) for value in input_value.to]
-    except ValueError as error:
-        raise ValueError("recipient email is invalid") from error
-    canonical = [parseaddr(value)[1].lower() for value in recipients]
-    if len(set(canonical)) != len(canonical):
-        raise ValueError("recipient email is duplicated")
-    return [_format_go_mailbox(value) for value in input_value.to]
+    recipients: list[str] = []
+    canonical_addresses: set[str] = set()
+    for value in input_value.to:
+        try:
+            mailbox = _parse_go_mailbox(value)
+        except ValueError as error:
+            raise ValueError("recipient email is invalid") from error
+        if mailbox.address.lower() in canonical_addresses:
+            raise ValueError("recipient email is duplicated")
+        canonical_addresses.add(mailbox.address.lower())
+        recipients.append(format_mail_address(mailbox))
+    return recipients
 
 
 def rfc_message_id_address(call: Call, run_id: str | None, flow_started_at: datetime | None = None) -> str:
@@ -456,7 +285,13 @@ def _sent_mail_candidate_query(recipients: list[str]) -> str:
     query = "in:sent " + _SENT_MAIL_CANDIDATE_WINDOW
     if not recipients:
         return query
-    address = parseaddr(recipients[0])[1]
+    # Parse only the angle address, as Go does, so a quoted local part is unquoted.
+    mailbox = recipients[0]
+    mailbox = mailbox[mailbox.rfind("<"):] if "<" in mailbox else mailbox
+    try:
+        address = parse_mail_address(mailbox).address
+    except MailAddressSyntaxError:
+        return query
     if not _SEARCHABLE_RECIPIENT_ADDRESS.fullmatch(address):
         return query
     return query + " to:" + address

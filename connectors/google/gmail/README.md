@@ -195,15 +195,29 @@ leaves the backslash literal and `net/mail` then cannot parse the header.
 Before Python v0.5.2 and TypeScript v0.5.2 the ports wrote one unsplit
 Q-encoded word. TypeScript left those specials literal, so a name such as
 `Zoë (Ops), Inc` could read as two recipients; Python encoded them validly but
-differently from Go. The `To:` header, the `recipients` output, a reply's
-recipient, and the `getMessage` `to` list now match in all three languages, and
-the read-back `to:` term still names only the address. Reading a header, the
-ports decode encoded words as `net/mail` does, dropping the space between
-adjacent encoded words. Go decodes only `utf-8`, `iso-8859-1`, and `us-ascii`
-and rejects a mailbox in another charset; Python and TypeScript decode any
-charset their platform knows. From Python v0.5.2, `getMessage` omits `to` when
-one of its mailboxes is invalid, as Go and TypeScript do, instead of returning
-the others.
+differently from Go. For a bare address or a display name followed by
+`<address>`, the `To:` header, the `recipients` output, a reply's recipient, and
+the `getMessage` `to` list now match in all three languages, and the read-back
+`to:` term still names only the address. Reading a header, the ports decode
+encoded words as `net/mail` does, dropping the space between adjacent encoded
+words. Go decodes only `utf-8`, `iso-8859-1`, and `us-ascii` and rejects a
+mailbox in another charset; Python and TypeScript decode any charset their
+platform knows. Go keeps invalid bytes of a `utf-8` encoded word, and the ports
+replace them with U+FFFD.
+
+From Python v0.5.2, recipients, reply targets, and `To` headers are parsed by a
+port of Go's `net/mail` parser, so Python accepts and rejects the mailboxes Go
+does. It reads groups, comments (a comment after a bare address becomes its
+display name), names that mix quoted and unquoted words, quoted local parts, and
+empty list entries. It rejects mailboxes such as `alice.@example.com`, an
+unclosed `<`, or `Alice @ Home <alice@example.com>`, which v0.5.1 sent to
+`Alice@Home`. `getMessage` omits `to` when Go rejects the header, where v0.5.1
+returned the mailboxes it could read. The port follows Go 1.27: Go 1.24 also
+accepts a display name made only of empty encoded words, and Go before 1.27
+accepts an IPv6 domain literal without the `IPv6:` tag. The TypeScript parser
+reads only a bare address or a display name followed by `<address>`, so it
+rejects groups, comments, mixed names, and empty list entries, and its address
+check differs from Go's for unusual local parts such as `alice.@example.com`.
 
 Sends and replies are confirmed as follows:
 

@@ -145,8 +145,78 @@ def test_to_header_splits_only_outside_quoted_strings() -> None:
     assert _decode_to_header("undisclosed-recipients:;") == []
 
 
+# Go 1.27's mail.ParseAddressList and the Go connector's formatMailbox give these, recorded with Go.
+RFC_5322_TO_HEADERS = [
+    ("Team: alice@example.com, bob@example.com;", ["<alice@example.com>", "<bob@example.com>"]),
+    ("alice@example.com (Alice Smith)", ['"Alice Smith" <alice@example.com>']),
+    ("alice@example.com (Alice (nested) Smith)", ['"Alice (nested) Smith" <alice@example.com>']),
+    ('"Alice" Smith <alice@example.com>', ['"Alice Smith" <alice@example.com>']),
+    (
+        "Alice <alice@example.com> (work), Bob <bob@example.com>",
+        ['"Alice" <alice@example.com>', '"Bob" <bob@example.com>'],
+    ),
+    ('Zoë <"zoe ops"@example.com>', ['=?utf-8?q?Zo=C3=AB?= <"zoe ops"@example.com>']),
+    ('Alice <"a..b"@example.com>', ['"Alice" <"a..b"@example.com>']),
+    ('"alice"@example.com', ["<alice@example.com>"]),
+    ('"Zoë" <zoe@example.com>, ', ["=?utf-8?q?Zo=C3=AB?= <zoe@example.com>"]),
+    ("a@example.com, , b@example.com", ["<a@example.com>", "<b@example.com>"]),
+    (
+        'Team: "Zoë, Ops" <zoe@example.com>, =?utf-8?q?Zo=C3=AB?= <z2@example.com>;',
+        ["=?utf-8?b?Wm/DqywgT3Bz?= <zoe@example.com>", "=?utf-8?q?Zo=C3=AB?= <z2@example.com>"],
+    ),
+    ("=?utf-8?q?Zo=C3=AB?= =?utf-8?q?_Ops?= <zoe@example.com> (work)", [_ZOE_OPS]),
+    ("Alice <alice@[IPv6:::1]>", ['"Alice" <alice@[IPv6:::1]>']),
+    ("Alice <alice@[127.0.0.1]>", ['"Alice" <alice@[127.0.0.1]>']),
+]
+
+# Go rejects each of these, so getMessage omits to and send and reply refuse them.
+GO_REJECTED_MAILBOXES = [
+    # The form the Go connector v0.29.1 wrote for a non-ASCII name with a backslash.
+    "=?utf-8?q?Zo=C3=AB\\Ops?= <zoe@example.com>",
+    "=?utf-8?q??= <zoe@example.com>",
+    "Alice <alice@example.com",
+    "Alice @ Home <alice@example.com>",
+    "alice@exa mple.com",
+    "alice.@example.com",
+    'a"b <ab@example.com>',
+    "Alice <@route:alice@example.com>",
+    "(comment) Alice <alice@example.com>",
+    "Alice <alice@[::1]>",
+]
+
+
+@pytest.mark.parametrize(("value", "formatted"), RFC_5322_TO_HEADERS)
+def test_to_header_reads_rfc_5322_forms_as_go_does(value: str, formatted: list[str]) -> None:
+    """Groups, comments, mixed phrases, quoted local parts, and empty entries read as in Go."""
+    assert _decode_to_header(value) == formatted
+    if len(formatted) == 1 and "," not in value and ":" not in value:
+        assert _format_go_mailbox(value) == formatted[0]
+        assert _format_recipient(value) == formatted[0]
+    # Each formatted mailbox is a valid recipient that formats to itself.
+    for mailbox in formatted:
+        assert _format_go_mailbox(mailbox) == mailbox
+
+
+@pytest.mark.parametrize("value", GO_REJECTED_MAILBOXES)
+def test_mailboxes_go_rejects_are_rejected_everywhere(value: str) -> None:
+    """getMessage omits to, and send and reply refuse the mailbox, as in Go."""
+    assert _decode_to_header(value) == []
+    with pytest.raises(ValueError):
+        _format_go_mailbox(value)
+    with pytest.raises(ValueError, match="recipient email is invalid"):
+        _format_recipient(value)
+
+
+def test_recipients_are_duplicates_by_unquoted_address() -> None:
+    """Go compares the parsed address, so a quoted local part duplicates its plain form."""
+    recipients = ['"alice"@example.com', "Alice <ALICE@example.com>"]
+    send_input = SendMessageInput(to=recipients, subject="Progress", text_body="Update")
+    with pytest.raises(ValueError, match="recipient email is duplicated"):
+        validate_send_input(send_input, "owner@example.com")
+
+
 def test_control_characters_are_rejected() -> None:
-    """Go's net/mail admits a tab but no other raw control character."""
+    """Go's net/mail admits a tab but no other raw control character in a display name."""
     with pytest.raises(ValueError, match="recipient email is invalid"):
         _format_recipient("Zoë\x01Ops <zoe@example.com>")
     with pytest.raises(ValueError, match="recipient email is invalid"):
