@@ -190,8 +190,14 @@ so if that request later fails without committing, the event is lost. Keep
 mappers deterministic and set `rpcName` where the method name can change.
 Once Dex distinguishes committed conflicts (superdurable/dex#1866), a future
 release can drop only events whose earlier request committed. The Go SDK
-RPC target still sends a new request ID per call, so its RPC treats a
-repeated event ID as a duplicate.
+RPC target sends the same ID from `sdkgo` v0.40.0, with the Go method name as
+the default RPC name and `sdkgo.WithTriggerRPCName` in place of `rpcName`, and
+drops a conflict with `sdkgo.TriggerRPCRequestConflictError`. Dex Server
+0.1.37 and later compare only the request ID: they answer a repeat whose
+request differs with the first request's reply and report no conflict. Dex
+payload encryption encrypts each attempt's input with a fresh nonce, so an
+earlier server reports every repeat as a conflict, even from a deterministic
+mapper; use server-zd 0.1.37 or later with payload encryption.
 
 Trigger binding configuration is separate from connection configuration and
 credentials. Its identity is connector ID, connection name, trigger name, and

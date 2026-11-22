@@ -340,8 +340,11 @@ func TestDurableTriggerInboxSurvivesApprovalAfterCompletionAndRestartWithRealDex
 	}, started[0].attrs)
 	approved := logs.find("trigger event delivered", map[string]string{"event_id": firstApproval.ID})
 	require.Len(t, approved, 1)
+	firstApprovalRequestID, err := sdkgo.TriggerRPCRequestID("Approve", firstApproval.ID)
+	require.NoError(t, err)
 	require.Equal(t, map[string]string{
 		"binding": "approval-reply", "target": "rpc", "event_id": firstApproval.ID, "flow_id": flowA,
+		"request_id": firstApprovalRequestID,
 	}, approved[0].attrs)
 
 	t.Run("step 8 approval after completion is consumed", func(t *testing.T) {
@@ -410,7 +413,7 @@ func TestDurableTriggerInboxSurvivesApprovalAfterCompletionAndRestartWithRealDex
 		for _, replay := range []struct {
 			binding                   string
 			count, delivered, skipped string
-		}{{"approval-start", "1", "1", "0"}, {"approval-reply", "3", "1", "2"}} {
+		}{{"approval-start", "1", "1", "0"}, {"approval-reply", "3", "2", "1"}} {
 			startedReplay := logs.find("replaying pending trigger events", map[string]string{"binding": replay.binding})
 			require.Len(t, startedReplay, 1, replay.binding)
 			require.Equal(t, slog.LevelInfo, startedReplay[0].level)
@@ -425,9 +428,10 @@ func TestDurableTriggerInboxSurvivesApprovalAfterCompletionAndRestartWithRealDex
 				"delivered": replay.delivered, "skipped": replay.skipped, "remaining": "0",
 			}, finished[0].attrs)
 		}
-		for _, eventID := range []string{firstApproval.ID, "approve-a-after-restart-" + testRunID} {
-			require.Len(t, logs.find("trigger event skipped: undeliverable", map[string]string{"event_id": eventID}), 1, eventID)
-		}
+		// Replaying the first approval repeats its request ID, so Dex returns the recorded reply: delivered.
+		require.Empty(t, logs.find("trigger event skipped: undeliverable", map[string]string{"event_id": firstApproval.ID}))
+		require.Len(t, logs.find("trigger event delivered", map[string]string{"event_id": firstApproval.ID, "request_id": firstApprovalRequestID}), 2)
+		require.Len(t, logs.find("trigger event skipped: undeliverable", map[string]string{"event_id": "approve-a-after-restart-" + testRunID}), 1)
 		require.NotContains(t, logs.text(), sentinelText)
 	})
 }
