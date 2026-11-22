@@ -355,8 +355,9 @@ attributes are `error_type`, `error_cause_type`, and `error_code` (a gRPC code).
 | INFO | `trigger delivered after retry` | `event_id`, `attempts` |
 | WARN | `trigger event skipped: undeliverable` | `event_id`, error attributes |
 | INFO | `trigger event skipped: filtered` | `event_id` |
-| DEBUG | `trigger event delivered` | `event_id`, `flow_id`, `duplicate` (Flow target) |
-| WARN | `trigger event delivered; rpc response undecodable` | `event_id`, `flow_id`, error attributes |
+| DEBUG | `trigger event delivered` | `event_id`, `flow_id`, `duplicate` (Flow target), `request_id` (RPC target) |
+| WARN | `trigger event delivered; rpc response undecodable` | `event_id`, `flow_id`, `request_id`, error attributes |
+| ERROR | `trigger rpc request conflict; event dropped` | `event_id`, `request_id`, `rpc_name`, `flow_id` |
 | ERROR | `trigger inbox write failed`, `trigger inbox read failed`, `trigger inbox remove failed` | `event_id`, error attributes |
 | INFO | `replaying pending trigger events` | `count` |
 | ERROR | `trigger inbox event decode failed` | `event_id`, error attributes |
