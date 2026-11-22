@@ -144,8 +144,9 @@ try {
   assert.equal(ledgerHandlerCalls.recordTransactional, 1, 'a transactional repeat is answered from the recorded reply');
   assert.equal(await client.invokeRPC(ledgerFlow.getTotal, ledgerId), 5, 'a transactional redelivery applies once');
   // A mapper whose input changes on every call, as one reading the clock would, applies its first delivery
-  // once. A redelivery maps the event to a different request, which Dex refuses for the event's one request
-  // ID; the target logs the drop at ERROR and the durable inbox consumes the event as undeliverable.
+  // once. A redelivery maps the event to a different request under the event's one request ID. Dex Server
+  // 0.1.37 and later answer it with the first reply; earlier servers refuse it, and the target logs the drop
+  // at ERROR. Either way the durable inbox consumes the redelivery and the event applies once.
   const bonus = event(`Ev-${suffix}-bonus`, { amount: 3 });
   let bonusMappings = 0;
   const toChangingBonus = received => ({ amount: received.payload.amount, mappedAt: ++bonusMappings });
@@ -161,14 +162,20 @@ try {
   assert.equal(await client.invokeRPC(ledgerFlow.getTotal, ledgerId), 8, 'the first changing delivery applied once');
   await durableChangingTarget.prepareTrigger(newTriggerContext(), bonus);
   await durableChangingTarget.handleTrigger(newTriggerContext(), bonus);
-  assert.deepEqual(await bonusInbox.pending(), [], 'the conflicting redelivery was consumed on its first attempt');
+  assert.deepEqual(await bonusInbox.pending(), [], 'the changed redelivery was consumed on its first attempt');
   const dropRecords = conflictRecords.filter(record => record.message === 'trigger rpc request conflict; event dropped');
-  assert.equal(dropRecords.length, 1);
-  assert.equal(dropRecords[0].level, 'error');
-  assert.deepEqual(dropRecords[0].attributes, { target: 'rpc', event_id: bonus.id, request_id: triggerRPCRequestId('recordTransactional', bonus.id), rpc_name: 'recordTransactional', flow_id: ledgerId });
-  const bonusRejection = await changingTarget.handleTrigger(newTriggerContext(), bonus).then(() => undefined, error => error);
-  assert.ok(bonusRejection instanceof TriggerRPCRequestConflictError && isTriggerUndeliverable(bonusRejection), `a changed redelivery is an undeliverable conflict: ${bonusRejection}`);
-  assert.match(bonusRejection.cause.detail, /was already used for a different request/);
+  // Only a server before 0.1.37 compares the whole request and reports the conflict.
+  const isRequestConflictReported = dropRecords.length > 0;
+  const bonusRedelivery = await changingTarget.handleTrigger(newTriggerContext(), bonus).then(() => undefined, error => error);
+  if (isRequestConflictReported) {
+    assert.equal(dropRecords.length, 1);
+    assert.equal(dropRecords[0].level, 'error');
+    assert.deepEqual(dropRecords[0].attributes, { target: 'rpc', event_id: bonus.id, request_id: triggerRPCRequestId('recordTransactional', bonus.id), rpc_name: 'recordTransactional', flow_id: ledgerId });
+    assert.ok(bonusRedelivery instanceof TriggerRPCRequestConflictError && isTriggerUndeliverable(bonusRedelivery), `a changed redelivery is an undeliverable conflict: ${bonusRedelivery}`);
+    assert.match(bonusRedelivery.cause.detail, /was already used for a different request/);
+  } else {
+    assert.equal(bonusRedelivery, undefined, 'a changed redelivery is answered with the first reply');
+  }
   assert.equal(ledgerHandlerCalls.recordTransactional, 2, 'no changed redelivery ran the handler');
   assert.equal(await client.invokeRPC(ledgerFlow.getTotal, ledgerId), 8, 'the bonus applied once');
 
@@ -197,22 +204,31 @@ try {
   assert.equal(ledgerHandlerCalls.recordNonTransactional, 2, 'a non-transactional repeat reruns its handler');
   assert.equal(await client.invokeRPC(ledgerFlow.getTotal, ledgerId), 20, 'each RPC applied the event once');
 
-  // An earlier attempt with another input, such as one a crashed process sent, is still in flight: Dex
-  // reports the same conflict, so the target drops the event. When that attempt then fails without
-  // committing, this delivery of the event is lost: neither request applied it.
+  // An earlier attempt with another input, such as one a crashed process sent, is still in flight. A server
+  // before 0.1.37 reports the same conflict, so the target drops the event, and when that attempt then fails
+  // without committing, this delivery of the event is lost: neither request applied it. A later server reports
+  // no conflict, so this delivery is never dropped: it either fails for a retry or applies the event.
   const deposit = event(`Ev-${suffix}-deposit`, { amount: 7 });
   const gate = { entered: Promise.withResolvers(), settled: Promise.withResolvers() };
   ledgerGates.push(gate);
   const earlierAttempt = client.invokeRPCWithOptions(ledgerFlow.recordGated, ledgerId, { amount: 100 }, { requestId: triggerRPCRequestId('recordGated', deposit.id) });
   await gate.entered.promise;
   const gatedTarget = newDexRPCTriggerTarget(client, ledgerFlow.recordGated, () => true, () => ledgerId, toLedgerEntry, { logger: quietLogger });
-  const inFlightRejection = await gatedTarget.handleTrigger(newTriggerContext(), deposit).then(() => undefined, error => error);
-  assert.ok(inFlightRejection instanceof TriggerRPCRequestConflictError && isTriggerUndeliverable(inFlightRejection), `an in-flight conflict drops the event: ${inFlightRejection}`);
-  assert.match(inFlightRejection.cause.detail, /was already used for a different request/);
-  gate.settled.reject(new Error('earlier attempt failed'));
-  await assert.rejects(earlierAttempt, 'the earlier attempt failed without applying the event');
-  assert.equal(await client.invokeRPC(ledgerFlow.getTotal, ledgerId), 20, 'the dropped deposit was lost when the earlier attempt failed');
-  // Only a later redelivery of the same event, such as a provider retry, can still apply it, because no request ID was recorded.
+  const inFlightDelivery = gatedTarget.handleTrigger(newTriggerContext(), deposit).then(() => undefined, error => error);
+  if (isRequestConflictReported) {
+    const inFlightRejection = await inFlightDelivery;
+    assert.ok(inFlightRejection instanceof TriggerRPCRequestConflictError && isTriggerUndeliverable(inFlightRejection), `an in-flight conflict drops the event: ${inFlightRejection}`);
+    assert.match(inFlightRejection.cause.detail, /was already used for a different request/);
+    gate.settled.reject(new Error('earlier attempt failed'));
+    await assert.rejects(earlierAttempt, 'the earlier attempt failed without applying the event');
+    assert.equal(await client.invokeRPC(ledgerFlow.getTotal, ledgerId), 20, 'the dropped deposit was lost when the earlier attempt failed');
+  } else {
+    gate.settled.reject(new Error('earlier attempt failed'));
+    await assert.rejects(earlierAttempt, 'the earlier attempt failed without applying the event');
+    const inFlightOutcome = await inFlightDelivery;
+    assert.ok(inFlightOutcome === undefined || !isTriggerUndeliverable(inFlightOutcome), `an in-flight repeat is never dropped: ${inFlightOutcome}`);
+  }
+  // A later redelivery of the same event, such as a provider retry, applies the deposit exactly once.
   await deliverTrigger(newTriggerContext(), gatedTarget, deposit, { logger: quietLogger });
   assert.equal(await client.invokeRPC(ledgerFlow.getTotal, ledgerId), 27, 'a later redelivery applied the deposit once');
   await client.stopFlow(ledgerId);
