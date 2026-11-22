@@ -37,6 +37,8 @@ const (
 	StateNotSent State = "notSent"
 	// StateClaimed means the request may have reached the provider.
 	StateClaimed State = "claimed"
+	// StateAccepted records provider acceptance without a usable resource ID.
+	StateAccepted State = "accepted"
 	// StateCanResend proves a dispatched request was not processed.
 	StateCanResend State = "canResend"
 )
@@ -53,7 +55,7 @@ type Marker struct {
 	// ProviderID identifies an accepted write for read-back when available.
 	ProviderID string `json:"providerId,omitempty"`
 	// SendCount is the number of possibly effective sends this Call ID made up to and
-	// including Attempt. A claimed marker includes its own send; notSent and canResend
+	// including Attempt. Claimed and accepted include their own send; notSent and canResend
 	// markers carry the count from before their attempt's claim. Every Fence, whatever
 	// its cap, writes the exact count into its checkpoint entry, zero included, and
 	// Decide reads a present count exactly. A Marker's own JSON omits zero; Decide reads an
@@ -77,7 +79,7 @@ const (
 	// it can: a confirmed write selects the happy path, and a definite absence or an
 	// inconclusive read-back permits one Dispatch. A connector without read-back may call
 	// Dispatch directly. A saved Marker.ProviderID must be read back before any resend.
-	// A pre-send Retry records nothing, so the next attempt reads back again.
+	// A pre-send Retry records notSent while retaining earlier possible sends.
 	// Only a Fence constructed with WithMaxSends of 2 or more returns it.
 	ReadBackThenResendAllowed
 )
@@ -245,7 +247,10 @@ func (fence *Fence) Decide() Decision {
 	}
 	priorSends := maximumPriorSends(previous, attempt)
 	fence.decision = Decision{Kind: ReadBackRequired, Marker: previous, MaximumPriorSends: priorSends}
-	if previous.Attempt == attempt-1 &&
+	if previous.State == StateAccepted {
+		return fence.decision
+	}
+	if previous.Attempt == attempt-1 && (previous.State == StateCanResend || priorSends == 0) &&
 		(previous.State == StateNotSent || previous.State == StateCanResend) && previous.ProviderID == "" {
 		fence.decision.Kind = SendAllowed
 		return fence.decision
@@ -261,7 +266,7 @@ func (fence *Fence) Decide() Decision {
 // It requires a SendAllowed or ReadBackThenResendAllowed decision; the claim's SendCount
 // is the decision's MaximumPriorSends plus one.
 // A heartbeat failure or short budget returns an error without calling send; return Retry.
-// Only after SendAllowed does that path also record notSent.
+// A short budget or failed claim records notSent without discounting earlier sends.
 // The request context ends at the configured write window, leaving time to classify its outcome.
 func (fence *Fence) Dispatch(send func(context.Context) error) error {
 	fence.mu.Lock()
@@ -270,11 +275,6 @@ func (fence *Fence) Dispatch(send func(context.Context) error) error {
 		return ErrDispatchNotAllowed
 	}
 	if fence.minimumRequestTime <= 0 || time.Until(fence.writeDeadline) < fence.minimumRequestTime {
-		if fence.decision.Kind != SendAllowed {
-			fence.hasPreSendRetry = true
-			fence.mu.Unlock()
-			return ErrInsufficientTime
-		}
 		fence.mu.Unlock()
 		if err := fence.RecordNotSent(); err != nil {
 			return errors.Join(ErrInsufficientTime, err)
@@ -287,10 +287,7 @@ func (fence *Fence) Dispatch(send func(context.Context) error) error {
 	if err := fence.record(claim); err != nil {
 		fence.hasPreSendRetry = true
 		// A failed claim never permits a send; a best-effort notSent may permit the next attempt.
-		// After a possible earlier send, notSent would let the next attempt skip read-back.
-		if fence.decision.Kind == SendAllowed {
-			_ = fence.record(Marker{CallID: fence.call.ID, Attempt: fence.call.Context.Attempt(), State: StateNotSent, SendCount: fence.decision.MaximumPriorSends})
-		}
+		_ = fence.record(Marker{CallID: fence.call.ID, Attempt: fence.call.Context.Attempt(), State: StateNotSent, ProviderID: fence.decision.Marker.ProviderID, SendCount: fence.decision.MaximumPriorSends})
 		fence.mu.Unlock()
 		return errors.Join(ErrCheckpoint, err)
 	}
@@ -312,18 +309,30 @@ func (fence *Fence) Dispatch(send func(context.Context) error) error {
 	return err
 }
 
-// RecordNotSent checkpoints a decided pre-send Retry, including credential failure.
-// It requires a SendAllowed decision and permanently forbids Dispatch in this attempt,
-// even when its heartbeat write fails. Under ReadBackThenResendAllowed an earlier send may
-// have taken effect, so a pre-send Retry records nothing and the next attempt reads back again.
+// RecordNotSent checkpoints a decided pre-send Retry and forbids Dispatch in this attempt.
+// Earlier possible sends remain counted, so later attempts must read them back.
 func (fence *Fence) RecordNotSent() error {
 	fence.mu.Lock()
 	defer fence.mu.Unlock()
-	if !fence.hasDecision || fence.decision.Kind != SendAllowed || fence.hasDispatched || fence.hasPreSendRetry {
+	if !fence.hasDecision || !isSendDecision(fence.decision.Kind) || fence.hasDispatched || fence.hasPreSendRetry {
 		return ErrDispatchNotAllowed
 	}
 	fence.hasPreSendRetry = true
-	return fence.record(Marker{CallID: fence.call.ID, Attempt: fence.call.Context.Attempt(), State: StateNotSent, SendCount: fence.decision.MaximumPriorSends})
+	return fence.record(Marker{CallID: fence.call.ID, Attempt: fence.call.Context.Attempt(), State: StateNotSent, ProviderID: fence.decision.Marker.ProviderID, SendCount: fence.decision.MaximumPriorSends})
+}
+
+// RecordAccepted checkpoints provider acceptance without a usable resource ID.
+// It forbids resend; a later attempt may reconcile the accepted write by read-back.
+func (fence *Fence) RecordAccepted() error {
+	fence.mu.Lock()
+	defer fence.mu.Unlock()
+	if !fence.hasSendFinished || fence.marker.State != StateClaimed || fence.marker.ProviderID != "" {
+		return ErrDispatchNotAllowed
+	}
+	accepted := Marker{CallID: fence.call.ID, Attempt: fence.call.Context.Attempt(), State: StateAccepted, SendCount: fence.claimSendCount}
+	err := fence.checkpoint.recordRetainingOnFailure(fence.call.Context, accepted)
+	fence.marker = accepted
+	return err
 }
 
 // RecordCanResend checkpoints positive evidence that Dispatch was not processed.
@@ -345,7 +354,7 @@ func (fence *Fence) RecordCanResend() error {
 func (fence *Fence) RecordProviderID(providerID string) error {
 	fence.mu.Lock()
 	defer fence.mu.Unlock()
-	if !fence.hasSendFinished || fence.marker.State != StateClaimed || providerID == "" {
+	if !fence.hasSendFinished || (fence.marker.State != StateClaimed && fence.marker.State != StateAccepted) || providerID == "" {
 		return ErrDispatchNotAllowed
 	}
 	accepted := Marker{CallID: fence.call.ID, Attempt: fence.call.Context.Attempt(), State: StateClaimed, ProviderID: providerID, SendCount: fence.claimSendCount}
@@ -408,7 +417,7 @@ func isValidMarker(marker Marker) bool {
 		return false
 	}
 	switch marker.State {
-	case StateClaimed:
+	case StateClaimed, StateAccepted:
 		// A claim counts its own send.
 		return marker.SendCount >= 1 && marker.SendCount <= marker.Attempt
 	case StateNotSent, StateCanResend:

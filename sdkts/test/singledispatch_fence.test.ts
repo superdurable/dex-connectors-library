@@ -213,7 +213,7 @@ describe('single-dispatch bounded resend fence', () => {
     expect(json(next.heartbeats)).toEqual(json([{ callId: id, attempt: 4, state: 'notSent', sendCount: 2 }]));
   });
 
-  it('never records notSent while an earlier send is unresolved', async () => {
+  it('records notSent while preserving an earlier possible send', async () => {
     const id = fixture().call.id;
     const shortWindow = fixture(2, { callId: id, attempt: 1, state: 'claimed', sendCount: 1 }, new Date(Date.now() + 50));
     const fence = new Fence(shortWindow.call, 10_000, { maxSends: 2 });
@@ -221,20 +221,70 @@ describe('single-dispatch bounded resend fence', () => {
     await new Promise(resolve => setTimeout(resolve, 30));
     await expect(fence.dispatch(() => { throw new Error('must not send'); })).rejects.toBeInstanceOf(InsufficientTimeError);
     await expect(fence.dispatch(() => { throw new Error('must not send'); })).rejects.toBeInstanceOf(DispatchNotAllowedError);
-    expect(shortWindow.heartbeats).toEqual([]);
+    expect(shortWindow.heartbeats).toEqual([{ callId: id, attempt: 2, state: 'notSent', sendCount: 1 }]);
 
     const preSend = fixture(2, { callId: id, attempt: 1, state: 'claimed', sendCount: 1 });
     const preSendFence = new Fence(preSend.call, 10_000, { maxSends: 2 });
     preSendFence.decide();
-    await expect(preSendFence.recordNotSent()).rejects.toBeInstanceOf(DispatchNotAllowedError);
-    expect(preSend.heartbeats).toEqual([]);
+    await preSendFence.recordNotSent();
+    expect(preSend.heartbeats).toEqual([{ callId: id, attempt: 2, state: 'notSent', sendCount: 1 }]);
+    expect(new Fence(fixture(3, preSend.heartbeats.at(-1)).call, 10_000, { maxSends: 2 }).decide().kind).toBe('readBackThenResendAllowed');
 
     const failedClaim = fixture(2, { callId: id, attempt: 1, state: 'claimed', sendCount: 1 });
     const failedClaimFence = new Fence(failedClaim.call, 10_000, { maxSends: 2 });
     failedClaimFence.decide();
     failedClaim.rejectHeartbeat();
     await expect(failedClaimFence.dispatch(() => { throw new Error('must not send'); })).rejects.toBeInstanceOf(CheckpointError);
-    expect(failedClaim.attemptedHeartbeats).toEqual([{ callId: id, attempt: 2, state: 'claimed', sendCount: 2 }]);
+    expect(failedClaim.attemptedHeartbeats).toEqual([
+      { callId: id, attempt: 2, state: 'claimed', sendCount: 2 },
+      { callId: id, attempt: 2, state: 'notSent', sendCount: 1 },
+    ]);
+  });
+
+  it('records acceptance without an ID and forbids a resend', async () => {
+    const first = fixture();
+    const fence = new Fence(first.call, 10_000, { maxSends: 3 });
+    fence.decide();
+    await fence.dispatch(() => undefined);
+    await fence.recordAccepted();
+    expect(first.heartbeats.at(-1)).toEqual({ callId: callId(first), attempt: 1, state: 'accepted', sendCount: 1 });
+    await expect(fence.recordCanResend()).rejects.toBeInstanceOf(DispatchNotAllowedError);
+    expect(new Fence(fixture(2, first.heartbeats.at(-1)).call, 10_000, { maxSends: 3 }).decide().kind).toBe('readBackRequired');
+  });
+
+  it('retains a saved provider ID across notSent and requires read-back at cap one', async () => {
+    const callId = fixture().call.id;
+    const previous: Marker = { callId, attempt: 1, state: 'claimed', providerId: 'message-1', sendCount: 1 };
+    const second = fixture(2, previous);
+    const fence = new Fence(second.call, 10_000, { maxSends: 3 });
+    expect(fence.decide().kind).toBe('readBackThenResendAllowed');
+    await fence.recordNotSent();
+    const third = fixture(3, second.heartbeats.at(-1));
+    const decision = new Fence(third.call, 10_000, { maxSends: 3 }).decide();
+    expect(decision).toMatchObject({ kind: 'readBackThenResendAllowed', marker: { providerId: 'message-1' } });
+    expect(new Fence(third.call, 10_000).decide().kind).toBe('readBackRequired');
+  });
+
+  it('retains acceptance when its heartbeat fails', async () => {
+    const first = fixture();
+    const fence = new Fence(first.call, 10_000, { maxSends: 3 });
+    fence.decide();
+    await fence.dispatch(() => undefined);
+    first.rejectHeartbeat();
+    await expect(fence.recordAccepted()).rejects.toThrow('heartbeat unavailable');
+    await expect(fence.recordCanResend()).rejects.toBeInstanceOf(DispatchNotAllowedError);
+    expect(new Fence(fixture(2, first.heartbeats.at(-1)).call, 10_000, { maxSends: 3 }).decide().kind).toBe('readBackThenResendAllowed');
+  });
+
+  it('records a provider ID after acceptance', async () => {
+    const first = fixture();
+    const fence = new Fence(first.call, 10_000, { maxSends: 3 });
+    fence.decide();
+    await fence.dispatch(() => undefined);
+    await fence.recordAccepted();
+    await fence.recordProviderId('message-1');
+    const decision = new Fence(fixture(2, first.heartbeats.at(-1)).call, 10_000, { maxSends: 3 }).decide();
+    expect(decision).toMatchObject({ kind: 'readBackThenResendAllowed', marker: { providerId: 'message-1' } });
   });
 
   it('checkpoints notSent with the prior count when a proven retry has too short a window', async () => {

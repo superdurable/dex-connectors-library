@@ -59,7 +59,7 @@ func TestBoundedResendComputesPriorSendUpperBound(t *testing.T) {
 		{name: "immediate claim with a count", attempt: 3, marker: marker(2, singledispatch.StateClaimed, 1), maxSends: 3, wantKind: resend, wantPriorSends: 1},
 		{name: "stale claim adds the attempts after it", attempt: 4, marker: marker(2, singledispatch.StateClaimed, 2), maxSends: 3, wantKind: readBack, wantPriorSends: 3},
 		{name: "stale notSent with a count", attempt: 5, marker: marker(3, singledispatch.StateNotSent, 1), maxSends: 3, wantKind: resend, wantPriorSends: 2},
-		{name: "immediate notSent sends whatever its count", attempt: 5, marker: marker(4, singledispatch.StateNotSent, 2), maxSends: 3, wantKind: send, wantPriorSends: 2},
+		{name: "immediate notSent preserves earlier sends", attempt: 5, marker: marker(4, singledispatch.StateNotSent, 2), maxSends: 3, wantKind: resend, wantPriorSends: 2},
 		{name: "immediate canResend sends whatever its count", attempt: 4, marker: marker(3, singledispatch.StateCanResend, 2), maxSends: 2, wantKind: send, wantPriorSends: 2},
 		{name: "legacy claim counts its attempt", attempt: 3, marker: marker(2, singledispatch.StateClaimed, 0), maxSends: 3, wantKind: resend, wantPriorSends: 2},
 		{name: "legacy claim at a lower cap", attempt: 3, marker: marker(2, singledispatch.StateClaimed, 0), maxSends: 2, wantKind: readBack, wantPriorSends: 2},
@@ -87,6 +87,27 @@ func TestBoundedResendReadsBackProviderIDBeforeResending(t *testing.T) {
 	decision = newCappedFence(t, contextAtAttempt(t, 4, atCap), 3).Decide()
 	require.Equal(t, singledispatch.ReadBackRequired, decision.Kind)
 	require.Equal(t, "object-1", decision.Marker.ProviderID)
+}
+
+func TestNotSentPreservesProviderIDAndCapOneRequiresReadBack(t *testing.T) {
+	previous := &singledispatch.Marker{CallID: "call-1", Attempt: 1, State: singledispatch.StateClaimed, ProviderID: "object-1", SendCount: 1}
+	ctx := contextAtAttempt(t, 2, previous)
+	fence := newCappedFence(t, ctx, 3)
+	require.Equal(t, singledispatch.ReadBackThenResendAllowed, fence.Decide().Kind)
+	require.NoError(t, fence.RecordNotSent())
+	ctx.AdvanceAttempt()
+	decision := newCappedFence(t, ctx, 3).Decide()
+	require.Equal(t, singledispatch.ReadBackThenResendAllowed, decision.Kind)
+	require.Equal(t, "object-1", decision.Marker.ProviderID)
+	require.Equal(t, singledispatch.ReadBackRequired, newCappedFence(t, ctx, 1).Decide().Kind)
+}
+
+func TestLegacyNotSentWithoutCountRequiresReadBackAtCapOne(t *testing.T) {
+	ctx := contextAtAttempt(t, 3, nil)
+	require.NoError(t, ctx.SetPersistedMarkers(map[string]any{
+		"callId": "call-1", "attempt": 2, "state": "notSent",
+	}))
+	require.Equal(t, singledispatch.ReadBackRequired, newCappedFence(t, ctx, 1).Decide().Kind)
 }
 
 func TestBoundedResendIgnoresForeignOrUnreadableMarkers(t *testing.T) {
@@ -124,9 +145,9 @@ func TestDecideReadsLegacyOwnMarker(t *testing.T) {
 		wantProviderID      string
 		wantMarkerSendCount int32
 	}{
-		"immediate notSent permits the send": {
+		"immediate notSent retains earlier send": {
 			checkpoint: singledispatch.Marker{CallID: "call-1", Attempt: 2, State: singledispatch.StateNotSent, SendCount: 1},
-			maxSends:   1, wantKind: singledispatch.SendAllowed, wantPriorSends: 1, wantMarkerSendCount: 1,
+			maxSends:   1, wantKind: singledispatch.ReadBackRequired, wantPriorSends: 1, wantMarkerSendCount: 1,
 		},
 		"accepted claim keeps its provider ID": {
 			checkpoint: singledispatch.Marker{CallID: "call-1", Attempt: 2, State: singledispatch.StateClaimed, ProviderID: "object-1", SendCount: 1},
@@ -214,7 +235,7 @@ func TestBoundedResendValidatesMarkerSendCountRange(t *testing.T) {
 		wantPriorSends int32
 	}{
 		{name: "claimed counting every attempt", attempt: 3, marker: marker(2, singledispatch.StateClaimed, 2), maxSends: 3, wantKind: resend, wantPriorSends: 2},
-		{name: "notSent counting every earlier attempt", attempt: 3, marker: marker(2, singledispatch.StateNotSent, 1), maxSends: 3, wantKind: send, wantPriorSends: 1},
+		{name: "notSent counting every earlier attempt", attempt: 3, marker: marker(2, singledispatch.StateNotSent, 1), maxSends: 3, wantKind: resend, wantPriorSends: 1},
 		{name: "canResend counting every earlier attempt", attempt: 3, marker: marker(2, singledispatch.StateCanResend, 1), maxSends: 3, wantKind: send, wantPriorSends: 1},
 		{name: "stale notSent at its maximum count", attempt: 4, marker: marker(2, singledispatch.StateNotSent, 1), maxSends: 3, wantKind: resend, wantPriorSends: 2},
 		{name: "claimed above its attempt", attempt: 3, marker: marker(2, singledispatch.StateClaimed, 3), maxSends: 3, wantKind: failClosed},
@@ -269,9 +290,6 @@ func TestBoundedResendMarkersCarrySendCounts(t *testing.T) {
 	decision = fourth.Decide()
 	require.Equal(t, singledispatch.ReadBackThenResendAllowed, decision.Kind)
 	require.Equal(t, "object-1", decision.Marker.ProviderID)
-	heartbeatCount := len(ctx.Heartbeats())
-	require.ErrorIs(t, fourth.RecordNotSent(), singledispatch.ErrDispatchNotAllowed, "notSent would let the next attempt skip read-back")
-	require.Len(t, ctx.Heartbeats(), heartbeatCount)
 	require.NoError(t, fourth.Dispatch(func(context.Context) error { return nil }))
 	requireLastMarker(t, ctx, singledispatch.Marker{CallID: "call-1", Attempt: 4, State: singledispatch.StateClaimed, SendCount: 3})
 
@@ -279,6 +297,78 @@ func TestBoundedResendMarkersCarrySendCounts(t *testing.T) {
 	fifth := newCappedFence(t, ctx, 3)
 	require.Equal(t, singledispatch.ReadBackRequired, fifth.Decide().Kind, "three sends may have taken effect")
 	require.ErrorIs(t, fifth.RecordNotSent(), singledispatch.ErrDispatchNotAllowed)
+}
+
+func TestBoundedResendPreSendRetryPreservesEarlierSend(t *testing.T) {
+	ctx := contextAtAttempt(t, 2, marker(1, singledispatch.StateClaimed, 1))
+	fence := newCappedFence(t, ctx, 3)
+	require.Equal(t, singledispatch.ReadBackThenResendAllowed, fence.Decide().Kind)
+	require.NoError(t, fence.RecordNotSent())
+	requireLastMarker(t, ctx, singledispatch.Marker{CallID: "call-1", Attempt: 2, State: singledispatch.StateNotSent, SendCount: 1})
+	require.ErrorIs(t, fence.Dispatch(func(context.Context) error { return nil }), singledispatch.ErrDispatchNotAllowed)
+	ctx.AdvanceAttempt()
+	next := newCappedFence(t, ctx, 3)
+	require.Equal(t, singledispatch.ReadBackThenResendAllowed, next.Decide().Kind)
+	require.Equal(t, int32(1), next.Decide().MaximumPriorSends)
+}
+
+func TestAcceptedWithoutIDNeverPermitsResend(t *testing.T) {
+	ctx := singledispatchtest.NewContext("flow-1", "step-1")
+	fence := newCappedFence(t, ctx, 3)
+	require.Equal(t, singledispatch.SendAllowed, fence.Decide().Kind)
+	require.NoError(t, fence.Dispatch(func(context.Context) error { return nil }))
+	require.NoError(t, fence.RecordAccepted())
+	requireLastMarker(t, ctx, singledispatch.Marker{CallID: "call-1", Attempt: 1, State: singledispatch.StateAccepted, SendCount: 1})
+	require.ErrorIs(t, fence.RecordCanResend(), singledispatch.ErrDispatchNotAllowed)
+	ctx.AdvanceAttempt()
+	require.Equal(t, singledispatch.ReadBackRequired, newCappedFence(t, ctx, 3).Decide().Kind)
+}
+
+func TestAcceptedMarkerCountsNeverPermitResend(t *testing.T) {
+	for _, scenario := range []struct {
+		name string
+		checkpoint any
+		attempt int32
+		want singledispatch.DecisionKind
+	}{
+		{"at cap", marker(3, singledispatch.StateAccepted, 3), 4, singledispatch.ReadBackRequired},
+		{"earlier attempt", marker(1, singledispatch.StateAccepted, 1), 3, singledispatch.ReadBackRequired},
+		{"missing count", map[string]any{"callId": "call-1", "attempt": 2, "state": "accepted"}, 3, singledispatch.ReadBackRequired},
+		{"zero count", map[string]any{"callId": "call-1", "attempt": 2, "state": "accepted", "sendCount": 0}, 3, singledispatch.FailClosed},
+		{"excess count", map[string]any{"callId": "call-1", "attempt": 2, "state": "accepted", "sendCount": 3}, 3, singledispatch.FailClosed},
+	} {
+		t.Run(scenario.name, func(t *testing.T) {
+			ctx := contextAtAttempt(t, scenario.attempt, nil)
+			require.NoError(t, ctx.SetPersistedMarkers(scenario.checkpoint))
+			require.Equal(t, scenario.want, newCappedFence(t, ctx, 3).Decide().Kind)
+		})
+	}
+}
+
+func TestAcceptedWithoutIDCheckpointFailureDoesNotPermitResend(t *testing.T) {
+	ctx := singledispatchtest.NewContext("flow-1", "step-1")
+	fence := newCappedFence(t, ctx, 3)
+	fence.Decide()
+	require.NoError(t, fence.Dispatch(func(context.Context) error { return nil }))
+	ctx.SetWriteError(errors.New("heartbeat unavailable"))
+	require.Error(t, fence.RecordAccepted())
+	require.ErrorIs(t, fence.RecordCanResend(), singledispatch.ErrDispatchNotAllowed)
+	ctx.SetWriteError(nil)
+	ctx.AdvanceAttempt()
+	require.Equal(t, singledispatch.ReadBackThenResendAllowed, newCappedFence(t, ctx, 3).Decide().Kind)
+}
+
+func TestProviderIDCanFollowAcceptedMarker(t *testing.T) {
+	ctx := singledispatchtest.NewContext("flow-1", "step-1")
+	fence := newCappedFence(t, ctx, 3)
+	require.Equal(t, singledispatch.SendAllowed, fence.Decide().Kind)
+	require.NoError(t, fence.Dispatch(func(context.Context) error { return nil }))
+	require.NoError(t, fence.RecordAccepted())
+	require.NoError(t, fence.RecordProviderID("message-1"))
+	ctx.AdvanceAttempt()
+	decision := newCappedFence(t, ctx, 3).Decide()
+	require.Equal(t, singledispatch.ReadBackThenResendAllowed, decision.Kind)
+	require.Equal(t, "message-1", decision.Marker.ProviderID)
 }
 
 func TestBoundedResendPreSendRetryKeepsReadBack(t *testing.T) {
@@ -289,7 +379,7 @@ func TestBoundedResendPreSendRetryKeepsReadBack(t *testing.T) {
 	ctx.SetWriteError(errors.New("heartbeat unavailable"))
 	require.ErrorIs(t, fence.Dispatch(func(context.Context) error { t.Fatal("sent after checkpoint failure"); return nil }), singledispatch.ErrCheckpoint)
 	ctx.SetWriteError(nil)
-	require.Empty(t, ctx.Heartbeats(), "no notSent follows a possible earlier send")
+	require.Empty(t, ctx.Heartbeats(), "both claim and best-effort proof failed")
 	ctx.AdvanceAttempt()
 	decision := newCappedFence(t, ctx, 3).Decide()
 	require.Equal(t, singledispatch.ReadBackThenResendAllowed, decision.Kind)
@@ -301,7 +391,7 @@ func TestBoundedResendPreSendRetryKeepsReadBack(t *testing.T) {
 	require.Equal(t, singledispatch.ReadBackThenResendAllowed, shortFence.Decide().Kind)
 	time.Sleep(15 * time.Millisecond) // Elapsed time is the behavior under test: the write window closes.
 	require.ErrorIs(t, shortFence.Dispatch(func(context.Context) error { t.Fatal("sent after write window"); return nil }), singledispatch.ErrInsufficientTime)
-	require.Empty(t, short.Heartbeats())
+	requireLastMarker(t, short, singledispatch.Marker{CallID: "call-1", Attempt: 2, State: singledispatch.StateNotSent, SendCount: 1})
 	require.ErrorIs(t, shortFence.Dispatch(func(context.Context) error { t.Fatal("sent twice"); return nil }), singledispatch.ErrDispatchNotAllowed)
 }
 
