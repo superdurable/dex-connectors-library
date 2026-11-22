@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/internal/conformancefixture"
 	"github.com/superdurable/dex-connectors-library/sdkgo/internal/testsupport"
 )
 
@@ -120,4 +121,62 @@ type otherMutation struct{ mutationOperation }
 
 func (*otherMutation) Definition() sdkgo.MutationDefinition {
 	return mutationDefinition(sdkgo.OperationRef{ConnectorID: "mock-provider", OperationID: "revokeCredit"})
+}
+
+func TestNextCallIDNamesTheNextCallWithoutCountingIt(t *testing.T) {
+	ctx := testsupport.NewDexContext("flow-next", "step-next")
+	named, err := sdkgo.NextCallID(ctx, testMutationRef)
+	require.NoError(t, err)
+	namedAgain, err := sdkgo.NextCallID(ctx, testMutationRef)
+	require.NoError(t, err)
+	require.Equal(t, named, namedAgain, "naming a call does not count it")
+
+	first := &mutationOperation{}
+	_, err = sdkgo.RunMutation(ctx, first, testConnection, "first")
+	require.NoError(t, err)
+	require.Equal(t, named, first.call.ID)
+
+	namedSecond, err := sdkgo.NextCallID(ctx, testMutationRef)
+	require.NoError(t, err)
+	require.NotEqual(t, named, namedSecond, "after the first call starts, the next name is occurrence 2")
+	second := &mutationOperation{}
+	_, err = sdkgo.RunMutation(ctx, second, testConnection, "second")
+	require.NoError(t, err)
+	require.Equal(t, namedSecond, second.call.ID)
+
+	namedQuery, err := sdkgo.NextCallID(ctx, testQueryRef)
+	require.NoError(t, err)
+	query := &queryOperation{}
+	_, err = sdkgo.RunQuery(ctx, query, testConnection, "profile")
+	require.NoError(t, err)
+	require.Equal(t, namedQuery, query.call.ID, "each operation keeps its own count")
+
+	namedSecondQuery, err := sdkgo.NextCallID(ctx, testQueryRef)
+	require.NoError(t, err)
+	require.NotEqual(t, namedQuery, namedSecondQuery, "after the first Query starts, the next name is occurrence 2")
+	secondQuery := &queryOperation{}
+	_, err = sdkgo.RunQuery(ctx, secondQuery, testConnection, "profile")
+	require.NoError(t, err)
+	require.Equal(t, namedSecondQuery, secondQuery.call.ID)
+
+	ctx.AttemptNo = 2
+	retried, err := sdkgo.NextCallID(ctx, testMutationRef)
+	require.NoError(t, err)
+	require.Equal(t, named, retried, "a retry restarts the count, so the first call keeps its name")
+}
+
+func TestNextCallIDUsesTheContractDerivation(t *testing.T) {
+	ctx := testsupport.NewDexContext("flow-42", "step-execution-7")
+	callID, err := sdkgo.NextCallID(ctx, sdkgo.OperationRef{ConnectorID: "sample", OperationID: "createItem"})
+	require.NoError(t, err)
+	require.Equal(t, sdkgo.CallID(conformancefixture.ExampleCallID), callID)
+}
+
+func TestNextCallIDRequiresAStepAndAValidOperation(t *testing.T) {
+	_, err := sdkgo.NextCallID(nil, testMutationRef)
+	require.ErrorContains(t, err, "Dex context is required")
+	_, err = sdkgo.NextCallID(testsupport.NewDexContext("flow-rpc", ""), testMutationRef)
+	require.ErrorContains(t, err, "RPC invocation is not allowed")
+	_, err = sdkgo.NextCallID(testsupport.NewDexContext("flow-next", "step-next"), sdkgo.OperationRef{ConnectorID: "mock-provider", OperationID: "Invalid"})
+	require.ErrorContains(t, err, "invalid connector operation")
 }

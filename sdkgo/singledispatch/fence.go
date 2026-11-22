@@ -15,6 +15,13 @@
 // its Call ID's entry, keeping its state, provider ID, and send count, and later heartbeats
 // carry it forward in the map format. This checkpoint format is internal to the connector
 // SDKs and may change; hosts must not parse it.
+//
+// MaximumPriorSends reads the bound on earlier sends that Decide computes for a Call ID,
+// without a Fence. An application Mutation that runs its own checks before a wrapped
+// connector write passes it the write's Call ID: call.ID when it calls the wrapped Invoke
+// with the Call it received, or sdkgo.NextCallID when it starts the write as its own call in
+// the same Step. It selects uncertain, never a definite refusal, when a check fails after a
+// possible earlier send.
 package singledispatch
 
 import (
@@ -92,7 +99,8 @@ type Decision struct {
 	// Err reports a heartbeat read error or an own entry with an impossible send count.
 	Err error
 	// MaximumPriorSends is an upper bound on the possibly effective sends of this Call ID
-	// before the current attempt. It is zero for FailClosed.
+	// before the current attempt. It is zero for FailClosed. The package-level
+	// MaximumPriorSends returns the same bound without a Fence.
 	MaximumPriorSends int32
 }
 
@@ -220,30 +228,20 @@ func (fence *Fence) Decide() Decision {
 		fenceobservation.ReportDecision(fence.attemptIdentity(), fence.decision.Kind == SendAllowed)
 	}()
 	attempt := fence.call.Context.Attempt()
-	var heartbeat any
-	hasHeartbeat, err := fence.call.Context.GetLastHeartbeatValue(&heartbeat)
+	prior, err := readPriorCallEntry(fence.call.Context, fence.call.ID)
 	if err != nil {
-		fence.decision = Decision{Kind: FailClosed, Err: err}
+		fence.decision = Decision{Kind: FailClosed, Marker: prior.marker, Err: err}
 		return fence.decision
 	}
-	previous, hasPrevious := Marker{}, false
-	if hasHeartbeat {
-		previous, hasPrevious = markersFromHeartbeat(heartbeat)[fence.call.ID]
-	}
-	if !hasPrevious {
+	if !prior.hasMarker {
 		if attempt == 1 {
 			fence.decision = Decision{Kind: SendAllowed}
 		} else {
-			// Each earlier attempt sends at most once.
-			fence.decision = Decision{Kind: fence.resendOrReadBack(attempt - 1), MaximumPriorSends: attempt - 1}
+			fence.decision = Decision{Kind: fence.resendOrReadBack(prior.maximumPriorSends), MaximumPriorSends: prior.maximumPriorSends}
 		}
 		return fence.decision
 	}
-	if !isValidMarker(previous) {
-		fence.decision = Decision{Kind: FailClosed, Marker: previous, Err: errors.New("invalid single-dispatch checkpoint")}
-		return fence.decision
-	}
-	priorSends := maximumPriorSends(previous, attempt)
+	previous, priorSends := prior.marker, prior.maximumPriorSends
 	fence.decision = Decision{Kind: ReadBackRequired, Marker: previous, MaximumPriorSends: priorSends}
 	if previous.Attempt == attempt-1 &&
 		(previous.State == StateNotSent || previous.State == StateCanResend) && previous.ProviderID == "" {
