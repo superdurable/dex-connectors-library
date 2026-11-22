@@ -35,6 +35,7 @@ from .steps import (
 )
 from .timestamps import RFC3339NanoTimestamp, format_rfc3339_nano
 from .trigger import (
+    TRIGGER_RPC_REQUEST_ID_PREFIX,
     FlowIdResolver,
     FlowInputMapper,
     RPCInputMapper,
@@ -44,6 +45,7 @@ from .trigger import (
     TriggerDefinition,
     TriggerFilter,
     TriggerRef,
+    TriggerRPCRequestConflictError,
     TriggerRunner,
     TriggerSource,
     classify_dex_trigger_error,
@@ -51,6 +53,7 @@ from .trigger import (
     new_dex_flow_trigger_target,
     new_dex_rpc_trigger_target,
     new_trigger,
+    trigger_rpc_request_id,
 )
 from .trigger_delivery import (
     UNDELIVERABLE_TRIGGER_ERROR_TYPE,
@@ -163,9 +166,11 @@ __all__ = [
     "TriggerLogLevel",
     "TriggerLogValue",
     "TriggerRef",
+    "TriggerRPCRequestConflictError",
     "TriggerRunner",
     "TriggerSource",
     "TriggerTarget",
+    "TRIGGER_RPC_REQUEST_ID_PREFIX",
     "UNDELIVERABLE_TRIGGER_ERROR_TYPE",
     "UNDELIVERABLE_TRIGGER_MESSAGE",
     "UndeliverableTriggerError",
@@ -193,4 +198,5 @@ __all__ = [
     "run_query",
     "start_trigger_attempt",
     "trigger_error_attributes",
+    "trigger_rpc_request_id",
 ]
