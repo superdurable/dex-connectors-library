@@ -325,8 +325,8 @@ Runners and durable targets add `connector`, `connection`, `trigger`, and
 
 ### Differences from Go and TypeScript
 
-- RPC targets send a new Dex request ID on every attempt, as Go does. The
-  TypeScript target's stable request ID (sdkts 0.10.1) needs a request ID option
+- RPC targets send a new Dex request ID on every attempt. The TypeScript
+  target's stable request ID (sdkts 0.10.1) needs a request ID option
   in dex-python-sdk, which does not exist yet; RPC handlers deduplicate by event
   ID. There is no `TriggerRPCRequestConflictError`.
 - A Python handler's `UndeliverableTriggerError` is reported as
