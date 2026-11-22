@@ -14,7 +14,9 @@ from uuid import uuid4
 import pytest
 from dex_connectors.sdk import Call, CallID, ConnectionRef, IdempotencyKey, OperationRef
 
-from dex_connectors.google_gmail import SendMessageInput
+from dex_connectors.google_gmail import MessageMatcher, SendMessageInput
+from dex_connectors.google_gmail._mail_address import MailAddressSyntaxError
+from dex_connectors.google_gmail._trigger_source import message_matcher_matches, validate_message_matcher
 from dex_connectors.google_gmail.provider import (
     _format_go_mailbox,
     _sent_mail_candidate_query,
@@ -265,3 +267,29 @@ def test_send_body_writes_the_formatted_to_header() -> None:
     document = json.loads(body)
     raw = base64.urlsafe_b64decode(document["raw"] + "=" * (-len(document["raw"]) % 4))
     assert b"\r\nTo: =?utf-8?b?Wm/DqyAoT3BzKSwgSW5j?= <zoe@example.com>, <other@example.com>\r\n" in raw
+
+
+@pytest.mark.parametrize(
+    "sender",
+    [
+        "alice@example.com <alice@example.com>",
+        "Alice <alice@example.com >",
+        "Alice: <alice@example.com>",
+    ],
+)
+def test_trigger_skips_a_sender_the_reply_rejects(sender: str) -> None:
+    """The sender filter parses as replyToMessage does, so a matched sender always gets a reply."""
+    matcher = MessageMatcher(sender_emails=["alice@example.com"])
+    assert not message_matcher_matches(matcher, "Subject", "Snippet", sender)
+    with pytest.raises(MailAddressSyntaxError):
+        _format_go_mailbox(sender)
+    with pytest.raises(ValueError, match="sender email is invalid"):
+        validate_message_matcher(MessageMatcher(sender_emails=[sender]))
+
+
+def test_trigger_matches_a_sender_the_reply_accepts() -> None:
+    """An encoded name, a trailing comment, and another case still match, as in Go."""
+    matcher = MessageMatcher(sender_emails=["alice@example.com"])
+    sender = "=?UTF-8?Q?Zo=C3=AB?= <ALICE@example.com> (Work)"
+    assert message_matcher_matches(matcher, "Subject", "Snippet", sender)
+    assert _format_go_mailbox(sender) == "=?utf-8?q?Zo=C3=AB?= <ALICE@example.com>"

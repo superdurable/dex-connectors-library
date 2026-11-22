@@ -7,8 +7,6 @@ import json
 from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass
 from datetime import timedelta
-from email import policy
-from email.parser import Parser
 
 from dex_connectors.sdk import (
     Call,
@@ -34,6 +32,7 @@ from dex_connectors.sdk.pollingtrigger import new_trigger_credential_call
 
 from ._generated.definitions import CONNECTOR_ID
 from ._generated.models import MessageEvent, MessageMatcher
+from ._mail_address import MailAddressSyntaxError, parse_mail_address
 from .models import Credentials, Message
 from .provider import GmailProvider, decode_message
 
@@ -63,15 +62,9 @@ def mailbox_address(value: str) -> str | None:
     if "\r" in value or "\n" in value:
         return None
     try:
-        parsed = Parser(policy=policy.default).parsestr(f"To: {value}\n\n")
-        header = parsed["To"]
-        addresses = list(header.addresses) if header is not None else []
-    except Exception:  # noqa: BLE001
-        # The email package raises assorted errors for malformed headers.
+        return parse_mail_address(value).address
+    except MailAddressSyntaxError:
         return None
-    if len(addresses) != 1 or "@" not in addresses[0].addr_spec:
-        return None
-    return str(addresses[0].addr_spec)
 
 
 def validate_message_matcher(matcher: MessageMatcher | None) -> None:

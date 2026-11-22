@@ -9,8 +9,8 @@ from 0.5.0 one that Sent Mail cannot confirm at that cap selects `uncertain`.
 From 0.5.1 Sent Mail read-back matches the `X-Dex-Message-ID` header, because
 Gmail replaces `Message-ID` on send, and `getMessage` rejects body data in the
 standard base64 alphabet or with malformed padding, as Go and TypeScript do.
-From 0.5.2 recipients, reply targets, and `To` headers are parsed by a port of
-Go's `net/mail` parser, and recipient display names are RFC 2047 encoded exactly
+From 0.5.2 recipients, reply targets, `To` headers, and Trigger sender filters
+are parsed by a port of Go's `net/mail` parser, and recipient display names are RFC 2047 encoded exactly
 as Go writes them, split into words of at most 75 characters; see the
 [connector README](../README.md).
 
