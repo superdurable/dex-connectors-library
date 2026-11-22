@@ -43,17 +43,16 @@ function claimedCheckpoint(sendCount: number): { value?: unknown } {
 }
 
 describe('GmailProvider.findSentMessage', () => {
-  it('reads candidate headers and narrows the search only when recipients are given', async () => {
+  it('reads recent candidate headers and matches only this run X-Dex-Message-ID', async () => {
     const gmail = new FakeGmailSentMail();
     gmail.addSentCopy(ownSentCopy('own-copy'));
     gmail.addSentCopy(otherRunSentCopy('other-run'));
     const provider = new GmailProvider(gmail.httpClient());
     const call = sentMailOperationCall('sendMessage', contextFields);
     expect(await provider.findSentMessage(call, gmail.credentials(), messageIdAddress)).toEqual({ id: 'own-copy', threadId: 'own-copy-thread' });
-    expect(await provider.findSentMessage(call, gmail.credentials(), messageIdAddress, undefined, ['"Ada" <ada@example.com>'])).toEqual({ id: 'own-copy', threadId: 'own-copy-thread' });
     expect(await provider.findSentMessage(call, gmail.credentials(), rfcMessageIDAddress(SentMailCallID, 'run-9', contextFields.flowStartedAt))).toBeUndefined();
-    expect(gmail.searchQueries).toEqual(['in:sent newer_than:2d', 'in:sent newer_than:2d to:ada@example.com', 'in:sent newer_than:2d']);
-    expect(gmail.headerReads).toEqual(['other-run', 'own-copy', 'other-run', 'own-copy', 'other-run', 'own-copy']);
+    expect(gmail.searchQueries).toEqual(['in:sent newer_than:2d', 'in:sent newer_than:2d']);
+    expect(gmail.headerReads).toEqual(['other-run', 'own-copy', 'other-run', 'own-copy']);
   });
 });
 
@@ -120,7 +119,8 @@ for (const operationId of ['sendMessage', 'replyToMessage'] as const) {
       const checkpoint = claimedCheckpoint(1);
       expect(await invoke(gmail.sender(), sentMailOperationCall(operationId, contextFields, 2, checkpoint))).toMatchObject({ kind: 'branch', branch: 'sent', value: { messageId: 'gmail-1' } });
       expect(gmail.posts()).toBe(1);
-      expect(gmail.headerReads).toEqual(['other-run', 'call-id-only']);
+      // A reply reads back again with the recipient its source names, which lists the same decoys.
+      expect(gmail.headerReads).toEqual(operationId === 'sendMessage' ? ['other-run', 'call-id-only'] : ['other-run', 'call-id-only', 'other-run', 'call-id-only']);
       expect(checkpoint.value).toMatchObject({ state: 'claimed', attempt: 2, sendCount: 2, providerId: 'gmail-1' });
     });
 
@@ -183,6 +183,17 @@ for (const operationId of ['sendMessage', 'replyToMessage'] as const) {
       expect(gmail.headerReads).toEqual(['unreadable', 'own-copy']);
     });
 
+    it('keeps the credential a 401 refreshed for the rest of the attempt, also after an unreadable candidate', async () => {
+      const gmail = new FakeGmailSentMail({ isStoredTokenExpired: true, failingHeaderReads: new Map([['unreadable', 500]]) });
+      gmail.addSentCopy(otherRunSentCopy('unreadable'));
+      for (const id of ['other-1', 'other-2', 'other-3']) gmail.addSentCopy(otherRunSentCopy(id));
+      expect(await invoke(gmail.sender(), sentMailOperationCall(operationId, contextFields, 2, claimedCheckpoint(1)))).toMatchObject({
+        kind: 'branch', branch: 'sent', value: { messageId: 'gmail-1' },
+      });
+      expect(gmail.rejectedTokenRequests).toBe(1);
+      expect(gmail.forcedRefreshes).toBe(1);
+    });
+
     it('reports an unknown outcome as unanswered when a poll cannot read a candidate', async () => {
       const gmail = new FakeGmailSentMail({ sendOutcomes: ['lost'], failingHeaderReads: new Map([['unreadable', 503]]) });
       gmail.addSentCopy(otherRunSentCopy('unreadable'));
@@ -194,3 +205,18 @@ for (const operationId of ['sendMessage', 'replyToMessage'] as const) {
     });
   });
 }
+
+describe('replyToMessage read-back by recipient', () => {
+  it('finds a reply copy that newer Sent Mail pushed out of the unfiltered candidates, without posting again', async () => {
+    const gmail = new FakeGmailSentMail();
+    gmail.addSentCopy(ownSentCopy('own-copy'));
+    for (let index = 0; index < 25; index++) {
+      gmail.addSentCopy({ id: `other-${index}`, threadId: 'other-thread', headers: [{ name: 'To', value: '<bob@example.com>' }, { name: 'X-Dex-Message-ID', value: otherRunMessageID }] });
+    }
+    const reply = gmail.sender().replyToMessage(sentMailOperationCall('replyToMessage', contextFields, 2, claimedCheckpoint(1)), replyInput, new Date(Date.now() + 30_000));
+    expect(await reply).toMatchObject({ kind: 'branch', branch: 'sent', value: { messageId: 'own-copy' } });
+    expect(gmail.posts()).toBe(0);
+    expect(gmail.searchQueries).toEqual(['in:sent newer_than:2d', 'in:sent newer_than:2d to:ada@example.com']);
+    expect(gmail.headerReads).toHaveLength(26);
+  });
+});

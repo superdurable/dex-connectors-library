@@ -158,6 +158,18 @@ async def test_get_message_decodes_padded_base64url_bodies(call: Call) -> None:
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("data", ["SGVsbG8==", "SGk=SGk=", "SA=", "+/8=", "S+/z", "S"])
+async def test_get_message_rejects_body_data_go_rejects(call: Call, data: str) -> None:
+    """Excess, inner, or short padding, the standard alphabet, and a lone sextet are not Gmail base64url."""
+    document = json.loads(message_response())
+    document["payload"]["parts"][0]["body"]["data"] = data
+    result = await make_operation(call, httpx.Response(200, json=document)).invoke(
+        call, GetMessageInput("message-1")
+    )
+    assert result.branch == "invalidResponse"
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("status", "branch", "kind"),
     [

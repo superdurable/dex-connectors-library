@@ -74,12 +74,13 @@ export class GmailProvider {
 
   /**
    * Search recent Sent Mail once for the message whose X-Dex-Message-ID or Message-ID header carries the
-   * run-specific Message-ID address, reading the headers of up to 25 candidates. Resolves undefined on a
-   * clean miss; rejects when the search or a candidate read is inconclusive. Pass `recipients` to narrow
-   * the search to the first recipient.
+   * run-specific Message-ID address. Gmail replaces Message-ID on send and cannot search custom headers,
+   * so this lists up to 25 Sent Mail messages from the last two days and reads each one's headers.
+   * Resolves undefined on a clean miss; rejects when the search fails, or when a candidate cannot be read
+   * and no other candidate matches.
    */
-  async findSentMessage(call: Call, credentials: Credentials, messageIdAddress: string, signal?: AbortSignal, recipients: readonly string[] = []): Promise<SentMessageIdentity | undefined> {
-    return new SentMailReadBack(this.#http, call, credentials, messageIdAddress, recipients).find(signal);
+  async findSentMessage(call: Call, credentials: Credentials, messageIdAddress: string, signal?: AbortSignal): Promise<SentMessageIdentity | undefined> {
+    return new SentMailReadBack(this.#http, call, credentials, messageIdAddress, []).find(signal);
   }
 
   /** Post one encoded Gmail messages.send request without redirects or transport replay. */

@@ -7,7 +7,8 @@ the `messageReceived` and `replyReceived` Triggers at parity with Go. From
 0.4.0 a send or reply whose outcome is unknown may be sent up to three times;
 from 0.5.0 one that Sent Mail cannot confirm at that cap selects `uncertain`.
 From 0.5.1 Sent Mail read-back matches the `X-Dex-Message-ID` header, because
-Gmail replaces `Message-ID` on send.
+Gmail replaces `Message-ID` on send, and `getMessage` rejects body data in the
+standard base64 alphabet or with malformed padding, as Go and TypeScript do.
 
 ## Install
 
@@ -146,7 +147,9 @@ an ID in the sender's own domain, and keeps no copy of it, while it keeps the
 read-back lists up to 25 recent Sent Mail candidates with
 `in:sent newer_than:2d`, adding `to:` and the first recipient when the recipient
 is known and its address uses only letters, digits, and `.`, `_`, `+`, or `-`. A
-reply's read-back before its source read knows no recipient. The connector then
+reply's read-back before its source read knows no recipient, so below the send
+cap a later attempt reads back again with the source's reply recipient before it
+posts; at the cap only the read-back without a recipient runs. The connector then
 reads each candidate's `Message-ID` and `X-Dex-Message-ID` with
 `format=metadata`. Only a candidate whose `X-Dex-Message-ID`, or whose
 `Message-ID` where a compatible gateway kept it, equals this call's value is a
@@ -154,7 +157,9 @@ match; a Sent copy of another call, or of an earlier run of a reused Flow ID
 with the same `X-Dex-Call-ID`, is not. Within one poll a candidate found to be
 another message is not read again, a candidate deleted after the search is a
 miss, and a candidate whose read fails leaves the search inconclusive unless
-another candidate matches. Up to 0.5.0 read-back searched `rfc822msgid:`, which
+another candidate matches. A credential refreshed after a 401 during read-back
+serves that read-back's remaining reads and every later request before the POST.
+Up to 0.5.0 read-back searched `rfc822msgid:`, which
 never matches the rewritten `Message-ID`, so a crash or lost answer after Gmail
 accepted a send was resent up to the send cap. Two gaps remain: a Sent copy
 outside that window or candidate limit, or one deleted from Sent Mail, is not

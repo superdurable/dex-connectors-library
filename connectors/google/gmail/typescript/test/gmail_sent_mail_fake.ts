@@ -4,7 +4,7 @@
 import { SecretString, StaticCredentialProvider, type Call, type CredentialRefreshDriver } from '@superdurable/connectors-sdk';
 import { ProviderTransportError, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { GmailHTTPClient } from '../src/http.js';
-import type { Credentials } from '../src/models.js';
+import type { CredentialSource, Credentials } from '../src/models.js';
 import { GmailProvider } from '../src/provider.js';
 import { GmailSender } from '../src/send.js';
 
@@ -29,6 +29,7 @@ export type FakeSendOutcome = 'accepted' | 'acceptedResponseLost' | 'acceptedWor
 export interface SentMailContextFields { runId?: string; flowStartedAt?: Date | null }
 
 const credentials: Credentials = { accessToken: new SecretString('access-token'), primaryEmail: 'owner@example.com' };
+const expiredCredentials: Credentials = { ...credentials, accessToken: new SecretString('expired-token') };
 const driver: CredentialRefreshDriver<Credentials> = { refreshRequired: () => false, refresh: async () => { throw new Error('unexpected refresh'); } };
 
 /**
@@ -43,13 +44,17 @@ export class FakeGmailSentMail {
   /** Message IDs whose Sent Mail headers were read, in order. */ readonly headerReads: string[] = [];
   /** Requests of every kind. */ requests = 0;
   /** Reads of the reply source message. */ sourceReads = 0;
+  /** Requests that carried the expired token and got 401. */ rejectedTokenRequests = 0;
+  /** Forced credential refreshes after a 401. */ forcedRefreshes = 0;
   readonly #sendOutcomes: FakeSendOutcome[];
   readonly #failingHeaderReads: ReadonlyMap<string, number>;
+  readonly #isStoredTokenExpired: boolean;
 
-  /** Script one outcome per POST, accepted once exhausted, and a status for header reads of the given IDs. */
-  constructor(options: { sendOutcomes?: FakeSendOutcome[]; failingHeaderReads?: ReadonlyMap<string, number> } = {}) {
+  /** Script POST outcomes, failing header reads by ID, and a stored token Gmail rejects until refreshed. */
+  constructor(options: { sendOutcomes?: FakeSendOutcome[]; failingHeaderReads?: ReadonlyMap<string, number>; isStoredTokenExpired?: boolean } = {}) {
     this.#sendOutcomes = [...(options.sendOutcomes ?? [])];
     this.#failingHeaderReads = options.failingHeaderReads ?? new Map();
+    this.#isStoredTokenExpired = options.isStoredTokenExpired ?? false;
   }
 
   /** Add a Sent Mail message, such as another run's copy, as the newest one. */
@@ -63,7 +68,13 @@ export class FakeGmailSentMail {
 
   /** An authenticated Gmail HTTP client bound to this fake. */
   httpClient(): GmailHTTPClient {
-    return new GmailHTTPClient({ endpoint: 'http://127.0.0.1:8080' }, new StaticCredentialProvider([[SentMailConnection, credentials]]), driver, request => this.#answer(request));
+    const expiringProvider: CredentialSource & { resolveAfterRejection: () => Promise<Credentials> } = {
+      resolve: async () => expiredCredentials,
+      resolveWithRefresh: async () => expiredCredentials,
+      resolveAfterRejection: async () => { this.forcedRefreshes++; return credentials; },
+    };
+    const credentialSource = this.#isStoredTokenExpired ? expiringProvider : new StaticCredentialProvider([[SentMailConnection, credentials]]);
+    return new GmailHTTPClient({ endpoint: 'http://127.0.0.1:8080' }, credentialSource, driver, request => this.#answer(request));
   }
 
   /** The credentials the fake's connection resolves. */
@@ -74,6 +85,10 @@ export class FakeGmailSentMail {
 
   async #answer(request: ProviderRequest): Promise<ProviderResponse> {
     this.requests++;
+    if (request.headers?.Authorization === `Bearer ${expiredCredentials.accessToken.reveal()}`) {
+      this.rejectedTokenRequests++;
+      return json(401, { error: { code: 401 } });
+    }
     const url = new URL(request.url);
     if (request.method === 'POST') return this.#acceptSend(request);
     if (url.pathname === '/users/me/messages') return this.#listSentMail(url);

@@ -111,12 +111,12 @@ async def test_message_id_is_stable_across_send_and_readback(
         )
         assert result.branch == "sent"
     assert posted_ids == [expected_id] * 3
-    # A reply's read-back runs before its source read, so it knows no recipient.
-    assert search_queries == [
-        "in:sent newer_than:2d to:ada@example.com"
+    # A reply reads back before its source read, without a recipient, and again with the source's sender.
+    assert search_queries == (
+        ["in:sent newer_than:2d to:ada@example.com"]
         if operation_id == "sendMessage"
-        else "in:sent newer_than:2d"
-    ]
+        else ["in:sent newer_than:2d", "in:sent newer_than:2d to:ada.reply@example.com"]
+    )
 
 
 @pytest.mark.asyncio
@@ -421,15 +421,10 @@ async def test_provider_find_sent_message_matches_the_kept_header() -> None:
         StaticCredentialProvider({run.call.connection: credential}),
         http_client=httpx.AsyncClient(transport=httpx.MockTransport(answer)),
     )
-    mismatched: set[str] = set()
-    found, _ = await provider.find_sent_message(
-        run.call, credential, run.run_id, run.flow_started_at,
-        recipients=["<ada@example.com>"], mismatched_candidate_ids=mismatched,
-    )
+    found, _ = await provider.find_sent_message(run.call, credential, run.run_id, run.flow_started_at)
     assert found == {"id": "sent-1", "threadId": "thread-1"}
-    assert sent_mail.searches == ["in:sent newer_than:2d to:ada@example.com"]
+    assert sent_mail.searches == ["in:sent newer_than:2d"]
     assert sent_mail.header_reads == ["sent-2", "sent-1"]
-    assert mismatched == {"sent-2"}
 
 
 @pytest.mark.asyncio

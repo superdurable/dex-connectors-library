@@ -49,7 +49,10 @@ func TestGetMessageDecodesGmailBodyPadding(t *testing.T) {
 		{name: "unpadded", data: "SGVsbG8", wantText: "Hello", wantBranch: gmail.GetMessageBranchRead},
 		{name: "excess padding", data: "SGVsbG8==", wantBranch: gmail.GetMessageBranchInvalidResponse},
 		{name: "padding inside", data: "SGk=SGk=", wantBranch: gmail.GetMessageBranchInvalidResponse},
+		{name: "short padding", data: "SA=", wantBranch: gmail.GetMessageBranchInvalidResponse},
 		{name: "standard alphabet", data: "+/8=", wantBranch: gmail.GetMessageBranchInvalidResponse},
+		{name: "unpadded standard alphabet", data: "S+/z", wantBranch: gmail.GetMessageBranchInvalidResponse},
+		{name: "lone sextet", data: "S", wantBranch: gmail.GetMessageBranchInvalidResponse},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {

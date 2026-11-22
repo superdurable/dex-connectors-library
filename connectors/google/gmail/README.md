@@ -149,11 +149,14 @@ or use `NewProjectMessageTriggerRunner`.
 `GetMessage` returns decoded headers, text, HTML, snippet, labels, and received
 time. `ReplyToMessage` reads the source metadata and sends with Gmail thread
 ID, `In-Reply-To`, and `References` preserved. Gmail pads a body's base64url
-data whenever its length is not a multiple of three. Go v0.29.1 message,
-thread, and Trigger reads and TypeScript v0.5.1 message reads accept that
-padding as well as unpadded data; earlier releases selected `invalidResponse`
-for such messages, which live tests found to be most of them, and earlier Go
-Triggers could not decode them. Python always accepted it.
+data whenever its length is not a multiple of three. Go v0.29.1 `GetMessage`
+and `GetThread` and TypeScript v0.5.1 `getMessage`, which read
+`format=full`, accept that padding as well as unpadded data; earlier releases
+selected `invalidResponse` for such messages, which live tests found to be
+most of them. Triggers and the reply source read use `format=metadata`, which
+carries no body, so they were not affected. Python already accepted padded
+data; from v0.5.1 it also rejects the standard base64 alphabet and malformed
+padding, as Go and TypeScript do.
 
 The connector derives an RFC `Message-ID` from the stable call key, Dex's
 first run ID, and the Flow start second. From Go v0.29.1, Python v0.5.1, and
@@ -167,14 +170,18 @@ cannot match a custom header, so Sent Mail read-back lists up to 25 recent
 candidates with `in:sent newer_than:2d`, adding `to:` and the first recipient
 when the recipient is known and its address uses only letters, digits, and
 `.`, `_`, `+`, or `-`. A reply's read-back before its source read knows no
-recipient. The connector then reads each candidate's `Message-ID` and
-`X-Dex-Message-ID` with `format=metadata`. Only a candidate whose
-`X-Dex-Message-ID`, or whose `Message-ID` where a compatible gateway kept it,
-equals this call's value is a match; a Sent copy of another call, or of an
+recipient, so below the send cap a later attempt reads back again with the
+source's reply recipient before it posts; at the cap only the read-back
+without a recipient runs. The connector then reads each candidate's
+`Message-ID` and `X-Dex-Message-ID` with `format=metadata`. Only a candidate
+whose `X-Dex-Message-ID`, or whose `Message-ID` where a compatible gateway kept
+it, equals this call's value is a match; a Sent copy of another call, or of an
 earlier run of a reused Flow ID with the same `X-Dex-Call-ID`, is not. Within
 one poll, a candidate found to be another message is not read again, and a
 candidate whose read fails leaves the lookup inconclusive unless another
-candidate matches. Before these releases the read-back searched
+candidate matches. A credential refreshed after a 401 during read-back serves
+that read-back's remaining reads and every later request before the POST.
+Before these releases the read-back searched
 `rfc822msgid:`, which never matches the rewritten `Message-ID`, so a crash or
 lost answer after Gmail accepted a send was resent up to the send cap:
 
@@ -309,11 +316,13 @@ with a query and `messages.get` with `format=metadata`. A Google Workspace
 account verified the `Message-ID` replacement, the kept `X-Dex-*` headers,
 that `rfc822msgid:` matches only Gmail's own `Message-ID`, that header values
 are not searchable, and that search listed a new Sent copy within a second of
-the send's answer. A send whose Worker stopped after Gmail accepted it, retried
-under the same Call, found its Sent copy and sent nothing more. The read-back
-still misses, and the send is resent up to the cap, when the Sent copy is not
-among the 25 newest candidates by the retry, is older than two days, was
-deleted, or is not yet searchable. A call whose earlier attempt ran Go v0.29.0,
+the send's answer. A send whose attempt a test harness ended after Gmail
+accepted it, retried under the same Call, found its Sent copy and sent nothing
+more; no Dex Worker or Dex stack took part. The read-back still misses, and
+the send is resent up to the cap, when the Sent copy is not among the 25 newest
+candidates by the retry, is older than two days, was deleted, or is not yet
+searchable. At the cap, a reply whose copy is not among the 25 newest Sent Mail
+messages selects `uncertain`. A call whose earlier attempt ran Go v0.29.0,
 Python v0.5.0, TypeScript v0.5.0, or earlier posted no `X-Dex-Message-ID`, so
 it cannot be confirmed after an upgrade. Personal `@gmail.com` accounts,
 Workspace delegation, Trigger polling, and token refresh remain unverified

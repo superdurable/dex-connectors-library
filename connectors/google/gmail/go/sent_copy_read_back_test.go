@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"runtime"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -160,4 +161,79 @@ func TestGmailUnreadableCandidateLeavesTheReadBackInconclusive(t *testing.T) {
 		require.Equal(t, 1, sends)
 		require.Equal(t, 4, fake.headerReadCount(), "an unreadable candidate is read again on every lookup")
 	})
+}
+
+// TestGmailReplyRetryReadsBackByRecipientBeforeResending finds a reply copy that only the recipient's list shows.
+func TestGmailReplyRetryReadsBackByRecipientBeforeResending(t *testing.T) {
+	decoys, decoyIDs := sentMailDecoys(25)
+	fake := newGmailSendFake(t, sendFakeBehavior{
+		answerSend: writeGmailSendJSON(`{"id":"sent-1","threadId":"thread-1"}`),
+		searchMatchByQuery: map[string]string{
+			"in:sent newer_than:2d":                       decoys,
+			"in:sent newer_than:2d to:sender@example.com": `{"id":"sent-1","threadId":"thread-1"}`,
+		},
+		decoyCandidateIDs: decoyIDs,
+	})
+	crashingClient := newGmailClientWithHTTPClient(t, fake.URL, &http.Client{Transport: crashAfterAcceptedSendTransport{base: http.DefaultTransport}})
+	stepContext := singledispatchtest.NewContext("gmail-fence-test", t.Name())
+	attemptEnded := make(chan struct{})
+	go func() {
+		defer close(attemptEnded)
+		runGmailSendAttempt(stepContext, crashingClient, true)
+	}()
+	<-attemptEnded
+	stepContext.AdvanceAttempt()
+
+	second := runGmailSendAttempt(stepContext, newGmailClient(t, fake.URL), true)
+	require.NoError(t, second.err)
+	require.Equal(t, gmail.ReplyToMessageBranchSent, second.branch)
+	require.Equal(t, "sent-1", second.value.MessageID)
+	sends, _, _, _ := fake.counts()
+	require.Equal(t, 1, sends, "the accepted reply must not be posted again")
+	require.Equal(t, []string{"in:sent newer_than:2d", expectedCandidateQuery(true)}, fake.queries())
+	require.Equal(t, 26, fake.headerReadCount())
+}
+
+// TestGmailReadBackKeepsTheRefreshedCredential refreshes an expired token once per attempt.
+func TestGmailReadBackKeepsTheRefreshedCredential(t *testing.T) {
+	forSendAndReply(t, func(t *testing.T, isReply bool) {
+		decoys, decoyIDs := sentMailDecoys(3)
+		fake := newGmailSendFake(t, sendFakeBehavior{
+			answerSendAttempt: func(response http.ResponseWriter, sendNumber int) {
+				if sendNumber == 1 {
+					response.WriteHeader(http.StatusInternalServerError)
+					return
+				}
+				_, _ = response.Write([]byte(`{"id":"sent-2","threadId":"thread-1"}`))
+			},
+			searchMatch: decoys, decoyCandidateIDs: decoyIDs, rejectedAccessToken: "rejected-token",
+		})
+		provider := &rejectionRefreshingCredentialProvider{}
+		client, err := gmail.New(gmail.Config{Endpoint: fake.URL}, provider)
+		require.NoError(t, err)
+		stepContext := singledispatchtest.NewContext("gmail-fence-test", t.Name())
+		first := runGmailSendAttempt(stepContext, client, isReply)
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, first.err, &retry)
+		rejectedBefore, refreshesBefore := fake.rejectedTokenRequestCount(), provider.forcedRefreshes
+		stepContext.AdvanceAttempt()
+
+		second := runGmailSendAttempt(stepContext, client, isReply)
+		require.NoError(t, second.err)
+		require.Equal(t, sendBranch(isReply, gmail.SendMessageBranchSent, gmail.ReplyToMessageBranchSent), second.branch)
+		require.Equal(t, 1, fake.rejectedTokenRequestCount()-rejectedBefore)
+		require.Equal(t, 1, provider.forcedRefreshes-refreshesBefore)
+	})
+}
+
+// sentMailDecoys lists other calls' Sent copies, newest first.
+func sentMailDecoys(count int) (string, map[string]bool) {
+	candidates := make([]string, 0, count)
+	decoyIDs := make(map[string]bool, count)
+	for index := range count {
+		decoyID := "sent-other-" + strconv.Itoa(index)
+		candidates = append(candidates, `{"id":"`+decoyID+`","threadId":"thread-other"}`)
+		decoyIDs[decoyID] = true
+	}
+	return strings.Join(candidates, ","), decoyIDs
 }

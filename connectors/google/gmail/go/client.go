@@ -383,10 +383,9 @@ func (client *Client) sendAndConfirm(
 	call sdkgo.Call, fence *singledispatch.Fence, decision singledispatch.Decision,
 	budget sendAttemptBudget, credentials Credentials, operation gmailSendOperation, message gmailOutgoingMessage,
 ) sdkgo.MutationAttempt[SendMessageOutput] {
-	if !message.hasPreSendSearch {
-		if attempt, isDecided := client.reconcileEarlierSends(call, fence, decision, budget, credentials, operation, message); isDecided {
-			return attempt
-		}
+	attempt, isDecided, credentials := client.reconcileEarlierSends(call, fence, decision, budget, credentials, operation, message)
+	if isDecided {
+		return attempt
 	}
 	if decision.Kind == singledispatch.ReadBackRequired {
 		return sdkgo.NewMutationUncertain(emptySendMessageOutput(), gmailOperationFailure(operation.operationID, sdkgo.FailureAvailability,
@@ -450,20 +449,21 @@ func (client *Client) sendAndConfirm(
 	return client.sentAfterDispatch(call, budget, credentials, operation, message, sent, receipt, fence)
 }
 
-// reconcileEarlierSends reports whether read-back decides the attempt; otherwise it may resend.
+// reconcileEarlierSends reports whether read-back decides the attempt; otherwise it may resend
+// with the returned, possibly refreshed, credentials.
 func (client *Client) reconcileEarlierSends(
 	call sdkgo.Call, fence *singledispatch.Fence, decision singledispatch.Decision,
 	budget sendAttemptBudget, credentials Credentials, operation gmailSendOperation, message gmailOutgoingMessage,
-) (sdkgo.MutationAttempt[SendMessageOutput], bool) {
+) (sdkgo.MutationAttempt[SendMessageOutput], bool, Credentials) {
 	// A saved provider ID proves Gmail accepted an earlier send, so it is never resent.
 	hasSavedProviderID := decision.Kind != singledispatch.SendAllowed && decision.Marker.ProviderID != ""
 	if hasSavedProviderID {
 		if sent, isFound := client.readSavedSentMessage(budget.attemptContext, call, credentials, decision.Marker.ProviderID); isFound {
-			return client.sentMessage(call, budget, credentials, operation, message, sent, client.receipt(call, "", sent.ID)), true
+			return client.sentMessage(call, budget, credentials, operation, message, sent, client.receipt(call, "", sent.ID)), true, credentials
 		}
 	}
 	if call.Context.Attempt() == 1 && decision.Kind == singledispatch.SendAllowed {
-		return sdkgo.MutationAttempt[SendMessageOutput]{}, false
+		return sdkgo.MutationAttempt[SendMessageOutput]{}, false, credentials
 	}
 	mayDispatch := decision.Kind == singledispatch.SendAllowed ||
 		(decision.Kind == singledispatch.ReadBackThenResendAllowed && !hasSavedProviderID)
@@ -474,10 +474,12 @@ func (client *Client) reconcileEarlierSends(
 	} else {
 		searchContext, cancelSearch = context.WithCancel(budget.attemptContext)
 	}
-	sent, isFound, searchErr := client.newSentMailReadBack(call, credentials, message.recipients).find(searchContext)
+	readBack := client.newSentMailReadBack(call, credentials, message.recipients)
+	sent, isFound, searchErr := readBack.find(searchContext)
 	cancelSearch()
+	credentials = readBack.credentials
 	if isFound {
-		return client.sentMessage(call, budget, credentials, operation, message, sent, client.receipt(call, "", "")), true
+		return client.sentMessage(call, budget, credentials, operation, message, sent, client.receipt(call, "", "")), true, credentials
 	}
 	if !mayDispatch {
 		// The send cap or a saved message ID forbids another send, so an unconfirmed read-back is final.
@@ -486,15 +488,15 @@ func (client *Client) reconcileEarlierSends(
 			failureMessage = "Gmail sent-mail search did not answer, and no further " + operation.requestName + " is permitted"
 		}
 		return sdkgo.NewMutationUncertain(emptySendMessageOutput(), gmailOperationFailure(operation.operationID, sdkgo.FailureAvailability,
-			failureMessage), client.receipt(call, "", decision.Marker.ProviderID)), true
+			failureMessage), client.receipt(call, "", decision.Marker.ProviderID)), true, credentials
 	}
 	// Below the send cap, an inconclusive search still permits a resend.
 	if searchErr != nil && decision.Kind != singledispatch.ReadBackThenResendAllowed {
 		recordNotSentBeforeAnySend(fence, decision)
 		return sdkgo.NewMutationRetry[SendMessageOutput](gmailOperationFailure(operation.operationID, sdkgo.FailureAvailability,
-			"Gmail sent-mail search did not answer before the "+operation.requestName), 0), true
+			"Gmail sent-mail search did not answer before the "+operation.requestName), 0), true, credentials
 	}
-	return sdkgo.MutationAttempt[SendMessageOutput]{}, false
+	return sdkgo.MutationAttempt[SendMessageOutput]{}, false, credentials
 }
 
 // canResendUnknownOutcome reports whether the send cap still permits a send after this attempt's.

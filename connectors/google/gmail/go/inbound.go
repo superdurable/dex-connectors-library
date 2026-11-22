@@ -164,7 +164,9 @@ func (operation ReplyToMessageOperation) Invoke(call sdkgo.Call, input ReplyToMe
 	if strings.TrimSpace(input.MessageID) == "" || strings.TrimSpace(input.TextBody) == "" {
 		return operation.client.defectBeforeAnySend(call, decision, ReplyToMessageBranchDefect, gmailOperationFailurePointer("replyToMessage", sdkgo.FailureValidation, "message ID and text body are required"))
 	}
-	if attempt, isDecided := operation.client.reconcileEarlierSends(call, fence, decision, budget, credentials, replyToMessageOutcomes, gmailOutgoingMessage{}); isDecided {
+	// The source is not read yet, so this read-back knows no recipient; sendAndConfirm repeats it with one.
+	attempt, isDecided, credentials := operation.client.reconcileEarlierSends(call, fence, decision, budget, credentials, replyToMessageOutcomes, gmailOutgoingMessage{})
+	if isDecided {
 		return attempt
 	}
 	sourceContext, cancelSourceRead := budget.preSendContext()
@@ -205,7 +207,6 @@ func (operation ReplyToMessageOperation) Invoke(call sdkgo.Call, input ReplyToMe
 	}
 	return operation.client.sendAndConfirm(call, fence, decision, budget, credentials, replyToMessageOutcomes, gmailOutgoingMessage{
 		payload: payload, recipients: []string{recipient}, requestedThreadID: message.ThreadID,
-		hasPreSendSearch: call.Context.Attempt() > 1,
 	})
 }
 

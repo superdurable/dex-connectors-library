@@ -3,6 +3,7 @@
 
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
+import { DexMessageIDHeader } from './dex_message_id_header.js';
 import type { Message, ReplyToMessageInput, SendMessageInput } from './models.js';
 
 const GmailMessagePartSchema: z.ZodType<GmailMessagePart> = z.lazy(() => z.object({
@@ -168,12 +169,6 @@ export function rfcMessageIDAddress(idempotencyKey: string, runId: string, flowS
     : `${runId}\0no-flow-start`;
   return `${createHash('sha256').update(`${idempotencyKey}\0${runIdentity}`).digest('hex')}@dex.superdurable.dev`;
 }
-
-/**
- * Header that repeats the Message-ID a send sets. Gmail replaces Message-ID on the Sent copy but keeps
- * this header, so Sent Mail read-back matches it.
- */
-export const DexMessageIDHeader = 'X-Dex-Message-ID';
 
 /** Build the exact raw RFC 5322 request body shared by sends and replies. */
 export function buildMIMEMessage(callId: string, idempotencyKey: string, messageIdAddress: string, sender: string, recipients: string[], subject: string, textBody: string, htmlBody = '', replyHeaders?: { inReplyTo: string; references: string }): Uint8Array {

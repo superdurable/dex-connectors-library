@@ -81,12 +81,17 @@ _SENT_MAIL_CANDIDATE_WINDOW = "newer_than:2d"
 _SENT_MAIL_CANDIDATE_LIMIT = 25
 # Admits only characters that Gmail search reads literally in a to: term.
 _SEARCHABLE_RECIPIENT_ADDRESS = re.compile(r"[A-Za-z0-9._+-]+@[A-Za-z0-9.-]+")
+_UNPADDED_BASE64URL = re.compile(r"[A-Za-z0-9_-]*")
+_PADDED_BASE64URL = re.compile(r"[A-Za-z0-9_-]+={1,2}")
 
 
 def _base64url_decode(value: str) -> str:
-    return base64.b64decode(value + "=" * (-len(value) % 4), altchars=b"-_", validate=True).decode(
-        "utf-8", errors="replace"
-    )
+    # Go and TypeScript reject the standard alphabet and malformed padding, so this does too.
+    is_unpadded = _UNPADDED_BASE64URL.fullmatch(value) is not None and len(value) % 4 != 1
+    is_padded = _PADDED_BASE64URL.fullmatch(value) is not None and len(value) % 4 == 0
+    if not is_unpadded and not is_padded:
+        raise ValueError("Gmail body is not base64url")
+    return base64.urlsafe_b64decode(value + "=" * (-len(value) % 4)).decode("utf-8", errors="replace")
 
 
 def decode_message(resource: object) -> Message:
@@ -246,8 +251,22 @@ def rfc_message_id_address(call: Call, run_id: str | None, flow_started_at: date
     return f"{digest}@dex.superdurable.dev"
 
 
-def sent_mail_candidate_query(recipients: list[str]) -> str:
-    """Search recent Sent Mail, and only the first recipient's when Gmail search reads it literally."""
+def sent_message_search_query(
+    call: Call, run_id: str | None, flow_started_at: datetime | None,
+    *, message_id_address: str | None = None,
+) -> str:
+    """Search Sent Mail by deterministic RFC Message-ID without angle brackets.
+
+    Gmail replaces Message-ID on send, so this query finds no message the connector sent; read-back no
+    longer uses it. It is kept so code that imported it keeps working.
+    """
+    return "in:sent rfc822msgid:" + (
+        message_id_address if message_id_address is not None
+        else rfc_message_id_address(call, run_id, flow_started_at)
+    )
+
+
+def _sent_mail_candidate_query(recipients: list[str]) -> str:
     query = "in:sent " + _SENT_MAIL_CANDIDATE_WINDOW
     if not recipients:
         return query
@@ -552,61 +571,68 @@ class GmailProvider:
         credential: Credentials,
         run_id: str | None,
         flow_started_at: datetime | None,
-        *,
-        message_id_address: str | None = None,
-        recipients: list[str] | None = None,
-        mismatched_candidate_ids: set[str] | None = None,
+        *, message_id_address: str | None = None,
     ) -> tuple[dict[str, str] | None, Credentials]:
         """Return the Sent Mail message carrying the run-specific Message-ID, or None.
 
         Gmail replaces Message-ID on send and cannot search custom headers, so this lists up to 25
-        recent candidates, narrowed to the first of `recipients` when given, and reads each one's
-        X-Dex-Message-ID and Message-ID headers. IDs found not to match are added to
-        `mismatched_candidate_ids` and skipped when it is passed again. Raises ValueError, or the
-        transport and body errors `request` raises, when the search fails or a candidate cannot be
-        read and no other candidate matches.
+        Sent Mail messages from the last two days and reads each one's X-Dex-Message-ID and
+        Message-ID headers; either header equal to the bracketed address matches. The returned
+        credential is the latest one, which a refresh after a 401 may replace. Raises ValueError, or
+        the transport and body errors `request` raises, when the search fails or a candidate cannot
+        be read and no other candidate matches.
         """
-        address = (
+        read_back = _SentMailReadBack(
+            self, call, credential,
             message_id_address if message_id_address is not None
-            else rfc_message_id_address(call, run_id, flow_started_at)
+            else rfc_message_id_address(call, run_id, flow_started_at),
+            [],
         )
-        mismatched = mismatched_candidate_ids if mismatched_candidate_ids is not None else set()
-        candidate_ids, credential = await self.list_sent_mail_candidates(
-            call, credential, sent_mail_candidate_query(recipients or [])
-        )
+        return await read_back.find(), read_back.credential
+
+
+class _SentMailReadBack:
+    # Gmail replaces Message-ID on send and cannot search custom headers, so candidates are read.
+
+    def __init__(
+        self, provider: GmailProvider, call: Call, credential: Credentials, message_id_address: str,
+        recipients: list[str],
+    ) -> None:
+        self._provider = provider
+        self._call = call
+        # The latest credential, which a refresh after a 401 replaces.
+        self.credential = credential
+        self._search_query = _sent_mail_candidate_query(recipients)
+        self._dex_message_id = f"<{message_id_address}>"
+        # Candidates already read without a match; a message's headers never change.
+        self._mismatched_candidate_ids: set[str] = set()
+
+    async def find(self) -> dict[str, str] | None:
+        candidate_ids = await self._list_candidates()
         candidate_error: ValueError | OSError | None = None
         for candidate_id in candidate_ids:
-            if not candidate_id or candidate_id in mismatched:
+            if not candidate_id or candidate_id in self._mismatched_candidate_ids:
                 continue
             try:
-                sent, credential = await self.read_sent_mail_candidate(
-                    call, credential, candidate_id, f"<{address}>"
-                )
+                sent = await self._read_candidate(candidate_id)
             except (ValueError, OSError) as error:
                 candidate_error = error
                 continue
             if sent is not None:
-                return sent, credential
-            mismatched.add(candidate_id)
+                return sent
+            self._mismatched_candidate_ids.add(candidate_id)
         if candidate_error is not None:
             raise candidate_error
-        return None, credential
+        return None
 
-    async def list_sent_mail_candidates(
-        self, call: Call, credential: Credentials, search_query: str
-    ) -> tuple[list[str], Credentials]:
-        """List the IDs of the newest Sent Mail messages matching search_query, at most 25, newest first.
-
-        IDs may be empty. Raises ValueError for a non-200 or unusable response, and the transport and
-        body errors `request` raises.
-        """
-        result, credential = await self.request(
-            call,
-            credential,
+    async def _list_candidates(self) -> list[str]:
+        result, self.credential = await self._provider.request(
+            self._call,
+            self.credential,
             "GET",
             "/users/me/messages",
             query={
-                "q": search_query,
+                "q": self._search_query,
                 "maxResults": str(_SENT_MAIL_CANDIDATE_LIMIT),
                 "includeSpamTrash": "true",
             },
@@ -617,38 +643,31 @@ class GmailProvider:
             document = json.loads(result.body)
         except (ValueError, UnicodeDecodeError) as error:
             raise ValueError("Gmail sent-message lookup returned an invalid response") from error
-        if not isinstance(document, dict) or not isinstance(document.get("messages", []), list):
+        if not isinstance(document, dict) or not isinstance(document.get("messages", []), list | None):
             raise ValueError("Gmail sent-message lookup returned an invalid response")
         candidate_ids: list[str] = []
-        for candidate in document.get("messages", []):
-            if (
-                not isinstance(candidate, dict)
-                or not isinstance(candidate.get("id", ""), str)
-                or not isinstance(candidate.get("threadId", ""), str)
-            ):
+        # Go decodes a null ID or thread ID as an empty one; another type is an invalid response.
+        for candidate in document.get("messages") or []:
+            candidate_id = candidate.get("id") if isinstance(candidate, dict) else None
+            thread_id = candidate.get("threadId") if isinstance(candidate, dict) else None
+            if not isinstance(candidate, dict | None) or not isinstance(candidate_id, str | None):
                 raise ValueError("Gmail sent-message lookup returned an invalid response")
-            candidate_ids.append(candidate.get("id", ""))
-        return candidate_ids, credential
+            if not isinstance(thread_id, str | None):
+                raise ValueError("Gmail sent-message lookup returned an invalid response")
+            candidate_ids.append(candidate_id or "")
+        return candidate_ids
 
-    async def read_sent_mail_candidate(
-        self, call: Call, credential: Credentials, message_id: str, dex_message_id: str
-    ) -> tuple[dict[str, str] | None, Credentials]:
-        """Return a Sent Mail message's id and threadId when it carries dex_message_id, else None.
-
-        The match is an X-Dex-Message-ID header or, where a gateway keeps it, Message-ID. A 404 is a
-        miss. Raises ValueError for any other unusable response, and the transport and body errors
-        `request` raises.
-        """
-        result, credential = await self.request(
-            call,
-            credential,
+    async def _read_candidate(self, message_id: str) -> dict[str, str] | None:
+        result, self.credential = await self._provider.request(
+            self._call,
+            self.credential,
             "GET",
             "/users/me/messages/" + quote(message_id, safe=""),
             query={"format": "metadata", "metadataHeaders": ["Message-ID", _DEX_MESSAGE_ID_HEADER]},
         )
         if result.status_code == 404:
             # The candidate was deleted after the search; it cannot be this call's copy any more.
-            return None, credential
+            return None
         if result.status_code != 200:
             raise ValueError("Gmail sent-message header read did not return a usable response")
         try:
@@ -657,9 +676,9 @@ class GmailProvider:
             raise ValueError("Gmail sent-message header read returned an invalid response") from error
         for name, value in _sent_mail_candidate_headers(resource, message_id):
             is_message_id_header = name.lower() in ("message-id", _DEX_MESSAGE_ID_HEADER.lower())
-            if is_message_id_header and value.strip() == dex_message_id:
-                return {"id": message_id, "threadId": resource.get("threadId") or ""}, credential
-        return None, credential
+            if is_message_id_header and value.strip() == self._dex_message_id:
+                return {"id": message_id, "threadId": resource.get("threadId") or ""}
+        return None
 
 
 def _sent_mail_candidate_headers(resource: object, message_id: str) -> list[tuple[str, str]]:
@@ -698,6 +717,6 @@ __all__ = [
     "decode_message",
     "parse_mailbox",
     "rfc_message_id_address",
-    "sent_mail_candidate_query",
+    "sent_message_search_query",
     "validate_send_input",
 ]

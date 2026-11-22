@@ -143,18 +143,48 @@ class FailingCredentialProvider:
         raise self.error
 
 
+class ExpiredTokenCredentialProvider:
+    """Resolve an expired token that Gmail rejects, and replace it after each rejection."""
+
+    def __init__(self) -> None:
+        self.forced_refreshes = 0
+
+    async def resolve(self, call: Call) -> Credentials:
+        """Return the stored, expired token."""
+        return Credentials(SecretString(EXPIRED_TOKEN), "owner@example.org")
+
+    async def resolve_with_refresh(self, call: Call, driver: object) -> Credentials:
+        """Return the stored token, whose recorded expiry has not passed."""
+        return await self.resolve(call)
+
+    async def resolve_after_rejection(self, call: Call, driver: object) -> Credentials:
+        """Replace the rejected token."""
+        self.forced_refreshes += 1
+        return Credentials(SecretString("inert-token"), "owner@example.org")
+
+
+EXPIRED_TOKEN = "expired-" + "token"
+
+
 async def _invoke(
     call: Call, response: httpx.MockTransport, credential_error: Exception | None = None,
     message_input: SendMessageInput | ReplyToMessageInput | None = None,
+    credential_provider: ExpiredTokenCredentialProvider | None = None,
 ) -> tuple[MutationAttempt[SendMessageOutput], list[httpx.Request]]:
     requests: list[httpx.Request] = []
 
     async def observe(request: httpx.Request) -> httpx.Response:
         requests.append(request)
+        if request.headers.get("Authorization") == "Bearer " + EXPIRED_TOKEN:
+            return httpx.Response(401, json={"error": {"code": 401}})
         return await response.handle_async_request(request)
 
-    credentials: StaticCredentialProvider[Credentials] | FailingCredentialProvider = (
-        StaticCredentialProvider({
+    credentials: (
+        StaticCredentialProvider[Credentials] | FailingCredentialProvider | ExpiredTokenCredentialProvider
+    ) = (
+        credential_provider
+        if credential_provider is not None
+        else StaticCredentialProvider({
             call.connection: Credentials(SecretString("inert-token"), "owner@example.org")
         })
         if credential_error is None
@@ -226,6 +256,11 @@ def _gmail(
     return answer
 
 
+def _later_attempt_searches(operation_id: str) -> list[str]:
+    """A reply searches before its source read and again with the recipient the source names."""
+    return ["GET"] if operation_id == "sendMessage" else ["GET", "GET"]
+
+
 def _methods(requests: list[httpx.Request]) -> list[str]:
     return [request.method for request in requests if not request.url.path.endswith("/source-1")]
 
@@ -264,7 +299,7 @@ async def test_claimed_previous_attempt_resends_after_sent_mail_miss(operation_i
         httpx.Response(200, json={"id": "sent-2", "threadId": "thread-1"}),
     )))
     assert attempt.branch == "sent"
-    assert _methods(requests) == ["GET", "POST"]
+    assert _methods(requests) == _later_attempt_searches(operation_id) + ["POST"]
     claim = context.heartbeats[0]
     assert claim.state == State.CLAIMED and claim.send_count == 2
     assert context.heartbeats[-1].provider_id == "sent-2"
@@ -304,7 +339,7 @@ async def test_inconclusive_read_back_resends_below_the_cap(operation_id: str) -
         httpx.Response(503), httpx.Response(200, json={"id": "sent-2", "threadId": "thread-1"}),
     )))
     assert attempt.branch == "sent"
-    assert _methods(requests) == ["GET", "POST"]
+    assert _methods(requests) == _later_attempt_searches(operation_id) + ["POST"]
 
 
 @pytest.mark.asyncio
@@ -1046,3 +1081,44 @@ async def test_permanent_credential_failure_on_first_attempt_is_defect(
     )
     assert attempt.branch == "defect"
     assert requests == []
+
+
+@pytest.mark.asyncio
+async def test_reply_retry_reads_back_by_recipient_before_resending() -> None:
+    """Newer Sent Mail can push a reply's copy out of the unfiltered candidates; the recipient finds it."""
+    context = HeartbeatContext(2)
+    call = _call(context, operation_id="replyToMessage")
+    context.previous = Marker(call.id, 1, State.CLAIMED, send_count=1)
+    decoys = [
+        dex_sent_copy(f"sent-other-{index}", "thread-other", "<other@x>", recipient="<bob@example.com>")
+        for index in range(25)
+    ]
+    sent_mail = FakeSentMail([*decoys, dex_sent_copy("sent-1", "thread-1", _dex_message_id(call, context))])
+    attempt, requests = await _invoke(
+        call, httpx.MockTransport(_sent_mail_gmail(sent_mail, httpx.Response(500)))
+    )
+    assert attempt.branch == "sent" and attempt.value.message_id == "sent-1"
+    assert "POST" not in _methods(requests)
+    assert sent_mail.searches == ["in:sent newer_than:2d", "in:sent newer_than:2d to:ada@example.com"]
+    assert len(sent_mail.header_reads) == 26
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("operation_id", ["sendMessage", "replyToMessage"])
+async def test_read_back_keeps_the_refreshed_credential(operation_id: str) -> None:
+    """A token refreshed during read-back serves the rest of the attempt, even after an unreadable read."""
+    context = HeartbeatContext(2)
+    call = _call(context, operation_id=operation_id)
+    context.previous = Marker(call.id, 1, State.CLAIMED, send_count=1)
+    sent_mail = FakeSentMail(
+        [_decoy_sent_copy(call, "matching_call_id_only"), dex_sent_copy("sent-unreadable", "thread-1", "")],
+        {"sent-unreadable": 500},
+    )
+    credential_provider = ExpiredTokenCredentialProvider()
+    attempt, requests = await _invoke(
+        call, httpx.MockTransport(_sent_mail_gmail(sent_mail)), credential_provider=credential_provider
+    )
+    assert attempt.branch == "sent"
+    rejected = [request for request in requests if EXPIRED_TOKEN in request.headers["Authorization"]]
+    assert len(rejected) == 1
+    assert credential_provider.forced_refreshes == 1

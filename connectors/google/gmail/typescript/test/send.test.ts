@@ -872,7 +872,8 @@ describe('Gmail send and reply classification', () => {
     expect(await operation.replyToMessage(operationCall('replyToMessage', 2, checkpoint), replyInput, new Date(Date.now() + 30_000)))
       .toMatchObject({ branch: 'sent', value: { messageId: 'reply-after-503' } });
     expect(posts).toBe(2);
-    expect(searches).toBe(5);
+    // Four 503 polls, then a read-back before the source read and one with its recipient.
+    expect(searches).toBe(6);
   });
 
   it('accepts an oversized 2xx reply response without resending when Sent Mail has no match', async () => {

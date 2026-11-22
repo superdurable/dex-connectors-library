@@ -27,7 +27,6 @@ interface OutgoingMessage {
   raw: Uint8Array;
   recipients: string[];
   requestedThreadId: string;
-  hasPreSendSearch: boolean;
   messageIdAddress: string;
 }
 
@@ -149,7 +148,7 @@ export class GmailSender {
       raw = buildMIMEMessage(call.id, call.idempotencyKey ?? call.id, messageIdAddress, credentials.primaryEmail, recipients, input.subject, input.textBody, input.htmlBody);
     } catch { return defectBeforeAnySend(fence, 'sendMessage', 'VALIDATION', 'message could not be encoded', this.#receipt(call)); }
     if (raw.length > this.#http.settings().maxMessageBytes) return defectBeforeAnySend(fence, 'sendMessage', 'VALIDATION', 'message exceeds configured size limit', this.#receipt(call));
-    return this.#sendAndConfirm(call, fence, budget, credentials, SendMessageOutcomes, { raw, recipients, requestedThreadId: '', hasPreSendSearch: false, messageIdAddress });
+    return this.#sendAndConfirm(call, fence, budget, credentials, SendMessageOutcomes, { raw, recipients, requestedThreadId: '', messageIdAddress });
   }
 
   /** Read the source then reply in its Gmail thread under the Dex attempt deadline. */
@@ -174,16 +173,17 @@ export class GmailSender {
       const saved = await this.#readMessageById(call, budget, credentials, priorProviderId!);
       if (saved) {
         return this.#sentMessage(call, budget, credentials, ReplyToMessageOutcomes,
-          { raw: new Uint8Array(), recipients: [], requestedThreadId: '', hasPreSendSearch: true, messageIdAddress },
+          { raw: new Uint8Array(), recipients: [], requestedThreadId: '', messageIdAddress },
           saved, this.#receipt(call, '', priorProviderId));
       }
     }
     if (call.context.attempt > 1 || fence.decide().kind === 'readBackRequired') {
       let hasSearchFailed = false;
+      // The source is not read yet, so this read-back knows no recipient; #sendAndConfirm repeats it with one.
+      const readBack = new SentMailReadBack(this.#http, call, credentials, messageIdAddress, []);
       try {
-        // The source is not read yet, so the reply recipient is unknown.
-        const found = await new SentMailReadBack(this.#http, call, credentials, messageIdAddress, []).find(budget.preSendSignal());
-        if (found) return this.#sentMessage(call, budget, credentials, ReplyToMessageOutcomes, { raw: new Uint8Array(), recipients: [], requestedThreadId: '', hasPreSendSearch: true, messageIdAddress }, found, this.#receipt(call));
+        const found = await readBack.find(budget.preSendSignal());
+        if (found) return this.#sentMessage(call, budget, credentials, ReplyToMessageOutcomes, { raw: new Uint8Array(), recipients: [], requestedThreadId: '', messageIdAddress }, found, this.#receipt(call));
       } catch {
         hasSearchFailed = true;
         // An inconclusive search still permits a resend below the send cap.
@@ -192,6 +192,7 @@ export class GmailSender {
           return newMutationRetry(failure('replyToMessage', 'AVAILABILITY', 'Gmail sent-mail search did not answer before the reply'));
         }
       }
+      credentials = readBack.credentials;
       // A saved provider ID proves Gmail accepted an earlier reply, so it is never resent.
       if (fence.decide().kind === 'readBackRequired' || hasSavedProviderId) return uncertainWithoutResend(ReplyToMessageOutcomes, hasSearchFailed, this.#receipt(call, '', priorProviderId ?? ''));
     }
@@ -223,20 +224,21 @@ export class GmailSender {
     try { raw = buildReplyMIMEMessage(call.id, call.idempotencyKey ?? call.id, messageIdAddress, credentials.primaryEmail, message, input); }
     catch { return defectBeforeAnySend(fence, 'replyToMessage', 'VALIDATION', 'reply could not be encoded within the configured limit', this.#receipt(call)); }
     if (raw.length > this.#http.settings().maxMessageBytes) return defectBeforeAnySend(fence, 'replyToMessage', 'VALIDATION', 'reply could not be encoded within the configured limit', this.#receipt(call));
-    return this.#sendAndConfirm(call, fence, budget, credentials, ReplyToMessageOutcomes, { raw, recipients: [recipient], requestedThreadId: message.threadId, hasPreSendSearch: call.context.attempt > 1, messageIdAddress });
+    return this.#sendAndConfirm(call, fence, budget, credentials, ReplyToMessageOutcomes, { raw, recipients: [recipient], requestedThreadId: message.threadId, messageIdAddress });
   }
 
   async #sendAndConfirm(call: Call, fence: Fence, budget: GmailSendAttemptBudget, credentials: Credentials, operation: SendOutcomes, message: OutgoingMessage): Promise<MutationAttempt<SendMessageOutput>> {
     const priorProviderId = fence.decide().marker?.providerId;
     const hasSavedProviderId = isReadBackDecision(fence) && !!priorProviderId;
-    if (hasSavedProviderId && !message.hasPreSendSearch) {
+    if (hasSavedProviderId) {
       const saved = await this.#readMessageById(call, budget, credentials, priorProviderId!);
       if (saved) return this.#sentMessage(call, budget, credentials, operation, message, saved, this.#receipt(call, '', priorProviderId));
     }
     let hasSearchFailed = false;
-    if ((call.context.attempt > 1 || fence.decide().kind === 'readBackRequired') && !message.hasPreSendSearch) {
+    if (call.context.attempt > 1 || fence.decide().kind === 'readBackRequired') {
+      const readBack = this.#sentMailReadBack(call, credentials, message);
       try {
-        const found = await this.#sentMailReadBack(call, credentials, message).find(budget.preSendSignal());
+        const found = await readBack.find(budget.preSendSignal());
         if (found) return this.#sentMessage(call, budget, credentials, operation, message, found, this.#receipt(call));
       } catch {
         hasSearchFailed = true;
@@ -246,6 +248,7 @@ export class GmailSender {
           return newMutationRetry(failure(operation.operationId, 'AVAILABILITY', `Gmail sent-mail search did not answer before the ${operation.requestName}`));
         }
       }
+      credentials = readBack.credentials;
     }
     // A saved provider ID proves Gmail accepted an earlier send, so it is never resent.
     if (fence.decide().kind === 'readBackRequired' || hasSavedProviderId) return uncertainWithoutResend(operation, hasSearchFailed, this.#receipt(call, '', priorProviderId ?? ''));

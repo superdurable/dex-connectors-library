@@ -57,9 +57,8 @@ var searchableRecipientAddress = regexp.MustCompile(`^[A-Za-z0-9._+-]+@[A-Za-z0-
 
 // gmailOutgoingMessage is one encoded messages.send request body and the identity it reports.
 type gmailOutgoingMessage struct {
-	payload          []byte
-	recipients       []string
-	hasPreSendSearch bool
+	payload    []byte
+	recipients []string
 	// requestedThreadID is the thread a reply asked for; empty for a new message.
 	requestedThreadID string
 }
@@ -81,8 +80,9 @@ type sentMessageSearchResponse struct {
 
 // sentMailReadBack matches recent Sent Mail candidates by X-Dex-Message-ID, because Gmail replaces Message-ID.
 type sentMailReadBack struct {
-	client       *Client
-	call         sdkgo.Call
+	client *Client
+	call   sdkgo.Call
+	// credentials is the latest credential, which a refresh after a 401 replaces.
 	credentials  Credentials
 	searchQuery  string
 	dexMessageID string
@@ -178,7 +178,8 @@ func (readBack *sentMailReadBack) find(ctx context.Context) (sendResponse, bool,
 func (readBack *sentMailReadBack) listCandidates(ctx context.Context) ([]sendResponse, error) {
 	query := url.Values{"q": {readBack.searchQuery}, "maxResults": {strconv.Itoa(sentMailCandidateLimit)}, "includeSpamTrash": {"true"}}
 	target := strings.TrimRight(readBack.client.endpoint.String(), "/") + "/users/me/messages?" + query.Encode()
-	response, _, err := readBack.client.doAuthenticatedRequest(ctx, readBack.call, readBack.credentials, http.MethodGet, target, nil, "")
+	response, credentials, err := readBack.client.doAuthenticatedRequest(ctx, readBack.call, readBack.credentials, http.MethodGet, target, nil, "")
+	readBack.credentials = credentials
 	if err != nil {
 		return nil, fmt.Errorf("Gmail sent-message lookup failed: %w", err)
 	}
@@ -197,7 +198,8 @@ func (readBack *sentMailReadBack) listCandidates(ctx context.Context) ([]sendRes
 func (readBack *sentMailReadBack) readCandidate(ctx context.Context, messageID string) (sendResponse, bool, error) {
 	query := url.Values{"format": {"metadata"}, "metadataHeaders": {"Message-ID", dexMessageIDHeader}}
 	target := strings.TrimRight(readBack.client.endpoint.String(), "/") + "/users/me/messages/" + url.PathEscape(messageID) + "?" + query.Encode()
-	response, _, err := readBack.client.doAuthenticatedRequest(ctx, readBack.call, readBack.credentials, http.MethodGet, target, nil, "")
+	response, credentials, err := readBack.client.doAuthenticatedRequest(ctx, readBack.call, readBack.credentials, http.MethodGet, target, nil, "")
+	readBack.credentials = credentials
 	if err != nil {
 		return sendResponse{}, false, fmt.Errorf("Gmail sent-message header read failed: %w", err)
 	}

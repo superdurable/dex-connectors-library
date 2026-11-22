@@ -35,12 +35,13 @@ from dex_connectors.google_gmail.gmailmock import (
 from dex_connectors.google_gmail.models import Message
 from dex_connectors.google_gmail.provider import (
     _format_go_mailbox,
+    _sent_mail_candidate_query,
     build_reply_message,
     build_send_message,
     decode_message,
     parse_mailbox,
     rfc_message_id_address,
-    sent_mail_candidate_query,
+    sent_message_search_query,
     validate_send_input,
 )
 
@@ -101,7 +102,14 @@ def test_sent_mail_candidate_query_names_only_a_literal_first_recipient(
     recipients: list[str], expected_query: str
 ) -> None:
     """Only a first recipient that Gmail search reads literally narrows the recent Sent Mail candidates."""
-    assert sent_mail_candidate_query(recipients) == expected_query
+    assert _sent_mail_candidate_query(recipients) == expected_query
+
+
+def test_sent_message_search_query_stays_importable(call: Call) -> None:
+    """The 0.5.0 helper keeps its query, although read-back no longer uses it."""
+    assert sent_message_search_query(call, "run", None, message_id_address="digest@dex.superdurable.dev") == (
+        "in:sent rfc822msgid:digest@dex.superdurable.dev"
+    )
 
 
 def test_mailbox_output_matches_go_header_shape() -> None:

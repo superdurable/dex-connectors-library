@@ -45,7 +45,7 @@ describe('getMessage operation', () => {
     for (const [data, textBody] of [['SGVsbG8=', 'Hello'], ['SGVsbG8', 'Hello'], ['SGk=', 'Hi'], ['SGk', 'Hi'], ['SGV5', 'Hey']]) {
       expect(await read(data!), data).toMatchObject({ kind: 'branch', branch: 'read', value: { textBody } });
     }
-    for (const data of ['SGVsbG8==', 'SGk=SGk=', 'SGVsbG8+', 'S']) {
+    for (const data of ['SGVsbG8==', 'SGk=SGk=', 'SA=', '+/8=', 'S+/z', 'SGVsbG8+', 'S']) {
       expect(await read(data), data).toMatchObject({ kind: 'branch', branch: 'invalidResponse', failure: { kind: 'PROTOCOL' } });
     }
   });
