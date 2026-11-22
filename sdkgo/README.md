@@ -32,7 +32,9 @@ filter runs before Flow ID resolution and returns false to consume an irrelevant
 event without calling Dex. These callbacks are pure functions without error
 results. They should be deterministic and side-effect free because a persisted
 delivery can be replayed after restart. The SDK uses the provider event ID as
-the Flow-start request ID.
+the Flow-start request ID, and from v0.40.0 the RPC target sends one request ID
+per RPC name and event ID; see
+[RPC request IDs](#rpc-request-ids).
 
 Provider Trigger configuration may reduce upstream traffic, but it is not the
 application admission boundary. Applications use the typed filter to enforce
@@ -43,9 +45,10 @@ RPC Trigger targets receive the same direct bound Flow method that the
 application registers with `dex.DefineRPC`. The method carries the Flow
 instance, durable RPC name, input type, and output type, so no configurable
 RPC-name string can drift from registration. The application owns RPC options,
-durable state, locking, and event deduplication. Connector Triggers preserve the
-provider event ID but do not impose a retention policy or create hidden
-Attributes.
+durable state, and locking; the RPC target's request ID deduplicates
+redeliveries within the Flow run's request-ID window. Connector Triggers
+preserve the provider event ID but do not impose a retention policy or create
+hidden Attributes.
 
 ## Shared project configuration
 
@@ -77,7 +80,9 @@ cannot be delivered:
 - its Flow completed, failed, stopped, or was never started;
 - the RPC handler returned the error from `MarkTriggerUndeliverable`;
 - the input cannot be encoded;
-- the resolver returned an empty Flow ID, or the event has no ID.
+- the resolver returned an empty Flow ID, or the event has no ID;
+- a Dex Server before 0.1.37 reports a request ID conflict for an RPC event; see
+  [RPC request IDs](#rpc-request-ids).
 
 Every other error is retryable. This includes:
 
@@ -102,9 +107,68 @@ runs a Worker should wait for the Dex Server first.
 
 A failed attempt may still have been applied: a timeout or a dropped connection
 can hide an RPC that Dex already ran. Flow starts are idempotent because the
-event ID is the Flow-start request ID. Dex does not deduplicate a retried RPC,
-so every application RPC must treat a repeated event ID as a duplicate. If a
-retry finds the Flow closed, the event is consumed as undeliverable.
+event ID is the Flow-start request ID. From v0.40.0, RPC deliveries are too,
+within the Flow run's request-ID window, because every attempt of one event
+repeats one request ID; see [RPC request IDs](#rpc-request-ids). Before
+v0.40.0, Dex ran every retried RPC as a new request, so every application RPC
+had to treat a repeated event ID as a duplicate. If a retry finds the Flow
+closed, the event is consumed as undeliverable, except when the closed run
+recorded the event's request ID: Dex then answers the repeat and the event is
+consumed as delivered. A locking or transactional RPC returns the recorded
+reply without running its handler; any other RPC runs its handler again, and
+Dex discards that attempt's Flow changes.
+
+### RPC request IDs
+
+From v0.40.0, `NewDexRPCTriggerTarget` invokes the RPC through
+`dex.Client.InvokeRPCWithOptions` with `RPCInvokeOptions.RequestID` set to
+`sdkgo.TriggerRPCRequestID(rpcName, event.ID)` on every delivery attempt of
+the event: a durable inbox replay after a crash, a provider or relay retry, or
+a retry after a timeout that hid an applied RPC. Dex Server applies the RPC's
+Flow changes at most once per request ID. The ID is `trigger-rpc-` followed by
+the first 16 bytes, as unpadded base64url, of the SHA-256 digest of the UTF-8
+RPC name, one `0x00` byte, and the UTF-8 event ID; each byte that is not valid
+UTF-8 counts as U+FFFD, as the durable inbox stores it. It is the TypeScript
+SDK's `triggerRPCRequestId` byte for byte: `receiveReply` and `Ev1` yield
+`trigger-rpc-kDFFz9I4ELDtzXkmvRTzlA`.
+
+- The RPC name is the RPC's Go method name, such as `ReceiveThreadReply` for
+  `flow.ReceiveThreadReply`. Pass `sdkgo.WithTriggerRPCName(name)` when the RPC
+  registers a `dex.RPCOptions.Name`, so the IDs match a TypeScript target for
+  the same wire name, and before renaming the method while events may still be
+  redelivered. The name must contain a non-blank character and no NUL;
+  otherwise the constructor panics.
+- Register the RPC with `IsTransactional` or `LockAttributes`: Dex then answers
+  a repeat with the recorded reply without running the handler. Any other
+  handler runs again on a repeat, and Dex discards that attempt's Flow changes
+  when it makes any. Both hold after the Flow closed too, until Dex deletes
+  the closed run, so the target consumes such a redelivery as delivered.
+- Each Flow run keeps only its newest request IDs, as many as the server's
+  `limits.maxRequestIdsPerRun` (1000 by default), shared with its other
+  requests that carry request IDs, such as Client Attribute writes. A
+  redelivery after its ID was evicted applies again, so a handler that must
+  ignore repeats beyond that window also keeps its own record of event IDs.
+- The ID covers the RPC name and the event ID only, never the mapped input or
+  the binding. Two bindings that route one event to the same RPC on the same
+  Flow share one ID, and Dex applies only the first; give each binding its own
+  RPC.
+- Keep the `RPCInputMapper` deterministic. Dex Server 0.1.37 and later answer
+  a repeat whose request differs with the first request's reply and apply none
+  of its changes. Earlier servers compare the whole request and answer
+  `INVALID_ARGUMENT` "request ID ... was already used for a different
+  request", also while the earlier request is still in flight. The target then
+  logs ERROR `trigger rpc request conflict; event dropped` and returns a
+  `TriggerRPCRequestConflictError` wrapped in an `UndeliverableTriggerError`,
+  so delivery drops the event on its first conflict; if the earlier request
+  later fails without committing, the event is lost.
+- Use Dex Server 0.1.37 or later with Dex payload encryption
+  (`PayloadEncryptionOptions` on the Client). Each attempt encrypts the input
+  with a fresh nonce, so to an earlier server every repeat is a different
+  request, even from a deterministic mapper: every redelivery of an applied
+  event is dropped as a conflict, and a retry while an earlier attempt is still
+  in flight can lose the event.
+- Without `WithTriggerRPCName`, an RPC value that is not a bound method is
+  invoked without a request ID.
 
 An RPC target cannot tell a reply that overtook its root from a reply in a
 thread that never had a Flow, and it consumes both. Deliver a Flow's start
@@ -188,8 +252,9 @@ Two helpers keep the records about one event together:
 | INFO | `trigger event skipped: filtered` | a Dex target whose `TriggerFilter` returned false | `target`, `event_id` |
 | WARN | `trigger delivery failed; retrying` | `DeliverTrigger`, before every backoff | `event_id`, `attempt`, `delay`, `flow_id` for a Dex error, `error` |
 | INFO | `trigger delivered after retry` | `DeliverTrigger`, when a later attempt delivers the event | `event_id`, `attempts` |
-| DEBUG | `trigger event delivered` | a Dex target, when Dex starts the Flow or applies the RPC | `target`, `event_id`, `flow_id`, and `duplicate` for Flow starts |
-| WARN | `trigger event delivered; rpc response undecodable` | the RPC target, when Dex applied the RPC but its response cannot be decoded | `target`, `event_id`, `flow_id`, `error` |
+| DEBUG | `trigger event delivered` | a Dex target, when Dex starts the Flow or applies the RPC | `target`, `event_id`, `flow_id`, `duplicate` for Flow starts, and `request_id` for RPCs |
+| WARN | `trigger event delivered; rpc response undecodable` | the RPC target, when Dex applied the RPC but its response cannot be decoded | `target`, `event_id`, `flow_id`, `request_id`, `error` |
+| ERROR | `trigger rpc request conflict; event dropped` | the RPC target, when a Dex Server before 0.1.37 reports a request ID conflict | `target`, `event_id`, `request_id`, `rpc_name`, `flow_id` |
 | INFO | `replaying pending trigger events` | the durable inbox, when replay finds pending events | `count` |
 | INFO | `finished replaying pending trigger events` | the durable inbox, after that replay | `delivered`, `skipped`, `remaining`, and `error` when the context ended first |
 | ERROR | `trigger inbox read failed`, `trigger inbox write failed`, `trigger inbox remove failed` | the durable inbox | `event_id` (except for the read at replay start), `error` |
@@ -203,6 +268,9 @@ Attribute keys:
   Skip and retry records carry `flow_id` when the error is a Dex error about
   one Flow.
 - `target` is `flow_start` or `rpc`.
+- `request_id` is the request ID the RPC target sent, and `rpc_name` the RPC
+  name it was derived from. Records of an RPC sent without a request ID omit
+  both.
 - `attempt` numbers a failed attempt from 1, and `attempts` counts every
   attempt including the successful one. `delay` is the wait before the next
   attempt, as a Go duration such as `250ms` or `30s`.
@@ -1302,6 +1370,43 @@ credential error and returns Retry: it is a definite not-sent outcome, never
 `uncertain`. See
 [Connection targets](projectconfig/README.md#connection-targets).
 
+### Wrapping a connector operation
+
+From v0.40.0, `QueryAttempt` and `MutationAttempt` have read accessors that
+mirror the TypeScript SDK's attempt fields: `Kind()` (`AttemptKindBranch`,
+`AttemptKindRetry`, or `AttemptKindUncertain`; empty for a zero attempt),
+`Branch()`, `Value()`, `Receipt()`, `Failure()` (a copy, or nil), and
+`RetryAfter()`. An application operation, such as an agent tool that adds the
+thread and draft number to Slack's result or posts a note and returns its own
+value, can then wrap a connector operation: its `Invoke` calls the wrapped
+`Invoke` with the `Call` it received, reads the attempt, and returns its own
+attempt for the same branch with the wrapped `Failure` and `Receipt`. Calling
+the wrapped `Invoke` directly, rather than a nested `RunMutation` of the same
+operation, which `RunMutation` refuses as a concurrent call, keeps the wrapped
+call's Call ID, idempotency key, send cap, and Fence. A wrapper whose
+`Definition` and `IdempotencyKey` delegate to the wrapped operation gets the
+Call ID and key of a direct call. `Invoke` cannot return an error, so a wrapper
+reports its own refusal as a declared branch.
+
+From [`mutation_attempt_example_test.go`](mutation_attempt_example_test.go):
+
+```go
+func (wrapper reviewPostMutation) Invoke(call sdkgo.Call, input ReviewPostInput) sdkgo.MutationAttempt[ReviewPostOutput] {
+	attempt := wrapper.postReply.Invoke(call, PostReplyInput{Text: input.Draft})
+	review := ReviewPostOutput{MessageID: attempt.Value().MessageID, Draft: input.Draft}
+	switch attempt.Kind() {
+	case sdkgo.AttemptKindBranch:
+		return sdkgo.NewMutationBranch(attempt.Branch(), review, attempt.Failure(), attempt.Receipt())
+	case sdkgo.AttemptKindUncertain:
+		return sdkgo.NewMutationUncertain(review, *attempt.Failure(), attempt.Receipt())
+	case sdkgo.AttemptKindRetry:
+		return sdkgo.NewMutationRetry[ReviewPostOutput](*attempt.Failure(), attempt.RetryAfter())
+	default:
+		return sdkgo.MutationAttempt[ReviewPostOutput]{}
+	}
+}
+```
+
 ## Trigger bindings
 
 Project configuration stores named connections and named Trigger bindings
@@ -1329,9 +1434,28 @@ The module is released independently with directory-prefixed tags such as
 release.
 
 The module requires the Dex Go SDK, `github.com/superdurable/dex/sdk-go`,
-v1.26.0 or later. That is a minimum: an application may require any newer
+v1.45.16 or later. That is a minimum: an application may require any newer
 stable Dex Go SDK release, and Dex Server stays compatible with earlier SDK
-releases. Dex Go SDK v1.25.0 uses pull Workers exclusively. Clients and Workers
+releases. Connector SDK v0.40.0 raised it from v1.26.0 for
+`RPCInvokeOptions.RequestID`, which Dex Go SDK v1.45.3 began sending. The
+breaking changes in Dex Go SDK releases since v1.26.0 include:
+
+- v1.35.0: Workers and the Client's first call require server-zd 0.1.17 or
+  later; Worker startup fails when `MaxConcurrentTasks` exceeds the server's
+  `matching.maxConcurrentTasksCap` (256 by default); `RetryPolicy.TotalDuration`
+  starts at the first hand-out and only gates another retry; a Step with no
+  available Worker waits durably without consuming a retry; and a Step attempt
+  interrupted after its hand-out committed fails with `NOT_COMPLETED` and
+  consumes a retry.
+- v1.43.0: `Client.TriggerContinueAsNew` and the other continue-as-new APIs,
+  `SearchFlowsOptions` with `Client.SearchFlowsWithOptions`, and the
+  `InternalHandlerTimeout` wait options are removed, and generated bindings
+  rename `FlowExecutionID` to `FlowRunID`.
+- v1.45.0: a Step type containing `-` cannot start SubFlows.
+
+Read the Breaking Changes in the
+[Go SDK change log](https://docs.superdurable.io/reference/go/changelog/)
+before upgrading. Dex Go SDK v1.25.0 uses pull Workers exclusively. Clients and Workers
 need the Dex Server address, without a Worker address or target. Dex Go SDK
 v1.5.0 began registering Flow and Step types by their Go type name without the
 package, and Dex CLI v1.5.0 renders Flow definitions with the same names.
@@ -1360,6 +1484,13 @@ Trigger delivery through the durable project inbox:
 
 - an approval after completion, and an approval in a thread without a Flow;
 - a handler rejection, and a handler that returns another Flow's Dex error;
+- an RPC event delivered twice that Dex applies once, for a locking RPC that
+  answers the repeat without running and for an RPC without locks that runs
+  again with its changes discarded, a `WithTriggerRPCName` wire name, and a
+  redelivery whose input mapper changed, which a Dex Server before 0.1.37
+  drops as a request ID conflict and a later one answers with the first
+  reply;
+- a Flow-start input that cannot be encoded;
 - a Flow start that the Dex Server rejects, replayed once the Flow is fixed;
 - an RPC response the client cannot decode;
 - replay while the Worker is unavailable;

@@ -454,3 +454,49 @@ func TestRPCTriggerConsumesUndecodableResponseWithRealDex(t *testing.T) {
 	require.Empty(t, pendingTriggerEventIDs(t, store))
 	require.Equal(t, 2, readCount())
 }
+
+type unencodableStartInput struct {
+	Callback func() `json:"callback"`
+}
+
+type unencodableStartStep struct {
+	dex.StepDefaultsNoWaitFor[unencodableStartInput]
+}
+
+func (unencodableStartStep) Execute(dex.Context, unencodableStartInput) (*dex.StepDecision, error) {
+	return dex.DeadEnd(), nil
+}
+
+type unencodableStartFlow struct {
+	dex.FlowDefaults
+}
+
+func (*unencodableStartFlow) GetSteps() []dex.StepDef {
+	return []dex.StepDef{dex.DefineStartStep(unencodableStartStep{})}
+}
+
+func (*unencodableStartFlow) GetPersistenceSchema() dex.PersistenceSchema {
+	return dex.PersistenceSchema{}
+}
+
+// TestDexFlowTriggerTargetMarksUnencodableInputUndeliverableWithRealDex needs Dex: Go SDK v1.35.0
+// negotiates before encoding.
+func TestDexFlowTriggerTargetMarksUnencodableInputUndeliverableWithRealDex(t *testing.T) {
+	flow := &unencodableStartFlow{}
+	harness := newDexHarness(t, []dex.Flow{flow})
+	target := sdkgo.NewDexFlowTriggerTarget(harness.client, flow,
+		func(sdkgo.TriggerEvent[string]) bool { return true },
+		func(sdkgo.TriggerEvent[string]) string {
+			return "unencodable-flow-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+		},
+		func(sdkgo.TriggerEvent[string]) unencodableStartInput {
+			return unencodableStartInput{Callback: func() {}}
+		})
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	err := target.HandleTrigger(ctx, sdkgo.TriggerEvent[string]{ID: "Ev1"})
+	require.True(t, sdkgo.IsTriggerUndeliverable(err), "Flow target error: %v", err)
+	var mappingFailure *dex.ValueMappingError
+	require.ErrorAs(t, err, &mappingFailure)
+	require.Equal(t, "encode", mappingFailure.Operation)
+}

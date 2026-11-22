@@ -279,30 +279,6 @@ func TestDexTriggerTargetsRejectEmptyFlowIDAsUndeliverable(t *testing.T) {
 	require.True(t, sdkgo.IsTriggerUndeliverable(err))
 }
 
-type unencodableStartInput struct {
-	Callback func() `json:"callback"`
-}
-
-type unencodableStartStep struct {
-	dex.StepDefaultsNoWaitFor[unencodableStartInput]
-}
-
-func (unencodableStartStep) Execute(dex.Context, unencodableStartInput) (*dex.StepDecision, error) {
-	return dex.DeadEnd(), nil
-}
-
-type unencodableStartFlow struct {
-	dex.FlowDefaults
-}
-
-func (*unencodableStartFlow) GetSteps() []dex.StepDef {
-	return []dex.StepDef{dex.DefineStartStep(unencodableStartStep{})}
-}
-
-func (*unencodableStartFlow) GetPersistenceSchema() dex.PersistenceSchema {
-	return dex.PersistenceSchema{}
-}
-
 // newUnreachableDexClient returns a client for a Unix socket that nothing listens on, so no call reaches Dex.
 func newUnreachableDexClient(t *testing.T, flows ...dex.Flow) *dex.Client {
 	t.Helper()
@@ -315,23 +291,6 @@ func newUnreachableDexClient(t *testing.T, flows ...dex.Flow) *dex.Client {
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, errors.Join(client.Close(), cache.Close())) })
 	return client
-}
-
-func TestDexFlowTriggerTargetMarksUnencodableInputUndeliverable(t *testing.T) {
-	flow := &unencodableStartFlow{}
-	target := sdkgo.NewDexFlowTriggerTarget(newUnreachableDexClient(t, flow), flow,
-		func(sdkgo.TriggerEvent[string]) bool { return true },
-		func(sdkgo.TriggerEvent[string]) string { return "unencodable-flow" },
-		func(sdkgo.TriggerEvent[string]) unencodableStartInput {
-			return unencodableStartInput{Callback: func() {}}
-		})
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	err := target.HandleTrigger(ctx, sdkgo.TriggerEvent[string]{ID: "Ev1"})
-	require.True(t, sdkgo.IsTriggerUndeliverable(err), "Flow target error: %v", err)
-	var mappingFailure *dex.ValueMappingError
-	require.ErrorAs(t, err, &mappingFailure)
-	require.Equal(t, "encode", mappingFailure.Operation)
 }
 
 type deliveryTestFlow struct {

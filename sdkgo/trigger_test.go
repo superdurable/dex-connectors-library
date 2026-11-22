@@ -5,8 +5,10 @@ package sdkgo_test
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
+	"strings"
 	"testing"
 	"time"
 
@@ -155,4 +157,74 @@ func TestDexRPCTriggerTargetConsumesFilteredEventBeforeRouting(t *testing.T) {
 	require.False(t, resolverCalled)
 	require.False(t, inputMapperCalled)
 	requireSingleFilteredRecord(t, logs, "rpc", "approval-reply")
+}
+
+// TestTriggerRPCRequestIDMatchesTypeScriptVectors: triggerRPCRequestId in sdkts/src/trigger.ts printed each
+// expected ID for the same RPC name and event ID.
+func TestTriggerRPCRequestIDMatchesTypeScriptVectors(t *testing.T) {
+	testCases := []struct {
+		name      string
+		rpcName   string
+		eventID   string
+		requestID string
+	}{
+		{name: "documented example", rpcName: "receiveReply", eventID: "Ev1", requestID: "trigger-rpc-kDFFz9I4ELDtzXkmvRTzlA"},
+		{name: "Go method name", rpcName: "Approve", eventID: "Ev1", requestID: "trigger-rpc-NCT4ExQx0Ahaf4r71ej-1g"},
+		{name: "wire name", rpcName: "send_user_message", eventID: "Ev1", requestID: "trigger-rpc-nvt7sgyIgs8au6Su_i3G_A"},
+		{name: "Slack event ID", rpcName: "send_user_message", eventID: "1710000200.000200", requestID: "trigger-rpc-jULspDTupwRV1mIcS03qUg"},
+		{name: "provider event ID", rpcName: "ReceiveEnvelopeEvent", eventID: "evt_0123456789abcdef", requestID: "trigger-rpc-N-9RTMPf6sXlUYgoeYwLfg"},
+		{name: "multibyte UTF-8", rpcName: "recordLedgerEntry", eventID: "café-事件-😀", requestID: "trigger-rpc-cVlFUH2QCxK31tF2KjqSUA"},
+		{name: "empty event ID", rpcName: "receiveReply", eventID: "", requestID: "trigger-rpc-hBjdrS1VKDIhGHGRhqXIxw"},
+		// TypeScript hashes the unpaired surrogate in "a\ud800b" as U+FFFD; Go hashes each invalid byte so.
+		{name: "invalid UTF-8 byte", rpcName: "receiveReply", eventID: "a\xffb", requestID: "trigger-rpc--DMh9mmLQmtdCEEqMlYxWA"},
+		{name: "replacement character", rpcName: "receiveReply", eventID: "a�b", requestID: "trigger-rpc--DMh9mmLQmtdCEEqMlYxWA"},
+		// encoding/json stores the truncated sequence as two U+FFFD, as TypeScript hashes "x��y".
+		{name: "truncated UTF-8 sequence", rpcName: "receiveReply", eventID: "x\xe2\x82y", requestID: "trigger-rpc-8RndI-WQcs_0IiUPVanorg"},
+	}
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			requestID, err := sdkgo.TriggerRPCRequestID(testCase.rpcName, testCase.eventID)
+			require.NoError(t, err)
+			require.Equal(t, testCase.requestID, requestID)
+			require.True(t, strings.HasPrefix(requestID, sdkgo.TriggerRPCRequestIDPrefix))
+			require.Len(t, requestID, len(sdkgo.TriggerRPCRequestIDPrefix)+22)
+		})
+	}
+}
+
+func TestTriggerRPCRequestIDRejectsUnusableRPCName(t *testing.T) {
+	for _, rpcName := range []string{"", "receive\x00Reply"} {
+		requestID, err := sdkgo.TriggerRPCRequestID(rpcName, "Ev1")
+		require.EqualError(t, err, "RPC request ID requires an RPC name without NUL characters")
+		require.Empty(t, requestID)
+	}
+}
+
+// TestTriggerRPCRequestIDSurvivesDurableInboxEncoding: an event ID with invalid UTF-8 keeps its request ID
+// through the inbox's JSON round trip.
+func TestTriggerRPCRequestIDSurvivesDurableInboxEncoding(t *testing.T) {
+	event := sdkgo.TriggerEvent[string]{ID: "Ev\xe2\x82\xff1", Payload: "hello"}
+	encoded, err := json.Marshal(event)
+	require.NoError(t, err)
+	var replayed sdkgo.TriggerEvent[string]
+	require.NoError(t, json.Unmarshal(encoded, &replayed))
+	require.NotEqual(t, event.ID, replayed.ID)
+	live, err := sdkgo.TriggerRPCRequestID("Approve", event.ID)
+	require.NoError(t, err)
+	afterReplay, err := sdkgo.TriggerRPCRequestID("Approve", replayed.ID)
+	require.NoError(t, err)
+	require.Equal(t, live, afterReplay)
+}
+
+func TestDexRPCTriggerTargetRejectsUnusableRPCName(t *testing.T) {
+	flow := &filterTestFlow{}
+	for _, rpcName := range []string{"", "  ", "receive\x00Event"} {
+		require.PanicsWithValue(t, "RPC trigger RPC name must contain a non-blank character and no NUL characters", func() {
+			sdkgo.NewDexRPCTriggerTarget(&dex.Client{}, flow.ReceiveEvent,
+				func(sdkgo.TriggerEvent[string]) bool { return true },
+				func(sdkgo.TriggerEvent[string]) string { return "flow-id" },
+				func(sdkgo.TriggerEvent[string]) int { return 42 },
+				sdkgo.WithTriggerRPCName(rpcName))
+		}, "rpcName %q", rpcName)
+	}
 }

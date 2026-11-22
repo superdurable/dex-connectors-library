@@ -619,15 +619,23 @@ func TestDexFlowTriggerTargetDisallowsIDReuseAfterCompletionWithRealDex(t *testi
 }
 
 type dexHarness struct {
-	registry      *dex.Registry
-	cache         *blobcache.Cache
-	serverAddress string
-	worker        *dex.Worker
-	workerResult  chan error
-	client        *dex.Client
+	registry          *dex.Registry
+	cache             *blobcache.Cache
+	serverAddress     string
+	payloadEncryption dex.PayloadEncryptionOptions
+	worker            *dex.Worker
+	workerResult      chan error
+	client            *dex.Client
 }
 
 func newDexHarness(t *testing.T, flows []dex.Flow) *dexHarness {
+	t.Helper()
+	return newDexHarnessWithPayloadEncryption(t, flows, dex.PayloadEncryptionOptions{})
+}
+
+// newDexHarnessWithPayloadEncryption gives its Client and Worker the same encryption; the zero value
+// encrypts nothing.
+func newDexHarnessWithPayloadEncryption(t *testing.T, flows []dex.Flow, payloadEncryption dex.PayloadEncryptionOptions) *dexHarness {
 	t.Helper()
 	registry, err := dex.NewRegistry(flows)
 	require.NoError(t, err)
@@ -635,10 +643,12 @@ func newDexHarness(t *testing.T, flows []dex.Flow) *dexHarness {
 	require.NoError(t, err)
 	harness := &dexHarness{
 		registry: registry, cache: cache,
-		serverAddress: environmentOr("DEX_FLOW_SERVICE_ADDRESS", "127.0.0.1:8801"),
+		serverAddress:     environmentOr("DEX_FLOW_SERVICE_ADDRESS", "127.0.0.1:8801"),
+		payloadEncryption: payloadEncryption,
 	}
 	harness.client, err = dex.NewClient(registry, cache, dex.ClientOptions{
 		FlowServiceAddress: harness.serverAddress,
+		PayloadEncryption:  harness.payloadEncryption,
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() {
@@ -654,6 +664,7 @@ func (harness *dexHarness) startWorker(t *testing.T) {
 	t.Helper()
 	worker, err := dex.NewWorker(harness.registry, harness.cache, dex.WorkerOptions{
 		FlowServiceAddress: harness.serverAddress,
+		PayloadEncryption:  harness.payloadEncryption,
 	})
 	require.NoError(t, err)
 	harness.worker = worker

@@ -82,12 +82,15 @@ func IsTriggerUndeliverable(err error) bool {
 }
 
 // TriggerOption configures optional behavior of DeliverTrigger and the Dex Trigger targets.
+// Create one with WithTriggerLogger or WithTriggerRPCName.
 type TriggerOption interface {
 	applyTriggerOption(*triggerOptions)
 }
 
 type triggerOptions struct {
-	logger *slog.Logger
+	logger     *slog.Logger
+	rpcName    string
+	hasRPCName bool
 }
 
 type triggerLoggerOption struct{ logger *slog.Logger }
@@ -101,6 +104,24 @@ func (option triggerLoggerOption) applyTriggerOption(options *triggerOptions) {
 // payloads. Add identifying attributes, such as a binding name, with logger.With.
 func WithTriggerLogger(logger *slog.Logger) TriggerOption {
 	return triggerLoggerOption{logger: logger}
+}
+
+type triggerRPCNameOption struct{ rpcName string }
+
+func (option triggerRPCNameOption) applyTriggerOption(options *triggerOptions) {
+	options.rpcName = option.rpcName
+	options.hasRPCName = true
+}
+
+// WithTriggerRPCName sets the RPC name from which NewDexRPCTriggerTarget derives its request IDs, instead
+// of the RPC's Go method name. Set it to the RPC's wire name, its dex.RPCOptions.Name, when the RPC has
+// one, so the IDs match those of a TypeScript target for the same RPC, and before renaming the Go method
+// while events may still be redelivered. It only feeds the request ID; the Dex Client still resolves the
+// RPC from its bound method. Setting it to the current method name keeps the request IDs unchanged.
+// rpcName must contain a non-blank character and no NUL character, or NewDexRPCTriggerTarget panics.
+// DeliverTrigger and NewDexFlowTriggerTarget ignore this option.
+func WithTriggerRPCName(rpcName string) TriggerOption {
+	return triggerRPCNameOption{rpcName: rpcName}
 }
 
 func resolveTriggerOptions(options []TriggerOption) triggerOptions {
