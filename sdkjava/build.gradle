@@ -1,0 +1,210 @@
+// Copyright (c) 2026 Super Durable
+// SPDX-License-Identifier: MIT
+
+plugins {
+    id 'java-library'
+    id 'io.github.gradle-nexus.publish-plugin' version '2.0.0'
+    id 'maven-publish'
+    id 'signing'
+    id 'checkstyle'
+}
+
+group = 'io.superdurable'
+// Release builds pass -PreleaseVersion from the sdkjava/vX.Y.Z tag.
+version = providers.gradleProperty('releaseVersion').getOrElse('0.1.0-SNAPSHOT')
+def artifactVersion = version.toString()
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
+    withJavadocJar()
+    withSourcesJar()
+}
+
+// Match the Dex Java SDK: published classes stay consumable from Java 8 applications.
+tasks.withType(JavaCompile).configureEach {
+    options.release = 8
+    options.encoding = 'UTF-8'
+    options.compilerArgs += ['-Xlint:all,-options,-serial', '-Werror']
+}
+
+checkstyle {
+    toolVersion = '9.3'
+    configFile = file('config/checkstyle/public-api-javadocs.xml')
+}
+
+tasks.matching {
+    it.name.startsWith('checkstyle') && it.name != 'checkstyleMain'
+}.configureEach {
+    enabled = false
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // Minimum Dex Java SDK release; Maven resolves a newer one when an application requires it.
+    api 'io.superdurable:dex-sdk:1.45.2'
+
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.11.4'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.11.4'
+}
+
+tasks.named('test') {
+    useJUnitPlatform {
+        excludeTags 'dex-dev'
+    }
+    systemProperty 'conformance.directory', file('../conformance').absolutePath
+}
+
+tasks.register('dexDevTest', Test) {
+    group = 'verification'
+    description = 'Runs connector SDK integration tests against dexcli dev.'
+    outputs.upToDateWhen { false }
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform {
+        includeTags 'dex-dev'
+    }
+    systemProperty 'dex.test.serverAddress',
+            System.getenv('DEX_SERVER_ADDRESS') ?: '127.0.0.1:19881'
+}
+
+tasks.named('javadoc') {
+    dependsOn 'checkstyleMain'
+    failOnError = true
+    options.addStringOption('Xdoclint:all,-missing', '-quiet')
+    options.addBooleanOption('Werror', true)
+}
+
+tasks.named('jar') {
+    manifest {
+        attributes('Implementation-Version': artifactVersion)
+    }
+    from('LICENSE') {
+        into 'META-INF'
+    }
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            groupId = project.group
+            artifactId = 'dex-connectors-sdk'
+            version = artifactVersion
+            from components.java
+
+            pom {
+                name = 'Dex Connectors Java SDK'
+                description = 'Provider-neutral Java primitives for Dex-native connectors'
+                url = 'https://github.com/superdurable/dex-connectors-library'
+
+                scm {
+                    connection = 'scm:git:https://github.com/superdurable/dex-connectors-library.git'
+                    developerConnection = 'scm:git:ssh://git@github.com/superdurable/dex-connectors-library.git'
+                    url = 'https://github.com/superdurable/dex-connectors-library'
+                }
+
+                licenses {
+                    license {
+                        name = 'MIT License'
+                        url = 'https://github.com/superdurable/dex-connectors-library/blob/main/LICENSE'
+                        distribution = 'repo'
+                    }
+                }
+
+                developers {
+                    developer {
+                        id = 'longquanzheng'
+                        name = 'Quanzheng Long'
+                        email = 'qlong.seattle@gmail.com'
+                    }
+                }
+            }
+        }
+    }
+    repositories {
+        maven {
+            name = 'test'
+            url = layout.buildDirectory.dir('publication-repository')
+        }
+    }
+}
+
+def signingKey = providers.gradleProperty('signingKey').orNull
+def signingPassword = providers.gradleProperty('signingPassword').getOrElse('')
+signing {
+    if (signingKey) {
+        useInMemoryPgpKeys(signingKey, signingPassword)
+        sign publishing.publications.mavenJava
+    }
+}
+
+nexusPublishing {
+    repositories {
+        sonatype {
+            nexusUrl.set(uri('https://ossrh-staging-api.central.sonatype.com/service/local/'))
+            snapshotRepositoryUrl.set(uri('https://central.sonatype.com/repository/maven-snapshots/'))
+            username = providers.gradleProperty('mavenCentralUsername').orNull
+            password = providers.gradleProperty('mavenCentralPassword').orNull
+        }
+    }
+}
+
+tasks.register('validateReleaseConfiguration') {
+    doLast {
+        if (artifactVersion.endsWith('-SNAPSHOT')) {
+            throw new GradleException('Maven Central releases require -PreleaseVersion without -SNAPSHOT')
+        }
+        ['mavenCentralUsername', 'mavenCentralPassword', 'signingKey'].each { propertyName ->
+            def value = providers.gradleProperty(propertyName).orNull
+            if (value == null || value.trim().isEmpty()) {
+                throw new GradleException("Maven Central release requires ${propertyName}")
+            }
+        }
+    }
+}
+
+tasks.matching {
+    it.name == 'initializeSonatypeStagingRepository'
+            || it.name == 'publishToSonatype'
+            || it.name.endsWith('ToSonatypeRepository')
+            || it.name.startsWith('closeAndReleaseSonatype')
+}.configureEach {
+    dependsOn 'validateReleaseConfiguration'
+}
+
+tasks.register('validatePublication') {
+    dependsOn 'publishMavenJavaPublicationToTestRepository'
+    doLast {
+        def artifactDirectory = layout.buildDirectory.dir(
+                "publication-repository/io/superdurable/dex-connectors-sdk/${artifactVersion}").get().asFile
+        def artifactPrefix = "dex-connectors-sdk-${artifactVersion}"
+        def mainJar = new File(artifactDirectory, "${artifactPrefix}.jar")
+        [mainJar,
+         new File(artifactDirectory, "${artifactPrefix}-sources.jar"),
+         new File(artifactDirectory, "${artifactPrefix}-javadoc.jar"),
+         new File(artifactDirectory, "${artifactPrefix}.pom")].each { artifact ->
+            if (!artifact.isFile()) {
+                throw new GradleException("publication artifact is missing: ${artifact.name}")
+            }
+        }
+        def pomText = new File(artifactDirectory, "${artifactPrefix}.pom").text
+        if (!pomText.contains('<artifactId>dex-sdk</artifactId>')) {
+            throw new GradleException('publication POM must depend on io.superdurable:dex-sdk')
+        }
+        def archive = new java.util.jar.JarFile(mainJar)
+        try {
+            if (archive.manifest.mainAttributes.getValue('Implementation-Version') != artifactVersion) {
+                throw new GradleException('publication JAR version does not match publication version')
+            }
+            if (archive.getEntry('io/superdurable/dexconnectors/sdk/Call.class') == null) {
+                throw new GradleException('publication JAR is missing the connector SDK')
+            }
+        } finally {
+            archive.close()
+        }
+    }
+}

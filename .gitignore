@@ -19,3 +19,5 @@ coverage/
 go.work
 go.work.sum
 .idea/
+/sdkjava/build/
+/sdkjava/.gradle/
