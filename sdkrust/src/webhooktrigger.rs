@@ -733,6 +733,31 @@ pub trait RelayedRequestVerifier: Send + Sync {
     ) -> Result<(), RelayedRequestVerificationError>;
 }
 
+impl RelayedRequestVerifier for crate::projectconfig::LoadedProject {
+    fn verify_relayed_request(
+        &self,
+        headers: &[(String, String)],
+        body: &[u8],
+        received_at: &Rfc3339NanoTimestamp,
+    ) -> Result<(), RelayedRequestVerificationError> {
+        let nanoseconds = u64::try_from(received_at.unix_nanoseconds()).unwrap_or(0);
+        let received_at = std::time::UNIX_EPOCH + Duration::from_nanos(nanoseconds);
+        crate::projectconfig::LoadedProject::verify_relayed_request(self, headers, body, received_at)
+            .map_err(|error| {
+                let is_unavailable = matches!(
+                    error,
+                    crate::projectconfig::ProjectConfigError::BrokerUnavailable(_)
+                        | crate::projectconfig::ProjectConfigError::RelayTokenRenewalDeferred
+                );
+                if is_unavailable {
+                    RelayedRequestVerificationError::Unavailable(Box::new(error))
+                } else {
+                    RelayedRequestVerificationError::Refused(Box::new(error))
+                }
+            })
+    }
+}
+
 /// Returns a request verifier that checks the Dex relay signature with `verifier`.
 ///
 /// An unavailable verification becomes [`WebhookVerificationUnavailableError`] (503); every

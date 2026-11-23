@@ -349,6 +349,24 @@ impl TriggerInbox {
     }
 }
 
+impl super::LoadedProject {
+    /// Binds one Trigger binding's inbox in this project's connection storage, without I/O.
+    ///
+    /// Dex Web projects keep inboxes as private files beside `connections.json`; hosted
+    /// projects keep them in project storage.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ProjectConfigError::Invalid`] for an invalid key.
+    pub fn trigger_inbox(&self, key: TriggerInboxKey) -> Result<TriggerInbox, ProjectConfigError> {
+        TriggerInbox::new(
+            Arc::clone(self.connections.objects()),
+            &self.configuration.scope,
+            key,
+        )
+    }
+}
+
 fn invalid_document() -> TriggerError {
     Box::new(ProjectConfigError::Invalid(
         "trigger inbox document is invalid".to_string(),
