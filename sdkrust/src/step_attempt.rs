@@ -192,6 +192,7 @@ impl<'context> StepAttempt<'context> {
 /// `StepAttempt` is invariant in its Context lifetime, so a Call borrows it as a trait object.
 pub(crate) trait StepAttemptAccess: Sync {
     fn attempt_number(&self) -> u32;
+    fn attempt_flow_id(&self) -> &str;
     fn has_progress_stream(&self) -> bool;
     fn has_text_stream(&self) -> bool;
     fn report_progress(&self, call_id: &CallId, progress: Progress);
@@ -207,6 +208,10 @@ pub(crate) trait StepAttemptAccess: Sync {
 impl StepAttemptAccess for StepAttempt<'_> {
     fn attempt_number(&self) -> u32 {
         self.attempt
+    }
+
+    fn attempt_flow_id(&self) -> &str {
+        &self.flow_id
     }
 
     fn has_progress_stream(&self) -> bool {
