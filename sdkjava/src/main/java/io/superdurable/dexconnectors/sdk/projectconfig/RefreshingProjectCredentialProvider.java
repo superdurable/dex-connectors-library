@@ -11,6 +11,7 @@ import io.superdurable.dexconnectors.sdk.ReauthorizationRequiredException;
 import io.superdurable.dexconnectors.sdk.RefreshingCredentialProvider;
 import io.superdurable.dexconnectors.sdk.RejectedCredentialRefreshingProvider;
 import io.superdurable.dexconnectors.sdk.Rfc3339NanoTimestamp;
+import io.superdurable.dexconnectors.sdk.providerhttp.AddressRefusalException;
 import java.io.IOException;
 import java.security.SecureRandom;
 import java.time.Duration;
@@ -203,7 +204,8 @@ public final class RefreshingProjectCredentialProvider<C> extends ProjectCredent
         } catch (ReauthorizationRequiredException error) {
             finishExchange(admission, "REAUTHORIZATION_REQUIRED");
             throw error;
-        } catch (InterruptedException error) {
+        } catch (InterruptedException | AddressRefusalException error) {
+            // An address refusal is a configuration fact the caller must see unchanged, as in Python.
             finishExchange(admission, "READY");
             throw error;
         } catch (Exception error) {
