@@ -59,7 +59,8 @@ fn is_go_space(character: char) -> bool {
         '\t' | '\n' | '\u{b}' | '\u{c}' | '\r' | ' ' | '\u{85}' | '\u{a0}'
     ) || matches!(
         character,
-        '\u{1680}' | '\u{2000}'..='\u{200a}' | '\u{2028}' | '\u{2029}' | '\u{202f}' | '\u{205f}' | '\u{3000}'
+        '\u{1680}' | '\u{2000}'
+            ..='\u{200a}' | '\u{2028}' | '\u{2029}' | '\u{202f}' | '\u{205f}' | '\u{3000}'
     )
 }
 
@@ -134,8 +135,7 @@ impl TriggerInboxKey {
                 "trigger inbox connector or trigger identity is invalid".to_string(),
             ));
         }
-        if !is_valid_inbox_name(&self.connection_name) || !is_valid_inbox_name(&self.binding_name)
-        {
+        if !is_valid_inbox_name(&self.connection_name) || !is_valid_inbox_name(&self.binding_name) {
             return Err(ProjectConfigError::Invalid(
                 "trigger inbox connection or binding name is invalid".to_string(),
             ));
@@ -645,9 +645,10 @@ pub fn decode_trigger_configuration<Settings: DeserializeOwned>(
     configuration: &Configuration,
     key: &TriggerInboxKey,
 ) -> Result<Settings, ProjectConfigError> {
-    let field_equals = |entry: &serde_json::Map<String, serde_json::Value>, name: &str, wanted: &str| {
-        entry.get(name).and_then(serde_json::Value::as_str) == Some(wanted)
-    };
+    let field_equals =
+        |entry: &serde_json::Map<String, serde_json::Value>, name: &str, wanted: &str| {
+            entry.get(name).and_then(serde_json::Value::as_str) == Some(wanted)
+        };
     for entry in &configuration.trigger_bindings {
         if field_equals(entry, "connectorId", &key.connector_id)
             && field_equals(entry, "connectionName", &key.connection_name)
@@ -740,8 +741,20 @@ impl<Payload> DurableTriggerTarget<Payload>
 where
     Payload: Serialize + DeserializeOwned + Send + Sync + 'static,
 {
-    fn log(&self, context: &TriggerContext, level: TriggerLogLevel, message: &str, attributes: TriggerLogAttributes) {
-        log_trigger_record(Some(self.logger.as_ref()), context, level, message, attributes);
+    fn log(
+        &self,
+        context: &TriggerContext,
+        level: TriggerLogLevel,
+        message: &str,
+        attributes: TriggerLogAttributes,
+    ) {
+        log_trigger_record(
+            Some(self.logger.as_ref()),
+            context,
+            level,
+            message,
+            attributes,
+        );
     }
 
     /// Consumes one event under the target lock; returns whether it was skipped.
@@ -826,7 +839,10 @@ where
         event: &TriggerEvent<Payload>,
     ) -> Result<(), TriggerError> {
         let is_skipped = self.durable.handle_pending(context, event)?;
-        *self.is_skipped.lock().unwrap_or_else(PoisonError::into_inner) = is_skipped;
+        *self
+            .is_skipped
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner) = is_skipped;
         Ok(())
     }
 }
@@ -927,7 +943,9 @@ where
                 durable: self,
                 is_skipped: Mutex::new(false),
             };
-            if let Err(error) = deliver_trigger(context, &attempt, &event, Some(self.logger.as_ref())) {
+            if let Err(error) =
+                deliver_trigger(context, &attempt, &event, Some(self.logger.as_ref()))
+            {
                 let mut attributes = TriggerLogAttributes::from([
                     ("delivered".to_string(), TriggerLogValue::Integer(delivered)),
                     ("skipped".to_string(), TriggerLogValue::Integer(skipped)),
@@ -947,7 +965,11 @@ where
                 );
                 return Err(Box::new(error));
             }
-            if *attempt.is_skipped.lock().unwrap_or_else(PoisonError::into_inner) {
+            if *attempt
+                .is_skipped
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner)
+            {
                 skipped += 1;
             } else {
                 delivered += 1;

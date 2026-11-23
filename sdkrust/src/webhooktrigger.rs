@@ -27,9 +27,7 @@ use std::time::{Duration, Instant};
 use sha2::{Digest, Sha256};
 use uuid::Uuid;
 
-use crate::credentials::{
-    CredentialProvider, CredentialRefreshDriver, resolve_credential,
-};
+use crate::credentials::{CredentialProvider, CredentialRefreshDriver, resolve_credential};
 use crate::errors::ValidationError;
 use crate::timestamps::Rfc3339NanoTimestamp;
 use crate::trigger::{
@@ -173,8 +171,9 @@ pub type WebhookRequestVerifier<Credential> = Box<
 
 /// Decodes a verified request; `Ok(None)` is a valid event no binding handles (200) and an error
 /// is 400.
-pub type WebhookEventDecoder<Payload> =
-    Box<dyn Fn(&WebhookRequest) -> Result<Option<TriggerEvent<Payload>>, TriggerError> + Send + Sync>;
+pub type WebhookEventDecoder<Payload> = Box<
+    dyn Fn(&WebhookRequest) -> Result<Option<TriggerEvent<Payload>>, TriggerError> + Send + Sync,
+>;
 
 /// Static configuration of one connection's webhook endpoint for one Trigger.
 pub struct WebhookEndpointConfig<Credential, Payload> {
@@ -283,7 +282,9 @@ where
     /// # Errors
     ///
     /// Returns [`ValidationError`] for a blank identity or an invalid bound.
-    pub fn new(config: WebhookEndpointConfig<Credential, Payload>) -> Result<Self, ValidationError> {
+    pub fn new(
+        config: WebhookEndpointConfig<Credential, Payload>,
+    ) -> Result<Self, ValidationError> {
         if config.connector_id.trim().is_empty() || config.trigger_name.trim().is_empty() {
             return Err(ValidationError::new(
                 "webhook endpoint connector ID and Trigger name are required",
@@ -373,7 +374,11 @@ where
             return WebhookResponse::text(405, "method not allowed", &[("allow", "POST")]);
         }
         if body.len() > self.config.maximum_body_bytes {
-            return WebhookResponse::text(413, "request body too large", &[("connection", "close")]);
+            return WebhookResponse::text(
+                413,
+                "request body too large",
+                &[("connection", "close")],
+            );
         }
         let request_cancellation = cancellation.cloned().unwrap_or_default();
         let received_at = self
@@ -422,7 +427,9 @@ where
             ),
         )?;
         match &self.config.credential_refresh {
-            Some(driver) => resolve_credential(self.config.credentials.as_ref(), &call, driver.as_ref()),
+            Some(driver) => {
+                resolve_credential(self.config.credentials.as_ref(), &call, driver.as_ref())
+            }
             None => self.config.credentials.resolve(&call),
         }
     }
@@ -443,7 +450,9 @@ where
         let (sender, receiver) = mpsc::channel::<TurnOutcome>();
         let cancel_sender = sender.clone();
         // A dropped receiver only means the request already answered.
-        slot.on_cancel(Arc::new(move || drop(cancel_sender.send(TurnOutcome::Cancelled))));
+        slot.on_cancel(Arc::new(move || {
+            drop(cancel_sender.send(TurnOutcome::Cancelled))
+        }));
         let shared = Arc::clone(&self.shared);
         let turn_slot = slot.clone();
         // The turn runs on its own thread so an expired request can answer while a write in
@@ -742,19 +751,24 @@ impl RelayedRequestVerifier for crate::projectconfig::LoadedProject {
     ) -> Result<(), RelayedRequestVerificationError> {
         let nanoseconds = u64::try_from(received_at.unix_nanoseconds()).unwrap_or(0);
         let received_at = std::time::UNIX_EPOCH + Duration::from_nanos(nanoseconds);
-        crate::projectconfig::LoadedProject::verify_relayed_request(self, headers, body, received_at)
-            .map_err(|error| {
-                let is_unavailable = matches!(
-                    error,
-                    crate::projectconfig::ProjectConfigError::BrokerUnavailable(_)
-                        | crate::projectconfig::ProjectConfigError::RelayTokenRenewalDeferred
-                );
-                if is_unavailable {
-                    RelayedRequestVerificationError::Unavailable(Box::new(error))
-                } else {
-                    RelayedRequestVerificationError::Refused(Box::new(error))
-                }
-            })
+        crate::projectconfig::LoadedProject::verify_relayed_request(
+            self,
+            headers,
+            body,
+            received_at,
+        )
+        .map_err(|error| {
+            let is_unavailable = matches!(
+                error,
+                crate::projectconfig::ProjectConfigError::BrokerUnavailable(_)
+                    | crate::projectconfig::ProjectConfigError::RelayTokenRenewalDeferred
+            );
+            if is_unavailable {
+                RelayedRequestVerificationError::Unavailable(Box::new(error))
+            } else {
+                RelayedRequestVerificationError::Refused(Box::new(error))
+            }
+        })
     }
 }
 

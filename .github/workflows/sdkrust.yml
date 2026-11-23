@@ -54,7 +54,8 @@ jobs:
           for _ in $(seq 1 120); do
             if (echo > /dev/tcp/127.0.0.1/19901) 2>/dev/null; then
               cd sdkrust
-              DEX_SERVER_ADDRESS=127.0.0.1:19901 cargo test --locked --test dex_integration -- --ignored --test-threads 1
+              export DEX_SERVER_ADDRESS=127.0.0.1:19901
+              cargo test --locked --test dex_integration --test trigger_dex_integration -- --ignored --test-threads 1
               exit
             fi
             if ! kill -0 "$dex_pid" 2>/dev/null; then break; fi

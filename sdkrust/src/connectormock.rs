@@ -52,8 +52,7 @@ use crate::go_json::to_go_json_vec;
 use crate::timestamps::Rfc3339NanoTimestamp;
 use crate::types::{
     Call, CallId, ConnectionRef, DEFECT_BRANCH_ID, IdempotencyKey, MutationAttempt,
-    MutationDefinition, OperationRef, QueryAttempt, QueryDefinition, Receipt,
-    UNCERTAIN_BRANCH_ID,
+    MutationDefinition, OperationRef, QueryAttempt, QueryDefinition, Receipt, UNCERTAIN_BRANCH_ID,
 };
 
 /// Environment variable naming the directory of the connector call report.
@@ -485,7 +484,10 @@ impl<Input: Clone, Output: Clone + Default> ScriptedOperation<Input, Output> {
         }
         Ok(Self {
             operation,
-            branches: branches.iter().map(|branch| (*branch).to_string()).collect(),
+            branches: branches
+                .iter()
+                .map(|branch| (*branch).to_string())
+                .collect(),
             is_mutation,
             report_failure,
             state: Mutex::new(ScriptedState {
@@ -602,9 +604,8 @@ impl<Input: Clone, Output: Clone + Default> ScriptedOperation<Input, Output> {
                     );
                     response = Some(self.defect_case("unscripted connector mock call"));
                 }
-                let mut response = response.unwrap_or_else(|| {
-                    self.defect_case("unscripted connector mock call")
-                });
+                let mut response =
+                    response.unwrap_or_else(|| self.defect_case("unscripted connector mock call"));
                 if let Case::Paged { branch, pages } = &response {
                     response = match page_number
                         .checked_sub(1)
@@ -728,7 +729,9 @@ impl<Input: Clone, Output: Clone + Default> ScriptedOperation<Input, Output> {
     fn validate_cases(&self, cases: &[Case<Output>]) -> Result<(), ValidationError> {
         for response in cases {
             match response {
-                Case::Branch { branch, failure, .. } => {
+                Case::Branch {
+                    branch, failure, ..
+                } => {
                     if !self.branches.contains(branch) {
                         return Err(ValidationError::new("mock branch is not declared"));
                     }
@@ -900,9 +903,12 @@ where
                 value,
                 failure,
             } => QueryAttempt::branch(branch, value, mock_receipt(call), failure),
-            Case::Uncertain { value, failure } => {
-                QueryAttempt::branch(UNCERTAIN_BRANCH_ID, value, mock_receipt(call), Some(failure))
-            }
+            Case::Uncertain { value, failure } => QueryAttempt::branch(
+                UNCERTAIN_BRANCH_ID,
+                value,
+                mock_receipt(call),
+                Some(failure),
+            ),
             Case::Paged { branch, pages } => QueryAttempt::branch(
                 branch,
                 pages.into_iter().next().unwrap_or_default(),
@@ -1044,8 +1050,7 @@ pub struct ReplayStepAttempt {
     attempt: u32,
     previous_heartbeat: Option<JsonValue>,
     written_heartbeat: Mutex<Option<JsonValue>>,
-    checkpoint_markers:
-        Mutex<Option<BTreeMap<String, crate::singledispatch::markers::Marker>>>,
+    checkpoint_markers: Mutex<Option<BTreeMap<String, crate::singledispatch::markers::Marker>>>,
     running_mutations: Mutex<BTreeSet<OperationRef>>,
 }
 
@@ -1202,8 +1207,8 @@ pub fn load_fixture(
 ) -> Result<JsonMap<String, JsonValue>, FixtureError> {
     let bytes = fs::read(path).map_err(FixtureError::Io)?;
     let mut deserializer = serde_json::Deserializer::from_slice(&bytes);
-    let document = StrictJsonValue::deserialize_strict(&mut deserializer)
-        .map_err(FixtureError::Json)?;
+    let document =
+        StrictJsonValue::deserialize_strict(&mut deserializer).map_err(FixtureError::Json)?;
     deserializer.end().map_err(FixtureError::Json)?;
     let JsonValue::Object(document) = document else {
         return Err(FixtureError::Json(serde::de::Error::custom(
@@ -1293,7 +1298,9 @@ impl<'de> Visitor<'de> for StrictJsonVisitor {
         let mut object = JsonMap::new();
         while let Some(key) = entries.next_key::<String>()? {
             if object.contains_key(&key) {
-                return Err(serde::de::Error::custom("fixture has duplicate JSON fields"));
+                return Err(serde::de::Error::custom(
+                    "fixture has duplicate JSON fields",
+                ));
             }
             let value = entries.next_value_seed(StrictJsonSeed)?;
             object.insert(key, value);
@@ -1324,11 +1331,7 @@ mod tests {
         value.get(key).and_then(JsonValue::as_bool).unwrap_or(false)
     }
 
-    fn recorded(
-        value: &JsonValue,
-        operation_key: &str,
-        connection_key: &str,
-    ) -> RecordedCall<()> {
+    fn recorded(value: &JsonValue, operation_key: &str, connection_key: &str) -> RecordedCall<()> {
         RecordedCall {
             connector_id: text(value, "connectorId"),
             operation_id: text(value, operation_key),
@@ -1503,7 +1506,10 @@ mod tests {
         )
         .expect("mock is valid");
         let failure = Failure::new(FailureKind::Transport, "sample", "getItem", "unknown");
-        assert!(mock.respond(vec![Case::uncertain(String::new(), failure)]).is_err());
+        assert!(
+            mock.respond(vec![Case::uncertain(String::new(), failure)])
+                .is_err()
+        );
         assert!(
             mock.respond(vec![Case::branch("undeclared", String::new(), None)])
                 .is_err()

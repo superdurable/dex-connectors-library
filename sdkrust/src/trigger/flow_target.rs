@@ -64,10 +64,7 @@ where
 {
     let logger = bind_trigger_log_attributes(
         config.logger.clone(),
-        TriggerLogAttributes::from([(
-            "target".to_string(),
-            TriggerLogValue::from("flow_start"),
-        )]),
+        TriggerLogAttributes::from([("target".to_string(), TriggerLogValue::from("flow_start"))]),
     );
     Arc::new(DexFlowTriggerTarget { config, logger })
 }

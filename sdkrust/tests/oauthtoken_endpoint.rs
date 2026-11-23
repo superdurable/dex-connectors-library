@@ -148,7 +148,10 @@ fn refresh_exchange_and_failure_classification() {
     let terminal = endpoint
         .exchange_refresh_token(&credentials, &SecretString::new("INERT_REFRESH"))
         .expect_err("terminal grant");
-    assert!(matches!(terminal, TokenExchangeError::ReauthorizationRequired(_)));
+    assert!(matches!(
+        terminal,
+        TokenExchangeError::ReauthorizationRequired(_)
+    ));
     assert!(!terminal.to_string().contains("INERT_SENSITIVE_DETAIL"));
     *transport.response.lock().expect("response") = (503, br#"{"error":"busy"}"#.to_vec());
     let unavailable = endpoint
@@ -178,7 +181,12 @@ fn basic_authentication_and_json_body() {
     let token = endpoint
         .exchange_refresh_token(&credentials, &SecretString::new("refresh"))
         .expect("token");
-    assert_eq!(token.next_refresh_token(&SecretString::new("prior")).reveal(), "rotated");
+    assert_eq!(
+        token
+            .next_refresh_token(&SecretString::new("prior"))
+            .reveal(),
+        "rotated"
+    );
     let request = transport.requests.lock().expect("requests")[0].clone();
     let authorization = request
         .headers
@@ -214,7 +222,8 @@ fn token_endpoint_rejects_unsafe_configuration() {
         TokenEndpoint::new("Example", "HTTP://oauth.example/token", client.clone());
     uppercase_plain.allows_plain_http = true;
     assert!(exchange(&uppercase_plain).contains("HTTP 302"));
-    let leading_space = TokenEndpoint::new("Example", " https://oauth.example/token", client.clone());
+    let leading_space =
+        TokenEndpoint::new("Example", " https://oauth.example/token", client.clone());
     assert!(exchange(&leading_space).contains("URL"));
     let mut override_grant =
         TokenEndpoint::new("Example", "https://oauth.example/token", client.clone());
@@ -250,7 +259,10 @@ fn token_response_validation_rejects_missing_fields() {
         let error = endpoint
             .exchange_client_credentials(&credentials, &["scope".to_string()])
             .expect_err(body);
-        assert!(matches!(error, TokenExchangeError::InvalidResponse(_)), "{body}");
+        assert!(
+            matches!(error, TokenExchangeError::InvalidResponse(_)),
+            "{body}"
+        );
     }
     let (_transport, client) = scripted(200, r#"{"access_token":"a"}"#);
     let mut lenient = TokenEndpoint::new("Example", "https://oauth.example/token", client);
@@ -286,7 +298,10 @@ fn jwt_bearer_assertion_signing() {
                 .expect("claims json");
         assert_eq!(claims["sub"], "user@example.test");
         assert_eq!(claims["scope"], "scope");
-        assert_eq!(claims["exp"].as_i64(), claims["iat"].as_i64().map(|iat| iat + 3600));
+        assert_eq!(
+            claims["exp"].as_i64(),
+            claims["iat"].as_i64().map(|iat| iat + 3600)
+        );
         assert!(!signed.to_string().contains("service@example.test"));
     }
     assert!(parse_rsa_private_key_pem("not a key").is_err());

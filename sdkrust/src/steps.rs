@@ -8,8 +8,8 @@ use std::marker::PhantomData;
 use std::time::Duration;
 
 use dex_sdk::{
-    Attribute, BufferedTextStreamOptions, Context, HandlerError, HandlerResult, Step,
-    StepDecision, StepDurability, StepOptions, Stream, Value,
+    Attribute, BufferedTextStreamOptions, Context, HandlerError, HandlerResult, Step, StepDecision,
+    StepDurability, StepOptions, Stream, Value,
 };
 
 use crate::configuration_ui::ConnectorConfigurationUi;
@@ -406,9 +406,7 @@ where
     ///
     /// Returns [`ValidationError`] for an invalid definition, annotation, connection, UI,
     /// branch wiring, or send cap override.
-    pub fn new(
-        config: MutationStepConfig<StepInput, Operation>,
-    ) -> Result<Self, ValidationError> {
+    pub fn new(config: MutationStepConfig<StepInput, Operation>) -> Result<Self, ValidationError> {
         let definition = config.operation.definition();
         definition.validate()?;
         validate_factory(config.step_type, &config.annotations, &config.connection)?;

@@ -42,10 +42,11 @@ impl TriggerLogger for RecordingLogger {
     }
 
     fn log(&self, level: TriggerLogLevel, message: &str, attributes: &TriggerLogAttributes) {
-        self.records
-            .lock()
-            .expect("records lock")
-            .push((level, message.to_string(), attributes.clone()));
+        self.records.lock().expect("records lock").push((
+            level,
+            message.to_string(),
+            attributes.clone(),
+        ));
     }
 }
 
@@ -88,8 +89,13 @@ fn deliver_trigger_retries_until_success_and_logs_recovery() {
         calls: AtomicUsize::new(0),
         is_undeliverable: false,
     };
-    deliver_trigger(&TriggerContext::new(), &target, &event("Ev1"), Some(&logger))
-        .expect("delivered");
+    deliver_trigger(
+        &TriggerContext::new(),
+        &target,
+        &event("Ev1"),
+        Some(&logger),
+    )
+    .expect("delivered");
     assert_eq!(target.calls.load(Ordering::SeqCst), 2);
     assert_eq!(
         logger.messages(),
@@ -113,8 +119,13 @@ fn deliver_trigger_consumes_undeliverable_events() {
         calls: AtomicUsize::new(0),
         is_undeliverable: true,
     };
-    deliver_trigger(&TriggerContext::new(), &target, &event("Ev1"), Some(&logger))
-        .expect("consumed");
+    deliver_trigger(
+        &TriggerContext::new(),
+        &target,
+        &event("Ev1"),
+        Some(&logger),
+    )
+    .expect("consumed");
     assert_eq!(target.calls.load(Ordering::SeqCst), 1);
     assert_eq!(
         logger.messages(),
@@ -135,7 +146,12 @@ fn deliver_trigger_aborts_when_cancelled_during_wait() {
         thread::sleep(Duration::from_millis(50));
         cancellation.cancel();
     });
-    let result = deliver_trigger(&context, &target, &event("Ev1"), Some(&RecordingLogger::default()));
+    let result = deliver_trigger(
+        &context,
+        &target,
+        &event("Ev1"),
+        Some(&RecordingLogger::default()),
+    );
     canceller.join().expect("canceller joins");
     assert!(result.is_err());
 }
@@ -353,7 +369,11 @@ fn webhook_endpoint_answers_statuses_like_python() {
     let response = endpoint.handle_request("GET", "/", &[], b"", None);
     assert_eq!(response.status, 405);
     assert_eq!(response.body, b"method not allowed\n");
-    assert!(response.headers.contains(&("allow".to_string(), "POST".to_string())));
+    assert!(
+        response
+            .headers
+            .contains(&("allow".to_string(), "POST".to_string()))
+    );
     assert_eq!(post(&endpoint, "good", &"x".repeat(65)), 413);
     assert_eq!(post(&endpoint, "bad", "Ev1"), 400);
     assert_eq!(post(&endpoint, "unavailable", "Ev1"), 503);

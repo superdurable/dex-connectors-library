@@ -7,9 +7,9 @@ use std::path::PathBuf;
 
 use dex_connectors_sdk::{
     Call, CallId, CallIdentity, ConnectionRef, Failure, FailureKind, MutationDefinition,
-    MutationResult, OperationRef, QueryDefinition, QueryResult, Receipt, Rfc3339NanoTimestamp,
-    RetryPolicy, StepDefaults, call_id_namespace, default_connector_step_execute_retry_policy,
-    derive_call_id,
+    MutationResult, OperationRef, QueryDefinition, QueryResult, Receipt, RetryPolicy,
+    Rfc3339NanoTimestamp, StepDefaults, call_id_namespace,
+    default_connector_step_execute_retry_policy, derive_call_id,
 };
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -41,7 +41,10 @@ fn assert_json_value_eq(actual: &Value, expected: &Value) {
             _ => actual == expected,
         }
     }
-    assert!(equal(actual, expected), "actual {actual}\nexpected {expected}");
+    assert!(
+        equal(actual, expected),
+        "actual {actual}\nexpected {expected}"
+    );
 }
 
 fn round_trip<T: Serialize + DeserializeOwned>(value: &Value) -> Value {
@@ -70,7 +73,8 @@ fn identity_fixture_matches_go_derivation() {
         &serde_json::to_value(&decoded).expect("call encodes"),
         &identity["derivedCall"],
     );
-    let different_step = derive_call_id(&flow_id, "step-execution-8", &operation, 1).expect("derives");
+    let different_step =
+        derive_call_id(&flow_id, "step-execution-8", &operation, 1).expect("derives");
     assert_eq!(different_step.as_str(), identity["differentStepCallId"]);
     let different_operation = derive_call_id(
         &flow_id,
@@ -109,12 +113,8 @@ fn identity_fixture_matches_go_derivation() {
         &round_trip::<Receipt>(&identity["fallbackCompletedReceipt"]),
         &identity["fallbackCompletedReceipt"],
     );
-    let call = Call::new(
-        derived,
-        ConnectionRef::new("sample", "main"),
-        operation,
-    )
-    .expect("valid call");
+    let call =
+        Call::new(derived, ConnectionRef::new("sample", "main"), operation).expect("valid call");
     assert!(!call.is_in_step());
     assert_eq!(call.attempt(), None);
 }
@@ -223,7 +223,10 @@ fn operation_definitions_round_trip() {
         &fixture["mutationDefinition"],
     );
     for name in ["emptyBranches", "nullBranches"] {
-        assert_json_value_eq(&round_trip::<QueryDefinition>(&fixture[name]), &fixture[name]);
+        assert_json_value_eq(
+            &round_trip::<QueryDefinition>(&fixture[name]),
+            &fixture[name],
+        );
     }
 }
 

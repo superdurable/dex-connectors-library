@@ -71,9 +71,7 @@ impl std::error::Error for AddressRefusal {}
 
 fn unmapped(address: IpAddr) -> IpAddr {
     match address {
-        IpAddr::V6(v6) => v6
-            .to_ipv4_mapped()
-            .map_or(IpAddr::V6(v6), IpAddr::V4),
+        IpAddr::V6(v6) => v6.to_ipv4_mapped().map_or(IpAddr::V6(v6), IpAddr::V4),
         IpAddr::V4(_) => address,
     }
 }

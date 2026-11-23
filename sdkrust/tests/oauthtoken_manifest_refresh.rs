@@ -19,8 +19,7 @@ use dex_connectors_sdk::providerhttp::{
 };
 use dex_connectors_sdk::{
     CredentialError, CredentialRefreshDriver, CredentialRefreshResult, CredentialRefreshState,
-    ReauthorizationRequiredError, RetryError, Rfc3339NanoTimestamp, SecretString,
-    ValidationError,
+    ReauthorizationRequiredError, RetryError, Rfc3339NanoTimestamp, SecretString, ValidationError,
 };
 use serde_json::{Value as JsonValue, json};
 
@@ -275,7 +274,11 @@ fn manifest_refresh_preserves_unreturned_refresh_token_and_classifies_errors() {
     let retry = refresh(&driver, &credentials).refresh_error("retry");
     assert!(retry.is::<RetryError>());
     *transport.response.lock().expect("response") = (500, json!({"error": "invalid_grant"}));
-    assert!(refresh(&driver, &credentials).refresh_error("5xx").is::<RetryError>());
+    assert!(
+        refresh(&driver, &credentials)
+            .refresh_error("5xx")
+            .is::<RetryError>()
+    );
 }
 
 #[test]
@@ -403,8 +406,8 @@ fn private_network_token_endpoint_uses_declared_exchange_deadline() {
     oauth["tokenEndpoint"] = json!(format!("http://127.0.0.1:{port}/token"));
     oauth["tokenEndpointNetworkPolicy"] = json!("privateNetworkHTTP");
     oauth["refresh"]["tokenExchangeTimeout"] = json!({"fromSetting": "requestTimeout"});
-    let client =
-        ProviderHttpClient::new(Duration::from_secs(5), AddressPolicy::PublicHttps).expect("client");
+    let client = ProviderHttpClient::new(Duration::from_secs(5), AddressPolicy::PublicHttps)
+        .expect("client");
     let settings = BTreeMap::from([("requestTimeout".to_string(), json!(50_000_000))]);
     let slow = ManifestCredentialRefreshDriver::<Credentials>::new(
         "Example",
@@ -429,8 +432,8 @@ fn private_network_policy_refuses_public_http_without_connecting() {
     let oauth = &mut auth["methods"][0]["oauth2"];
     oauth["tokenEndpoint"] = json!("http://8.8.8.8/token");
     oauth["tokenEndpointNetworkPolicy"] = json!("privateNetworkHTTP");
-    let client =
-        ProviderHttpClient::new(Duration::from_secs(5), AddressPolicy::PublicHttps).expect("client");
+    let client = ProviderHttpClient::new(Duration::from_secs(5), AddressPolicy::PublicHttps)
+        .expect("client");
     let driver = driver(&auth, client);
     let error = refresh(&driver, &Credentials::new("old", "prior")).refresh_error("refused");
     assert!(error.is::<AddressRefusal>());
@@ -595,13 +598,18 @@ fn scope_array_graph_prefix_url_origin_and_expiry_cap() {
         );
     }
     let mut without_array = body.clone();
-    without_array.as_object_mut().expect("object").remove("scopes");
+    without_array
+        .as_object_mut()
+        .expect("object")
+        .remove("scopes");
     without_array["scope"] = json!("other");
     respond(without_array);
     refresh(&driver, &credentials).expect("absent scope array is unchecked");
     respond(with(json!({"scopes": null})));
     refresh(&driver, &credentials).expect("null scope array is unchecked");
-    respond(with(json!({"scopes": ["files.read"], "instance_url": "https://foreign.test"})));
+    respond(with(
+        json!({"scopes": ["files.read"], "instance_url": "https://foreign.test"}),
+    ));
     assert!(
         refresh(&driver, &credentials)
             .refresh_error("foreign origin")
@@ -626,7 +634,10 @@ fn scope_array_graph_prefix_url_origin_and_expiry_cap() {
             .is::<RetryError>()
     );
     let mut without_origin = body;
-    without_origin.as_object_mut().expect("object").remove("instance_url");
+    without_origin
+        .as_object_mut()
+        .expect("object")
+        .remove("instance_url");
     respond(without_origin);
     assert!(
         refresh(&driver, &prior)
@@ -661,14 +672,20 @@ fn response_url_rules_and_blank_refresh_fields() {
         now: Rfc3339NanoTimestamp::now_utc(),
     }));
     assert_eq!(
-        refresh(&driver, &blank).expect("default").credentials.instance_url,
+        refresh(&driver, &blank)
+            .expect("default")
+            .credentials
+            .instance_url,
         "https://example.test"
     );
     for origin in ["http://[::1]", "http://127.0.0.2"] {
         let mut credentials = blank.clone();
         credentials.instance_url = origin.to_string();
         assert_eq!(
-            refresh(&driver, &credentials).expect("loopback").credentials.instance_url,
+            refresh(&driver, &credentials)
+                .expect("loopback")
+                .credentials
+                .instance_url,
             origin
         );
     }

@@ -32,9 +32,8 @@ pub fn to_go_json_vec<T: Serialize + ?Sized>(value: &T) -> Result<Vec<u8>, serde
 /// Returns a serde error when `value` cannot be serialized.
 pub fn to_go_json_string<T: Serialize + ?Sized>(value: &T) -> Result<String, serde_json::Error> {
     let bytes = to_go_json_vec(value)?;
-    String::from_utf8(bytes).map_err(|error| {
-        serde::ser::Error::custom(format!("encoded JSON is not UTF-8: {error}"))
-    })
+    String::from_utf8(bytes)
+        .map_err(|error| serde::ser::Error::custom(format!("encoded JSON is not UTF-8: {error}")))
 }
 
 /// Compact formatter that adds Go's HTML-safe escapes.

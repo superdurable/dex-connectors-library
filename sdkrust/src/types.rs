@@ -570,7 +570,10 @@ impl QueryDefinition {
     /// Returns [`ValidationError`] for an invalid identity, route set, or default.
     pub fn validate(&self) -> Result<(), ValidationError> {
         self.operation.validate()?;
-        if let Some(branches) = self.branches.as_deref().filter(|branches| !branches.is_empty())
+        if let Some(branches) = self
+            .branches
+            .as_deref()
+            .filter(|branches| !branches.is_empty())
         {
             validate_branch_set(branches, false)
                 .map_err(|_| ValidationError::new("invalid Query branches"))?;
@@ -658,7 +661,10 @@ impl MutationDefinition {
                 "Mutation maxSends requires repeatOnUnknown limited",
             ));
         }
-        if let Some(branches) = self.branches.as_deref().filter(|branches| !branches.is_empty())
+        if let Some(branches) = self
+            .branches
+            .as_deref()
+            .filter(|branches| !branches.is_empty())
         {
             validate_branch_set(branches, true)
                 .map_err(|_| ValidationError::new("invalid Mutation branches"))?;
@@ -750,8 +756,7 @@ impl<T> MutationResult<T> {
     ///
     /// Returns [`ValidationError`] for an invalid route or failure.
     pub fn validate(&self) -> Result<(), ValidationError> {
-        if self.branch.is_empty()
-            || (self.branch == UNCERTAIN_BRANCH_ID && self.failure.is_none())
+        if self.branch.is_empty() || (self.branch == UNCERTAIN_BRANCH_ID && self.failure.is_none())
         {
             return Err(ValidationError::new("Mutation result branch is invalid"));
         }

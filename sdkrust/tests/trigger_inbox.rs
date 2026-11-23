@@ -11,8 +11,8 @@ use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
 use dex_connectors_sdk::Rfc3339NanoTimestamp;
 use dex_connectors_sdk::projectconfig::trigger_inbox::{
-    PendingTriggerEvent, TriggerInbox, TriggerInboxKey, decode_trigger_event,
-    encode_trigger_event, new_durable_trigger_target,
+    PendingTriggerEvent, TriggerInbox, TriggerInboxKey, decode_trigger_event, encode_trigger_event,
+    new_durable_trigger_target,
 };
 use dex_connectors_sdk::projectconfig::{InMemoryObjectStore, ObjectStore, Scope};
 use dex_connectors_sdk::trigger::{
@@ -146,7 +146,10 @@ fn keeps_go_events_byte_for_byte_and_rewrites_as_go_does() {
     let (_, four_inbox) = inbox_with(&four);
     let fourth = four_inbox.pending().expect("pending")[3].clone();
     inbox.add(fourth).expect("adds");
-    assert_eq!(objects.read_object(inbox.key(), "").expect("head").contents, four);
+    assert_eq!(
+        objects.read_object(inbox.key(), "").expect("head").contents,
+        four
+    );
     inbox.remove("Ev2").expect("removes");
     assert_eq!(
         objects.read_object(inbox.key(), "").expect("head").contents,
@@ -218,14 +221,17 @@ impl TriggerTarget<TextPayload> for ScriptedConsumer {
         if self.undeliverable.contains(&event.id) {
             return Err(Box::new(UndeliverableTriggerError::with_reason("rejected")));
         }
-        if self.failing.lock().expect("failing lock").contains(&event.id) {
+        if self
+            .failing
+            .lock()
+            .expect("failing lock")
+            .contains(&event.id)
+        {
             return Err("Dex unavailable".into());
         }
         self.delivered.lock().expect("delivered lock").push(format!(
             "{}:{}:{}",
-            event.id,
-            event.occurred_at,
-            event.payload["text"]
+            event.id, event.occurred_at, event.payload["text"]
         ));
         Ok(())
     }

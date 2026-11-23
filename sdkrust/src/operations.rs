@@ -101,7 +101,8 @@ pub fn run_query<Operation: Query + ?Sized>(
             receipt,
             failure,
         } => {
-            if branch == UNCERTAIN_BRANCH_ID || failure.as_ref().is_some_and(|f| f.validate().is_err())
+            if branch == UNCERTAIN_BRANCH_ID
+                || failure.as_ref().is_some_and(|f| f.validate().is_err())
             {
                 return OperationOutcome::Completed(query_defect(
                     call,
@@ -203,7 +204,12 @@ fn run_validated_mutation<Operation: Mutation + ?Sized>(
             value,
             failure,
             receipt,
-        } => (UNCERTAIN_BRANCH_ID.to_string(), value, receipt, Some(failure)),
+        } => (
+            UNCERTAIN_BRANCH_ID.to_string(),
+            value,
+            receipt,
+            Some(failure),
+        ),
     };
     if failure.as_ref().is_some_and(|f| f.validate().is_err()) {
         return OperationOutcome::Completed(mutation_defect(
@@ -236,7 +242,9 @@ fn retry_outcome<R>(
 ) -> OperationOutcome<R> {
     match RetryError::new(failure, retry_after_seconds) {
         Ok(retry) => OperationOutcome::Retry(retry),
-        Err(_) => OperationOutcome::Completed(defect(call, "operation returned an invalid attempt")),
+        Err(_) => {
+            OperationOutcome::Completed(defect(call, "operation returned an invalid attempt"))
+        }
     }
 }
 

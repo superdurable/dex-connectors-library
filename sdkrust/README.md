@@ -224,12 +224,53 @@ override `resolve_with_refresh` and `resolve_after_rejection`.
 
 `ReplayStepAttempt` runs mocks and Fences outside a Worker, for scenario replay.
 
+## Provider HTTP and OAuth
+
+`providerhttp::ProviderHttpClient` sends provider requests under an `AddressPolicy`:
+- It does not follow redirects.
+- It reads response bodies up to a limit.
+- It classifies errors that prove the request was never sent.
+- `send_traced_before(deadline)` ends the request by a Fence write deadline.
+
+`oauthtoken::TokenEndpoint` performs refresh-token, client-credentials, and JWT bearer token
+exchanges. `ManifestCredentialRefreshDriver` implements `CredentialRefreshDriver` from a
+manifest's declared token grants.
+
+## Project configuration
+
+`projectconfig::load_from_environment` loads one of two sources:
+- the local Dex Web `connections.json` store, or
+- a hosted configuration snapshot read through an `ObjectStore`.
+
+`LoadedProject` resolves credentials, coordinating refreshes through compare-and-swap on
+storage, and routes shared connections through the credential broker. Local Dex Web refreshes
+are written back to `connections.json`. `projectconfig::trigger_inbox` holds the durable
+Trigger inbox.
+
+## Triggers
+
+`trigger` provides:
+- `TriggerSource`, `new_trigger`, and `deliver_trigger`. A failed delivery retries after 250 ms,
+  doubling up to 30 s.
+- Undeliverable classification.
+- `TriggerCancellation`.
+- `new_dex_flow_trigger_target`, which starts one Flow per event with the event ID as the
+  request ID.
+
+`webhooktrigger::WebhookEndpoint` handles one complete HTTP request inside the host's own
+server. Requests relayed through Dex are verified with `relaysignature`.
+
 ## Differences from Python and TypeScript
 
 - The API is synchronous.
 - There is no RPC Trigger target. `dex-sdk` 1.45.7 `RpcInvokeOptions` carries no request ID,
   so the SDK cannot deliver one RPC per event.
 - There is no text generation (`textgen`) module.
+- There is no built-in S3 client. Hosted configuration takes an application-supplied
+  `projectconfig::S3Client` through `load_from_environment_values`.
+- The polling feed toolkit is not ported. Its fetcher, poller, runner, snapshot, and poll-cursor
+  store are missing. The `pollingtrigger` module provides `new_trigger_credential_call` and
+  `PollSchedule`.
 
 ## Testing
 

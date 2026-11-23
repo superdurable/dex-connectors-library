@@ -245,9 +245,13 @@ impl<Credential> RefreshingProjectCredentialProvider<Credential> {
                     .map_err(credential_error)?;
                 return Err(error);
             }
-            Err(_) => {
+            Err(error) => {
                 self.finish_exchange(admission, "READY")
                     .map_err(credential_error)?;
+                // An address refusal is a configuration fact the connector reports as is.
+                if error.is::<crate::providerhttp::AddressRefusal>() {
+                    return Err(error);
+                }
                 return Err(credential_error(ProjectConfigError::RefreshFailed(
                     "project credential refresh failed; current authorization is kept".into(),
                 )));

@@ -250,8 +250,8 @@ fn two_fenced_calls_in_one_step_both_send_and_survive_retry() {
 fn short_write_window_records_not_sent_without_sending() {
     let attempt = FakeStepAttempt::new(1, None);
     let call = call_for(&attempt, "5af8fafa-06ff-5b2d-bb13-04693809fabf");
-    let fence = Fence::with_write_window_fraction(&call, Duration::from_nanos(5), 1, 0.01)
-        .expect("fence");
+    let fence =
+        Fence::with_write_window_fraction(&call, Duration::from_nanos(5), 1, 0.01).expect("fence");
     assert_eq!(fence.decide().kind, DecisionKind::SendAllowed);
     let mut has_sent = false;
     let result = fence.dispatch(|_deadline| has_sent = true);

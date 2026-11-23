@@ -56,7 +56,8 @@ fn redirect_is_not_followed_and_body_is_bounded() {
         .send_traced(&request)
         .expect("redirect response");
     assert_eq!(response.status(), 302);
-    let Err(ProviderHttpError::BodyTooLarge(oversized)) = read_bounded_body(&mut response, 4) else {
+    let Err(ProviderHttpError::BodyTooLarge(oversized)) = read_bounded_body(&mut response, 4)
+    else {
         panic!("expected an oversized body");
     };
     assert_eq!(oversized.status, 302);
@@ -102,8 +103,8 @@ fn reset_after_request_headers_is_possibly_sent() {
         read_request_head(&mut stream);
         let _ignored = stream.shutdown(Shutdown::Both);
     });
-    let request =
-        ProviderHttpRequest::new("POST", format!("http://127.0.0.1:{port}/")).body(b"write".to_vec());
+    let request = ProviderHttpRequest::new("POST", format!("http://127.0.0.1:{port}/"))
+        .body(b"write".to_vec());
     let error = client(AddressPolicy::Unrestricted)
         .send_traced(&request)
         .expect_err("reset fails");
@@ -173,7 +174,10 @@ fn bounded_reader_keeps_metadata_on_transport_error() {
     };
     assert_eq!(error.status, Some(200));
     assert_eq!(
-        error.headers.as_ref().and_then(|headers| headers.get("x-request-id")),
+        error
+            .headers
+            .as_ref()
+            .and_then(|headers| headers.get("x-request-id")),
         Some("received")
     );
     assert!(!error.to_string().contains("private provider"));
@@ -182,7 +186,10 @@ fn bounded_reader_keeps_metadata_on_transport_error() {
 #[test]
 fn query_values_match_go_url_values_encode() {
     let values = BTreeMap::from([
-        ("b".to_string(), vec!["two words".to_string(), "x&y=z".to_string()]),
+        (
+            "b".to_string(),
+            vec!["two words".to_string(), "x&y=z".to_string()],
+        ),
         ("a".to_string(), vec!["é/~".to_string()]),
         ("empty".to_string(), Vec::new()),
     ]);
@@ -203,8 +210,11 @@ fn error_tokens_retry_after_and_base_urls() {
     );
     assert!(read_error_tokens(b"not-json", &["/error/code"]).is_empty());
     assert!(
-        read_error_tokens(br#"{"error":{"code":"SECRET TOKEN WITH SPACES"}}"#, &["/error/code"])
-            .is_empty()
+        read_error_tokens(
+            br#"{"error":{"code":"SECRET TOKEN WITH SPACES"}}"#,
+            &["/error/code"]
+        )
+        .is_empty()
     );
     assert_eq!(
         read_error_tokens(br#"{"errors":[{"code":"busy"}]}"#, &["/errors/0/code"]),

@@ -24,6 +24,7 @@ use crate::configuration_ui::ConnectorConfigurationUi;
 use crate::errors::ValidationError;
 use crate::types::{ConnectionRef, OperationRef};
 
+pub(crate) use delivery::event_attributes;
 pub use delivery::{
     TracingTriggerLogger, TriggerAttempt, TriggerCancellation, TriggerContext,
     TriggerDeliveryAbortedError, TriggerError, TriggerEvent, TriggerLogAttributes, TriggerLogLevel,
@@ -31,10 +32,9 @@ pub use delivery::{
     UNDELIVERABLE_TRIGGER_MESSAGE, UndeliverableTriggerError, bind_trigger_log_attributes,
     deliver_trigger, has_durable_trigger_inbox, is_trigger_delivery_aborted,
     is_trigger_undeliverable, log_trigger_record, mark_trigger_undeliverable,
-    prepare_trigger_delivery, start_trigger_attempt, trigger_error_attributes,
-    trigger_retry_delay, wait_for_trigger_delay,
+    prepare_trigger_delivery, start_trigger_attempt, trigger_error_attributes, trigger_retry_delay,
+    wait_for_trigger_delay,
 };
-pub(crate) use delivery::event_attributes;
 pub use flow_target::{
     DexFlowTriggerTargetConfig, FlowIdResolver, FlowInputMapper, TriggerFilter,
     classify_dex_trigger_error, new_dex_flow_trigger_target,
@@ -433,7 +433,11 @@ mod tests {
 
     #[test]
     fn trigger_identities_validate() {
-        assert!(TriggerRef::new("slack", "messageReceived").validate().is_ok());
+        assert!(
+            TriggerRef::new("slack", "messageReceived")
+                .validate()
+                .is_ok()
+        );
         assert_eq!(
             TriggerRef::new("slack", "Bad")
                 .validate()

@@ -281,7 +281,8 @@ impl<'call> Fence<'call> {
         }
         state.has_pre_send_retry = true;
         let marker = self.marker(State::NotSent, "", decision.prior_send_upper_bound);
-        self.record(&marker, false).map_err(FenceError::Checkpoint)?;
+        self.record(&marker, false)
+            .map_err(FenceError::Checkpoint)?;
         state.marker = Some(marker);
         Ok(())
     }
@@ -297,16 +298,16 @@ impl<'call> Fence<'call> {
     pub fn record_can_resend(&self) -> Result<(), FenceError> {
         let mut state = self.lock_state();
         let is_allowed = state.has_send_finished
-            && state
-                .marker
-                .as_ref()
-                .is_some_and(|marker| marker.state == State::Claimed && marker.provider_id.is_empty());
+            && state.marker.as_ref().is_some_and(|marker| {
+                marker.state == State::Claimed && marker.provider_id.is_empty()
+            });
         if !is_allowed {
             return Err(FenceError::DispatchNotAllowed);
         }
         let prior = Self::prior_send_count(&state);
         let marker = self.marker(State::CanResend, "", prior);
-        self.record(&marker, false).map_err(FenceError::Checkpoint)?;
+        self.record(&marker, false)
+            .map_err(FenceError::Checkpoint)?;
         state.marker = Some(marker);
         Ok(())
     }

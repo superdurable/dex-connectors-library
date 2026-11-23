@@ -216,9 +216,7 @@ impl GoTimeParts {
             return Err(ValidationError::new("timestamp has an invalid date"));
         }
         if hour > 23 || minute > 59 || second > 59 {
-            return Err(ValidationError::new(
-                "timestamp has an invalid clock time",
-            ));
+            return Err(ValidationError::new("timestamp has an invalid clock time"));
         }
         // Go truncates digits beyond nanoseconds, so they are accepted and dropped.
         Ok(Self {

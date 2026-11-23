@@ -231,7 +231,9 @@ impl<Credential: ManifestCredential> ManifestCredentialRefreshDriver<Credential>
                 .ok_or_else(|| ReauthorizationRequiredError::default().into());
         }
         let Some(method_id) = credentials.auth_method_id() else {
-            return Err(ValidationError::new("multi-method credentials require auth_method_id").into());
+            return Err(
+                ValidationError::new("multi-method credentials require auth_method_id").into(),
+            );
         };
         let method_id = if method_id.is_empty() {
             self.default_method.as_str()
@@ -509,11 +511,9 @@ impl<Credential: ManifestCredential> ManifestCredentialRefreshDriver<Credential>
         };
         let reported_names: Vec<String> = match reported_scope_array {
             Some(scopes) => scopes,
-            None if grant.scope_separators == "whitespaceAndComma" => token
-                .scope
-                .split([' ', ','])
-                .map(str::to_string)
-                .collect(),
+            None if grant.scope_separators == "whitespaceAndComma" => {
+                token.scope.split([' ', ',']).map(str::to_string).collect()
+            }
             None => split_python_whitespace(&token.scope),
         };
         let granted: BTreeSet<String> = reported_names
@@ -629,7 +629,8 @@ impl<Credential: ManifestCredential> ManifestCredentialRefreshDriver<Credential>
                 retained.push(mapping.source.clone());
             }
         }
-        let mut endpoint = TokenEndpoint::new(self.provider_name.clone(), endpoint_url, http_client);
+        let mut endpoint =
+            TokenEndpoint::new(self.provider_name.clone(), endpoint_url, http_client);
         endpoint.terminal_error_codes = grant.terminal_codes.clone();
         endpoint.allows_plain_http = is_private_network;
         endpoint.retained_response_fields = retained;
@@ -694,7 +695,8 @@ impl<Credential: ManifestCredential> ManifestCredentialRefreshDriver<Credential>
         key: &JsonMap<String, JsonValue>,
     ) -> Result<SecretString, CredentialError> {
         let assertion = &grant.assertion;
-        let reauthorization = || -> CredentialError { ReauthorizationRequiredError::default().into() };
+        let reauthorization =
+            || -> CredentialError { ReauthorizationRequiredError::default().into() };
         let lifetime = parse_go_duration(&string_in(assertion, "lifetime"))?;
         let subject = match assertion.get("subject") {
             Some(source) if is_truthy(source) => {
@@ -702,7 +704,9 @@ impl<Credential: ManifestCredential> ManifestCredentialRefreshDriver<Credential>
             }
             _ => String::new(),
         };
-        let subject = if assertion.get("subjectValidation").and_then(JsonValue::as_str)
+        let subject = if assertion
+            .get("subjectValidation")
+            .and_then(JsonValue::as_str)
             == Some("goMailAddress")
         {
             let trimmed = trim_go_space(&subject).to_string();
@@ -714,9 +718,12 @@ impl<Credential: ManifestCredential> ManifestCredentialRefreshDriver<Credential>
             subject
         };
         let private_key_source = assertion.get("privateKey").ok_or_else(reauthorization)?;
-        let private_key =
-            parse_rsa_private_key_pem(&self.resolve_source(private_key_source, credentials, key)?)
-                .map_err(|_| reauthorization())?;
+        let private_key = parse_rsa_private_key_pem(&self.resolve_source(
+            private_key_source,
+            credentials,
+            key,
+        )?)
+        .map_err(|_| reauthorization())?;
         let issuer_source = assertion.get("issuer").ok_or_else(reauthorization)?;
         let audience_source = assertion.get("audience").ok_or_else(reauthorization)?;
         let claims = JwtBearerAssertion {
@@ -745,7 +752,11 @@ impl<Credential: ManifestCredential> ManifestCredentialRefreshDriver<Credential>
             assertion
                 .get("trimSpaceSources")
                 .and_then(JsonValue::as_array)
-                .is_some_and(|names| names.iter().any(|candidate| candidate.as_str() == Some(name)))
+                .is_some_and(|names| {
+                    names
+                        .iter()
+                        .any(|candidate| candidate.as_str() == Some(name))
+                })
         });
         if is_trimmed {
             let trimmed = trim_go_space(&value).to_string();
@@ -763,7 +774,8 @@ impl<Credential: ManifestCredential> ManifestCredentialRefreshDriver<Credential>
         credentials: &Credential,
         key: &JsonMap<String, JsonValue>,
     ) -> Result<String, CredentialError> {
-        let reauthorization = || -> CredentialError { ReauthorizationRequiredError::default().into() };
+        let reauthorization =
+            || -> CredentialError { ReauthorizationRequiredError::default().into() };
         let object = match source {
             JsonValue::String(text) => return Ok(text.clone()),
             JsonValue::Object(object) => object,
@@ -812,7 +824,9 @@ impl<Credential: ManifestCredential> ManifestCredentialRefreshDriver<Credential>
                 self.setting_text(&name)
             };
             let empty_rule = JsonValue::Object(JsonMap::new());
-            let rule = rules.and_then(|rules| rules.get(&name)).unwrap_or(&empty_rule);
+            let rule = rules
+                .and_then(|rules| rules.get(&name))
+                .unwrap_or(&empty_rule);
             let value = apply_template_value_rule(&raw, rule)?;
             resolved = resolved.replace(&format!("{{{name}}}"), &python_quote(&value));
         }
@@ -876,7 +890,8 @@ impl<Credential: ManifestCredential> ManifestCredentialRefreshDriver<Credential>
             }
         }
         for copy in &grant.copies {
-            if !Self::is_known_field(&copy.credential) || !Self::is_known_field(&copy.from_credential)
+            if !Self::is_known_field(&copy.credential)
+                || !Self::is_known_field(&copy.from_credential)
             {
                 return Err(unmapped());
             }
@@ -963,7 +978,9 @@ impl<Credential: ManifestCredential> ManifestCredentialRefreshDriver<Credential>
             ));
         }
         if !matches!(grant.response_scope_field.as_str(), "scope" | "scopesArray") {
-            return Err(ValidationError::new("manifest responseScopeField is invalid"));
+            return Err(ValidationError::new(
+                "manifest responseScopeField is invalid",
+            ));
         }
         if !matches!(
             grant.scope_resource_prefix.as_str(),
@@ -1027,23 +1044,27 @@ impl<Credential: ManifestCredential> ManifestCredentialRefreshDriver<Credential>
                         && sets.iter().all(|set| {
                             set.as_array().is_some_and(|scopes| {
                                 !scopes.is_empty()
-                                    && scopes
-                                        .iter()
-                                        .all(|scope| scope.as_str().is_some_and(|scope| !scope.is_empty()))
+                                    && scopes.iter().all(|scope| {
+                                        scope.as_str().is_some_and(|scope| !scope.is_empty())
+                                    })
                             })
                         })
                 }
                 _ => false,
             };
             if !is_valid {
-                return Err(ValidationError::new("manifest acceptedScopeSets is invalid"));
+                return Err(ValidationError::new(
+                    "manifest acceptedScopeSets is invalid",
+                ));
             }
         }
         if grant.kind == GrantKind::JwtBearer {
             let assertion = &grant.assertion;
             if let Some(validation) = assertion.get("subjectValidation") {
                 if validation.as_str() != Some("goMailAddress") {
-                    return Err(ValidationError::new("manifest subjectValidation is invalid"));
+                    return Err(ValidationError::new(
+                        "manifest subjectValidation is invalid",
+                    ));
                 }
                 if !assertion.get("subject").is_some_and(is_truthy) {
                     return Err(ValidationError::new(
@@ -1090,10 +1111,14 @@ fn validate_stored_missing_expiry(grant: &Grant) -> Result<(), ValidationError> 
 }
 
 fn parse_grants(method: &JsonValue) -> Result<Vec<Grant>, ValidationError> {
-    let missing = |field: &str| ValidationError::new(format!("manifest grant field {field} is required"));
+    let missing =
+        |field: &str| ValidationError::new(format!("manifest grant field {field} is required"));
     if let Some(oauth) = method.get("oauth2").filter(|value| is_truthy(value)) {
         let empty = JsonValue::Object(JsonMap::new());
-        let refresh = oauth.get("refresh").filter(|value| is_truthy(value)).unwrap_or(&empty);
+        let refresh = oauth
+            .get("refresh")
+            .filter(|value| is_truthy(value))
+            .unwrap_or(&empty);
         let mut declared: Vec<JsonValue> = refresh
             .get("grants")
             .and_then(JsonValue::as_array)
@@ -1104,9 +1129,9 @@ fn parse_grants(method: &JsonValue) -> Result<Vec<Grant>, ValidationError> {
                 .get("credentialMappings")
                 .and_then(JsonValue::as_array)
                 .and_then(|mappings| {
-                    mappings
-                        .iter()
-                        .find(|mapping| mapping.get("source").and_then(JsonValue::as_str) == Some("refresh_token"))
+                    mappings.iter().find(|mapping| {
+                        mapping.get("source").and_then(JsonValue::as_str) == Some("refresh_token")
+                    })
                 })
                 .map(|mapping| string_at(mapping, "credential"))
                 .unwrap_or_default();
@@ -1114,7 +1139,10 @@ fn parse_grants(method: &JsonValue) -> Result<Vec<Grant>, ValidationError> {
                 return Ok(Vec::new());
             }
             let mut synthesized = JsonMap::new();
-            synthesized.insert("refreshTokenCredential".to_string(), JsonValue::from(mapped));
+            synthesized.insert(
+                "refreshTokenCredential".to_string(),
+                JsonValue::from(mapped),
+            );
             synthesized.insert(
                 "credentialMappings".to_string(),
                 oauth
@@ -1129,7 +1157,10 @@ fn parse_grants(method: &JsonValue) -> Result<Vec<Grant>, ValidationError> {
             let missing_expiry = refresh.get("missingExpiry");
             grants.push(Grant {
                 kind: GrantKind::Refresh,
-                endpoint: oauth.get("tokenEndpoint").cloned().ok_or_else(|| missing("tokenEndpoint"))?,
+                endpoint: oauth
+                    .get("tokenEndpoint")
+                    .cloned()
+                    .ok_or_else(|| missing("tokenEndpoint"))?,
                 token_endpoint_network_policy: string_at(oauth, "tokenEndpointNetworkPolicy"),
                 authentication: oauth
                     .get("tokenEndpointAuthMethod")
@@ -1145,10 +1176,15 @@ fn parse_grants(method: &JsonValue) -> Result<Vec<Grant>, ValidationError> {
                 assertion: JsonMap::new(),
                 mappings: parse_mappings(declared_grant.get("credentialMappings"))?,
                 copies: Vec::new(),
-                scopes: if declared_grant.get("grantedScopes").and_then(JsonValue::as_str)
+                scopes: if declared_grant
+                    .get("grantedScopes")
+                    .and_then(JsonValue::as_str)
                     == Some("userScopes")
                 {
-                    oauth.get("userScopes").cloned().unwrap_or(JsonValue::Array(Vec::new()))
+                    oauth
+                        .get("userScopes")
+                        .cloned()
+                        .unwrap_or(JsonValue::Array(Vec::new()))
                 } else {
                     refresh
                         .get("requiredScopes")
@@ -1175,12 +1211,18 @@ fn parse_grants(method: &JsonValue) -> Result<Vec<Grant>, ValidationError> {
                     "accessTokenJWTExpiryFallback",
                 ),
                 declares_accepted_scope_sets: refresh.get("acceptedScopeSets").is_some(),
-                terminal_codes: string_list_or(refresh.get("terminalErrorCodes"), &["invalid_grant"]),
+                terminal_codes: string_list_or(
+                    refresh.get("terminalErrorCodes"),
+                    &["invalid_grant"],
+                ),
                 accepted_token_types: declared_grant
                     .get("acceptedTokenTypes")
                     .filter(|value| is_truthy(value))
                     .or_else(|| refresh.get("acceptedTokenTypes"))
-                    .map_or_else(|| vec!["Bearer".to_string()], |value| string_list_or(Some(value), &["Bearer"])),
+                    .map_or_else(
+                        || vec!["Bearer".to_string()],
+                        |value| string_list_or(Some(value), &["Bearer"]),
+                    ),
                 exact_scopes: declared_grant
                     .get("exactScopes")
                     .map_or_else(|| bool_at(refresh, "exactScopes"), is_truthy),
@@ -1198,12 +1240,21 @@ fn parse_grants(method: &JsonValue) -> Result<Vec<Grant>, ValidationError> {
         }
         return Ok(grants);
     }
-    if let Some(client) = method.get("clientCredentials").filter(|value| is_truthy(value)) {
+    if let Some(client) = method
+        .get("clientCredentials")
+        .filter(|value| is_truthy(value))
+    {
         let missing_expiry = client.get("missingExpiry");
-        let scopes = client.get("scopes").cloned().unwrap_or(JsonValue::Array(Vec::new()));
+        let scopes = client
+            .get("scopes")
+            .cloned()
+            .unwrap_or(JsonValue::Array(Vec::new()));
         return Ok(vec![Grant {
             kind: GrantKind::ClientCredentials,
-            endpoint: client.get("tokenEndpoint").cloned().ok_or_else(|| missing("tokenEndpoint"))?,
+            endpoint: client
+                .get("tokenEndpoint")
+                .cloned()
+                .ok_or_else(|| missing("tokenEndpoint"))?,
             token_endpoint_network_policy: String::new(),
             authentication: client
                 .get("tokenEndpointAuthMethod")
@@ -1256,7 +1307,10 @@ fn parse_grants(method: &JsonValue) -> Result<Vec<Grant>, ValidationError> {
     let missing_expiry = bearer.get("missingExpiry");
     Ok(vec![Grant {
         kind: GrantKind::JwtBearer,
-        endpoint: bearer.get("tokenEndpoint").cloned().ok_or_else(|| missing("tokenEndpoint"))?,
+        endpoint: bearer
+            .get("tokenEndpoint")
+            .cloned()
+            .ok_or_else(|| missing("tokenEndpoint"))?,
         token_endpoint_network_policy: String::new(),
         authentication: JsonValue::Null,
         encoding: "form".to_string(),
@@ -1269,7 +1323,10 @@ fn parse_grants(method: &JsonValue) -> Result<Vec<Grant>, ValidationError> {
         assertion: bearer.as_object().cloned().unwrap_or_default(),
         mappings: parse_mappings(bearer.get("credentialMappings"))?,
         copies: parse_copies(bearer.get("credentialCopies"))?,
-        scopes: bearer.get("scopes").cloned().unwrap_or(JsonValue::Array(Vec::new())),
+        scopes: bearer
+            .get("scopes")
+            .cloned()
+            .unwrap_or(JsonValue::Array(Vec::new())),
         request_scopes: JsonValue::Array(Vec::new()),
         accepted_scope_sets: bearer.get("acceptedScopeSets").cloned(),
         response_url_validation: truthy_or_empty(bearer.get("responseURLValidation")),
@@ -1387,7 +1444,10 @@ fn bool_at(value: &JsonValue, name: &str) -> bool {
 }
 
 fn string_list_or(value: Option<&JsonValue>, default: &[&str]) -> Vec<String> {
-    match value.and_then(JsonValue::as_array).filter(|items| !items.is_empty()) {
+    match value
+        .and_then(JsonValue::as_array)
+        .filter(|items| !items.is_empty())
+    {
         Some(items) => items.iter().map(python_str).collect(),
         None => default.iter().map(|item| (*item).to_string()).collect(),
     }
@@ -1530,13 +1590,21 @@ fn validate_template_value_rule(rule: &JsonValue) -> Result<(), ValidationError>
             .as_array()
             .is_some_and(|items| items.iter().all(JsonValue::is_string))
     };
-    if object.get("trimSpace").is_some_and(|value| !value.is_boolean())
-        || object.get("lowercase").is_some_and(|value| !value.is_boolean())
+    if object
+        .get("trimSpace")
+        .is_some_and(|value| !value.is_boolean())
         || object
-            .get("maxBytes")
-            .is_some_and(|value| !(value.is_u64() || value.as_i64().is_some_and(|number| number >= 0)))
-        || object.get("reject").is_some_and(|value| !is_string_list(value))
-        || object.get("patterns").is_some_and(|value| !is_string_list(value))
+            .get("lowercase")
+            .is_some_and(|value| !value.is_boolean())
+        || object.get("maxBytes").is_some_and(|value| {
+            !(value.is_u64() || value.as_i64().is_some_and(|number| number >= 0))
+        })
+        || object
+            .get("reject")
+            .is_some_and(|value| !is_string_list(value))
+        || object
+            .get("patterns")
+            .is_some_and(|value| !is_string_list(value))
     {
         return Err(invalid());
     }
@@ -1673,13 +1741,17 @@ fn is_go_mail_address(value: &str) -> bool {
             && !text.contains("..")
             && text.chars().all(|character| {
                 let code = u32::from(character);
-                code >= 0x80 || ((0x21..=0x7e).contains(&code) && !"()<>[]:;@\\,\"".contains(character))
+                code >= 0x80
+                    || ((0x21..=0x7e).contains(&code) && !"()<>[]:;@\\,\"".contains(character))
             })
     };
     if !is_atom(local) {
         return false;
     }
-    if let Some(literal) = domain.strip_prefix('[').and_then(|rest| rest.strip_suffix(']')) {
+    if let Some(literal) = domain
+        .strip_prefix('[')
+        .and_then(|rest| rest.strip_suffix(']'))
+    {
         return !literal.contains('%') && literal.parse::<IpAddr>().is_ok();
     }
     is_atom(domain)
@@ -1702,7 +1774,10 @@ pub(crate) fn read_jwt_expiry_seconds(token: &str) -> Option<i64> {
     {
         return None;
     }
-    let cleaned: String = body.chars().filter(|character| !matches!(character, '\r' | '\n')).collect();
+    let cleaned: String = body
+        .chars()
+        .filter(|character| !matches!(character, '\r' | '\n'))
+        .collect();
     let payload = URL_SAFE_NO_PAD.decode(cleaned).ok()?;
     if !has_bounded_json_depth(&payload) {
         return None;
@@ -1772,7 +1847,10 @@ fn validate_response_url(value: &str, rule: &JsonValue) -> Result<String, Valida
     } else {
         return Err(invalid());
     };
-    if !value.bytes().all(|byte| (33..=126).contains(&byte)) || value.contains('?') || value.contains('#') {
+    if !value.bytes().all(|byte| (33..=126).contains(&byte))
+        || value.contains('?')
+        || value.contains('#')
+    {
         return Err(invalid());
     }
     let (netloc, path) = match rest.find('/') {
@@ -1827,12 +1905,15 @@ fn validate_response_url(value: &str, rule: &JsonValue) -> Result<String, Valida
     let is_allowed_host = rule
         .get("allowedHosts")
         .and_then(JsonValue::as_array)
-        .is_some_and(|hosts| hosts.iter().any(|candidate| candidate.as_str() == Some(netloc)));
+        .is_some_and(|hosts| {
+            hosts
+                .iter()
+                .any(|candidate| candidate.as_str() == Some(netloc))
+        });
     let is_allowed = (bool_at(rule, "allowAnyHTTPS") && scheme == "https")
         || (allows_loopback && is_loopback)
         || is_allowed_host
-        || (!suffix.is_empty()
-            && (netloc == suffix || netloc.ends_with(&format!(".{suffix}"))));
+        || (!suffix.is_empty() && (netloc == suffix || netloc.ends_with(&format!(".{suffix}"))));
     if !is_allowed {
         return Err(invalid());
     }
@@ -1894,7 +1975,9 @@ fn parse_go_duration(value: &str) -> Result<i128, ValidationError> {
         if !fraction.is_empty() {
             let digits = fraction.len().min(30);
             let fraction_value: i128 = fraction[..digits].parse().map_err(|_| invalid())?;
-            let scale = 10_i128.checked_pow(u32::try_from(digits).map_err(|_| invalid())?).ok_or_else(invalid)?;
+            let scale = 10_i128
+                .checked_pow(u32::try_from(digits).map_err(|_| invalid())?)
+                .ok_or_else(invalid)?;
             total += fraction_value.checked_mul(unit).ok_or_else(invalid)? / scale;
         }
         if total > i128::from(i64::MAX) + 1 {
@@ -1948,9 +2031,18 @@ mod tests {
     fn go_jwt_expiry_decoding() {
         let encode = |claims: &str| URL_SAFE_NO_PAD.encode(claims);
         let token = |payload: String| format!("e30.{payload}.sig");
-        assert_eq!(read_jwt_expiry_seconds(&token(encode("{\"exp\":1700000000}"))), Some(1_700_000_000));
-        assert_eq!(read_jwt_expiry_seconds(&token(encode("{\"exp\":1.9}"))), Some(1));
-        assert_eq!(read_jwt_expiry_seconds(&token(encode("{\"exp\":true}"))), None);
+        assert_eq!(
+            read_jwt_expiry_seconds(&token(encode("{\"exp\":1700000000}"))),
+            Some(1_700_000_000)
+        );
+        assert_eq!(
+            read_jwt_expiry_seconds(&token(encode("{\"exp\":1.9}"))),
+            Some(1)
+        );
+        assert_eq!(
+            read_jwt_expiry_seconds(&token(encode("{\"exp\":true}"))),
+            None
+        );
         assert_eq!(read_jwt_expiry_seconds(&token(encode("{\"exp\":0}"))), None);
         assert_eq!(read_jwt_expiry_seconds("a.b"), None);
         let deep = format!("{}{}", "[".repeat(200), "]".repeat(200));
@@ -1971,16 +2063,24 @@ mod tests {
     #[test]
     fn template_patterns_match_ascii_and_full_values() {
         let rule = serde_json::json!({"patterns": ["\\w+"], "lowercase": true, "trimSpace": true});
-        assert_eq!(apply_template_value_rule(" Tenant1 ", &rule).ok(), Some("tenant1".to_string()));
+        assert_eq!(
+            apply_template_value_rule(" Tenant1 ", &rule).ok(),
+            Some("tenant1".to_string())
+        );
         assert!(apply_template_value_rule("tenänt", &rule).is_err());
         assert!(apply_template_value_rule("tenant/x", &rule).is_err());
         let rejected = serde_json::json!({"reject": ["common"]});
         assert!(apply_template_value_rule("COMMON", &rejected).is_err());
         for invalid in [r"(?i)x", r"\1", r"\pL", r"[[:alpha:]]", "("] {
-            assert!(validate_template_value_rule(&serde_json::json!({"patterns": [invalid]})).is_err());
+            assert!(
+                validate_template_value_rule(&serde_json::json!({"patterns": [invalid]})).is_err()
+            );
         }
         assert_eq!(python_quote("a b/c:d"), "a%20b%2Fc:d");
-        assert_eq!(template_placeholders("https://{tenant}.example/{x}/{}"), vec!["tenant", "x"]);
+        assert_eq!(
+            template_placeholders("https://{tenant}.example/{x}/{}"),
+            vec!["tenant", "x"]
+        );
     }
 
     #[test]

@@ -35,8 +35,7 @@ static QUERY_RESULT: LazyLock<Attribute<ItemResult>> =
     LazyLock::new(|| Attribute::new("queryResult"));
 static QUERY_PROGRESS: LazyLock<Stream<ProgressUpdate>> =
     LazyLock::new(|| Stream::new("queryProgress", 64 * 1024));
-static QUERY_TEXT: LazyLock<Stream<String>> =
-    LazyLock::new(|| Stream::new("queryText", 64 * 1024));
+static QUERY_TEXT: LazyLock<Stream<String>> = LazyLock::new(|| Stream::new("queryText", 64 * 1024));
 
 fn server_address() -> String {
     std::env::var("DEX_SERVER_ADDRESS").unwrap_or_else(|_| "127.0.0.1:19901".to_string())
@@ -162,9 +161,10 @@ impl Query for GetItem {
                 Receipt::default(),
                 Some(failure(FailureKind::NotFound, "item was not found")),
             ),
-            Err(ureq::Error::Status(_, _)) => {
-                QueryAttempt::retry(failure(FailureKind::Availability, "provider unavailable"), 1.0)
-            }
+            Err(ureq::Error::Status(_, _)) => QueryAttempt::retry(
+                failure(FailureKind::Availability, "provider unavailable"),
+                1.0,
+            ),
             Err(ureq::Error::Transport(_)) => {
                 QueryAttempt::retry(failure(FailureKind::Transport, "provider unreachable"), 0.0)
             }
@@ -288,7 +288,8 @@ impl Mutation for CreateItem {
     }
 
     fn invoke(&self, call: &Call<'_>, input: &String) -> MutationAttempt<String> {
-        let failure = |message: &str| Failure::new(FailureKind::Transport, "sample", "createItem", message);
+        let failure =
+            |message: &str| Failure::new(FailureKind::Transport, "sample", "createItem", message);
         let fence = Fence::new(call, Duration::from_secs(10), call.max_sends).expect("valid Fence");
         let decision = fence.decide();
         if !decision.kind.permits_dispatch() {
@@ -476,7 +477,12 @@ fn query_step_routes_result_writes_outputs_and_retries() {
         .client
         .wait_for_flow_with_timeout(&flow_id, Duration::from_secs(60))
         .expect("Flow completes");
-    assert_eq!(result.status(), FlowStatus::Completed, "{:?}", result.error_message());
+    assert_eq!(
+        result.status(),
+        FlowStatus::Completed,
+        "{:?}",
+        result.error_message()
+    );
     let output: ItemResult = result.single_output().expect("routed result");
     assert_eq!(output.branch, "found");
     assert_eq!(output.value.as_deref(), Some("object-42"));
@@ -501,8 +507,14 @@ fn unwired_optional_branch_fails_the_flow() {
         .expect("Flow closes");
     assert_eq!(result.status(), FlowStatus::Failed);
     let message = result.error_message().unwrap_or_default();
-    assert!(message.contains("selected branch missing with no target"), "{message}");
-    assert!(message.contains("NOT_FOUND: item was not found"), "{message}");
+    assert!(
+        message.contains("selected branch missing with no target"),
+        "{message}"
+    );
+    assert!(
+        message.contains("NOT_FOUND: item was not found"),
+        "{message}"
+    );
 }
 
 #[test]
@@ -525,7 +537,12 @@ fn fenced_mutation_resends_up_to_its_cap_then_selects_uncertain() {
         .client
         .wait_for_flow_with_timeout(&flow_id, Duration::from_secs(60))
         .expect("Flow completes");
-    assert_eq!(result.status(), FlowStatus::Completed, "{:?}", result.error_message());
+    assert_eq!(
+        result.status(),
+        FlowStatus::Completed,
+        "{:?}",
+        result.error_message()
+    );
     let output: CreateResult = result.single_output().expect("routed result");
     assert_eq!(output.branch, "uncertain");
     assert_eq!(
@@ -533,5 +550,8 @@ fn fenced_mutation_resends_up_to_its_cap_then_selects_uncertain() {
         2,
         "the limited cap of two sends survives Dex retries through heartbeat checkpoints"
     );
-    assert_eq!(output.receipt.idempotency_key.as_str(), output.receipt.call_id.as_str());
+    assert_eq!(
+        output.receipt.idempotency_key.as_str(),
+        output.receipt.call_id.as_str()
+    );
 }

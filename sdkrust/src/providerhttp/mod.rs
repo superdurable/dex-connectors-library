@@ -414,7 +414,10 @@ impl ProviderHttpTransport for UreqTransport {
                 "URL scheme is not allowed",
             )));
         }
-        let mut builder = self.agent.request(&request.method, &request.url).timeout(timeout);
+        let mut builder = self
+            .agent
+            .request(&request.method, &request.url)
+            .timeout(timeout);
         for (name, value) in &request.headers {
             builder = builder.set(name, value);
         }
@@ -620,9 +623,9 @@ pub fn parse_retry_after(value: &str, now: SystemTime) -> f64 {
         return 0.0;
     };
     match retry_at.duration_since(now) {
-        Ok(delay) => delay
-            .as_secs_f64()
-            .min(f64::from(u32::try_from(MAX_RETRY_AFTER_DELAY_SECONDS).unwrap_or(0))),
+        Ok(delay) => delay.as_secs_f64().min(f64::from(
+            u32::try_from(MAX_RETRY_AFTER_DELAY_SECONDS).unwrap_or(0),
+        )),
         Err(_) => 0.0,
     }
 }
@@ -665,7 +668,9 @@ pub fn validate_base_url(value: &str) -> Result<String, ValidationError> {
     if let Some(port) = port {
         let is_valid_port = !port.is_empty()
             && port.bytes().all(|byte| byte.is_ascii_digit())
-            && port.parse::<u32>().is_ok_and(|number| (1..=65535).contains(&number));
+            && port
+                .parse::<u32>()
+                .is_ok_and(|number| (1..=65535).contains(&number));
         if !is_valid_port && !port.is_empty() {
             return Err(ValidationError::new("base URL port is invalid"));
         }

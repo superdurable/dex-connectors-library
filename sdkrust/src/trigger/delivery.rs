@@ -396,7 +396,11 @@ impl TriggerLogger for AttributeBindingTriggerLogger {
 
     fn log(&self, level: TriggerLogLevel, message: &str, attributes: &TriggerLogAttributes) {
         let mut merged = self.attributes.clone();
-        merged.extend(attributes.iter().map(|(key, value)| (key.clone(), value.clone())));
+        merged.extend(
+            attributes
+                .iter()
+                .map(|(key, value)| (key.clone(), value.clone())),
+        );
         self.base.log(level, message, &merged);
     }
 }

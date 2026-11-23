@@ -421,8 +421,11 @@ impl TokenEndpoint {
     }
 
     fn validate_configuration(&self) -> Result<(), TokenExchangeError> {
-        let invalid_url =
-            || TokenExchangeError::Configuration(ValidationError::new("OAuth token endpoint URL is invalid"));
+        let invalid_url = || {
+            TokenExchangeError::Configuration(ValidationError::new(
+                "OAuth token endpoint URL is invalid",
+            ))
+        };
         let lowercase = self.url.to_ascii_lowercase();
         let is_https = lowercase.starts_with("https://");
         let is_http = self.allows_plain_http && lowercase.starts_with("http://");
@@ -431,13 +434,15 @@ impl TokenEndpoint {
         }
         let rest = &self.url[if is_https { 8 } else { 7 }..];
         let authority = rest.split(['/', '?', '#']).next().unwrap_or_default();
-        let host = authority.rsplit_once(':').map_or(authority, |(host, port)| {
-            if port.bytes().all(|byte| byte.is_ascii_digit()) && !authority.ends_with(']') {
-                host
-            } else {
-                authority
-            }
-        });
+        let host = authority
+            .rsplit_once(':')
+            .map_or(authority, |(host, port)| {
+                if port.bytes().all(|byte| byte.is_ascii_digit()) && !authority.ends_with(']') {
+                    host
+                } else {
+                    authority
+                }
+            });
         if authority.contains('@')
             || host.is_empty()
             || host == "[]"
@@ -473,15 +478,17 @@ impl TokenEndpoint {
     ) -> Result<TokenResponse, TokenExchangeError> {
         self.validate_configuration()?;
         parameters.extend(self.additional_request_parameters.clone());
-        let mut request = ProviderHttpRequest::new("POST", self.url.clone())
-            .header("Accept", "application/json");
+        let mut request =
+            ProviderHttpRequest::new("POST", self.url.clone()).header("Accept", "application/json");
         if self.uses_json_request_body {
             let body = serde_json::to_vec(&parameters).map_err(|_| {
                 TokenExchangeError::Configuration(ValidationError::new(
                     "OAuth token request cannot be encoded",
                 ))
             })?;
-            request = request.header("Content-Type", "application/json").body(body);
+            request = request
+                .header("Content-Type", "application/json")
+                .body(body);
         } else {
             request = request
                 .header("Content-Type", "application/x-www-form-urlencoded")
@@ -491,8 +498,12 @@ impl TokenEndpoint {
             let encoded = STANDARD.encode(format!("{}:{}", client.id, client.secret.reveal()));
             request = request.header("Authorization", format!("Basic {encoded}"));
         }
-        let unavailable =
-            || TokenExchangeError::Unavailable(format!("{} token endpoint is unavailable", self.provider_name));
+        let unavailable = || {
+            TokenExchangeError::Unavailable(format!(
+                "{} token endpoint is unavailable",
+                self.provider_name
+            ))
+        };
         let sent = match self.exchange_timeout {
             Some(timeout) => self.http_client.send_traced_within(&request, timeout),
             None => self.http_client.send_traced(&request),
@@ -532,7 +543,12 @@ impl TokenEndpoint {
             .and_then(JsonValue::as_str)
             .unwrap_or_default();
         if !is_success || !error_code.is_empty() {
-            if status < 500 && self.terminal_error_codes.iter().any(|code| code == error_code) {
+            if status < 500
+                && self
+                    .terminal_error_codes
+                    .iter()
+                    .any(|code| code == error_code)
+            {
                 return Err(reauthorization());
             }
             return Err(http_error());
@@ -678,7 +694,9 @@ fn form_urlencode(parameters: &BTreeMap<String, String>) -> Vec<u8> {
         .into_bytes()
 }
 
-fn redact_response_strings(response: &JsonMap<String, JsonValue>) -> BTreeMap<String, SecretString> {
+fn redact_response_strings(
+    response: &JsonMap<String, JsonValue>,
+) -> BTreeMap<String, SecretString> {
     let mut redacted = BTreeMap::new();
     let mut pending: Vec<(String, &JsonValue)> = response
         .iter()
@@ -743,8 +761,14 @@ pub fn parse_rsa_private_key_pem(pem_text: &str) -> Result<RsaPrivateKey, Valida
         .and_then(|rest| rest.split_once("-----"))
         .ok_or_else(invalid)?;
     let footer = format!("-----END {label}-----");
-    let body = rest.trim().strip_suffix(footer.as_str()).ok_or_else(invalid)?;
-    let encoded: String = body.chars().filter(|character| !character.is_whitespace()).collect();
+    let body = rest
+        .trim()
+        .strip_suffix(footer.as_str())
+        .ok_or_else(invalid)?;
+    let encoded: String = body
+        .chars()
+        .filter(|character| !character.is_whitespace())
+        .collect();
     let der = STANDARD.decode(encoded).map_err(|_| invalid())?;
     let key_pair = match label {
         "PRIVATE KEY" => ring::rsa::KeyPair::from_pkcs8(&der)
@@ -773,7 +797,10 @@ pub fn sign_jwt_bearer_assertion(
             "JWT-bearer assertion claims are incomplete",
         ));
     }
-    let issued_at_seconds = assertion.issued_at.unix_nanoseconds().div_euclid(1_000_000_000);
+    let issued_at_seconds = assertion
+        .issued_at
+        .unix_nanoseconds()
+        .div_euclid(1_000_000_000);
     let expires_at_seconds = (assertion.issued_at.unix_nanoseconds()
         + i128::try_from(assertion.lifetime.as_nanos()).unwrap_or(i128::MAX))
     .div_euclid(1_000_000_000);
@@ -781,16 +808,31 @@ pub fn sign_jwt_bearer_assertion(
         i64::try_from(value).map_err(|_| ValidationError::new("JWT-bearer time is out of range"))
     };
     let mut claims = BTreeMap::from([
-        ("aud".to_string(), JsonValue::from(assertion.audience.clone())),
-        ("exp".to_string(), JsonValue::from(to_i64(expires_at_seconds)?)),
-        ("iat".to_string(), JsonValue::from(to_i64(issued_at_seconds)?)),
+        (
+            "aud".to_string(),
+            JsonValue::from(assertion.audience.clone()),
+        ),
+        (
+            "exp".to_string(),
+            JsonValue::from(to_i64(expires_at_seconds)?),
+        ),
+        (
+            "iat".to_string(),
+            JsonValue::from(to_i64(issued_at_seconds)?),
+        ),
         ("iss".to_string(), JsonValue::from(assertion.issuer.clone())),
     ]);
     if !assertion.subject.is_empty() {
-        claims.insert("sub".to_string(), JsonValue::from(assertion.subject.clone()));
+        claims.insert(
+            "sub".to_string(),
+            JsonValue::from(assertion.subject.clone()),
+        );
     }
     if !assertion.scope.is_empty() {
-        claims.insert("scope".to_string(), JsonValue::from(assertion.scope.clone()));
+        claims.insert(
+            "scope".to_string(),
+            JsonValue::from(assertion.scope.clone()),
+        );
     }
     let encode = |value: &BTreeMap<String, JsonValue>| -> Result<String, ValidationError> {
         let serialized = serde_json::to_vec(value)
