@@ -8,30 +8,38 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
+import java.net.InetAddress;
 import java.net.MalformedURLException;
 import java.net.Proxy;
+import java.net.ProxySelector;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
 /**
  * Redirect-safe provider HTTP client with an optional address policy.
  *
- * <p>The client never follows redirects and never caches. {@link AddressPolicy#UNRESTRICTED}
- * keeps the JVM's network behavior, including system proxies. A restricted policy checks every DNS
- * answer before dialing, refuses Unix-style and non-HTTP schemes, and bypasses proxies. The JDK
- * then dials the hostname itself, so the checked answers rely on the JVM DNS cache rather than a
- * pinned address; TLS verification and SNI use the original hostname.
+ * <p>The client never follows redirects and never caches. It sends each request as one HTTP/1.1
+ * exchange over a socket it owns, with {@code Connection: close}: it dials the resolved addresses
+ * once, verifies TLS against the original hostname with SNI, and never reconnects. A restricted
+ * policy checks every DNS answer before dialing, refuses Unix-style and non-HTTP schemes, and dials
+ * only the checked addresses. {@link AddressPolicy#UNRESTRICTED} uses the JDK
+ * {@code HttpURLConnection} only when a system proxy applies to the URL outside a single-dispatch
+ * Fence; that path cannot send {@code PATCH}. Inside a Fence the client always dials directly, so
+ * cancellation can close the exchange.
  *
  * <p>Each request clears the enclosing single-dispatch observation before it starts and records
  * the response status when headers arrive, so a Fence write-window timeout reports the status of
- * the request it cut off. A DNS, TCP connect, or TLS handshake failure is provably not sent;
- * {@code HttpURLConnection} cannot send {@code PATCH}, so this client rejects it.
+ * the request it cut off. Inside a Fence it registers its exchange for cancellation and checks the
+ * dispatch under the exchange lock before connecting and before writing request bytes. A DNS, TCP
+ * connect, or TLS handshake failure, or a refusal before writing, is provably not sent.
  *
  * <p>Instances are immutable and thread-safe.
  */
@@ -110,19 +118,27 @@ public final class ProviderHttpClient implements ProviderHttpTransport {
             throw new IllegalArgumentException("provider URL is invalid");
         }
         final String method = request.getMethod().toUpperCase(Locale.ROOT);
-        if ("PATCH".equals(method)) {
-            throw new IllegalArgumentException("HttpURLConnection cannot send PATCH requests");
-        }
         DispatchObservation.clearResponseStatus();
         final Duration timeout = boundByWriteDeadline(request.getTimeout() == null ? requestTimeout : request.getTimeout());
-        if (addressPolicy != AddressPolicy.UNRESTRICTED) {
-            final String host = uri.getHost().startsWith("[") && uri.getHost().endsWith("]")
-                    ? uri.getHost().substring(1, uri.getHost().length() - 1) : uri.getHost();
+        final String host = uri.getHost().startsWith("[") && uri.getHost().endsWith("]")
+                ? uri.getHost().substring(1, uri.getHost().length() - 1) : uri.getHost();
+        final boolean isInDispatch = DispatchObservation.currentWriteDeadline() != null;
+        if (isInDispatch || addressPolicy != AddressPolicy.UNRESTRICTED || isDirect(uri)) {
+            final List<InetAddress> addresses;
             try {
-                AddressPolicyRules.resolveCheckedAddresses(host, scheme, addressPolicy);
+                addresses = addressPolicy != AddressPolicy.UNRESTRICTED
+                        ? AddressPolicyRules.resolveCheckedAddresses(host, scheme, addressPolicy)
+                        : Arrays.asList(InetAddress.getAllByName(host));
             } catch (java.net.UnknownHostException error) {
                 throw new ProviderTransportException(true, null, null);
             }
+            final SocketHttpExchange exchange = new SocketHttpExchange();
+            // A Fence closes the exchange at its deadline or on Dex cancellation; it never reconnects.
+            DispatchObservation.registerCancellation(exchange::cancel);
+            return exchange.send(uri, addresses, method, request.getHeaders(), request.getBody(), timeout);
+        }
+        if ("PATCH".equals(method)) {
+            throw new IllegalArgumentException("HttpURLConnection cannot send PATCH requests through a proxy");
         }
         final URL url;
         try {
@@ -190,6 +206,23 @@ public final class ProviderHttpClient implements ProviderHttpTransport {
             stream = connection.getErrorStream();
         }
         return new ProviderHttpResponse(statusCode, headers, stream, connection::disconnect);
+    }
+
+    private static boolean isDirect(final URI uri) {
+        final ProxySelector selector = ProxySelector.getDefault();
+        if (selector == null) {
+            return true;
+        }
+        try {
+            for (Proxy proxy : selector.select(uri)) {
+                if (proxy.type() != Proxy.Type.DIRECT) {
+                    return false;
+                }
+            }
+        } catch (IllegalArgumentException error) {
+            return true;
+        }
+        return true;
     }
 
     /**
