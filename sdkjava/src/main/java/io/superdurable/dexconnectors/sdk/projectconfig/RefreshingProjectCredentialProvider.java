@@ -452,7 +452,7 @@ public final class RefreshingProjectCredentialProvider<C> extends ProjectCredent
         RANDOM.nextBytes(bytes);
         final StringBuilder hex = new StringBuilder();
         for (byte part : bytes) {
-            hex.append(String.format("%02x", part & 0xff));
+            hex.append(String.format(java.util.Locale.ROOT, "%02x", part & 0xff));
         }
         return hex.toString();
     }
