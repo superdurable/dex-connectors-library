@@ -12,7 +12,8 @@
         </module>
         <module name="MissingJavadocMethod">
             <property name="scope" value="public"/>
-            <property name="allowedAnnotations" value=""/>
+            <!-- An override inherits the documentation of the interface or Object method. -->
+            <property name="allowedAnnotations" value="Override"/>
         </module>
         <module name="JavadocVariable">
             <property name="scope" value="public"/>
