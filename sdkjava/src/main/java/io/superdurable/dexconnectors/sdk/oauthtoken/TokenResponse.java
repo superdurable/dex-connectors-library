@@ -4,6 +4,8 @@
 package io.superdurable.dexconnectors.sdk.oauthtoken;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import io.superdurable.dexconnectors.sdk.PrivateValueRefusingSerializer;
 import io.superdurable.dexconnectors.sdk.SecretString;
 import java.time.Duration;
 import java.util.Collections;
@@ -15,6 +17,7 @@ import java.util.Map;
  *
  * <p>{@link #toString()} omits every token and retained value.
  */
+@JsonSerialize(using = PrivateValueRefusingSerializer.class)
 public final class TokenResponse {
     private final SecretString accessToken;
     private final SecretString refreshToken;

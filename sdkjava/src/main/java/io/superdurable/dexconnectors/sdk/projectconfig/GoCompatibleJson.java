@@ -20,6 +20,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -27,7 +28,9 @@ import java.util.Set;
  *
  * <p>Struct-like objects keep their member order, while the free-form {@code configuration},
  * {@code credentials}, and {@code event} maps and the {@code environment} map sort their keys by
- * UTF-8 bytes, as Go sorts map keys. Output is compact, writes {@code <}, {@code >}, {@code &},
+ * UTF-8 bytes, as Go sorts map keys. A {@code configuration}, {@code credentials}, or {@code event}
+ * object read by {@link #parse} is a Go {@code json.RawMessage}: while unchanged it is written as its
+ * compacted stored bytes, keeping member order and number spelling. Output is compact, writes {@code <}, {@code >}, {@code &},
  * U+2028, and U+2029 as lowercase Unicode escapes such as {@code \\u003c}, canonicalizes RFC 3339 timestamp fields,
  * and omits the empty optional fields Go omits. These bytes feed object digests and CAS ETags, so
  * they must match Go, Python, and TypeScript exactly.
@@ -116,14 +119,64 @@ public final class GoCompatibleJson {
      * @throws IllegalArgumentException if the bytes are not one JSON value
      */
     public static JsonNode parse(final byte[] contents) {
+        JsonNode value;
         try {
-            final JsonNode value = MAPPER.readTree(contents);
+            value = MAPPER.readTree(contents);
+        } catch (IOException | RuntimeException error) {
+            // Parser messages and causes can quote private file contents, such as a token.
+            value = null;
+        }
+        if (value == null || value.isMissingNode()) {
+            throw new IllegalArgumentException("project document is invalid JSON");
+        }
+        return preserveRawMessages(contents, value);
+    }
+
+    static JsonNode parseWithoutRawMessages(final String text) {
+        try {
+            final JsonNode value = MAPPER.readTree(text);
             if (value == null || value.isMissingNode()) {
                 throw new IllegalArgumentException("project document is invalid JSON");
             }
             return value;
         } catch (IOException error) {
-            throw new IllegalArgumentException("project document is invalid JSON", error);
+            throw new IllegalArgumentException("project document is invalid JSON");
+        }
+    }
+
+    // Go declares configuration, credentials, and event as json.RawMessage, so it re-encodes their bytes.
+    private static JsonNode preserveRawMessages(final byte[] raw, final JsonNode value) {
+        try {
+            attachRawMessages(raw, value);
+        } catch (RuntimeException error) {
+            // Go's scanner refuses what Jackson accepted; keep the tree, which re-encodes as a map.
+        }
+        return value;
+    }
+
+    private static void attachRawMessages(final byte[] raw, final JsonNode value) {
+        if (value.isObject()) {
+            final ObjectNode object = (ObjectNode) value;
+            for (Map.Entry<String, byte[]> member : GoRawJson.objectMembers(raw)) {
+                final JsonNode child = object.get(member.getKey());
+                if (child == null) {
+                    continue;
+                }
+                if (MAP_FIELDS.contains(member.getKey()) && child.isObject()
+                        && GoRawJson.kind(member.getValue()) == GoRawJson.Kind.OBJECT) {
+                    object.set(member.getKey(), new RawMessageObjectNode(
+                            new String(GoRawJson.compact(member.getValue()), StandardCharsets.UTF_8), (ObjectNode) child));
+                } else if (child.isContainerNode()) {
+                    attachRawMessages(member.getValue(), child);
+                }
+            }
+        } else if (value.isArray()) {
+            final List<byte[]> elements = GoRawJson.arrayElements(raw);
+            for (int index = 0; index < elements.size() && index < value.size(); index++) {
+                if (value.get(index).isContainerNode()) {
+                    attachRawMessages(elements.get(index), value.get(index));
+                }
+            }
         }
     }
 
@@ -207,6 +260,9 @@ public final class GoCompatibleJson {
                 writeValue(output, value.get(index), context);
             }
             output.append(']');
+        } else if (value instanceof RawMessageObjectNode
+                && ((RawMessageObjectNode) value).unchangedCompactedText() != null) {
+            output.append(((RawMessageObjectNode) value).unchangedCompactedText());
         } else if (value.isObject()) {
             writeObject(output, value, context);
         } else {

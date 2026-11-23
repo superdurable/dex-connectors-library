@@ -3,12 +3,15 @@
 
 package io.superdurable.dexconnectors.sdk;
 
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+
 /**
  * Credential wrapper that reveals its value only at a provider request boundary.
  *
  * <p>{@link #toString()} is redacted, and the class is deliberately not serializable by Jackson
  * or Java serialization, so a secret cannot leak into Flow state, logs, or results.
  */
+@JsonSerialize(using = PrivateValueRefusingSerializer.class)
 public final class SecretString {
     private final String value;
 

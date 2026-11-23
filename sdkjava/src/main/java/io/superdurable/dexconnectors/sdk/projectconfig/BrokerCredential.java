@@ -3,7 +3,9 @@
 
 package io.superdurable.dexconnectors.sdk.projectconfig;
 
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import io.superdurable.dexconnectors.sdk.PrivateValueRefusingSerializer;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 
@@ -12,6 +14,7 @@ import java.time.OffsetDateTime;
  *
  * <p>{@link #toString()} is redacted and the credential is copied on access.
  */
+@JsonSerialize(using = PrivateValueRefusingSerializer.class)
 public final class BrokerCredential {
     private final ObjectNode credential;
     private final long revision;

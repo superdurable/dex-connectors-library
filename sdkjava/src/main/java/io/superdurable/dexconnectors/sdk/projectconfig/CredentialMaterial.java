@@ -3,15 +3,19 @@
 
 package io.superdurable.dexconnectors.sdk.projectconfig;
 
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import io.superdurable.dexconnectors.sdk.PrivateValueRefusingSerializer;
 import io.superdurable.dexconnectors.sdk.Rfc3339NanoTimestamp;
 import java.time.Instant;
 
 /**
  * Private connector credential material; never put it in Flow state, logs, or results.
  *
- * <p>{@link #toString()} is redacted and the credentials are copied on access.
+ * <p>{@link #toString()} is redacted, the credentials are copied on access, and Jackson refuses
+ * to serialize it, as Go's {@code MarshalJSON} does.
  */
+@JsonSerialize(using = PrivateValueRefusingSerializer.class)
 public final class CredentialMaterial {
     private final ObjectNode credentials;
     private final Rfc3339NanoTimestamp expiresAt;

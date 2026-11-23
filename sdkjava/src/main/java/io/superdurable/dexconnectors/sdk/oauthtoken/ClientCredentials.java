@@ -3,11 +3,14 @@
 
 package io.superdurable.dexconnectors.sdk.oauthtoken;
 
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import io.superdurable.dexconnectors.sdk.PrivateValueRefusingSerializer;
 import io.superdurable.dexconnectors.sdk.SecretString;
 
 /**
  * OAuth client identity and redacted secret used for one token grant.
  */
+@JsonSerialize(using = PrivateValueRefusingSerializer.class)
 public final class ClientCredentials {
     private final String id;
     private final SecretString secret;
