@@ -148,7 +148,9 @@ impl DecisionKind {
         }
     }
 
-    pub(crate) fn permits_dispatch(self) -> bool {
+    /// Returns whether [`crate::singledispatch::Fence::dispatch`] may send for this decision,
+    /// after a read-back that did not confirm the write when bounded resend applies.
+    pub fn permits_dispatch(self) -> bool {
         matches!(
             self,
             DecisionKind::SendAllowed | DecisionKind::ReadBackThenResendAllowed
