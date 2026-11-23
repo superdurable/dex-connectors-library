@@ -33,6 +33,8 @@ From 0.5.1, read-back matches the `X-Dex-Message-ID` header. Live sends from a G
 
 From 0.5.2, a non-ASCII recipient display name is written as Go writes it: RFC 2047 encoded words of at most 75 characters, B-encoded when the name holds a character such as `,`, `(`, `"`, or `.`. 0.5.1 and earlier wrote one Q-encoded word that left those characters literal, so a name such as `Zoë (Ops), Inc` could read as two recipients. `parseMailbox`, reply recipients, and the `getMessage` `to` list now decode encoded display names as Go's `net/mail` does; see the [connector README](../README.md).
 
+From 0.6.0, `sendMessage` takes optional `listUnsubscribe` targets and `listUnsubscribeOneClick`, written as the RFC 2369 `List-Unsubscribe` and RFC 8058 `List-Unsubscribe-Post` headers. Each target must be an `https:` URL or a bare `mailto:` address; any other target selects `defect` before a send. See the [connector README](../README.md) for the exact rules.
+
 ## Triggers
 
 `messageReceived` receives a matching message that begins a Gmail thread and `replyReceived` a matching reply in an existing thread. Both poll the newest inbox page (`pollPageSize` messages, `labelIds=INBOX`, plus the binding's optional Gmail `searchQuery`) every `pollInterval`, read each new message's metadata, and emit a metadata-only `MessageEvent` (`primaryEmail`, `messageId`, `threadId`, `from`, `subject`, `snippet`, `receivedAt`, `isReply`) whose event ID is the Gmail message ID. The binding's `messageMatcher` or `replyMatcher` requires a case-insensitive `messageContains` substring of the subject or snippet and an optional `senderEmails` allowlist.

@@ -1,10 +1,10 @@
 {
   "connectorId": "gmail",
-  "releaseTag": "connectors/google/gmail/go/v0.29.2",
+  "releaseTag": "connectors/google/gmail/go/v0.30.0",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-google-gmail",
-    "version": "0.5.2"
+    "version": "0.6.0"
   },
   "factories": [
     {
@@ -122,6 +122,17 @@
           "htmlBody": {
             "description": "HTMLBody is the optional HTML message body.",
             "type": "string"
+          },
+          "listUnsubscribe": {
+            "description": "ListUnsubscribe optionally lists one or two unsubscribe targets for the RFC 2369 List-Unsubscribe header, each an absolute https: URL or a mailto: URI of at most 512 characters, without spaces, angle brackets, commas or line breaks.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "listUnsubscribeOneClick": {
+            "description": "ListUnsubscribeOneClick adds the RFC 8058 header List-Unsubscribe-Post: List-Unsubscribe=One-Click, so mail clients can unsubscribe with one POST; it requires an https: target in ListUnsubscribe.",
+            "type": "boolean"
           },
           "subject": {
             "description": "Subject is the message subject.",
