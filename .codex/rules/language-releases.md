@@ -39,7 +39,7 @@ The reviewed `conformance/exemptions.yaml` exempts only `connectors/postgresql`,
 `connectors/mysql`, `connectors/mongodb`, `connectors/microsoft/sql-server`, and
 `connectors/superdurable/email`: their native wire protocols cannot be recorded
 by the HTTP replay runner. Adding an exemption requires a tooling PR. For each
-exempt Python and TypeScript package, replace replay with unit tests for every
+exempt non-Go package, replace replay with unit tests for every
 Go-tested branch, retry, uncertain decision, and protocol-error classification,
 plus real protocol integration tests in CI service containers. Database ports
 use Go connector live-test scenarios and connection variables when available.
@@ -64,5 +64,9 @@ rule in `AGENTS.md`. Use `connectors(python):`, `connectors(typescript):`,
 `connectors(java):`, or `connectors(rust):` subjects for batch ports.
 
 The first npm publish uses the scoped CI token; later publishes use trusted
-publishing when configured. Keep token rotation and optional trust setup in
+publishing when configured. First PyPI uploads use the account-scoped
+`PYPI_TOKEN`. The trusted publisher uploads Java packages through the Maven
+Central Portal with `MAVEN_CENTRAL_USERNAME`, `MAVEN_CENTRAL_PASSWORD`, and
+`GPG_SECRET_KEY` for signing. It publishes Rust crates to crates.io with
+`CRATES_IO_TOKEN`. Keep token rotation and optional trust setup in
 `docs/versioning-and-releases.md`.

@@ -11,6 +11,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/internal/codegen"
+	"github.com/superdurable/dex-connectors-library/schema"
 )
 
 func TestGenerateWritesChecksAndRemovesTheRefreshAgreementTest(t *testing.T) {
@@ -118,6 +119,8 @@ func TestGeneratedRefreshAgreementFilesIncludeLanguageTests(t *testing.T) {
 	manifestPath := filepath.Join("..", "..", "connectors", "google", "gmail", "connector.yaml")
 	manifest, err := load(manifestPath)
 	require.NoError(t, err)
+	manifest.Spec.Languages.Java = &schema.LanguagePackage{}
+	manifest.Spec.Languages.Rust = &schema.LanguagePackage{}
 	files, err := generatedRefreshAgreementFiles(manifestPath, manifest)
 	require.NoError(t, err)
 	pythonTest := filepath.Join("..", "..", "connectors", "google", "gmail", "python", "tests", "test_refresh_agreement.py")
@@ -129,4 +132,9 @@ func TestGeneratedRefreshAgreementFilesIncludeLanguageTests(t *testing.T) {
 		require.True(t, strings.Contains(string(source), "assertion"))
 		require.True(t, strings.Contains(string(source), "clientAuth"))
 	}
+	connectorPath := filepath.Dir(manifestPath)
+	javaCases := files[filepath.Join(connectorPath, "java", "src", "test", "resources", "refresh-agreement-cases.json")]
+	rustCases := files[filepath.Join(connectorPath, "rust", "tests", "fixtures", "refresh-agreement-cases.json")]
+	require.NotEmpty(t, javaCases)
+	require.JSONEq(t, string(javaCases), string(rustCases))
 }

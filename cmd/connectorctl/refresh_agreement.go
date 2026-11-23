@@ -69,6 +69,12 @@ func generatedRefreshAgreementFiles(manifestPath string, manifest schema.Manifes
 		files[filepath.Join(typeScriptTests, "fixtures", "refresh-agreement-cases.json")] = typeScriptCases
 		files[filepath.Join(typeScriptTests, "refresh_agreement.test.ts")] = codegen.GenerateTypeScriptRefreshAgreementTest()
 	}
+	if manifest.Spec.Languages != nil && manifest.Spec.Languages.Java != nil {
+		files[filepath.Join(connectorDirectory, "java", "src", "test", "resources", "refresh-agreement-cases.json")] = cases
+	}
+	if manifest.Spec.Languages != nil && manifest.Spec.Languages.Rust != nil {
+		files[filepath.Join(connectorDirectory, "rust", "tests", "fixtures", "refresh-agreement-cases.json")] = cases
+	}
 	return files, nil
 }
 

@@ -72,6 +72,43 @@ func TestBumpLeavesAnOmittedPackageUnchangedExceptItsGoReleaseTag(t *testing.T) 
 	require.NotContains(t, output, "pyproject.toml")
 }
 
+func TestBumpRegeneratesJavaAndRustPackageManifests(t *testing.T) {
+	repositoryRoot := writeVersionBumpRepository(t)
+	connectorPath := filepath.Join(repositoryRoot, filepath.FromSlash(versionBumpChat))
+	replaceInFile(t, filepath.Join(connectorPath, "connector.yaml"), "  languages:\n",
+		"  languages:\n    java: {version: v0.1.0, operations: [appendRows], triggers: []}\n"+
+			"    rust: {version: v0.1.0, operations: [appendRows], triggers: []}\n")
+	for relativePath, contents := range map[string]string{
+		"java/gradle.properties": "group=io.superdurable\nartifactId=dex-connector-acme-chat\nversion=0.1.0\n",
+		"rust/Cargo.toml":        "[package]\nname = \"dex-connector-acme-chat\"\nversion = \"0.1.0\"\n",
+		"rust/Cargo.lock":        "version = 4\n\n[[package]]\nname = \"dex-connector-acme-chat\"\nversion = \"0.1.0\"\n",
+	} {
+		path := filepath.Join(connectorPath, filepath.FromSlash(relativePath))
+		require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o755))
+		require.NoError(t, os.WriteFile(path, []byte(contents), 0o600))
+	}
+	runReleaseCandidateGit(t, repositoryRoot, "add", ".")
+	runReleaseCandidateGit(t, repositoryRoot, "commit", "-m", "Add Java and Rust package fixtures")
+	runReleaseCandidateGit(t, repositoryRoot, "tag", versionBumpChat+"/java/v0.1.0")
+	runReleaseCandidateGit(t, repositoryRoot, "tag", versionBumpChat+"/rust/v0.1.0")
+
+	runVersionBump(t, connectorPath, "--java", "patch", "--rust", "minor")
+
+	for relativePath, expected := range map[string]dexConnectorPackageIdentity{
+		"java/src/main/resources/META-INF/dex-connectors/acme/chat/dex-connector.json": {
+			Ecosystem: "maven", Name: "io.superdurable:dex-connector-acme-chat", Version: "0.1.1",
+		},
+		"rust/dex-connector.json": {Ecosystem: "cargo", Name: "dex-connector-acme-chat", Version: "0.2.0"},
+	} {
+		contents, err := os.ReadFile(filepath.Join(connectorPath, filepath.FromSlash(relativePath)))
+		require.NoError(t, err)
+		var descriptor dexConnectorPackageManifest
+		require.NoError(t, json.Unmarshal(contents, &descriptor))
+		require.Equal(t, expected, descriptor.Package)
+		require.Equal(t, versionBumpChat+"/go/v0.1.0", descriptor.ReleaseTag)
+	}
+}
+
 func TestBumpGoOnlyConnectorFromFirstReleaseThenFromItsTag(t *testing.T) {
 	repositoryRoot := writeVersionBumpRepository(t)
 	connectorPath := filepath.Join(repositoryRoot, filepath.FromSlash(versionBumpMail))

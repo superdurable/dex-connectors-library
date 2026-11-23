@@ -52,7 +52,13 @@ func TestGenerateLanguagePackageManifestsAndDetectDrift(t *testing.T) {
 	require.NoError(t, os.WriteFile(filepath.Join(repositoryRoot, "catalog.yaml"), []byte("connectors: []\n"), 0o600))
 	fixture, err := os.ReadFile(filepath.Join("..", "..", "schema", "testdata", "google-oauth.yaml"))
 	require.NoError(t, err)
-	manifestSource := strings.Replace(string(fixture), "spec:\n", "spec:\n  languages:\n    python: {version: v0.2.0, package: dex-connector-custom-sheets, operations: [appendRows], triggers: []}\n    typescript: {version: v0.3.0, operations: [appendRows], triggers: []}\n", 1)
+	languages := `  languages:
+    python: {version: v0.2.0, package: dex-connector-custom-sheets, operations: [appendRows], triggers: []}
+    typescript: {version: v0.3.0, operations: [appendRows], triggers: []}
+    java: {version: v0.4.0, operations: [appendRows], triggers: []}
+    rust: {version: v0.5.0, operations: [appendRows], triggers: []}
+`
+	manifestSource := strings.Replace(string(fixture), "spec:\n", "spec:\n"+languages, 1)
 	manifestSource = strings.Replace(manifestSource, "  operations:\n", `  studio:
     setup:
       entrypoint: index.html
@@ -76,6 +82,12 @@ func TestGenerateLanguagePackageManifestsAndDetectDrift(t *testing.T) {
 	require.NoError(t, os.WriteFile(filepath.Join(connectorDirectory, "go", "go.mod"), []byte("module example.com/sheets\n\ngo 1.24\n"), 0o600))
 	require.NoError(t, os.WriteFile(filepath.Join(connectorDirectory, "python", "pyproject.toml"), []byte("[project]\nname = \"dex-connector-custom-sheets\"\nversion = \"0.2.0\"\n"), 0o600))
 	require.NoError(t, os.WriteFile(filepath.Join(connectorDirectory, "typescript", "package.json"), []byte(`{"name":"@superdurable/connector-google-sheets","version":"0.3.0"}`), 0o600))
+	require.NoError(t, os.MkdirAll(filepath.Join(connectorDirectory, "java"), 0o755))
+	require.NoError(t, os.MkdirAll(filepath.Join(connectorDirectory, "rust"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(connectorDirectory, "java", "gradle.properties"),
+		[]byte("group=io.superdurable\nartifactId=dex-connector-google-sheets\nversion=0.4.0\n"), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(connectorDirectory, "rust", "Cargo.toml"),
+		[]byte("[package]\nname = \"dex-connector-google-sheets\"\nversion = \"0.5.0\"\n"), 0o600))
 	require.NoError(t, generate([]string{manifestPath}))
 	require.NoError(t, generate([]string{"--check", manifestPath}))
 	jsonSchemaBytes, err := os.ReadFile(filepath.Join("..", "..", "schema", "dex-connector.schema.json"))
@@ -91,6 +103,8 @@ func TestGenerateLanguagePackageManifestsAndDetectDrift(t *testing.T) {
 	}{
 		{filepath.Join(connectorDirectory, "python", "src", "dex_connectors", "google_sheets", "dex-connector.json"), "dex-connector-custom-sheets", "pypi", "0.2.0", "new_append_rows_step", "step_type", "connection_name", "appended"},
 		{filepath.Join(connectorDirectory, "typescript", "dex-connector.json"), "@superdurable/connector-google-sheets", "npm", "0.3.0", "newAppendRowsStep", "stepType", "connectionName", "appended"},
+		{filepath.Join(connectorDirectory, "java", "src", "main", "resources", "META-INF", "dex-connectors", "google", "sheets", "dex-connector.json"), "io.superdurable:dex-connector-google-sheets", "maven", "0.4.0", "newAppendRowsStep", "stepType", "connectionName", "appended"},
+		{filepath.Join(connectorDirectory, "rust", "dex-connector.json"), "dex-connector-google-sheets", "cargo", "0.5.0", "new_append_rows_step", "step_type", "connection_name", "appended"},
 	} {
 		contents, err := os.ReadFile(testCase.path)
 		require.NoError(t, err)
@@ -126,12 +140,14 @@ func TestGenerateLanguagePackageManifestsAndDetectDrift(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, string(pythonManifest), `"factories": []`)
 	require.NoError(t, generate([]string{"--check", manifestPath}))
-	manifestSource = strings.Replace(manifestSource, "  languages:\n    python: {version: v0.2.0, package: dex-connector-custom-sheets, operations: [appendRows], triggers: []}\n    typescript: {version: v0.3.0, operations: [appendRows], triggers: []}\n", "", 1)
+	manifestSource = strings.Replace(manifestSource, languages, "", 1)
 	require.NoError(t, os.WriteFile(manifestPath, []byte(manifestSource), 0o600))
 	require.ErrorContains(t, generate([]string{"--check", manifestPath}), "generated language package manifest is stale")
 	require.NoError(t, generate([]string{manifestPath}))
 	require.NoError(t, generate([]string{"--check", manifestPath}))
-	manifestSource = strings.Replace(manifestSource, "spec:\n", "spec:\n  languages:\n    python: {version: v0.2.0, package: dex-connector-custom-sheets, operations: [appendRows], triggers: []}\n    typescript: {version: v0.3.0, operations: [appendRows], triggers: []}\n", 1)
+	require.NoFileExists(t, filepath.Join(connectorDirectory, "java", "src", "main", "resources", "META-INF", "dex-connectors", "google", "sheets", "dex-connector.json"))
+	require.NoFileExists(t, filepath.Join(connectorDirectory, "rust", "dex-connector.json"))
+	manifestSource = strings.Replace(manifestSource, "spec:\n", "spec:\n"+languages, 1)
 	manifestSource = strings.Replace(manifestSource, "id: appended", "id: annotations", 1)
 	require.NoError(t, os.WriteFile(manifestPath, []byte(manifestSource), 0o600))
 	require.ErrorContains(t, generate([]string{manifestPath}), `factory maps more than one field to "annotations"`)

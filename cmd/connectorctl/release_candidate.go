@@ -49,6 +49,7 @@ func releaseCandidateCommand(args []string) error {
 	commit := flags.String("commit", "", "candidate commit SHA")
 	version := flags.String("version", "", "release candidate version, vX.Y.Z-rc.N")
 	language := flags.String("language", "", "python, typescript, java, or rust; empty selects Go")
+	skipMissingPackage := flags.Bool("skip-missing-package", false, "skip absent language package directories during automatic dispatch")
 	githubOutputPath := flags.String("github-output", "", "GitHub Actions output path")
 	if err := flags.Parse(args); err != nil {
 		return err
@@ -61,6 +62,9 @@ func releaseCandidateCommand(args []string) error {
 		return err
 	}
 	if candidate.IsPackageDirectoryMissing {
+		if !*skipMissingPackage {
+			return fmt.Errorf("%s/%s package directory is missing", candidate.Directory, candidate.Language)
+		}
 		fmt.Fprintf(os.Stderr, "::notice::%s/%s is absent; skipping package candidate\n", candidate.Directory, candidate.Language)
 	}
 	for _, value := range []string{candidate.Directory, candidate.ManifestPath, candidate.ModulePath, candidate.Version,
@@ -126,7 +130,25 @@ func planConnectorReleaseCandidateLanguage(catalogPath, candidateRoot, directory
 	if err := validateReleaseCandidateChanges(repositoryRoot, directory, commit, !slices.Contains(mainSource.Directories, directory)); err != nil {
 		return connectorReleaseCandidate{}, err
 	}
-	entries, err := loadConnectorDirectoryEntries(filepath.Join(candidateRoot, "catalog.yaml"))
+	candidateCatalogPath := filepath.Join(candidateRoot, "catalog.yaml")
+	if language != "" {
+		componentDirectory := directory + "/" + language
+		hasDirectory, err := hasReleasePackageDirectory(candidateRoot, componentDirectory)
+		if err != nil {
+			return connectorReleaseCandidate{}, err
+		}
+		if !hasDirectory {
+			candidateCatalog, err := loadConnectorCatalogSource(candidateCatalogPath)
+			if err != nil {
+				return connectorReleaseCandidate{}, fmt.Errorf("candidate catalog: %w", err)
+			}
+			if !slices.Contains(candidateCatalog.Directories, directory) {
+				return connectorReleaseCandidate{}, fmt.Errorf("candidate does not register %s in catalog.yaml", directory)
+			}
+			return connectorReleaseCandidate{Directory: directory, Language: language, IsPackageDirectoryMissing: true}, nil
+		}
+	}
+	entries, err := loadConnectorDirectoryEntries(candidateCatalogPath)
 	if err != nil {
 		return connectorReleaseCandidate{}, fmt.Errorf("candidate catalog: %w", err)
 	}
@@ -144,15 +166,6 @@ func planConnectorReleaseCandidateLanguage(catalogPath, candidateRoot, directory
 	packageName := ""
 	if language != "" {
 		componentDirectory = directory + "/" + language
-		if language == "java" || language == "rust" {
-			hasDirectory, err := hasReleasePackageDirectory(candidateRoot, componentDirectory)
-			if err != nil {
-				return connectorReleaseCandidate{}, err
-			}
-			if !hasDirectory {
-				return connectorReleaseCandidate{Directory: directory, Language: language, IsPackageDirectoryMissing: true}, nil
-			}
-		}
 		if entry.Manifest.Spec.Languages == nil {
 			return connectorReleaseCandidate{}, fmt.Errorf("%s does not declare %s", entry.ManifestPath, language)
 		}

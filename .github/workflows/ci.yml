@@ -454,6 +454,18 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 24
+      - uses: actions/setup-java@v5
+        if: matrix.language == 'java'
+        with:
+          distribution: zulu
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v6
+        if: matrix.language == 'java'
+      - name: Install Rust
+        if: matrix.language == 'rust'
+        env:
+          RUSTUP_TOOLCHAIN: '1.97.1'
+        run: rustup toolchain install "${RUSTUP_TOOLCHAIN}" --profile minimal && rustup default "${RUSTUP_TOOLCHAIN}"
       - run: make test-${{ matrix.language }}-connectors
 
   # Package test shards (about 20 minutes each) and replay (up to about 39) run in parallel so the

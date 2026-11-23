@@ -78,6 +78,10 @@ jobs:
         run: |
           git fetch --no-tags origin "${CANDIDATE_COMMIT}"
           git worktree add --detach "${RUNNER_TEMP}/candidate" "${CANDIDATE_COMMIT}"
+          skip_arguments=()
+          if [ "${GITHUB_EVENT_NAME}" = repository_dispatch ]; then
+            skip_arguments+=(--skip-missing-package)
+          fi
           go run ./cmd/connectorctl release-candidate \
             --catalog catalog.yaml \
             --candidate-root "${RUNNER_TEMP}/candidate" \
@@ -85,6 +89,7 @@ jobs:
             --commit "${CANDIDATE_COMMIT}" \
             --version "${CANDIDATE_VERSION}" \
             --language "${CANDIDATE_LANGUAGE}" \
+            "${skip_arguments[@]}" \
             --github-output "${GITHUB_OUTPUT}"
 
   verify:
@@ -504,6 +509,12 @@ jobs:
             --version "${CANDIDATE_VERSION}" --tag "${RELEASE_TAG}" --source-sha "${RELEASE_SOURCE_SHA}" \
             --output "${metadata}/connector-release.json" --digest-output "${metadata}/connector-release.json.sha256" \
             "${ui_arguments[@]}"
+          if [ "${RELEASE_LANGUAGE}" = java ]; then
+            python3 script/release/language_publish.py verify-maven-publication \
+              --package "${RELEASE_PACKAGE}" --version "${CANDIDATE_VERSION}" \
+              --maven-metadata "${RUNNER_TEMP}/maven-metadata" \
+              --component-path "${RUNNER_TEMP}/candidate/${MANIFEST_PATH%/*}/java"
+          fi
       - name: Publish Python pre-release
         if: steps.state.outputs.release_required == 'true' && needs.plan.outputs.language == 'python' && env.CANDIDATE_DRY_RUN != 'true'
         env:
@@ -535,7 +546,8 @@ jobs:
         run: |
           python3 script/release/language_publish.py publish-language-candidate --language java \
             --package "${RELEASE_PACKAGE}" --version "${CANDIDATE_VERSION}" --dist "${RUNNER_TEMP}/language-dist" \
-            --maven-metadata "${RUNNER_TEMP}/maven-metadata"
+            --maven-metadata "${RUNNER_TEMP}/maven-metadata" \
+            --component-path "${RUNNER_TEMP}/candidate/${MANIFEST_PATH%/*}/java"
       - name: Publish crates.io pre-release
         if: steps.state.outputs.release_required == 'true' && needs.plan.outputs.language == 'rust' && env.CANDIDATE_DRY_RUN != 'true'
         env:

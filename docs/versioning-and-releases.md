@@ -32,7 +32,8 @@ The module directory determines the Git tag prefix:
 - Company-owned families keep independent modules below one directory, such as
   `connectors/google/gmail` and `connectors/google/spreadsheet`.
 - Python, TypeScript, Java, and Rust packages append
-  `/<language>/vMAJOR.MINOR.PATCH` to their connector directory.
+  `/<language>/vMAJOR.MINOR.PATCH` to their connector directory, for example
+  `connectors/google/gmail/java/v0.1.0` and `connectors/google/gmail/rust/v0.1.0`.
 - `connectorsmcp` uses `connectorsmcp/vMAJOR.MINOR.PATCH` on release commits
   off `main`; see
   [Connectors MCP server releases](#connectors-mcp-server-releases).
@@ -294,18 +295,27 @@ for npm provenance: `type` is `git`, `url` is
 Java connectors declare the released Connector SDK version in
 `gradle.properties` as `dexConnectorsSdkVersion=X.Y.Z`. Rust connectors use
 `dex-connectors-sdk = "=X.Y.Z"` in `Cargo.toml` and commit `Cargo.lock`.
-Java requires the repository secrets `MAVEN_CENTRAL_USERNAME`,
-`MAVEN_CENTRAL_PASSWORD`, and an unencrypted signing key in `GPG_SECRET_KEY`.
-Rust uses `CRATES_IO_TOKEN`. Releases skip Java and Rust packages whose package
-directories are absent.
+`connectorctl generate` writes the Java descriptor to
+`java/src/main/resources/META-INF/dex-connectors/<connector directory>/dex-connector.json`
+and the Rust descriptor to `rust/dex-connector.json`, relative to the connector.
+The Java resource path uses the directory below `connectors/`.
+Release validation requires package metadata for every declared language. A
+manual candidate request fails if the language package directory is missing.
+An automatic candidate dispatch may skip a missing directory and reports the
+skip in its log.
 
 The workflows build a wheel and source distribution or npm tarball, publish the archives
 to PyPI or npm, then upload those same files, SHA-256 digests, and
 `language-release.json` to GitHub Releases. A Python connector first release,
 whose PyPI project does not exist yet, reverses that order: it ships on GitHub
 first and PyPI receives the same archives later, as described below.
-Java releases publish to Maven Central and attach the runtime and sources JARs
-to GitHub. Rust releases publish to crates.io and attach the `.crate` archive.
+For Java, the trusted publisher verifies the POM coordinates, dependencies, and
+SCM metadata, then signs and uploads the built runtime JAR, sources JAR, POM,
+and Javadoc JAR through the Maven Central Portal. It uses
+`MAVEN_CENTRAL_USERNAME`, `MAVEN_CENTRAL_PASSWORD`, and the unencrypted signing
+key in `GPG_SECRET_KEY`. GitHub receives the runtime and sources JARs.
+For Rust, the trusted publisher uses `CRATES_IO_TOKEN` to upload the verified
+`.crate` to crates.io and attaches the same archive to GitHub.
 Both include the archive digests and `language-release.json`.
 `dry_run` builds and tests without creating a tag, release,
 registry upload, or catalog deployment.
@@ -673,7 +683,8 @@ has the Go schema with two additions and one omission:
   the registry package name or Maven coordinate. Both are absent from Go releases.
 - `modulePath` is omitted. A Go release always carries it.
 - `version` and `tag` are the language release's, such as `v0.5.0` and
-  `connectors/slack/typescript/v0.5.0`. They are not the Go version.
+  `connectors/slack/typescript/v0.5.0`. Java and Rust releases use the same
+  form with `/java/` and `/rust/` in the tag.
 - `manifest`, `manifestSha256`, `sourceSha`, `ui`, and `authMethods` are
   computed as for Go releases. `manifest.spec.languages.<language>` lists the
   operations and Triggers that the package implements.

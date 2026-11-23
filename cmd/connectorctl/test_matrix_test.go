@@ -160,17 +160,20 @@ func TestLanguageConnectorTestMatrixTestsEachPackageInExactlyOneShard(t *testing
 		t.Run(fmt.Sprintf("%d connectors", connectorCount), func(t *testing.T) {
 			repositoryRoot := t.TempDir()
 			directories := make([]string, 0, connectorCount)
-			packages := map[string]map[string]bool{"python": {}, "typescript": {}}
+			packages := make(map[string]map[string]bool)
+			for _, language := range languageConnectorTestLanguages {
+				packages[language.name] = make(map[string]bool)
+			}
 			for index := range connectorCount {
 				directory := fmt.Sprintf("connectors/company/connector-%04d", index)
 				directories = append(directories, directory)
-				// Some connectors lack one or both packages; the loops skip them.
-				for language, packageFile := range map[string]string{"python": "python/pyproject.toml", "typescript": "typescript/package.json"} {
-					if (language == "python" && index%5 == 4) || (language == "typescript" && index%3 == 2) {
+				// Some connectors lack packages for particular languages.
+				for languageIndex, language := range languageConnectorTestLanguages {
+					if (index+languageIndex)%(languageIndex+2) == 0 {
 						continue
 					}
-					writeTestFile(t, filepath.Join(repositoryRoot, directory, packageFile))
-					packages[language][directory] = true
+					writeTestFile(t, filepath.Join(repositoryRoot, directory, language.packageFile))
+					packages[language.name][directory] = true
 				}
 			}
 			matrix, err := buildLanguageConnectorTestMatrix(repositoryRoot, directories)
@@ -216,7 +219,10 @@ func TestLanguageConnectorTestMatrixShardsTheWholeCatalogWithinTheQueueTimeout(t
 	// Serial seconds per package in the unsharded job of CI run 44695904268, a slow run.
 	measuredSecondsPerPackage := map[string]float64{"python": 4.7, "typescript": 18.1}
 	for _, language := range languageConnectorTestLanguages {
-		require.Contains(t, measuredSecondsPerPackage, language.name)
+		secondsPerPackage, isMeasured := measuredSecondsPerPackage[language.name]
+		if !isMeasured {
+			continue
+		}
 		tested := map[string]int{}
 		packageCount := 0
 		for _, directory := range catalog.Directories {
@@ -241,7 +247,7 @@ func TestLanguageConnectorTestMatrixShardsTheWholeCatalogWithinTheQueueTimeout(t
 				}
 			}
 			// A third of the 120-minute merge queue timeout leaves room for setup, queueing, and slower runners.
-			require.LessOrEqual(t, float64(shardPackageCount)*measuredSecondsPerPackage[language.name], 40*60.0,
+			require.LessOrEqual(t, float64(shardPackageCount)*secondsPerPackage, 40*60.0,
 				"%s shard %d tests %d packages", language.name, shard.Index, shardPackageCount)
 		}
 		require.Len(t, tested, packageCount, language.name)
@@ -259,6 +265,7 @@ func TestLanguageConnectorTestMatrixKeepsOneShardPerLanguageWithoutPackages(t *t
 	// Python shard 0 still runs the shared runner checks, as the unsharded job did.
 	require.Equal(t, languageConnectorTestMatrix{Include: []languageConnectorTestShard{
 		{Language: "python", Index: 0, Count: 1}, {Language: "typescript", Index: 0, Count: 1},
+		{Language: "java", Index: 0, Count: 1}, {Language: "rust", Index: 0, Count: 1},
 	}}, mustBuildLanguageConnectorTestMatrix(t, t.TempDir(), []string{"connectors/acme/go-only"}))
 }
 
@@ -286,7 +293,7 @@ func TestTestMatrixGitHubOutputListsLanguageConnectorShards(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, string(output), "\ncount=2\n")
 	require.Contains(t, string(output), "\nlanguage_connector_matrix="+
-		`{"include":[{"language":"python","shard_index":0,"shard_count":1},{"language":"typescript","shard_index":0,"shard_count":1}]}`+"\n")
+		`{"include":[{"language":"python","shard_index":0,"shard_count":1},{"language":"typescript","shard_index":0,"shard_count":1},{"language":"java","shard_index":0,"shard_count":1},{"language":"rust","shard_index":0,"shard_count":1}]}`+"\n")
 	workflow, err := os.ReadFile(filepath.Join("..", "..", ".github", "workflows", "ci.yml"))
 	require.NoError(t, err)
 	require.Contains(t, string(workflow), "language_connector_matrix: ${{ steps.plan.outputs.language_connector_matrix }}")

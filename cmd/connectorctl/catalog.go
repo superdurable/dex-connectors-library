@@ -358,16 +358,6 @@ func releaseMatrixCommand(args []string) error {
 				continue
 			}
 			componentPath := entry.Directory + "/" + languageName
-			if languageName == "java" || languageName == "rust" {
-				hasDirectory, err := hasReleasePackageDirectory(repositoryRoot, componentPath)
-				if err != nil {
-					return err
-				}
-				if !hasDirectory {
-					fmt.Fprintf(os.Stderr, "::notice::%s is absent; skipping package release\n", componentPath)
-					continue
-				}
-			}
 			latestRelease := latestReleases[componentPath]
 			isPending, transitionErr := validateConnectorVersionTransition(latestRelease.Version, packageDeclaration.Version)
 			if transitionErr != nil {
@@ -952,7 +942,7 @@ func latestReachableConnectorReleases(repositoryRoot string) (map[string]reachab
 		if !connectorVersionPattern.MatchString(version) {
 			continue
 		}
-		if !strings.HasSuffix(directory, "/python") && !strings.HasSuffix(directory, "/typescript") && !strings.HasSuffix(directory, "/go") {
+		if path.Dir(directory) == "connectors" || !slices.Contains(connectorPackageLanguages, path.Base(directory)) {
 			directory += "/go"
 		}
 		current := latest[directory]

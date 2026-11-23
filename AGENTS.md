@@ -238,7 +238,7 @@ Every implementation plan includes Tests, Documentation, and UI/UX. Use
   `connectors/mysql`, `connectors/mongodb`, `connectors/microsoft/sql-server`, and
   `connectors/superdurable/email`: their native wire protocols cannot be recorded
   by the HTTP replay runner. Adding an exemption requires a tooling PR. For each
-  exempt Python and TypeScript package, replace replay with unit tests for every
+  exempt non-Go package, replace replay with unit tests for every
   Go-tested branch, retry, uncertain decision, and protocol-error classification,
   plus real protocol integration tests in CI service containers. Database ports
   use Go connector live-test scenarios and connection variables when available.
@@ -266,7 +266,13 @@ Every implementation plan includes Tests, Documentation, and UI/UX. Use
 - Language SDK tags use `sdkpython/vX.Y.Z`, `sdkts/vX.Y.Z`, `sdkjava/vX.Y.Z`, and `sdkrust/vX.Y.Z`. Connector language tags append `/<language>/vX.Y.Z` to the connector directory.
 - Java packages publish to Maven Central as `io.superdurable:dex-connector-<slug>` and Rust packages to crates.io as `dex-connector-<slug>`; `<slug>` is the connector directory below `connectors/` with `/` replaced by `-`.
 - The Release workflow alone releases the Connectors MCP server: it tags `connectorsmcp/vX.Y.Z` on a release commit off `main` when the linked connector set or `connectorsmcp/` changes. `connectorsmcp/release.yaml` sets the series and lists withdrawn connectors.
-- Release each language SDK before connectors that require it. New npm packages use the CI token for first publish; existing packages use trusted publishing when configured.
+- Release each language SDK before connectors that require it. New npm packages
+  use the scoped CI token for first publish, and existing packages use trusted
+  publishing when configured. First PyPI uploads use the account-scoped
+  `PYPI_TOKEN`. The trusted publisher uploads Java packages through the Maven
+  Central Portal with `MAVEN_CENTRAL_USERNAME`, `MAVEN_CENTRAL_PASSWORD`, and
+  `GPG_SECRET_KEY` for signing. It publishes Rust crates to crates.io with
+  `CRATES_IO_TOKEN`.
 - Connector modules require an exact published Connector Go SDK release.
 - Dex Server is backward compatible with every earlier Dex SDK release. Pin no
   Dex Server, Dex Go SDK, or Dex CLI version; record minimums instead. A
