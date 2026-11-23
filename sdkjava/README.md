@@ -69,9 +69,12 @@ deployment limits:
   other, so a Java process and a Go, Rust, or Python process must not refresh
   credentials from the same `connections.json`. On macOS they exclude each
   other.
-- One writer per local state directory. The local Trigger inbox and poll
-  cursor files belong to one application process, as in Go; a second store on
-  the same directory is refused.
+- Local state directories are for one application. The local Trigger inbox
+  and poll cursor files are read and compare-and-swapped under a directory
+  lock, so several Java stores on one directory do not lose events, but Go
+  limits its local store to one process and the Linux lock limit above
+  applies to mixed languages. A refresh driver that ignores interruption after
+  its timeout keeps the refresh lock for at most ten more seconds.
 
 Connector ports such as Gmail and Slack inherit these limits: their local mode
 is single-language per workspace.
