@@ -12,6 +12,7 @@ import io.superdurable.dexconnectors.sdk.RefreshingCredentialProvider;
 import io.superdurable.dexconnectors.sdk.RejectedCredentialRefreshingProvider;
 import io.superdurable.dexconnectors.sdk.Rfc3339NanoTimestamp;
 import io.superdurable.dexconnectors.sdk.providerhttp.AddressRefusalException;
+import io.superdurable.dexconnectors.sdk.providerhttp.ProviderTransportException;
 import java.io.IOException;
 import java.security.SecureRandom;
 import java.time.Duration;
@@ -30,7 +31,12 @@ import java.util.function.Function;
  * <p>A driver exchange runs for at most 30 seconds, then is interrupted and given 10 more
  * seconds. A driver that finishes in that grace window is a confirmed result and is stored. One
  * still running afterwards may already have rotated the refresh token, so the connection becomes
- * {@code REAUTHORIZATION_REQUIRED} instead of resubmitting that token.
+ * {@code REAUTHORIZATION_REQUIRED} instead of resubmitting that token. The same holds for any
+ * driver failure that does not prove the request never left the process (an address refusal or a
+ * {@code ProviderTransportException} that is provably not sent restores {@code READY}), and for an
+ * expired refresh admission without a result. Dex Web stores record this in a marker beside
+ * {@code connections.json}, so other stores on the file and restarted processes honor it until
+ * Dex Web saves a new authorization.
  *
  * <pre>{@code
  * RefreshingProjectCredentialProvider<GmailCredentials> provider = new RefreshingProjectCredentialProvider<>(
@@ -235,6 +241,10 @@ public final class RefreshingProjectCredentialProvider<C> extends ProjectCredent
             if ((expiresAt == null || expiresAt.isAfter(now)) && !driver.isRefreshRequired(state)) {
                 return credentials;
             }
+            // Another store or an earlier process may have rotated this token with an unknown outcome.
+            if (refreshLocker.isCurrentCredentialQuarantined(key)) {
+                throw new ReauthorizationRequiredException();
+            }
             // A rotated refresh token that cannot be written back would strand every other process.
             try {
                 refreshLocker.verifyCredentialWriteBack(key);
@@ -281,61 +291,91 @@ public final class RefreshingProjectCredentialProvider<C> extends ProjectCredent
     private C refreshAdmitted(
             final Admission admission, final CredentialMaterial prior, final CredentialRefreshDriver.State<C> state,
             final CredentialRefreshDriver<C> driver) throws IOException, InterruptedException {
-        final DriverRun<C> run = new DriverRun<>(driver, state);
         boolean wasInterrupted = false;
         try {
-            run.awaitCompletion(refreshTimeout);
-        } catch (InterruptedException interrupted) {
-            wasInterrupted = true;
-        }
-        if (!run.isDone()) {
-            run.cancel();
-            // Driver completion decides what is stored, so later interrupts do not shorten the grace.
-            wasInterrupted |= run.awaitCompletionUninterruptibly(driverExitGrace);
-        }
-        if (!run.isDone()) {
-            // The provider may already have rotated the refresh token, so it is never resubmitted.
-            finishExchange(admission, "REAUTHORIZATION_REQUIRED");
+            final DriverRun<C> run = new DriverRun<>(driver, state);
+            try {
+                run.awaitCompletion(refreshTimeout);
+            } catch (InterruptedException interrupted) {
+                wasInterrupted = true;
+            }
+            if (!run.isDone()) {
+                run.cancel();
+                // Driver completion decides what is stored, so later interrupts do not shorten the grace.
+                wasInterrupted |= run.awaitCompletionUninterruptibly(driverExitGrace);
+            }
+            if (!run.isDone()) {
+                // The provider may already have rotated the refresh token, so it is never resubmitted.
+                markOutcomeUnknown(admission);
+                throw new ReauthorizationRequiredException();
+            }
+            final CredentialRefreshDriver.Result<C> result;
+            try {
+                result = run.result();
+            } catch (ReauthorizationRequiredException error) {
+                markOutcomeUnknown(admission);
+                throw error;
+            } catch (Exception error) {
+                if (!isProvablyNoExchange(error)) {
+                    // A failure after the request may have left the process cannot prove the token survived.
+                    markOutcomeUnknown(admission);
+                    throw new ReauthorizationRequiredException();
+                }
+                finishExchange(admission, "READY");
+                if (error instanceof AddressRefusalException) {
+                    // An address refusal is a configuration fact the caller must see unchanged, as in Python.
+                    throw (AddressRefusalException) error;
+                }
+                throw new RefreshFailedException("project credential refresh failed; current authorization is kept");
+            }
+            final ObjectNode encoded;
+            try {
+                if (!result.getExpiresAt().isAfter(Instant.now())) {
+                    throw new IllegalArgumentException("refreshed credential has no future expiry");
+                }
+                encoded = encode.apply(result.getCredentials());
+                if (encoded == null || encoded.size() == 0) {
+                    throw new IllegalArgumentException("invalid private credential material");
+                }
+            } catch (RuntimeException error) {
+                // The provider answered, so it may have rotated the token this result cannot store.
+                markOutcomeUnknown(admission);
+                throw new ReauthorizationRequiredException();
+            }
+            // A driver that finished during the grace window is a confirmed rotation and is stored now.
+            commitRefresh(admission, new CredentialMaterial(encoded,
+                    Rfc3339NanoTimestamp.fromInstant(result.getExpiresAt()), prior.getAuthMethod()));
+            return result.getCredentials();
+        } finally {
             if (wasInterrupted) {
                 Thread.currentThread().interrupt();
             }
-            throw new ReauthorizationRequiredException();
         }
-        final CredentialRefreshDriver.Result<C> result;
-        try {
-            result = run.result();
-        } catch (ReauthorizationRequiredException error) {
-            finishExchange(admission, "REAUTHORIZATION_REQUIRED");
-            throw error;
-        } catch (InterruptedException | AddressRefusalException error) {
-            // An address refusal is a configuration fact the caller must see unchanged, as in Python.
-            finishExchange(admission, "READY");
-            throw error;
-        } catch (Exception error) {
-            finishExchange(admission, "READY");
-            throw new RefreshFailedException("project credential refresh failed; current authorization is kept");
+    }
+
+    /**
+     * Keeps the connection from exchanging the current refresh token again: the shared head becomes
+     * {@code REAUTHORIZATION_REQUIRED}, and a Dex Web store also records a marker every store and
+     * restarted process on the file honors.
+     */
+    private void markOutcomeUnknown(final Admission admission) throws IOException {
+        if (store.getObjects() instanceof DexWebObjectStore) {
+            ((DexWebObjectStore) store.getObjects()).quarantineCurrentCredential(key);
         }
-        if (!result.getExpiresAt().isAfter(Instant.now())) {
-            finishExchange(admission, "READY");
-            throw new RefreshFailedException("refreshed credential has no future expiry");
+        finishExchange(admission, "REAUTHORIZATION_REQUIRED");
+    }
+
+    /** Reports whether a driver failure proves no request reached the token endpoint. */
+    private static boolean isProvablyNoExchange(final Throwable error) {
+        if (error instanceof AddressRefusalException) {
+            return true;
         }
-        final ObjectNode encoded;
-        try {
-            encoded = encode.apply(result.getCredentials());
-            if (encoded == null || encoded.size() == 0) {
-                throw new IllegalArgumentException("invalid private credential material");
+        for (Throwable current = error; current != null; current = current.getCause()) {
+            if (current instanceof ProviderTransportException) {
+                return ((ProviderTransportException) current).isProvablyNotSent();
             }
-        } catch (RuntimeException error) {
-            finishExchange(admission, "READY");
-            throw new RefreshFailedException("refreshed credential encoding failed");
         }
-        // A driver that finished during the grace window is a confirmed rotation and is stored now.
-        commitRefresh(admission, new CredentialMaterial(encoded, Rfc3339NanoTimestamp.fromInstant(result.getExpiresAt()),
-                prior.getAuthMethod()));
-        if (wasInterrupted) {
-            Thread.currentThread().interrupt();
-        }
-        return result.getCredentials();
+        return false;
     }
 
     /**
@@ -423,7 +463,12 @@ public final class RefreshingProjectCredentialProvider<C> extends ProjectCredent
                 Thread.sleep(OBSERVER_POLL_MILLISECONDS);
                 return;
             }
-            finishExchange(admission, "AUTHORIZING".equals(admission.kind) ? "REAUTHORIZATION_REQUIRED" : "READY");
+            if ("AUTHORIZING".equals(admission.kind)) {
+                finishExchange(admission, "REAUTHORIZATION_REQUIRED");
+            } else {
+                // An expired refresh without a result may still have rotated the token at the provider.
+                markOutcomeUnknown(admission);
+            }
             return;
         }
         publishResult(admission, result);

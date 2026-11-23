@@ -16,9 +16,13 @@ import io.superdurable.dexconnectors.sdk.CallId;
 import io.superdurable.dexconnectors.sdk.ConnectionRef;
 import io.superdurable.dexconnectors.sdk.CredentialRefreshDriver;
 import io.superdurable.dexconnectors.sdk.Credentials;
+import io.superdurable.dexconnectors.sdk.Failure;
+import io.superdurable.dexconnectors.sdk.FailureKind;
 import io.superdurable.dexconnectors.sdk.OperationRef;
 import io.superdurable.dexconnectors.sdk.ReauthorizationRequiredException;
+import io.superdurable.dexconnectors.sdk.RetryException;
 import io.superdurable.dexconnectors.sdk.Rfc3339NanoTimestamp;
+import io.superdurable.dexconnectors.sdk.providerhttp.ProviderTransportException;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -154,6 +158,68 @@ class DexWebStoreConcurrencyTest {
         assertEquals(1, calls.get());
         assertEquals("REAUTHORIZATION_REQUIRED",
                 project.getConnections().readRecord(KEY).record.get("status").textValue());
+    }
+
+    @Test
+    void anUnknownOutcomeBlocksOtherStoresAndRestartsFromExchangingTheToken() throws Exception {
+        writeConnections(credentials("old", "rotating-1"), Instant.now().minusSeconds(60));
+        final LoadedProject first = ProjectConfigurationLoader.loadDexWebProject(connectionsPath);
+        final LoadedProject second = ProjectConfigurationLoader.loadDexWebProject(connectionsPath);
+        final AtomicInteger firstCalls = new AtomicInteger();
+        final CredentialRefreshDriver<ObjectNode> stuck =
+                lateDriver(Duration.ofSeconds(3), firstCalls, new AtomicBoolean(), "late", "rotating-2");
+        assertThrows(ReauthorizationRequiredException.class, () -> Credentials.resolveCredential(
+                shortTimeouts(first, Duration.ofMillis(200), Duration.ofMillis(300)), CALL, stuck));
+        final AtomicInteger otherCalls = new AtomicInteger();
+        final CredentialRefreshDriver<ObjectNode> counting =
+                lateDriver(Duration.ZERO, otherCalls, new AtomicBoolean(), "other", "rotating-3");
+        assertThrows(ReauthorizationRequiredException.class,
+                () -> Credentials.resolveCredential(provider(second), CALL, counting));
+        final LoadedProject restarted = ProjectConfigurationLoader.loadDexWebProject(connectionsPath);
+        assertThrows(ReauthorizationRequiredException.class,
+                () -> Credentials.resolveCredential(provider(restarted), CALL, counting));
+        assertEquals(0, otherCalls.get());
+        assertEquals(1, firstCalls.get());
+
+        // A new authorization saved by Dex Web lifts the block.
+        writeConnections(credentials("fresh", "rotating-9"), Instant.now().minusSeconds(60));
+        final LoadedProject reauthorized = ProjectConfigurationLoader.loadDexWebProject(connectionsPath);
+        assertEquals("other", Credentials.resolveCredential(provider(reauthorized), CALL, counting)
+                .get("access").textValue());
+        assertEquals(1, otherCalls.get());
+    }
+
+    @Test
+    void ambiguousDriverFailuresKeepTheTokenFromBeingExchangedAgain() throws Exception {
+        writeConnections(credentials("old", "rotating-1"), Instant.now().minusSeconds(60));
+        final LoadedProject project = ProjectConfigurationLoader.loadDexWebProject(connectionsPath);
+        final AtomicInteger calls = new AtomicInteger();
+        final CredentialRefreshDriver<ObjectNode> resetAfterSend = failingDriver(calls,
+                new ProviderTransportException(false, null, null));
+        assertThrows(ReauthorizationRequiredException.class,
+                () -> Credentials.resolveCredential(provider(project), CALL, resetAfterSend));
+        assertEquals("REAUTHORIZATION_REQUIRED",
+                project.getConnections().readRecord(KEY).record.get("status").textValue());
+        final LoadedProject other = ProjectConfigurationLoader.loadDexWebProject(connectionsPath);
+        assertThrows(ReauthorizationRequiredException.class,
+                () -> Credentials.resolveCredential(provider(other), CALL, resetAfterSend));
+        assertEquals(1, calls.get());
+    }
+
+    @Test
+    void provablyUnsentFailuresRestoreReadyAndAllowAnotherExchange() throws Exception {
+        writeConnections(credentials("old", "rotating-1"), Instant.now().minusSeconds(60));
+        final LoadedProject project = ProjectConfigurationLoader.loadDexWebProject(connectionsPath);
+        final AtomicInteger calls = new AtomicInteger();
+        final CredentialRefreshDriver<ObjectNode> notSent = failingDriver(calls,
+                new RetryException(new Failure(FailureKind.TRANSPORT, "sample", "refreshCredentials", "not sent"))
+                        .initCause(new ProviderTransportException(true, null, null)));
+        assertThrows(RefreshFailedException.class,
+                () -> Credentials.resolveCredential(provider(project), CALL, notSent));
+        assertEquals("READY", project.getConnections().readRecord(KEY).record.get("status").textValue());
+        assertThrows(RefreshFailedException.class,
+                () -> Credentials.resolveCredential(provider(project), CALL, notSent));
+        assertEquals(2, calls.get());
     }
 
     @Test
@@ -304,6 +370,20 @@ class DexWebStoreConcurrencyTest {
                 }
                 hasExited.set(true);
                 return new Result<>(credentials(access, refresh), Instant.now().plusSeconds(3600));
+            }
+        };
+    }
+
+    /** A driver that fails every exchange with the given error. */
+    private static CredentialRefreshDriver<ObjectNode> failingDriver(final AtomicInteger calls, final Throwable error) {
+        return new ExpiryOnlyDriver() {
+            @Override
+            public Result<ObjectNode> refresh(final State<ObjectNode> state) throws IOException {
+                calls.incrementAndGet();
+                if (error instanceof IOException) {
+                    throw (IOException) error;
+                }
+                throw (RuntimeException) error;
             }
         };
     }
