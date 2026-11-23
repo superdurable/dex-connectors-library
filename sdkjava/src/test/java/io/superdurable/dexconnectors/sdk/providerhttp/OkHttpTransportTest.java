@@ -120,6 +120,126 @@ class OkHttpTransportTest {
     }
 
     @Test
+    void neverResendsAfterARetryAfterZeroServiceUnavailable() throws Exception {
+        final AtomicInteger requests = new AtomicInteger();
+        final HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/busy", exchange -> {
+            requests.incrementAndGet();
+            readAll(exchange.getRequestBody());
+            exchange.getResponseHeaders().add("Retry-After", "0");
+            final byte[] payload = "busy".getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(503, payload.length);
+            try (OutputStream output = exchange.getResponseBody()) {
+                output.write(payload);
+            }
+        });
+        server.start();
+        try {
+            final ProviderHttpClient client = new ProviderHttpClient(Duration.ofSeconds(10), AddressPolicy.UNRESTRICTED);
+            final String url = "http://127.0.0.1:" + server.getAddress().getPort() + "/busy";
+            final ProviderHttpResponse withBody = client.send(ProviderHttpRequest.newBuilder("POST", url)
+                    .body("{}".getBytes(StandardCharsets.UTF_8)).build());
+            assertEquals(503, withBody.getStatusCode());
+            assertEquals("0", withBody.getHeaders().first("retry-after"));
+            assertArrayEquals("busy".getBytes(StandardCharsets.UTF_8), withBody.readBoundedBody(1024));
+            assertEquals(1, requests.get());
+            final ProviderHttpResponse withoutBody = client.send(ProviderHttpRequest.newBuilder("GET", url).build());
+            assertEquals(503, withoutBody.getStatusCode());
+            withoutBody.close();
+            assertEquals(2, requests.get());
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
+    void cancellationAfterTheLastActiveCheckWritesNoRequestBytes() throws Exception {
+        try (java.net.ServerSocket listener = new java.net.ServerSocket(0, 1, java.net.InetAddress.getByName("127.0.0.1"))) {
+            final AtomicInteger receivedBytes = new AtomicInteger();
+            final Thread acceptor = new Thread(() -> {
+                try (java.net.Socket accepted = listener.accept()) {
+                    accepted.setSoTimeout(5_000);
+                    final InputStream input = accepted.getInputStream();
+                    final byte[] buffer = new byte[1024];
+                    int read;
+                    while ((read = input.read(buffer)) >= 0) {
+                        receivedBytes.addAndGet(read);
+                    }
+                } catch (IOException ended) {
+                    // The client closed the connection; the count is the assertion.
+                }
+            });
+            acceptor.start();
+            final CountDownLatch paused = new CountDownLatch(1);
+            final CountDownLatch release = new CountDownLatch(1);
+            ProviderHttpClient.afterActiveCheckForTests = () -> {
+                paused.countDown();
+                awaitIgnoringInterrupts(release);
+            };
+            final FakeContext context = new FakeContext("flow-42", "step-execution-22", 1, null);
+            final Fence fence = new Fence(Call.create(CallId.of("3eecb553-1a08-5d1d-ba0e-82079db12260"),
+                    new ConnectionRef("sample", "main"), new OperationRef("sample", "createItem"), context.context(), 1),
+                    Duration.ofSeconds(30), 0.5, 1);
+            fence.decide();
+            final ProviderHttpClient client = new ProviderHttpClient(Duration.ofSeconds(30), AddressPolicy.UNRESTRICTED);
+            final CountDownLatch sendReturned = new CountDownLatch(1);
+            final Thread handler = new Thread(() -> {
+                try {
+                    fence.dispatch(writeDeadline -> {
+                        try {
+                            return client.send(ProviderHttpRequest.newBuilder("GET",
+                                    "http://127.0.0.1:" + listener.getLocalPort() + "/items").build());
+                        } finally {
+                            sendReturned.countDown();
+                        }
+                    });
+                } catch (InterruptedException | IOException expected) {
+                    // Cancellation ends the dispatch; the provider must see no bytes.
+                }
+            });
+            handler.start();
+            assertTrue(paused.await(5, TimeUnit.SECONDS));
+            context.requestCancellation();
+            handler.join(5_000);
+            assertFalse(handler.isAlive());
+            release.countDown();
+            assertTrue(sendReturned.await(5, TimeUnit.SECONDS));
+            acceptor.join(10_000);
+            assertEquals(0, receivedBytes.get());
+        } finally {
+            ProviderHttpClient.afterActiveCheckForTests = null;
+        }
+    }
+
+    @Test
+    void refusesSdkManagedHeadersAndNeverTruncatesABudgetToUnlimited() throws Exception {
+        final ProviderHttpClient client = new ProviderHttpClient(Duration.ofSeconds(5), AddressPolicy.UNRESTRICTED);
+        for (String name : new String[] {"Host", "content-length", "Transfer-Encoding", "Connection", "Upgrade"}) {
+            assertThrows(IllegalArgumentException.class, () -> client.send(ProviderHttpRequest.newBuilder("POST",
+                    "https://provider.invalid/items").header(name, "1").body(new byte[] {1}).build()), name);
+        }
+        assertEquals(1, ProviderHttpClient.remainingMillis(System.nanoTime() + 500_000));
+        assertThrows(ProviderTransportException.class, () -> ProviderHttpClient.remainingMillis(System.nanoTime() - 1));
+    }
+
+    private static void awaitIgnoringInterrupts(final CountDownLatch latch) {
+        boolean isInterrupted = false;
+        while (true) {
+            try {
+                if (latch.await(10, TimeUnit.SECONDS)) {
+                    break;
+                }
+            } catch (InterruptedException ignored) {
+                // Simulates a send thread that keeps going after the Fence interrupts it.
+                isInterrupted = true;
+            }
+        }
+        if (isInterrupted) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    @Test
     void readsChunkedAndFixedBodiesAndNeverFollowsRedirects() throws Exception {
         final HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         server.createContext("/chunked", exchange -> {

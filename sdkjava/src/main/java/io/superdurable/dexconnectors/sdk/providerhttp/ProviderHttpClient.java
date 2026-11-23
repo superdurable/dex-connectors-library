@@ -17,10 +17,19 @@ import java.security.GeneralSecurityException;
 import java.security.KeyStore;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Pattern;
 import javax.net.SocketFactory;
@@ -29,20 +38,25 @@ import javax.net.ssl.TrustManager;
 import javax.net.ssl.TrustManagerFactory;
 import javax.net.ssl.X509TrustManager;
 import okhttp3.Call;
+import okhttp3.ConnectionPool;
 import okhttp3.Dns;
 import okhttp3.EventListener;
 import okhttp3.Headers;
 import okhttp3.HttpUrl;
 import okhttp3.Interceptor;
 import okhttp3.OkHttpClient;
+import okhttp3.Protocol;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
+import okhttp3.ResponseBody;
 
 /**
  * Redirect-safe provider HTTP client with an optional address policy, built on OkHttp.
  *
- * <p>The client never follows redirects, never caches, and never retries a request. Method names,
+ * <p>The client never follows redirects, never caches, and never retries a request: a response
+ * OkHttp would follow up, such as a 503 with {@code Retry-After: 0}, is returned to the caller
+ * instead, with a body of at most 1 MiB. Method names,
  * header names, and header values are validated before any DNS lookup or dial, and the request
  * URL is the ASCII form of the URI. The host is resolved once before the call: a restricted
  * {@link AddressPolicy} checks every answer and dials only those addresses, directly, without any
@@ -64,8 +78,20 @@ import okhttp3.Response;
 public final class ProviderHttpClient implements ProviderHttpTransport {
     private static final Pattern TOKEN = Pattern.compile("^[!#$%&'*+.^_`|~0-9A-Za-z-]+$");
 
+    private static final long MAXIMUM_FOLLOW_UP_BODY_BYTES = 1 << 20;
+    private static final Set<String> SDK_MANAGED_HEADERS = new HashSet<>(Arrays.asList(
+            "host", "content-length", "transfer-encoding", "connection", "keep-alive", "proxy-connection",
+            "te", "trailer", "upgrade", "expect"));
+    private static final ExecutorService DNS_LOOKUPS = Executors.newCachedThreadPool(runnable -> {
+        final Thread thread = new Thread(runnable, "dex-connector-provider-dns");
+        thread.setDaemon(true);
+        return thread;
+    });
+
     // Tests pause here to cancel between the connection and the first request byte.
     static volatile Runnable beforeRequestWriteForTests;
+    // Tests pause here, after the last active check and before the first request byte.
+    static volatile Runnable afterActiveCheckForTests;
 
     private final Duration requestTimeout;
     private final AddressPolicy addressPolicy;
@@ -94,7 +120,9 @@ public final class ProviderHttpClient implements ProviderHttpTransport {
                 .cache(null)
                 .sslSocketFactory(HttpsURLConnection.getDefaultSSLSocketFactory(), defaultTrustManager());
         if (addressPolicy != AddressPolicy.UNRESTRICTED) {
-            builder.proxy(Proxy.NO_PROXY).socketFactory(new DirectSocketFactory());
+            // Each call checks its own DNS answers, so its connection cannot be reused; keep none idle.
+            builder.proxy(Proxy.NO_PROXY).socketFactory(new DirectSocketFactory())
+                    .connectionPool(new ConnectionPool(0, 1, TimeUnit.SECONDS));
         }
         this.baseClient = builder.build();
     }
@@ -160,18 +188,27 @@ public final class ProviderHttpClient implements ProviderHttpTransport {
         final Headers headers = validatedHeaders(request.getHeaders());
         final RequestBody body = requestBody(method, request.getBody());
         DispatchObservation.clearResponseStatus();
-        final Duration timeout = boundByWriteDeadline(request.getTimeout() == null ? requestTimeout : request.getTimeout());
+        // One monotonic budget from here covers DNS, connect, request, and response.
+        final long budgetDeadlineNanos = System.nanoTime()
+                + boundByWriteDeadline(request.getTimeout() == null ? requestTimeout : request.getTimeout()).toNanos();
+        final Dns dns = policyDns(url.host(), scheme, budgetDeadlineNanos);
+        final long remainingMillis = remainingMillis(budgetDeadlineNanos);
         final SendProgress progress = new SendProgress();
-        final OkHttpClient client = baseClient.newBuilder()
-                .dns(policyDns(url.host(), scheme))
-                .callTimeout(timeout.toMillis(), TimeUnit.MILLISECONDS)
-                .connectTimeout(timeout.toMillis(), TimeUnit.MILLISECONDS)
-                .readTimeout(timeout.toMillis(), TimeUnit.MILLISECONDS)
-                .writeTimeout(timeout.toMillis(), TimeUnit.MILLISECONDS)
+        final OkHttpClient.Builder builder = baseClient.newBuilder()
+                .dns(dns)
+                .callTimeout(remainingMillis, TimeUnit.MILLISECONDS)
+                .connectTimeout(remainingMillis, TimeUnit.MILLISECONDS)
+                .readTimeout(remainingMillis, TimeUnit.MILLISECONDS)
+                .writeTimeout(remainingMillis, TimeUnit.MILLISECONDS)
                 .eventListener(progress)
-                .addNetworkInterceptor(new DispatchActiveCheck())
-                .build();
-        final Call call = client.newCall(new Request.Builder().url(url).headers(headers).method(method, body).build());
+                .addNetworkInterceptor(new SingleNetworkRequest())
+                .addNetworkInterceptor(new DispatchActiveCheck());
+        if (DispatchObservation.currentWriteDeadline() != null) {
+            // An HTTP/2 stream can write HEADERS after cancel() returns; HTTP/1.1 cancel closes the socket first.
+            builder.protocols(Collections.singletonList(Protocol.HTTP_1_1));
+        }
+        final Call call = builder.build().newCall(
+                new Request.Builder().url(url).headers(headers).method(method, body).build());
         // The Fence cancels the call itself, before any application abort action, at its deadline or on Dex cancellation.
         DispatchObservation.registerTransportCancellation(call::cancel);
         final Response response;
@@ -179,6 +216,9 @@ public final class ProviderHttpClient implements ProviderHttpTransport {
             response = call.execute();
         } catch (DispatchInactiveException refused) {
             throw new ProviderTransportException(true, null, null);
+        } catch (FollowUpBlockedException blocked) {
+            DispatchObservation.recordResponseStatus(blocked.firstResponse.getStatusCode());
+            return blocked.firstResponse;
         } catch (IOException error) {
             throw new ProviderTransportException(!progress.hasStartedRequest(), null, null);
         }
@@ -193,14 +233,27 @@ public final class ProviderHttpClient implements ProviderHttpTransport {
      *
      * <p>An unrestricted client resolves through the system, or not at all behind an HTTP proxy.
      */
-    private Dns policyDns(final String host, final String scheme) throws IOException {
+    private Dns policyDns(final String host, final String scheme, final long budgetDeadlineNanos) throws IOException {
         if (addressPolicy == AddressPolicy.UNRESTRICTED) {
             return Dns.SYSTEM;
         }
+        // JVM DNS cannot be cancelled, so the wait for it is bounded by the request budget instead.
+        final Future<List<InetAddress>> lookup =
+                DNS_LOOKUPS.submit(() -> AddressPolicyRules.resolveCheckedAddresses(host, scheme, addressPolicy));
         final List<InetAddress> addresses;
         try {
-            addresses = AddressPolicyRules.resolveCheckedAddresses(host, scheme, addressPolicy);
-        } catch (UnknownHostException error) {
+            addresses = lookup.get(Math.max(0, budgetDeadlineNanos - System.nanoTime()), TimeUnit.NANOSECONDS);
+        } catch (TimeoutException expired) {
+            lookup.cancel(true);
+            throw new ProviderTransportException(true, null, null);
+        } catch (InterruptedException interrupted) {
+            lookup.cancel(true);
+            Thread.currentThread().interrupt();
+            throw new ProviderTransportException(true, null, null);
+        } catch (ExecutionException failed) {
+            if (failed.getCause() instanceof AddressRefusalException) {
+                throw (AddressRefusalException) failed.getCause();
+            }
             throw new ProviderTransportException(true, null, null);
         }
         return hostname -> {
@@ -218,6 +271,10 @@ public final class ProviderHttpClient implements ProviderHttpTransport {
             final String value = header.getValue();
             if (name == null || !TOKEN.matcher(name).matches()) {
                 throw new IllegalArgumentException("provider request header name is invalid");
+            }
+            // The transport derives these from the validated URL and the actual body.
+            if (SDK_MANAGED_HEADERS.contains(name.toLowerCase(Locale.ROOT))) {
+                throw new IllegalArgumentException("provider request header " + name + " is managed by the SDK");
             }
             if (value == null || !isHeaderValue(value)) {
                 throw new IllegalArgumentException("provider request header value is invalid");
@@ -278,6 +335,20 @@ public final class ProviderHttpClient implements ProviderHttpTransport {
         return remaining.compareTo(timeout) < 0 ? remaining : timeout;
     }
 
+    /**
+     * Returns the positive whole milliseconds left in the budget, rounding a sub-millisecond rest up.
+     *
+     * @throws ProviderTransportException as provably not sent once the budget is spent
+     */
+    static long remainingMillis(final long budgetDeadlineNanos) throws ProviderTransportException {
+        final long remainingNanos = budgetDeadlineNanos - System.nanoTime();
+        if (remainingNanos <= 0) {
+            throw new ProviderTransportException(true, null, null);
+        }
+        // OkHttp reads zero as no timeout, so a positive rest is never truncated to it.
+        return Math.max(1, TimeUnit.NANOSECONDS.toMillis(remainingNanos + 999_999));
+    }
+
     private static X509TrustManager defaultTrustManager() {
         try {
             final TrustManagerFactory factory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
@@ -304,7 +375,51 @@ public final class ProviderHttpClient implements ProviderHttpTransport {
             if (!DispatchObservation.isActive()) {
                 throw new DispatchInactiveException();
             }
+            final Runnable pauseAfterCheck = afterActiveCheckForTests;
+            if (pauseAfterCheck != null) {
+                pauseAfterCheck.run();
+            }
             return chain.proceed(chain.request());
+        }
+    }
+
+    /**
+     * Lets a call reach the network once; OkHttp's response follow-ups, such as a 503 with
+     * {@code Retry-After: 0}, would otherwise send the request again.
+     */
+    private static final class SingleNetworkRequest implements Interceptor {
+        private ProviderHttpResponse firstResponse;
+
+        @Override
+        public Response intercept(final Chain chain) throws IOException {
+            if (firstResponse != null) {
+                // The caller gets the original response and decides about another send through Dex.
+                throw new FollowUpBlockedException(firstResponse);
+            }
+            final Response response = chain.proceed(chain.request());
+            if (isFollowUpCandidate(response.code())) {
+                final ResponseBody peeked = response.peekBody(MAXIMUM_FOLLOW_UP_BODY_BYTES);
+                firstResponse = ProviderHttpResponse.buffered(response.code(),
+                        new ProviderHttpHeaders(response.headers().toMultimap()), peeked.bytes());
+            }
+            return response;
+        }
+
+        private static boolean isFollowUpCandidate(final int statusCode) {
+            return statusCode == 401 || statusCode == 407 || statusCode == 408 || statusCode == 421
+                    || statusCode == 503 || (statusCode >= 300 && statusCode < 400);
+        }
+    }
+
+    /** OkHttp tried to send a follow-up request that the SDK refuses. */
+    private static final class FollowUpBlockedException extends IOException {
+        private static final long serialVersionUID = 1L;
+
+        private final transient ProviderHttpResponse firstResponse;
+
+        private FollowUpBlockedException(final ProviderHttpResponse firstResponse) {
+            super("provider response follow-up refused");
+            this.firstResponse = firstResponse;
         }
     }
 
