@@ -329,6 +329,11 @@ impl<'attempt> Call<'attempt> {
         self.step_attempt.map(StepAttemptAccess::attempt_number)
     }
 
+    /// Returns the Dex Flow ID, or `None` outside a Step.
+    pub fn flow_id(&self) -> Option<&str> {
+        self.step_attempt.map(StepAttemptAccess::attempt_flow_id)
+    }
+
     /// Returns a copy with another idempotency key, keeping the Step attempt.
     pub fn with_idempotency_key(&self, idempotency_key: IdempotencyKey) -> Call<'attempt> {
         Call {
