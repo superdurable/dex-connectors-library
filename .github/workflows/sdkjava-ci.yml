@@ -1,0 +1,42 @@
+name: Java SDK CI
+
+on:
+  pull_request:
+    paths:
+      - 'sdkjava/**'
+      - 'conformance/*.json'
+      - '.github/workflows/sdkjava-ci.yml'
+  merge_group:
+  push:
+    branches: [main]
+    paths:
+      - 'sdkjava/**'
+      - 'conformance/*.json'
+      - '.github/workflows/sdkjava-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sdkjava-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sdkjava:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: sdkjava
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v5
+        with:
+          distribution: zulu
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Test and check Javadoc
+        run: ./gradlew test javadoc --no-daemon
