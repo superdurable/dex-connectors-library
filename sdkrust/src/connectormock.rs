@@ -1153,7 +1153,11 @@ impl crate::step_attempt::StepAttemptAccess for ReplayStepAttempt {
         self.previous_heartbeat.clone()
     }
 
-    fn record_heartbeat_value(&self, value: JsonValue) -> Result<(), String> {
+    fn record_heartbeat_value(
+        &self,
+        value: crate::singledispatch::markers::CheckpointHeartbeat,
+    ) -> Result<(), String> {
+        let value = serde_json::to_value(value).map_err(|error| error.to_string())?;
         *self
             .written_heartbeat
             .lock()

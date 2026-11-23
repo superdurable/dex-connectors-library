@@ -40,6 +40,10 @@ impl StepAttemptAccess for FakeStepAttempt {
         self.attempt
     }
 
+    fn attempt_flow_id(&self) -> &str {
+        "flow-42"
+    }
+
     fn has_progress_stream(&self) -> bool {
         false
     }
