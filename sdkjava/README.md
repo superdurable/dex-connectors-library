@@ -163,10 +163,13 @@ public class ItemLookupFlow implements Flow<String> {
 }
 ```
 
-Register the Flow, run a Worker, and start it with a Client exactly as in the
-[Dex Java guide](https://docs.superdurable.io/reference/java/). The runnable
-version of this example, including a Mutation used by two Steps of one Flow, is
-[`ConnectorStepsDexIntegrationTest`](src/test/java/io/superdurable/dexconnectors/sdk/integration/ConnectorStepsDexIntegrationTest.java).
+The README snippets are excerpts of the compiled
+[`ItemLookupExample`](src/test/java/io/superdurable/dexconnectors/sdk/examples/ItemLookupExample.java),
+where the classes are nested. Register the Flow, run a Worker, and start it with
+a Client exactly as in the [Dex Java guide](https://docs.superdurable.io/reference/java/).
+[`ConnectorStepsDexIntegrationTest`](src/test/java/io/superdurable/dexconnectors/sdk/integration/ConnectorStepsDexIntegrationTest.java)
+runs the same shape in real Dex Flows, including a Mutation used by two Steps of
+one Flow.
 
 Step options come from the operation's `StepDefaults`; the default Execute retry
 policy is one-second initial delay, coefficient 2, five-minute maximum interval,
@@ -180,19 +183,30 @@ A Mutation whose `execution.repeatOnUnknown` is `limited` or `unsafe` fences its
 provider write so an unknown outcome is never resent beyond the cap:
 
 ```java
-Fence fence = new Fence(call, Duration.ofSeconds(15), Fence.DEFAULT_WRITE_WINDOW_FRACTION, call.getMaxSends());
-DispatchDecision decision = fence.decide();
-switch (decision.getKind()) {
-    case SEND_ALLOWED:
-    case READ_BACK_THEN_RESEND_ALLOWED: {
-        // After READ_BACK_THEN_RESEND_ALLOWED, read back first when the provider supports it.
-        String id = fence.dispatch(writeDeadline -> client.create(item, writeDeadline));
-        fence.recordProviderId(id);
-        return MutationAttempt.branch("created", id, Receipt.newBuilder().providerObjectId(id).build());
+@Override
+public MutationAttempt<String> invoke(final Call call, final String item) throws InterruptedException {
+    final Fence fence = new Fence(call, Duration.ofSeconds(15), Fence.DEFAULT_WRITE_WINDOW_FRACTION,
+            call.getMaxSends());
+    final DispatchDecision decision = fence.decide();
+    switch (decision.getKind()) {
+        case SEND_ALLOWED:
+        case READ_BACK_THEN_RESEND_ALLOWED: {
+            // After READ_BACK_THEN_RESEND_ALLOWED, read back first when the provider supports it.
+            final String id;
+            try {
+                id = fence.dispatch(writeDeadline -> client.create(item, call.getIdempotencyKey(), writeDeadline));
+            } catch (IOException error) {
+                return MutationAttempt.retry(new Failure(FailureKind.TRANSPORT, "sample", "createItem",
+                        "item write failed"));
+            }
+            fence.recordProviderId(id);
+            return MutationAttempt.branch("created", id, Receipt.newBuilder().providerObjectId(id).build());
+        }
+        default:
+            // Read back here; select uncertain only when the write cannot be confirmed.
+            return MutationAttempt.uncertain(null, new Failure(FailureKind.TRANSPORT, "sample", "createItem",
+                    "item write outcome cannot be confirmed"), Receipt.empty());
     }
-    default:
-        // Read back; select uncertain only when the write cannot be confirmed.
-        return MutationAttempt.uncertain(null, failure, Receipt.empty());
 }
 ```
 

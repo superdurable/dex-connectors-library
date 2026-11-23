@@ -107,7 +107,8 @@ public final class DexTriggerTargets {
      * TypeScript targets this target cannot ask Dex Server to apply the RPC at most once per event:
      * a durable inbox replay, a provider retry, or a retry after a timeout that hid an applied RPC
      * runs the handler again. Make the handler idempotent by event, for example by recording handled
-     * event IDs in an Attribute map.
+     * event IDs in an Attribute map. It stays package-private until the Dex Java Client can send an
+     * RPC request ID, so applications cannot depend on the weaker at-least-once behavior.
      *
      * <p>It throws {@link UndeliverableTriggerException} when the Flow was never started or has
      * closed, when the handler throws {@link UndeliverableTriggerException}, when a value cannot be
@@ -126,7 +127,7 @@ public final class DexTriggerTargets {
      * @return the target
      * @throws IllegalArgumentException when a required argument is missing
      */
-    public static <P, F, I> TriggerTarget<P> newDexRpcTriggerTarget(
+    static <P, F, I> TriggerTarget<P> newDexRpcTriggerTarget(
             final Client client, final Class<F> flowClass, final DexRpcInvocation<F, I> invocation,
             final TriggerFilter<P> acceptsEvent, final FlowIdResolver<P> resolveFlowId,
             final TriggerInputMapper<P, I> mapToRpcInput, final TriggerLogger logger) {

@@ -16,7 +16,7 @@ import io.superdurable.dex.Client;
  * @param <F> the registered Flow class that declares the RPC
  * @param <I> the RPC input type
  */
-public interface DexRpcInvocation<F, I> {
+interface DexRpcInvocation<F, I> {
     /**
      * Invokes the RPC on the stub's Flow.
      *
