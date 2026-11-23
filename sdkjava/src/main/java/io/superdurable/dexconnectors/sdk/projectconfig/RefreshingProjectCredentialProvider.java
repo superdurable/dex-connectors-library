@@ -104,6 +104,8 @@ public final class RefreshingProjectCredentialProvider<C> extends ProjectCredent
         if (shared != null) {
             return decodeSharedMaterial(shared.resolve(call.getId().value()));
         }
+        final DexWebObjectStore refreshLocker = store.getObjects() instanceof DexWebObjectStore
+                ? (DexWebObjectStore) store.getObjects() : null;
         while (true) {
             final ObjectNode record = store.readRecord(key).record;
             final String status = ProjectConfigurationRules.text(record, "status");
@@ -118,7 +120,17 @@ public final class RefreshingProjectCredentialProvider<C> extends ProjectCredent
                     }
                 }
                 try {
-                    recoverOrWait(record);
+                    if (refreshLocker == null) {
+                        recoverOrWait(record);
+                    } else {
+                        // Publishing a recovered credential writes the file, so it holds the refresh lock.
+                        final DexWebRefreshLock.Held held = refreshLocker.lockCredentialRefresh();
+                        try {
+                            recoverOrWait(store.readRecord(key).record);
+                        } finally {
+                            held.close();
+                        }
+                    }
                 } catch (ObjectConflictException conflict) {
                     // Another replica moved the head first; read it again.
                 }
@@ -134,6 +146,13 @@ public final class RefreshingProjectCredentialProvider<C> extends ProjectCredent
             final CredentialRefreshDriver.State<C> state = new CredentialRefreshDriver.State<>(credentials, expiresAt, now);
             if ((expiresAt == null || expiresAt.isAfter(now)) && !driver.isRefreshRequired(state)) {
                 return credentials;
+            }
+            if (refreshLocker != null) {
+                final C refreshed = refreshWhileLocked(refreshLocker, driver);
+                if (refreshed != null) {
+                    return refreshed;
+                }
+                continue;
             }
             final Admission admission;
             try {
@@ -172,6 +191,50 @@ public final class RefreshingProjectCredentialProvider<C> extends ProjectCredent
             throw new RejectedCredentialNotRefreshedException("authentication rejection does not prove credential expiry");
         }
         return resolveWithRefresh(call, driver);
+    }
+
+    /**
+     * Rereads the record under the Dex Web refresh lock, adopting another process's write-back
+     * instead of refreshing again, and proves the write-back before any provider request.
+     *
+     * @return the usable credential, or {@code null} to read the record again
+     */
+    private C refreshWhileLocked(final DexWebObjectStore refreshLocker, final CredentialRefreshDriver<C> driver)
+            throws IOException, InterruptedException {
+        final DexWebRefreshLock.Held held = refreshLocker.lockCredentialRefresh();
+        try {
+            final ObjectNode record = store.readRecord(key).record;
+            if (!"READY".equals(ProjectConfigurationRules.text(record, "status"))) {
+                return null;
+            }
+            final CredentialMaterial material = store.readMaterial(key, record);
+            final C credentials = decodeMaterial(material);
+            final Instant now = Instant.now();
+            final Instant expiresAt = material.getExpiresAtInstant();
+            final CredentialRefreshDriver.State<C> state = new CredentialRefreshDriver.State<>(credentials, expiresAt, now);
+            if ((expiresAt == null || expiresAt.isAfter(now)) && !driver.isRefreshRequired(state)) {
+                return credentials;
+            }
+            // A rotated refresh token that cannot be written back would strand every other process.
+            try {
+                refreshLocker.verifyCredentialWriteBack(key);
+            } catch (FileChangedSinceReadException changed) {
+                return null;
+            } catch (ConnectionRemovedFromFileException removed) {
+                throw removed;
+            } catch (IOException | RuntimeException error) {
+                throw new RefreshFailedException("project credential refresh failed: the credential cannot be written back");
+            }
+            final Admission admission;
+            try {
+                admission = admitRefresh(record, now);
+            } catch (ObjectConflictException conflict) {
+                return null;
+            }
+            return refreshAdmitted(admission, material, state, driver);
+        } finally {
+            held.close();
+        }
     }
 
     Admission admitRefresh(final ObjectNode record, final Instant now) throws IOException {

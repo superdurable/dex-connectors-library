@@ -7,27 +7,36 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.superdurable.dexconnectors.sdk.Rfc3339NanoTimestamp;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
  * Project object store backed by process memory and Dex Web's owner-only {@code connections.json}.
  *
- * <p>Connection head reads adopt credentials Dex Web saved. A successful head write publishes
- * refreshed material back to the file only when Dex Web has not saved another credential since,
- * matching Go's process-local synchronization. Trigger inboxes live in private files beside the
- * connections file. Thread-safe.
+ * <p>Connection head reads adopt credentials Dex Web saved, and fail with
+ * {@link ConnectionRemovedFromFileException} once the connection is no longer listed in the file,
+ * judged from the same read. A successful head write publishes refreshed material back to the
+ * file only when Dex Web has not saved another credential since. A credential refresh holds the
+ * cross-process {@code connections.json.lock}, rereads the file, and proves that the write-back
+ * can succeed before the provider exchange, as Go's SDK does; see {@link DexWebRefreshLock} for
+ * platform coverage. Trigger inboxes live in private files beside the connections file.
+ * Thread-safe.
  */
 public final class DexWebObjectStore implements ObjectStore {
     private static final Logger LOG = Logger.getLogger(DexWebObjectStore.class.getName());
 
     private final Path connectionsPath;
+    private final Scope scope;
     private final LocalFileObjectStore inboxes;
     private final InMemoryObjectStore memory = new InMemoryObjectStore();
     private final ConnectionStore connections;
+    private final DexWebRefreshLock refreshLock;
     private final Map<ConnectionKey, String> importedDigests = new HashMap<>();
 
     /**
@@ -37,12 +46,14 @@ public final class DexWebObjectStore implements ObjectStore {
      * @param scope the local project scope
      */
     public DexWebObjectStore(final Path connectionsPath, final Scope scope) {
-        if (connectionsPath == null) {
-            throw new IllegalArgumentException("Dex Web connections path is required");
+        if (connectionsPath == null || scope == null) {
+            throw new IllegalArgumentException("Dex Web connections path and scope are required");
         }
         this.connectionsPath = connectionsPath.toAbsolutePath();
+        this.scope = scope;
         this.inboxes = new LocalFileObjectStore(this.connectionsPath.getParent().resolve("trigger-inboxes"));
         this.connections = new ConnectionStore(memory, scope);
+        this.refreshLock = new DexWebRefreshLock(this.connectionsPath, DexWebRefreshLock.MAXIMUM_WAIT);
     }
 
     /**
@@ -65,7 +76,7 @@ public final class DexWebObjectStore implements ObjectStore {
         }
         if (isConnectionHead(key)) {
             synchronized (this) {
-                synchronizeFromFile();
+                requireListed(key, synchronizeFromFile());
                 return memory.readObject(key, version);
             }
         }
@@ -92,16 +103,50 @@ public final class DexWebObjectStore implements ObjectStore {
             return memory.compareAndSwapObject(key, expectedEtag, contents);
         }
         synchronized (this) {
-            synchronizeFromFile();
+            requireListed(key, synchronizeFromFile());
             final ProjectObject result = memory.compareAndSwapObject(key, expectedEtag, contents);
             writeBack(result);
             return result;
         }
     }
 
-    private void synchronizeFromFile() throws IOException {
+    /** Holds the cross-process refresh lock of {@code connections.json} until the result is closed. */
+    DexWebRefreshLock.Held lockCredentialRefresh() throws IOException, InterruptedException {
+        return refreshLock.acquire();
+    }
+
+    /**
+     * Proves, under the refresh lock, that a refreshed credential of the key can be written back.
+     *
+     * <p>One read supplies the checked record and the bytes rewritten unchanged through the
+     * write-back path, so a read-only file or directory fails before a provider rotates a token.
+     *
+     * @throws FileChangedSinceReadException when the file holds another credential than the
+     *     one last synchronized; read the record again
+     * @throws ConnectionRemovedFromFileException when the connection is no longer listed
+     */
+    synchronized void verifyCredentialWriteBack(final ConnectionKey key) throws IOException {
+        final byte[] contents = DexWebFiles.readPrivateFileBytes(connectionsPath);
+        final ObjectNode source = GoCompatibleJson.parseObject(contents, connectionsPath.getFileName().toString());
+        final CredentialMaterial listed = DexWebFiles.decodeLocalCredentials(source).get(key);
+        if (listed == null) {
+            throw new ConnectionRemovedFromFileException();
+        }
+        if (!DexWebFiles.credentialDigest(listed).equals(importedDigests.get(key))) {
+            throw new FileChangedSinceReadException();
+        }
+        // A writer that skips the lock could replace the file after this read; never overwrite its write.
+        DexWebFiles.writePrivateFileChecked(connectionsPath, contents, () -> {
+            if (!Arrays.equals(Files.readAllBytes(connectionsPath), contents)) {
+                throw new FileChangedSinceReadException();
+            }
+        });
+    }
+
+    private Set<ConnectionKey> synchronizeFromFile() throws IOException {
         final ObjectNode source = DexWebFiles.readPrivateFile(connectionsPath);
-        for (Map.Entry<ConnectionKey, CredentialMaterial> entry : DexWebFiles.decodeLocalCredentials(source).entrySet()) {
+        final Map<ConnectionKey, CredentialMaterial> listed = DexWebFiles.decodeLocalCredentials(source);
+        for (Map.Entry<ConnectionKey, CredentialMaterial> entry : listed.entrySet()) {
             final String digest = DexWebFiles.credentialDigest(entry.getValue());
             if (digest.equals(importedDigests.get(entry.getKey()))) {
                 continue;
@@ -115,6 +160,18 @@ public final class DexWebObjectStore implements ObjectStore {
             connections.replaceCredential(entry.getKey(), revision, entry.getValue());
             importedDigests.put(entry.getKey(), digest);
         }
+        // A removed connection forgets its digest, so a recreated one with equal credentials imports again.
+        importedDigests.keySet().retainAll(listed.keySet());
+        return listed.keySet();
+    }
+
+    private void requireListed(final String headKey, final Set<ConnectionKey> listed) throws IOException {
+        for (ConnectionKey key : listed) {
+            if (headKey.equals(key.path(scope) + "/head")) {
+                return;
+            }
+        }
+        throw new ConnectionRemovedFromFileException();
     }
 
     private void writeBack(final ProjectObject head) {
