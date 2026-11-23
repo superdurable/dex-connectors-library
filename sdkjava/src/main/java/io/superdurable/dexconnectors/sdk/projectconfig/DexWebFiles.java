@@ -123,6 +123,40 @@ final class DexWebFiles {
         }
     }
 
+    /** Reads the bytes of a regular owner-only file without parsing them. */
+    static byte[] readPrivateFileBytes(final Path path) throws IOException {
+        final BasicFileAttributes attributes =
+                Files.readAttributes(path, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
+        if (!attributes.isRegularFile() || !hasOwnerOnlyMode(path)) {
+            throw new IllegalArgumentException(path.getFileName() + " must be a regular 0600 file");
+        }
+        return Files.readAllBytes(path);
+    }
+
+    /** Checks the file right before it is replaced; a failed check leaves the file unchanged. */
+    interface ReplacementCheck {
+        void verify() throws IOException;
+    }
+
+    /** Writes like {@link #writePrivateFile}, running the check after the write and before the rename. */
+    static void writePrivateFileChecked(final Path path, final byte[] contents, final ReplacementCheck check)
+            throws IOException {
+        final Path directory = path.toAbsolutePath().getParent();
+        final Path temporary = Files.createTempFile(directory, ".write-", ".tmp");
+        try {
+            setOwnerOnlyMode(temporary);
+            Files.write(temporary, contents);
+            check.verify();
+            try {
+                Files.move(temporary, path, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            } catch (AtomicMoveNotSupportedException error) {
+                Files.move(temporary, path, StandardCopyOption.REPLACE_EXISTING);
+            }
+        } finally {
+            Files.deleteIfExists(temporary);
+        }
+    }
+
     static void setOwnerOnlyMode(final Path path) throws IOException {
         try {
             Files.setPosixFilePermissions(path, OWNER_READ_WRITE);
