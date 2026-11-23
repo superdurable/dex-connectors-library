@@ -85,6 +85,42 @@ class LocalFileObjectStoreTest {
     }
 
     @Test
+    void aFirstVersionLeftWithoutAHeadIsNeverOverwritten() throws Exception {
+        final LocalFileObjectStore store = new LocalFileObjectStore(directory);
+        store.initialize();
+        final String key = "projects/local/preview/trigger-inboxes/first/head";
+        final ProjectObject original = store.createObject(key, "{\"event\":1}".getBytes(StandardCharsets.UTF_8));
+        // Simulate a crash after writing version 1 but before publishing its head, seen by a live store.
+        Files.delete(headPointer(key));
+        assertThrows(ObjectConflictException.class,
+                () -> store.createObject(key, "{\"event\":2}".getBytes(StandardCharsets.UTF_8)));
+        assertArrayEquals(original.getContents(), store.readObject(key, "").getContents());
+        assertArrayEquals("1".getBytes(StandardCharsets.US_ASCII), Files.readAllBytes(headPointer(key)));
+    }
+
+    @Test
+    void corruptOrDanglingHeadsRecoverFromVersionFiles() throws Exception {
+        final LocalFileObjectStore store = new LocalFileObjectStore(directory);
+        store.initialize();
+        final String key = "projects/local/preview/trigger-inboxes/corrupt/head";
+        final ProjectObject first = store.createObject(key, CONTENTS);
+        final ProjectObject second = store.compareAndSwapObject(key, first.getEtag(),
+                "{\"a\":1}".getBytes(StandardCharsets.UTF_8));
+        Files.write(headPointer(key), "not-a-version".getBytes(StandardCharsets.US_ASCII));
+        final LocalFileObjectStore reopened = new LocalFileObjectStore(directory);
+        reopened.initialize();
+        assertEquals(second.getEtag(), reopened.readObject(key, "").getEtag());
+
+        Files.write(headPointer(key), "9".getBytes(StandardCharsets.US_ASCII));
+        assertEquals(second.getEtag(), store.readObject(key, "").getEtag());
+        assertArrayEquals("2".getBytes(StandardCharsets.US_ASCII), Files.readAllBytes(headPointer(key)));
+
+        Files.write(headPointer(key), "garbage".getBytes(StandardCharsets.US_ASCII));
+        assertEquals("3", store.compareAndSwapObject(key, second.getEtag(), CONTENTS).getVersion());
+        assertFalse(Files.exists(versionFile(key, "2")));
+    }
+
+    @Test
     void initializationAndCompareAndSwapDoNotScaleWithUnrelatedObjects() throws Exception {
         final LocalFileObjectStore store = new LocalFileObjectStore(directory);
         store.initialize();

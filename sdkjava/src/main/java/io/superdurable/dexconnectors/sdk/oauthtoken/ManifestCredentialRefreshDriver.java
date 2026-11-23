@@ -16,6 +16,7 @@ import io.superdurable.dexconnectors.sdk.providerhttp.AddressRefusalException;
 import io.superdurable.dexconnectors.sdk.providerhttp.ProviderHttp;
 import io.superdurable.dexconnectors.sdk.providerhttp.ProviderHttpClient;
 import io.superdurable.dexconnectors.sdk.providerhttp.ProviderHttpTransport;
+import io.superdurable.dexconnectors.sdk.providerhttp.ProviderTransportException;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.interfaces.RSAPrivateKey;
@@ -226,7 +227,12 @@ public final class ManifestCredentialRefreshDriver<C> implements CredentialRefre
             } catch (AddressRefusalException error) {
                 throw error;
             } catch (IOException | IllegalArgumentException error) {
-                throw protocolRetry(error.getMessage());
+                final RetryException retry = protocolRetry(error.getMessage());
+                // A provably unsent request keeps its cause, so credential stores may keep the token usable.
+                if (error instanceof ProviderTransportException && ((ProviderTransportException) error).isProvablyNotSent()) {
+                    retry.initCause(error);
+                }
+                throw retry;
             }
             checkScopes(grant, token);
             final Map<String, String> updates = new LinkedHashMap<>();

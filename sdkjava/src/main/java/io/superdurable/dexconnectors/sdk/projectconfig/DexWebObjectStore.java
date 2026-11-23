@@ -7,7 +7,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.superdurable.dexconnectors.sdk.Rfc3339NanoTimestamp;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -25,7 +27,10 @@ import java.util.logging.Logger;
  * file only when Dex Web has not saved another credential since. A credential refresh holds the
  * cross-process {@code connections.json.lock}, rereads the file, and proves that the write-back
  * can succeed before the provider exchange, as Go's SDK does; see {@link DexWebRefreshLock} for
- * platform coverage. Trigger inboxes live in private files beside the connections file.
+ * platform coverage. An exchange with an unknown outcome leaves a marker in
+ * {@code refresh-quarantine/} beside the file, bound to that credential, so no store or restarted
+ * process exchanges it again until Dex Web saves a new authorization. Trigger inboxes live in
+ * private files beside the connections file.
  * Thread-safe.
  */
 public final class DexWebObjectStore implements ObjectStore {
@@ -141,6 +146,57 @@ public final class DexWebObjectStore implements ObjectStore {
                 throw new FileChangedSinceReadException();
             }
         });
+    }
+
+    /**
+     * Records, under the refresh lock, that the current file credential of a key may already have
+     * been rotated by an exchange whose outcome is unknown.
+     *
+     * <p>The marker lives beside {@code connections.json}, so every store on the file and every
+     * restarted process sees it, and it is bound to the credential digest: once Dex Web saves a new
+     * authorization the marker no longer applies.
+     */
+    synchronized void quarantineCurrentCredential(final ConnectionKey key) throws IOException {
+        final String digest = importedDigests.get(key);
+        if (digest == null) {
+            return;
+        }
+        // The marker holds only a credential digest; it is written owner-only like the credentials file.
+        Files.createDirectories(quarantineDirectory());
+        DexWebFiles.writePrivateFile(quarantineMarker(key), digest.getBytes(StandardCharsets.US_ASCII));
+    }
+
+    /**
+     * Reports, under the refresh lock, whether the current file credential of a key must not be
+     * exchanged again because an earlier exchange of it has an unknown outcome.
+     *
+     * <p>A marker for an older credential is removed, since Dex Web saved a new authorization.
+     */
+    synchronized boolean isCurrentCredentialQuarantined(final ConnectionKey key) throws IOException {
+        final Path marker = quarantineMarker(key);
+        final byte[] contents;
+        try {
+            contents = DexWebFiles.readPrivateFileBytes(marker);
+        } catch (NoSuchFileException missing) {
+            return false;
+        } catch (IllegalArgumentException invalid) {
+            // An unreadable marker cannot prove the credential is safe to exchange.
+            return true;
+        }
+        if (new String(contents, StandardCharsets.US_ASCII).equals(importedDigests.get(key))) {
+            return true;
+        }
+        Files.deleteIfExists(marker);
+        return false;
+    }
+
+    private Path quarantineDirectory() {
+        return connectionsPath.getParent().resolve("refresh-quarantine");
+    }
+
+    private Path quarantineMarker(final ConnectionKey key) {
+        return quarantineDirectory().resolve(GoCompatibleJson.sha256Hex(
+                (key.getConnectorId() + "\u0000" + key.getConnectionName()).getBytes(StandardCharsets.UTF_8)));
     }
 
     private Set<ConnectionKey> synchronizeFromFile() throws IOException {

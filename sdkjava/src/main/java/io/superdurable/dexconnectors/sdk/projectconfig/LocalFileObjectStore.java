@@ -36,9 +36,12 @@ import java.util.regex.Pattern;
  *
  * <p>Java also keeps a {@code <sha256 of key>.head} pointer holding the latest version, so reads
  * and writes open one key's files directly instead of scanning the directory. {@link #initialize()}
- * enumerates the directory once, keeps the newest version of each key, deletes crash leftovers,
- * and writes any missing or stale pointer, which also migrates directories written without them.
- * A pointer that lags after a crash is advanced by probing the next versions.
+ * enumerates the directory once, validates each file while indexing only key and version, keeps
+ * the newest version of each key, writes any missing or stale pointer before deleting crash
+ * leftovers, and so migrates directories written without pointers. A pointer that lags after a
+ * crash is advanced by probing the next versions; a missing, corrupt, or dangling pointer is
+ * rebuilt from the key's version files under the lock, so a version left by an interrupted first
+ * write is never overwritten.
  *
  * <p>Go keeps this store in one application process. Java reads the current version from disk
  * under a directory lock for every read and write, so several stores and Java processes on one
@@ -63,7 +66,8 @@ final class LocalFileObjectStore implements ObjectStore {
         Files.createDirectories(directory);
         final DirectoryLock lock = lockDirectory();
         try {
-            final Map<String, List<ProjectObject>> versionsByKey = new HashMap<>();
+            // The index keeps only key and version; each body is decoded to validate it, then dropped.
+            final Map<String, List<Long>> versionsByKey = new HashMap<>();
             try (DirectoryStream<Path> files = Files.newDirectoryStream(directory, "*.json")) {
                 for (Path path : files) {
                     final String name = path.getFileName().toString();
@@ -75,15 +79,13 @@ final class LocalFileObjectStore implements ObjectStore {
                     final Matcher match = VERSION_FILE_NAME.matcher(name);
                     if (match.matches() && match.group(1).equals(keyHash(item.getKey()))
                             && match.group(2).equals(item.getVersion())) {
-                        versionsByKey.computeIfAbsent(item.getKey(), ignored -> new ArrayList<>()).add(item);
+                        versionsByKey.computeIfAbsent(item.getKey(), ignored -> new ArrayList<>())
+                                .add(Long.parseLong(item.getVersion()));
                     }
                 }
             }
-            for (Map.Entry<String, List<ProjectObject>> entry : versionsByKey.entrySet()) {
-                final ProjectObject newest = keepNewest(entry.getValue());
-                if (!newest.getVersion().equals(readHeadPointer(entry.getKey()))) {
-                    writeHeadPointer(entry.getKey(), newest.getVersion());
-                }
+            for (Map.Entry<String, List<Long>> entry : versionsByKey.entrySet()) {
+                publishNewest(entry.getKey(), entry.getValue(), readHeadPointerIfValid(entry.getKey()));
             }
         } finally {
             lock.close();
@@ -162,30 +164,61 @@ final class LocalFileObjectStore implements ObjectStore {
 
     /** Reads the newest version of a key through its head pointer; call under the lock. */
     private ProjectObject latest(final String key) throws IOException {
-        final String pointer = readHeadPointer(key);
-        if (pointer == null) {
-            // Every Java write and initialize() records a pointer, so a key without one does not exist.
-            return null;
-        }
-        long version = Long.parseLong(pointer);
-        ProjectObject newest = readVersion(key, version);
-        // A crash after writing a version but before its pointer leaves the pointer one behind.
-        while (true) {
-            final ProjectObject next = readVersion(key, version + 1);
-            if (next == null) {
-                break;
+        final String pointer = readHeadPointerIfValid(key);
+        if (pointer != null) {
+            long version = Long.parseLong(pointer);
+            ProjectObject newest = readVersion(key, version);
+            final List<Long> superseded = new ArrayList<>();
+            // A crash after writing a version but before its pointer leaves the pointer one behind.
+            while (true) {
+                final ProjectObject next = readVersion(key, version + 1);
+                if (next == null) {
+                    break;
+                }
+                if (newest != null) {
+                    superseded.add(Long.parseLong(newest.getVersion()));
+                }
+                newest = next;
+                version++;
             }
             if (newest != null) {
-                removeFile(key, newest.getVersion());
+                if (!newest.getVersion().equals(pointer)) {
+                    writeHeadPointer(key, newest.getVersion());
+                }
+                // The valid head is durable before any superseded version is deleted.
+                for (long stale : superseded) {
+                    removeFile(key, Long.toString(stale));
+                }
+                return newest;
             }
-            newest = next;
-            version++;
         }
-        if (newest == null) {
+        return recoverHead(key);
+    }
+
+    /**
+     * Rebuilds a missing, corrupt, or dangling head from this key's version files; call under the lock.
+     *
+     * <p>A crash during a first write can leave version 1 without a head, so a key without a valid
+     * head is not treated as absent until its version files are checked.
+     */
+    private ProjectObject recoverHead(final String key) throws IOException {
+        final List<Long> versions = new ArrayList<>();
+        try (DirectoryStream<Path> files = Files.newDirectoryStream(directory, keyHash(key) + "-*.json")) {
+            for (Path path : files) {
+                final Matcher match = VERSION_FILE_NAME.matcher(path.getFileName().toString());
+                if (match.matches()) {
+                    versions.add(Long.parseLong(match.group(2)));
+                }
+            }
+        }
+        if (versions.isEmpty()) {
+            Files.deleteIfExists(headPointer(key));
             return null;
         }
-        if (!newest.getVersion().equals(pointer)) {
-            writeHeadPointer(key, newest.getVersion());
+        final long newestVersion = publishNewest(key, versions, null);
+        final ProjectObject newest = readVersion(key, newestVersion);
+        if (newest == null) {
+            throw new IllegalArgumentException("local project storage file is invalid");
         }
         return newest;
     }
@@ -204,17 +237,27 @@ final class LocalFileObjectStore implements ObjectStore {
         return item;
     }
 
-    private ProjectObject keepNewest(final List<ProjectObject> versions) {
-        versions.sort((left, right) -> Long.compare(Long.parseLong(left.getVersion()),
-                Long.parseLong(right.getVersion())));
-        // A crash between writing a new version and deleting the old one leaves both.
-        for (ProjectObject stale : versions.subList(0, versions.size() - 1)) {
-            removeFile(stale.getKey(), stale.getVersion());
+    /**
+     * Points the head at the newest version, then deletes the older versions a crash left behind.
+     *
+     * @return the newest version
+     */
+    private long publishNewest(final String key, final List<Long> versions, final String currentPointer)
+            throws IOException {
+        final long newest = versions.stream().mapToLong(Long::longValue).max().getAsLong();
+        if (!Long.toString(newest).equals(currentPointer)) {
+            writeHeadPointer(key, Long.toString(newest));
         }
-        return versions.get(versions.size() - 1);
+        for (long version : versions) {
+            if (version != newest) {
+                removeFile(key, Long.toString(version));
+            }
+        }
+        return newest;
     }
 
-    private String readHeadPointer(final String key) throws IOException {
+    /** Returns the head pointer, or {@code null} when it is missing or corrupt. */
+    private String readHeadPointerIfValid(final String key) throws IOException {
         final byte[] contents;
         try {
             contents = Files.readAllBytes(headPointer(key));
@@ -222,10 +265,7 @@ final class LocalFileObjectStore implements ObjectStore {
             return null;
         }
         final String version = new String(contents, StandardCharsets.US_ASCII);
-        if (!LOCAL_VERSION.matcher(version).matches()) {
-            throw new IllegalArgumentException("local project storage file is invalid");
-        }
-        return version;
+        return LOCAL_VERSION.matcher(version).matches() ? version : null;
     }
 
     private void writeHeadPointer(final String key, final String version) throws IOException {

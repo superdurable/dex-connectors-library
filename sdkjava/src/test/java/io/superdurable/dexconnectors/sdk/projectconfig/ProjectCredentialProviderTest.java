@@ -19,6 +19,7 @@ import io.superdurable.dexconnectors.sdk.Credentials;
 import io.superdurable.dexconnectors.sdk.OperationRef;
 import io.superdurable.dexconnectors.sdk.ReauthorizationRequiredException;
 import io.superdurable.dexconnectors.sdk.Rfc3339NanoTimestamp;
+import io.superdurable.dexconnectors.sdk.providerhttp.ProviderTransportException;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -107,7 +108,7 @@ class ProjectCredentialProviderTest {
     }
 
     @Test
-    void observersReloadAfterAnotherReplicaRestoresStaleAdmission() throws Exception {
+    void observersTreatAnExpiredAdmissionWithoutAResultAsUnknown() throws Exception {
         final InMemoryObjectStore objects = new InMemoryObjectStore();
         final ConnectionStore firstStore = new ConnectionStore(objects, SCOPE);
         firstStore.replaceCredential(KEY, 0, material("current", Instant.now().plusSeconds(3600)));
@@ -115,8 +116,10 @@ class ProjectCredentialProviderTest {
         first.admitRefresh(firstStore.readRecord(KEY).record, Instant.now().minusSeconds(120));
         final RefreshingProjectCredentialProvider<ObjectNode> second = provider(new ConnectionStore(objects, SCOPE));
         final RecordingDriver driver = new RecordingDriver();
-        assertEquals(credential("current"), Credentials.resolveCredential(first, CALL, driver));
-        assertEquals(credential("current"), Credentials.resolveCredential(second, CALL, driver));
+        // The abandoned refresh may have rotated the token, so no replica restores READY or exchanges it.
+        assertThrows(ReauthorizationRequiredException.class, () -> Credentials.resolveCredential(first, CALL, driver));
+        assertThrows(ReauthorizationRequiredException.class, () -> Credentials.resolveCredential(second, CALL, driver));
+        assertEquals("REAUTHORIZATION_REQUIRED", firstStore.readConnection(KEY).getStatus());
         assertEquals(0, driver.calls.get());
     }
 
@@ -126,12 +129,22 @@ class ProjectCredentialProviderTest {
         store.replaceCredential(KEY, 0, material("old", Instant.now().minusSeconds(60)));
         final RefreshingProjectCredentialProvider<ObjectNode> provider = provider(store);
         final RecordingDriver retryable = new RecordingDriver();
-        retryable.error = new IOException("inert provider detail");
+        retryable.error = new ProviderTransportException(true, null, null);
         retryable.release.countDown();
         final RefreshFailedException failed = assertThrows(RefreshFailedException.class,
                 () -> Credentials.resolveCredential(provider, CALL, retryable));
         assertFalse(String.valueOf(failed.getMessage()).contains("inert provider detail"));
         assertEquals("READY", store.readConnection(KEY).getStatus());
+
+        final ConnectionStore ambiguousStore = new ConnectionStore(new InMemoryObjectStore(), SCOPE);
+        ambiguousStore.replaceCredential(KEY, 0, material("old", Instant.now().minusSeconds(60)));
+        final RecordingDriver ambiguous = new RecordingDriver();
+        ambiguous.error = new IOException("inert provider detail");
+        ambiguous.release.countDown();
+        // A failure after the request may have left cannot prove the token was not rotated.
+        assertThrows(ReauthorizationRequiredException.class,
+                () -> Credentials.resolveCredential(provider(ambiguousStore), CALL, ambiguous));
+        assertEquals("REAUTHORIZATION_REQUIRED", ambiguousStore.readConnection(KEY).getStatus());
         final RecordingDriver terminal = new RecordingDriver();
         terminal.error = new ReauthorizationRequiredException();
         terminal.release.countDown();
