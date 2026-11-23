@@ -1,0 +1,64 @@
+name: sdkrust
+
+on:
+  pull_request:
+    paths:
+      - "sdkrust/**"
+      - "conformance/*.json"
+      - "conformance/runners/*.json"
+      - ".github/workflows/sdkrust.yml"
+  push:
+    branches: [main]
+    paths:
+      - "sdkrust/**"
+      - "conformance/*.json"
+      - "conformance/runners/*.json"
+      - ".github/workflows/sdkrust.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sdkrust:
+    runs-on: ubuntu-latest
+    env:
+      CARGO_TERM_COLOR: never
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install the crate's minimum Rust toolchain
+        run: |
+          rustup toolchain install 1.97 --profile minimal --component clippy,rustfmt
+          rustup default 1.97
+      - name: Check formatting, lints, docs, and unit and fixture tests
+        working-directory: sdkrust
+        run: |
+          cargo fmt --check
+          cargo clippy --all-targets --locked -- -D warnings
+          RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --locked
+          cargo test --locked
+          cargo publish --dry-run --locked
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install the latest released Dex CLI
+        run: python3 script/dex_compatibility.py install-dexcli --output .bin/dexcli
+      - name: Run Connector Steps against real Dex Flows
+        run: |
+          mkdir -p /tmp/sdkrust-dexcli/logs
+          .bin/dexcli dev -dex-port 19901 -web-port 19902 -open=false -durability process-crash-safe \
+            -zd-data-dir /tmp/sdkrust-dexcli/zd \
+            -server-log-folder /tmp/sdkrust-dexcli/logs > /tmp/sdkrust-dexcli/server.log 2>&1 &
+          dex_pid=$!
+          trap 'kill "$dex_pid" 2>/dev/null || true; wait "$dex_pid" 2>/dev/null || true' EXIT
+          for _ in $(seq 1 120); do
+            if (echo > /dev/tcp/127.0.0.1/19901) 2>/dev/null; then
+              cd sdkrust
+              DEX_SERVER_ADDRESS=127.0.0.1:19901 cargo test --locked --test dex_integration -- --ignored --test-threads 1
+              exit
+            fi
+            if ! kill -0 "$dex_pid" 2>/dev/null; then break; fi
+            sleep 0.25
+          done
+          cat /tmp/sdkrust-dexcli/server.log
+          exit 1

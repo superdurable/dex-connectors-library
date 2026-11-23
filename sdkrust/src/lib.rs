@@ -1,17 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-//! Rust core for Dex-native provider connectors.
-//!
-//! `dex-connectors-sdk` supplies the provider operation contracts, Connector Step factories,
-//! credentials, single-dispatch Fence, project configuration, Triggers, and scripted mocks
-//! that generated `dex-connector-<slug>` crates build on. Its wire values match `sdkgo`,
-//! `sdkpython`, and `sdkts` byte for byte where the shared conformance fixtures pin bytes.
-//!
-//! Handlers are synchronous, like Dex Rust SDK Step handlers: perform blocking I/O directly
-//! inside Execute, bounded by the Step method timeout.
-//!
-//! See the crate README for a complete example.
+#![doc = include_str!("../README.md")]
 
 mod configuration_ui;
 mod credentials;
