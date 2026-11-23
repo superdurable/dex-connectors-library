@@ -36,6 +36,8 @@ pub const MAXIMUM_TRIGGER_INBOX_BYTES: usize = 8 << 20;
 
 const MAXIMUM_INBOX_WRITE_ATTEMPTS: usize = 8;
 const MAXIMUM_INBOX_NAME_BYTES: usize = 256;
+// Go's encoding/json scanner refuses deeper nesting.
+const MAXIMUM_GO_JSON_NESTING_DEPTH: usize = 10_000;
 
 /// A binding's backlog reached its bound; the source retries once the application consumes
 /// events.
@@ -365,9 +367,20 @@ pub fn compact_go_raw_json(raw: &[u8]) -> Result<Vec<u8>, ProjectConfigError> {
     let mut output = Vec::with_capacity(raw.len());
     let mut is_in_string = false;
     let mut is_escaped = false;
+    let mut depth: usize = 0;
     let mut index = 0;
     while index < raw.len() {
         let byte = raw[index];
+        if !is_in_string && matches!(byte, b'[' | b'{') {
+            depth += 1;
+            if depth > MAXIMUM_GO_JSON_NESTING_DEPTH {
+                return Err(ProjectConfigError::Invalid(
+                    "raw JSON exceeds the Go nesting depth".to_string(),
+                ));
+            }
+        } else if !is_in_string && matches!(byte, b']' | b'}') {
+            depth = depth.saturating_sub(1);
+        }
         if is_in_string {
             if is_escaped {
                 is_escaped = false;
@@ -459,8 +472,15 @@ impl<'de> Deserialize<'de> for OrderedMembers {
     }
 }
 
+/// Matches a JSON key to an ASCII Go field name as `encoding/json` does, with Unicode simple
+/// case folding: U+017F folds to `s` and U+212A to `k`.
 fn is_go_field_key(key: &str, field: &str) -> bool {
-    key.eq_ignore_ascii_case(field)
+    let fold = |character: char| match character {
+        '\u{17f}' => 's',
+        '\u{212a}' => 'k',
+        other => other.to_ascii_lowercase(),
+    };
+    key.chars().map(fold).eq(field.chars().map(fold))
 }
 
 /// Decodes a string field as Go does into a struct: `null` keeps the previous value.
@@ -504,6 +524,13 @@ fn decode_inbox_document(contents: &[u8]) -> Result<Vec<PendingTriggerEvent>, Tr
 }
 
 fn decode_pending_event(element: &RawValue) -> Result<PendingTriggerEvent, TriggerError> {
+    // Go decodes a null element into the zero event, which re-encodes with a null event.
+    if element.get() == "null" {
+        return Ok(PendingTriggerEvent {
+            id: String::new(),
+            event: b"null".to_vec(),
+        });
+    }
     let members: OrderedMembers = serde_json::from_str(element.get())?;
     let mut id = String::new();
     let mut event = b"null".to_vec();
@@ -521,8 +548,9 @@ fn decode_pending_event(element: &RawValue) -> Result<PendingTriggerEvent, Trigg
 
 /// Encodes an event in Go's form `{"eventId","occurredAt","payload"}`.
 ///
-/// The payload is encoded with Go `encoding/json` rules through [`to_go_json_vec`]; serialize
-/// maps as `BTreeMap` so keys sort as Go sorts them.
+/// The payload is encoded with Go `encoding/json` rules through [`to_go_json_vec`]: struct
+/// fields keep declaration order as Go structs do. Serialize maps as `BTreeMap` so keys sort as
+/// Go sorts map keys; a `serde_json::Value` object keeps its member order.
 ///
 /// # Errors
 ///
@@ -928,7 +956,7 @@ mod tests {
     #[test]
     fn compacts_raw_json_with_go_html_escapes() {
         let compacted =
-            compact_go_raw_json(b"{ \"label\" : \"<ready>&\u{2028}\", \"n\": [1, 2] }".as_slice())
+            compact_go_raw_json("{ \"label\" : \"<ready>&\u{2028}\", \"n\": [1, 2] }".as_bytes())
                 .expect("valid JSON");
         assert_eq!(
             String::from_utf8(compacted).expect("UTF-8"),
@@ -965,12 +993,25 @@ mod tests {
             id: "Ev1".to_string(),
             occurred_at: Rfc3339NanoTimestamp::from_wire("2026-10-29T12:30:45.5+08:00")
                 .expect("timestamp"),
-            payload: serde_json::json!({"b": 1, "a": "<x>"}),
+            payload: serde_json::json!({"a": "<x>", "b": 1}),
         };
         let encoded = encode_trigger_event(&event).expect("encodes");
         assert_eq!(
             String::from_utf8(encoded.clone()).expect("UTF-8"),
             "{\"eventId\":\"Ev1\",\"occurredAt\":\"2026-10-29T12:30:45.5+08:00\",\"payload\":{\"a\":\"\\u003cx\\u003e\",\"b\":1}}"
+        );
+        let mut sorted = std::collections::BTreeMap::new();
+        sorted.insert("z", 1);
+        sorted.insert("m", 2);
+        let sorted_event = TriggerEvent {
+            id: "Ev2".to_string(),
+            occurred_at: event.occurred_at.clone(),
+            payload: sorted,
+        };
+        assert!(
+            String::from_utf8(encode_trigger_event(&sorted_event).expect("encodes"))
+                .expect("UTF-8")
+                .ends_with("\"payload\":{\"m\":2,\"z\":1}}")
         );
         let decoded: TriggerEvent<serde_json::Value> =
             decode_trigger_event(&encoded).expect("decodes");
