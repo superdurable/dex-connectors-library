@@ -148,9 +148,18 @@ public final class ProviderHttpClient implements ProviderHttpTransport {
         }
         // A Fence closes the connection at its write deadline, so blocked I/O cannot send late.
         DispatchObservation.registerCancellation(connection::disconnect);
+        // A disconnect that ran before connect cannot close the later socket, so recheck around connect.
+        if (!DispatchObservation.isActive()) {
+            connection.disconnect();
+            throw new ProviderTransportException(true, null, null);
+        }
         try {
             connection.connect();
         } catch (IOException error) {
+            connection.disconnect();
+            throw new ProviderTransportException(true, null, null);
+        }
+        if (!DispatchObservation.isActive()) {
             connection.disconnect();
             throw new ProviderTransportException(true, null, null);
         }

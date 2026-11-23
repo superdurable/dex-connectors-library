@@ -3,6 +3,7 @@
 
 package io.superdurable.dexconnectors.sdk;
 
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import java.io.IOException;
 import java.time.Instant;
 
@@ -35,6 +36,7 @@ public interface CredentialRefreshDriver<C> {
      *
      * @param <C> the connector-specific credential type
      */
+    @JsonSerialize(using = PrivateValueRefusingSerializer.class)
     final class State<C> {
         private final C credentials;
         private final Instant expiresAt;
@@ -91,6 +93,7 @@ public interface CredentialRefreshDriver<C> {
      *
      * @param <C> the connector-specific credential type
      */
+    @JsonSerialize(using = PrivateValueRefusingSerializer.class)
     final class Result<C> {
         private final C credentials;
         private final Instant expiresAt;

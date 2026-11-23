@@ -21,6 +21,7 @@ public final class DispatchObservation {
     private final Instant writeDeadline;
     private final List<Runnable> cancellations = new ArrayList<>();
     private volatile Integer statusCode;
+    private volatile Thread sendThread;
     private boolean isCancelled;
 
     DispatchObservation(final Instant writeDeadline) {
@@ -87,8 +88,35 @@ public final class DispatchObservation {
         }
     }
 
+    /**
+     * Reports whether the enclosing Fence dispatch may still start provider I/O.
+     *
+     * <p>Call it right before each I/O step that could send bytes, such as connecting and writing
+     * request headers or body. It is {@code false} once the write deadline passed or the Fence
+     * cancelled the send because Dex cancelled the attempt.
+     *
+     * @return {@code true} outside a dispatch, or while the dispatch is active
+     */
+    public static boolean isActive() {
+        final DispatchObservation observation = CURRENT.get();
+        if (observation == null) {
+            return true;
+        }
+        synchronized (observation) {
+            if (observation.isCancelled) {
+                return false;
+            }
+        }
+        return Instant.now().isBefore(observation.writeDeadline);
+    }
+
     static void bind(final DispatchObservation observation) {
+        observation.sendThread = Thread.currentThread();
         CURRENT.set(observation);
+    }
+
+    Thread sendThread() {
+        return sendThread;
     }
 
     static void unbind() {

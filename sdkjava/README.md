@@ -56,8 +56,25 @@ does not work around them:
   a Java Worker reports a handler failure by its Java class name, so other
   languages' Trigger targets cannot recognize a Java undeliverable marker.
 - Step attempt deadline ([superdurable/dex#2175](https://github.com/superdurable/dex/issues/2175)):
-  the Dex Java `Context` has no deadline, so the single-dispatch Fence budgets
-  from the Execute timeout alone.
+  the Dex Java `Context` has no deadline, so the single-dispatch Fence
+  approximates one: the Execute timeout minus the time since the SDK first saw
+  the attempt (`ConnectorSteps.attemptObservedAt`). Time Dex spent before the
+  handler started is not counted.
+
+Local Dex Web mode (`ProjectConfigurationLoader.loadDexWebProject`) has two
+deployment limits:
+
+- One language per workspace on Linux. Java locks `connections.json.lock`
+  with `fcntl`, while Go uses `flock`; on Linux the two do not exclude each
+  other, so a Java process and a Go, Rust, or Python process must not refresh
+  credentials from the same `connections.json`. On macOS they exclude each
+  other.
+- One writer per local state directory. The local Trigger inbox and poll
+  cursor files belong to one application process, as in Go; a second store on
+  the same directory is refused.
+
+Connector ports such as Gmail and Slack inherit these limits: their local mode
+is single-language per workspace.
 
 ## Operations
 
@@ -230,8 +247,12 @@ public MutationAttempt<String> invoke(final Call call, final String item) throws
 ```
 
 The send runs on its own thread so the Fence keeps heartbeating from the Step
-handler thread; the send must not use the Dex Context. Run the Fences of one
-Step sequentially on the handler thread.
+handler thread; the send must not use the Dex Context. The handler thread
+polls Dex cancellation and the write deadline; either one closes the send's
+provider connection, and `ProviderHttpClient` refuses to connect or write after
+them. A send that does not stop blocks further sends of the same Call in this
+process until it ends. Run the Fences of one Step sequentially on the handler
+thread.
 
 ## Development
 

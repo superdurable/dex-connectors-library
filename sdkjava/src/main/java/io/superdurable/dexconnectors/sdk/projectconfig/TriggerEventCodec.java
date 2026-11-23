@@ -68,7 +68,9 @@ public final class TriggerEventCodec {
     /**
      * Encodes an event in Go's form {@code {"eventId","occurredAt","payload"}}.
      *
-     * <p>The time is written in UTC with Go's RFC 3339 Nano format. Without an encoder, the payload
+     * <p>The time keeps its offset in Go's RFC 3339 Nano format, as Go's {@code time.Time} writes
+     * it; the Python SDK converts it to UTC, so the bytes differ for non-UTC times while the instant
+     * is the same. Without an encoder, the payload
      * is converted with Jackson. Object keys are sorted by their UTF-8 bytes, and the output is
      * compact and HTML-safe, as Go's {@code encoding/json} writes the equivalent map.
      *
@@ -83,7 +85,7 @@ public final class TriggerEventCodec {
         final JsonNode payload = encodePayload != null ? encodePayload.encode(event.getPayload())
                 : PAYLOAD_MAPPER.valueToTree(event.getPayload());
         final String prefix = "{\"eventId\":" + GoRawJson.encodeString(event.getId()) + ",\"occurredAt\":"
-                + GoRawJson.encodeString(Rfc3339NanoTimestamp.fromInstant(event.getOccurredAt().toInstant()).toWire())
+                + GoRawJson.encodeString(Rfc3339NanoTimestamp.fromOffsetDateTime(event.getOccurredAt()).toWire())
                 + ",\"payload\":";
         final ByteArrayOutputStream output = new ByteArrayOutputStream();
         final byte[] prefixBytes = prefix.getBytes(StandardCharsets.UTF_8);
@@ -98,7 +100,8 @@ public final class TriggerEventCodec {
      * Decodes an event that {@link #encodeTriggerEvent} or Go wrote, as Go's {@code json.Unmarshal}.
      *
      * <p>Unknown fields are ignored, keys match case-insensitively, the last duplicate wins, and a
-     * missing payload is {@code null}. The time keeps its offset and nanoseconds.
+     * missing payload is {@code null}. The time keeps its offset and nanoseconds, and a missing time
+     * is Go's zero time {@code 0001-01-01T00:00:00Z}.
      *
      * @param raw the stored event bytes
      * @param decodePayload the payload decoder
@@ -110,7 +113,8 @@ public final class TriggerEventCodec {
     public static <P> TriggerEvent<P> decodeTriggerEvent(final byte[] raw, final PayloadDecoder<P> decodePayload)
             throws Exception {
         String eventId = "";
-        String occurredAt = "";
+        // Go decodes a missing time as its zero time.
+        String occurredAt = Rfc3339NanoTimestamp.ZERO.toWire();
         byte[] payload = "null".getBytes(StandardCharsets.US_ASCII);
         try {
             if (GoRawJson.kind(raw) != GoRawJson.Kind.OBJECT) {

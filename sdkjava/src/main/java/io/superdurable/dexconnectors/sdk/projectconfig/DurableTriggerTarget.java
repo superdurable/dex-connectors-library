@@ -73,7 +73,7 @@ public final class DurableTriggerTarget<P>
 
     @Override
     public void prepareTrigger(final TriggerContext context, final TriggerEvent<P> event) throws Exception {
-        if (event.getId().trim().isEmpty()) {
+        if (PollCursorNames.isGoBlank(event.getId())) {
             throw new IllegalArgumentException("Trigger event ID is required");
         }
         final byte[] encoded = TriggerEventCodec.encodeTriggerEvent(event, encodePayload);

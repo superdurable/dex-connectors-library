@@ -3,6 +3,8 @@
 
 package io.superdurable.dexconnectors.sdk.providerhttp;
 
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import io.superdurable.dexconnectors.sdk.PrivateValueRefusingSerializer;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -14,6 +16,7 @@ import java.util.Map;
  * <p>Instances are immutable. {@link #toString()} omits headers and the body, which may contain
  * credentials.
  */
+@JsonSerialize(using = PrivateValueRefusingSerializer.class)
 public final class ProviderHttpRequest {
     private final String method;
     private final String url;

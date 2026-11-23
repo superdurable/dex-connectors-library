@@ -6,11 +6,14 @@ package io.superdurable.dexconnectors.sdk.singledispatch;
 import com.fasterxml.jackson.databind.JsonNode;
 import io.superdurable.dex.Context;
 import io.superdurable.dexconnectors.sdk.Call;
+import io.superdurable.dexconnectors.sdk.CallId;
 import io.superdurable.dexconnectors.sdk.ConnectorSteps;
 import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Map;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -32,7 +35,10 @@ import java.util.concurrent.TimeoutException;
  * window or after Dex cancels the attempt is refused. A send still running at the write deadline
  * is interrupted, I/O registered through {@link DispatchObservation#registerCancellation} is closed,
  * and {@link WriteWindowTimeoutException} is thrown; the SDK provider HTTP client also bounds its
- * connect and read timeouts by the window. {@link #recordCanResend()} and
+ * connect and read timeouts by the window and checks {@link DispatchObservation#isActive()} around
+ * connect. The handler thread polls Dex cancellation while it waits and cancels the send the same
+ * way. When the send thread does not stop within a second, later dispatches of the same Call ID in
+ * this process read back instead of sending until it ends. {@link #recordCanResend()} and
  * {@link #recordProviderId(String)} require that the send returned.
  *
  * <p>{@code maxSends} caps the possibly effective sends of one Call ID across all attempts. The
@@ -59,6 +65,9 @@ public final class Fence {
     public static final double DEFAULT_WRITE_WINDOW_FRACTION = 7.0 / 12.0;
 
     private static final Duration HEARTBEAT_INTERVAL = Duration.ofSeconds(5);
+    private static final Duration CANCELLATION_POLL_INTERVAL = Duration.ofMillis(50);
+    private static final Duration SEND_STOP_GRACE = Duration.ofSeconds(1);
+    private static final Map<String, Thread> UNSTOPPED_SENDS = new ConcurrentHashMap<>();
     private static final double MAXIMUM_WRITE_WINDOW_FRACTION = 5.0 / 6.0;
 
     private final Call call;
@@ -150,6 +159,13 @@ public final class Fence {
                 }
             }
             decision = DispatchDecision.decideDispatch(call.getId(), context.getAttempt(), previous, maxSends);
+            if (isEarlierSendStillRunning(call.getId())
+                    && (decision.getKind() == DecisionKind.SEND_ALLOWED
+                    || decision.getKind() == DecisionKind.READ_BACK_THEN_RESEND_ALLOWED)) {
+                // A send of this call that could not be stopped may still reach the provider; never overlap it.
+                decision = new DispatchDecision(DecisionKind.READ_BACK_REQUIRED, decision.getMarker(), "",
+                        Math.max(decision.getMaximumPriorSends(), 1));
+            }
         } catch (RuntimeException error) {
             decision = new DispatchDecision(DecisionKind.FAIL_CLOSED, null,
                     "single-dispatch checkpoint could not be read", 0);
@@ -307,23 +323,33 @@ public final class Fence {
 
     private <T> T awaitSend(final Future<T> future, final Marker claim, final DispatchObservation observation)
             throws IOException, InterruptedException {
+        Instant nextHeartbeat = Instant.now().plus(HEARTBEAT_INTERVAL);
         while (true) {
-            final long remainingNanos = Duration.between(Instant.now(), writeDeadline).toNanos();
+            final Instant now = Instant.now();
+            final long remainingNanos = Duration.between(now, writeDeadline).toNanos();
             if (remainingNanos <= 0) {
                 // Close the provider I/O; the send may still have reached the provider, so no canResend.
-                observation.cancel();
-                future.cancel(true);
+                stopSend(future, observation);
                 throw new WriteWindowTimeoutException(observation.statusCode());
             }
+            // Dex cancellation reaches only the handler thread, so it is polled here and passed to the transport.
+            if (context.isCancellationRequested()) {
+                stopSend(future, observation);
+                throw new InterruptedException("Dex cancelled the attempt during a single-dispatch send");
+            }
+            if (!now.isBefore(nextHeartbeat)) {
+                repeatClaim(claim);
+                nextHeartbeat = now.plus(HEARTBEAT_INTERVAL);
+            }
             try {
-                final T result = future.get(Math.min(remainingNanos, HEARTBEAT_INTERVAL.toNanos()), TimeUnit.NANOSECONDS);
+                final T result = future.get(Math.min(remainingNanos, CANCELLATION_POLL_INTERVAL.toNanos()),
+                        TimeUnit.NANOSECONDS);
                 markSendFinished();
                 return result;
             } catch (TimeoutException waiting) {
-                repeatClaim(claim);
+                // Keep polling for the deadline, Dex cancellation, and the heartbeat cadence.
             } catch (InterruptedException error) {
-                observation.cancel();
-                future.cancel(true);
+                stopSend(future, observation);
                 throw error;
             } catch (ExecutionException error) {
                 // The send thread returned with a failure, so it has stopped.
@@ -344,6 +370,39 @@ public final class Fence {
                 throw new IOException(cause);
             }
         }
+    }
+
+    /**
+     * Aborts the send's I/O and interrupts it; a send that does not stop promptly blocks later
+     * dispatches of the same call in this process until it ends.
+     */
+    private void stopSend(final Future<?> future, final DispatchObservation observation) {
+        observation.cancel();
+        future.cancel(true);
+        final Thread sendThread = observation.sendThread();
+        if (sendThread == null) {
+            return;
+        }
+        try {
+            sendThread.join(SEND_STOP_GRACE.toMillis());
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+        }
+        if (sendThread.isAlive()) {
+            UNSTOPPED_SENDS.put(call.getId().value(), sendThread);
+        }
+    }
+
+    private static boolean isEarlierSendStillRunning(final CallId callId) {
+        final Thread sendThread = UNSTOPPED_SENDS.get(callId.value());
+        if (sendThread == null) {
+            return false;
+        }
+        if (sendThread.isAlive()) {
+            return true;
+        }
+        UNSTOPPED_SENDS.remove(callId.value(), sendThread);
+        return false;
     }
 
     private synchronized void markSendFinished() {

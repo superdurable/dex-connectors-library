@@ -288,6 +288,25 @@ class TriggerInboxTest {
     }
 
     @Test
+    void eventTimesAndIdsFollowGoRules() throws Exception {
+        final TriggerEvent<JsonNode> offset = new TriggerEvent<JsonNode>("Ev1",
+                OffsetDateTime.parse("2026-01-01T12:00:00+05:30"), MAPPER.createObjectNode());
+        final byte[] encoded = TriggerEventCodec.encodeTriggerEvent(offset, null);
+        assertTrue(new String(encoded, StandardCharsets.UTF_8).contains("\"occurredAt\":\"2026-01-01T12:00:00+05:30\""));
+        assertEquals(offset.getOccurredAt(),
+                TriggerEventCodec.decodeTriggerEvent(encoded, TriggerEventCodec.jsonPayloadDecoder()).getOccurredAt());
+        final TriggerEvent<JsonNode> missingTime = TriggerEventCodec.decodeTriggerEvent(
+                "{\"eventId\":\"Ev2\",\"payload\":{}}".getBytes(StandardCharsets.UTF_8),
+                TriggerEventCodec.jsonPayloadDecoder());
+        assertEquals(OffsetDateTime.parse("0001-01-01T00:00:00Z"), missingTime.getOccurredAt());
+        final TriggerInbox inbox = new TriggerInbox(new InMemoryObjectStore(), SCOPE, KEY);
+        for (String blank : Arrays.asList(" ", " 　 ", " ", "\t")) {
+            assertThrows(IllegalArgumentException.class,
+                    () -> inbox.add(new PendingTriggerEvent(blank, "{}".getBytes(StandardCharsets.UTF_8))));
+        }
+    }
+
+    @Test
     void derivesGoTriggerCredentialCalls() throws Exception {
         final JsonNode cases = MAPPER.readTree(goFixture("go-poll-cursor-cases.json")).get("credentialCalls");
         assertEquals(3, cases.size());

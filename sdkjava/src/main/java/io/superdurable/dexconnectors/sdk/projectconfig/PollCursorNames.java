@@ -33,6 +33,19 @@ final class PollCursorNames {
                 && !isGoSpace(name.codePointAt(0)) && !isGoSpace(name.codePointBefore(name.length()));
     }
 
+    /** Reports whether Go's {@code strings.TrimSpace} would leave the value empty. */
+    static boolean isGoBlank(final String value) {
+        int index = 0;
+        while (index < value.length()) {
+            final int codePoint = value.codePointAt(index);
+            if (!isGoSpace(codePoint)) {
+                return false;
+            }
+            index += Character.charCount(codePoint);
+        }
+        return true;
+    }
+
     private static boolean isGoSpace(final int codePoint) {
         switch (codePoint) {
             case '\t':

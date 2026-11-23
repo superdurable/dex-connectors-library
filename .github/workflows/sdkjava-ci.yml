@@ -5,6 +5,10 @@ on:
     paths:
       - 'sdkjava/**'
       - 'conformance/*.json'
+      - 'sdkpython/tests/fixtures/**'
+      - 'connectors/google/gmail/python/tests/refresh_agreement_cases.json'
+      - 'connectors/slack/python/tests/refresh_agreement_cases.json'
+      - 'script/dex_compatibility.py'
       - '.github/workflows/sdkjava-ci.yml'
   merge_group:
   push:
@@ -12,6 +16,10 @@ on:
     paths:
       - 'sdkjava/**'
       - 'conformance/*.json'
+      - 'sdkpython/tests/fixtures/**'
+      - 'connectors/google/gmail/python/tests/refresh_agreement_cases.json'
+      - 'connectors/slack/python/tests/refresh_agreement_cases.json'
+      - 'script/dex_compatibility.py'
       - '.github/workflows/sdkjava-ci.yml'
   workflow_dispatch:
 
@@ -54,7 +62,7 @@ jobs:
           distribution: zulu
           java-version: '25'
       - uses: gradle/actions/setup-gradle@v6
-      - name: Install Dex CLI from the run's resolved release
+      - name: Install Dex CLI (independently resolves the latest stable release)
         run: python3 script/dex_compatibility.py install-dexcli --output .bin/dexcli
       - name: Run the Java SDK against real Dex Flows
         run: |

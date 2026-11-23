@@ -91,7 +91,7 @@ public final class TriggerInbox {
      * @throws IOException if storage fails or conflicts persist
      */
     public void add(final PendingTriggerEvent event) throws IOException {
-        if (event == null || event.getId().trim().isEmpty() || !isRawJson(event.eventBytes())) {
+        if (event == null || PollCursorNames.isGoBlank(event.getId()) || !isRawJson(event.eventBytes())) {
             throw new IllegalArgumentException("trigger inbox event identity or contents are invalid");
         }
         update(events -> {

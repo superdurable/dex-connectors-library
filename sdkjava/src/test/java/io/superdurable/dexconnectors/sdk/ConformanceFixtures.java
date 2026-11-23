@@ -80,8 +80,9 @@ public final class ConformanceFixtures {
         private final String stepExecutionId;
         private final int attempt;
         private final JsonNode previousHeartbeat;
-        private final List<String> heartbeats = new ArrayList<>();
+        private final List<String> heartbeats = new java.util.concurrent.CopyOnWriteArrayList<>();
         private final Context context;
+        private volatile boolean cancellationRequested;
 
         /**
          * Creates a fake Context.
@@ -115,7 +116,7 @@ public final class ConformanceFixtures {
                                 heartbeats.add(MAPPER.writeValueAsString(arguments[0]));
                                 return null;
                             case "isCancellationRequested":
-                                return false;
+                                return cancellationRequested;
                             case "hashCode":
                                 return System.identityHashCode(proxy);
                             case "equals":
@@ -135,6 +136,13 @@ public final class ConformanceFixtures {
          */
         public Context context() {
             return context;
+        }
+
+        /**
+         * Marks the attempt as cancelled by Dex.
+         */
+        public void requestCancellation() {
+            cancellationRequested = true;
         }
 
         /**
