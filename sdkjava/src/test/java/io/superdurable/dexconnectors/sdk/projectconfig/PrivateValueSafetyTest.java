@@ -59,6 +59,31 @@ class PrivateValueSafetyTest {
     }
 
     @Test
+    void brokerAndS3TransportValuesRefuseJacksonAndTheDexOutputMapper() throws Exception {
+        final byte[] secret = ("{\"refresh_token\":\"" + TOKEN + "\"}").getBytes(StandardCharsets.UTF_8);
+        final List<Object> transportValues = Arrays.<Object>asList(
+                new BrokerHttpTransport.Response(200, secret),
+                new S3ObjectClient.GetResponse("v1", "\"etag\"", "aws:kms", "", secret),
+                new S3ObjectClient.PutRequest("bucket", "projects/p/live/x", secret, "\"etag\"", "", ""));
+        for (Object value : transportValues) {
+            for (ObjectMapper mapper : Arrays.asList(new ObjectMapper(), new ObjectMapper().findAndRegisterModules())) {
+                assertChainHasNoSecret(assertThrows(Exception.class, () -> mapper.writeValueAsString(value)));
+                assertChainHasNoSecret(assertThrows(Exception.class, () -> mapper.writeValueAsString(
+                        Collections.singletonMap("nested", Collections.singletonList(value)))));
+            }
+            assertChainHasNoSecret(assertThrows(Exception.class,
+                    () -> io.superdurable.dex.ProjectConfigDexOutputProbe.encodeAsDexValue(value)));
+            assertChainHasNoSecret(assertThrows(Exception.class,
+                    () -> io.superdurable.dex.ProjectConfigDexOutputProbe.encodeAsDexValue(
+                            Collections.singletonMap("result", Collections.singletonList(value)))));
+        }
+        final CredentialMaterial material = new CredentialMaterial(
+                GoCompatibleJson.newObject().put("refresh_token", TOKEN), Rfc3339NanoTimestamp.ZERO, "oauth2");
+        assertChainHasNoSecret(assertThrows(Exception.class,
+                () -> io.superdurable.dex.ProjectConfigDexOutputProbe.encodeAsDexValue(material)));
+    }
+
+    @Test
     void credentialFileParseErrorsCarryNoCauseOrContents() throws Exception {
         final Path directory = Files.createTempDirectory("sdkjava-private-parse");
         final Path file = directory.resolve("connections.json");
