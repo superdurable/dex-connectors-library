@@ -216,6 +216,61 @@ class FenceDeadlineTest {
         release.countDown();
     }
 
+    @Test
+    void aLiveCallbackBlocksAnotherAttemptEvenWithACachedDecision() throws Exception {
+        final String callId = "e18c5cc6-9bd8-56c4-8557-f0cd415e65d4";
+        final FakeContext first = new FakeContext("flow-42", "step-execution-14", 1, null);
+        final Fence firstFence = new Fence(callWithId(first, callId), Duration.ofMillis(600), 0.5, 3);
+        firstFence.decide();
+        final FakeContext cachedRetry = new FakeContext("flow-42", "step-execution-14", 2, null);
+        final Fence cachedFence = new Fence(callWithId(cachedRetry, callId), Duration.ofSeconds(30), 0.5, 3);
+        cachedFence.decide();
+        final CountDownLatch release = new CountDownLatch(1);
+        final AtomicInteger callbacks = new AtomicInteger();
+        assertThrows(WriteWindowTimeoutException.class, () -> firstFence.dispatch(writeDeadline -> {
+            callbacks.incrementAndGet();
+            awaitIgnoringInterrupts(release);
+            return "late";
+        }));
+        final String claimed = first.heartbeats().get(first.heartbeats().size() - 1);
+        final FakeContext retry = new FakeContext("flow-42", "step-execution-14", 2,
+                io.superdurable.dexconnectors.sdk.ConformanceFixtures.MAPPER.readTree(claimed));
+        assertEquals(DecisionKind.READ_BACK_REQUIRED,
+                new Fence(callWithId(retry, callId), Duration.ofSeconds(30), 0.5, 3).decide().getKind());
+        assertThrows(DispatchNotAllowedException.class, () -> cachedFence.dispatch(writeDeadline -> {
+            callbacks.incrementAndGet();
+            return "overlap";
+        }));
+        assertEquals(1, callbacks.get());
+        release.countDown();
+        final long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+        DecisionKind afterRelease = DecisionKind.READ_BACK_REQUIRED;
+        while (System.nanoTime() < deadline && afterRelease == DecisionKind.READ_BACK_REQUIRED) {
+            afterRelease = new Fence(callWithId(new FakeContext("flow-42", "step-execution-14", 2,
+                    io.superdurable.dexconnectors.sdk.ConformanceFixtures.MAPPER.readTree(claimed)), callId),
+                    Duration.ofSeconds(30), 0.5, 3).decide().getKind();
+            Thread.sleep(10);
+        }
+        assertEquals(DecisionKind.READ_BACK_THEN_RESEND_ALLOWED, afterRelease);
+    }
+
+    @Test
+    void aStoppedCallbackEndsTheStopWaitWithoutTheFullGrace() throws Exception {
+        final FakeContext context = new FakeContext("flow-42", "step-execution-15", 1, null);
+        final Fence fence = new Fence(callWithId(context, "391bf0f6-f405-5d7a-9b2c-e5eb439e1910"),
+                Duration.ofMillis(400), 0.5, 1);
+        fence.decide();
+        final long startedAt = System.nanoTime();
+        assertThrows(WriteWindowTimeoutException.class, () -> fence.dispatch(writeDeadline -> {
+            Thread.sleep(10_000);
+            return "late";
+        }));
+        assertTrue(System.nanoTime() - startedAt < TimeUnit.MILLISECONDS.toNanos(900));
+        assertEquals(DecisionKind.SEND_ALLOWED, new Fence(callWithId(
+                new FakeContext("flow-42", "step-execution-16", 1, null), "391bf0f6-f405-5d7a-9b2c-e5eb439e1910"),
+                Duration.ofSeconds(30), 0.5, 1).decide().getKind());
+    }
+
     private static void awaitIgnoringInterrupts(final CountDownLatch latch) {
         boolean isInterrupted = false;
         while (true) {

@@ -295,6 +295,13 @@ class TriggerInboxTest {
         assertTrue(new String(encoded, StandardCharsets.UTF_8).contains("\"occurredAt\":\"2026-01-01T12:00:00+05:30\""));
         assertEquals(offset.getOccurredAt(),
                 TriggerEventCodec.decodeTriggerEvent(encoded, TriggerEventCodec.jsonPayloadDecoder()).getOccurredAt());
+        final TriggerEvent<JsonNode> historical = new TriggerEvent<JsonNode>("EvHistorical",
+                OffsetDateTime.parse("1900-01-01T00:00:00+00:09:21"), MAPPER.createObjectNode());
+        final byte[] historicalBytes = TriggerEventCodec.encodeTriggerEvent(historical, null);
+        assertTrue(new String(historicalBytes, StandardCharsets.UTF_8)
+                .contains("\"occurredAt\":\"1899-12-31T23:50:39Z\""));
+        assertEquals(historical.getOccurredAt().toInstant(), TriggerEventCodec.decodeTriggerEvent(historicalBytes,
+                TriggerEventCodec.jsonPayloadDecoder()).getOccurredAt().toInstant());
         final TriggerEvent<JsonNode> missingTime = TriggerEventCodec.decodeTriggerEvent(
                 "{\"eventId\":\"Ev2\",\"payload\":{}}".getBytes(StandardCharsets.UTF_8),
                 TriggerEventCodec.jsonPayloadDecoder());

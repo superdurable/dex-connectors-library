@@ -14,6 +14,8 @@ import java.time.Instant;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -37,8 +39,9 @@ import java.util.concurrent.TimeoutException;
  * and {@link WriteWindowTimeoutException} is thrown; the SDK provider HTTP client also bounds its
  * connect and read timeouts by the window and checks {@link DispatchObservation#isActive()} around
  * connect. The handler thread polls Dex cancellation while it waits and cancels the send the same
- * way. When the send thread does not stop within a second, later dispatches of the same Call ID in
- * this process read back instead of sending until it ends. {@link #recordCanResend()} and
+ * way. A dispatch holds its Call ID in this process from before its claim until its send callback
+ * returns: while it is held, {@link #decide()} of another attempt reads back instead of sending,
+ * and {@link #dispatch} throws {@link DispatchNotAllowedException} even after an earlier decision. {@link #recordCanResend()} and
  * {@link #recordProviderId(String)} require that the send returned.
  *
  * <p>{@code maxSends} caps the possibly effective sends of one Call ID across all attempts. The
@@ -67,7 +70,7 @@ public final class Fence {
     private static final Duration HEARTBEAT_INTERVAL = Duration.ofSeconds(5);
     private static final Duration CANCELLATION_POLL_INTERVAL = Duration.ofMillis(50);
     private static final Duration SEND_STOP_GRACE = Duration.ofSeconds(1);
-    private static final Map<String, Thread> UNSTOPPED_SENDS = new ConcurrentHashMap<>();
+    private static final Map<String, SendOccupancy> RUNNING_SENDS = new ConcurrentHashMap<>();
     private static final double MAXIMUM_WRITE_WINDOW_FRACTION = 5.0 / 6.0;
 
     private final Call call;
@@ -81,6 +84,7 @@ public final class Fence {
     private boolean hasSendFinished;
     private boolean hasPreSendRetry;
     private Marker marker;
+    private SendOccupancy occupancy;
 
     /**
      * Creates a Fence with the default write window and a send cap of one.
@@ -215,11 +219,19 @@ public final class Fence {
                 }
                 throw new InsufficientAttemptTimeException("insufficient attempt time for single dispatch", null);
             }
+            // Registered before the claim, so no attempt of this call can overlap a send that is still alive.
+            occupancy = new SendOccupancy(call.getId().value());
+            if (RUNNING_SENDS.putIfAbsent(occupancy.callId, occupancy) != null) {
+                occupancy = null;
+                hasPreSendRetry = true;
+                throw new DispatchNotAllowedException();
+            }
             hasDispatched = true;
             claim = attemptMarker(DispatchState.CLAIMED, "", priorSendCount() + 1);
             try {
                 record(claim);
             } catch (RuntimeException error) {
+                occupancy.release();
                 hasPreSendRetry = true;
                 if (shouldRecordNotSent) {
                     try {
@@ -232,6 +244,7 @@ public final class Fence {
             }
             // The claim heartbeat may have taken the rest of the window; never start a late or cancelled send.
             if (!Instant.now().isBefore(writeDeadline) || context.isCancellationRequested()) {
+                occupancy.release();
                 hasPreSendRetry = true;
                 RuntimeException notSentFailure = null;
                 if (shouldRecordNotSent) {
@@ -246,6 +259,7 @@ public final class Fence {
             }
         }
         final DispatchObservation observation = new DispatchObservation(writeDeadline);
+        final SendOccupancy sendOccupancy = occupancy;
         final ExecutorService executor = Executors.newSingleThreadExecutor(runnable -> {
             final Thread thread = new Thread(runnable, "dex-connector-fenced-send");
             thread.setDaemon(true);
@@ -255,17 +269,21 @@ public final class Fence {
             final Future<T> future = executor.submit(new Callable<T>() {
                 @Override
                 public T call() throws Exception {
+                    if (!sendOccupancy.start()) {
+                        throw new InterruptedException("single-dispatch send was cancelled before it started");
+                    }
                     DispatchObservation.bind(observation);
                     try {
                         return send.send(writeDeadline);
                     } finally {
                         DispatchObservation.unbind();
+                        sendOccupancy.release();
                     }
                 }
             });
             return awaitSend(future, claim, observation);
         } finally {
-            executor.shutdownNow();
+            executor.shutdown();
         }
     }
 
@@ -377,32 +395,63 @@ public final class Fence {
      * dispatches of the same call in this process until it ends.
      */
     private void stopSend(final Future<?> future, final DispatchObservation observation) {
-        observation.cancel();
-        future.cancel(true);
-        final Thread sendThread = observation.sendThread();
-        if (sendThread == null) {
+        final SendOccupancy sendOccupancy = occupancy;
+        if (sendOccupancy.preventStart()) {
+            // The task never ran, so nothing was sent and nothing holds the call.
+            future.cancel(false);
+            sendOccupancy.release();
             return;
         }
-        try {
-            sendThread.join(SEND_STOP_GRACE.toMillis());
-        } catch (InterruptedException interrupted) {
-            Thread.currentThread().interrupt();
+        observation.cancel();
+        future.cancel(true);
+        boolean isInterrupted = false;
+        final long deadline = System.nanoTime() + SEND_STOP_GRACE.toNanos();
+        while (true) {
+            final long remaining = deadline - System.nanoTime();
+            try {
+                if (remaining <= 0 || sendOccupancy.awaitRelease(remaining)) {
+                    break;
+                }
+            } catch (InterruptedException interrupted) {
+                // A second interrupt must not cut the grace wait short; it is restored afterwards.
+                isInterrupted = true;
+            }
         }
-        if (sendThread.isAlive()) {
-            UNSTOPPED_SENDS.put(call.getId().value(), sendThread);
+        if (isInterrupted) {
+            Thread.currentThread().interrupt();
         }
     }
 
     private static boolean isEarlierSendStillRunning(final CallId callId) {
-        final Thread sendThread = UNSTOPPED_SENDS.get(callId.value());
-        if (sendThread == null) {
-            return false;
+        return RUNNING_SENDS.containsKey(callId.value());
+    }
+
+    /** Holds one Call ID from before its claim until its send callback returns. */
+    private static final class SendOccupancy {
+        private final String callId;
+        private final CountDownLatch released = new CountDownLatch(1);
+        private final AtomicBoolean hasStartBeenDecided = new AtomicBoolean();
+
+        private SendOccupancy(final String callId) {
+            this.callId = callId;
         }
-        if (sendThread.isAlive()) {
-            return true;
+
+        boolean start() {
+            return hasStartBeenDecided.compareAndSet(false, true);
         }
-        UNSTOPPED_SENDS.remove(callId.value(), sendThread);
-        return false;
+
+        boolean preventStart() {
+            return hasStartBeenDecided.compareAndSet(false, true);
+        }
+
+        boolean awaitRelease(final long timeoutNanos) throws InterruptedException {
+            return released.await(timeoutNanos, TimeUnit.NANOSECONDS);
+        }
+
+        void release() {
+            RUNNING_SENDS.remove(callId, this);
+            released.countDown();
+        }
     }
 
     private synchronized void markSendFinished() {

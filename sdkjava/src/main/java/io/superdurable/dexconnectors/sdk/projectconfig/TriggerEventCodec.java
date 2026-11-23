@@ -70,7 +70,8 @@ public final class TriggerEventCodec {
      *
      * <p>The time keeps its offset in Go's RFC 3339 Nano format, as Go's {@code time.Time} writes
      * it; the Python SDK converts it to UTC, so the bytes differ for non-UTC times while the instant
-     * is the same. Without an encoder, the payload
+     * is the same. An offset that is not a whole number of minutes, such as the historical
+     * {@code +00:09:21}, is written in UTC with the same instant. Without an encoder, the payload
      * is converted with Jackson. Object keys are sorted by their UTF-8 bytes, and the output is
      * compact and HTML-safe, as Go's {@code encoding/json} writes the equivalent map.
      *
@@ -85,7 +86,7 @@ public final class TriggerEventCodec {
         final JsonNode payload = encodePayload != null ? encodePayload.encode(event.getPayload())
                 : PAYLOAD_MAPPER.valueToTree(event.getPayload());
         final String prefix = "{\"eventId\":" + GoRawJson.encodeString(event.getId()) + ",\"occurredAt\":"
-                + GoRawJson.encodeString(Rfc3339NanoTimestamp.fromOffsetDateTime(event.getOccurredAt()).toWire())
+                + GoRawJson.encodeString(occurredAtWire(event.getOccurredAt()))
                 + ",\"payload\":";
         final ByteArrayOutputStream output = new ByteArrayOutputStream();
         final byte[] prefixBytes = prefix.getBytes(StandardCharsets.UTF_8);
@@ -94,6 +95,14 @@ public final class TriggerEventCodec {
         output.write(payloadBytes, 0, payloadBytes.length);
         output.write('}');
         return output.toByteArray();
+    }
+
+    // RFC 3339 offsets are whole minutes; a historical second-level offset is written in UTC, keeping the instant.
+    private static String occurredAtWire(final OffsetDateTime occurredAt) {
+        if (occurredAt.getOffset().getTotalSeconds() % 60 != 0) {
+            return Rfc3339NanoTimestamp.fromInstant(occurredAt.toInstant()).toWire();
+        }
+        return Rfc3339NanoTimestamp.fromOffsetDateTime(occurredAt).toWire();
     }
 
     /**
