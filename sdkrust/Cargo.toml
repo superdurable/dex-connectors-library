@@ -25,6 +25,7 @@ uuid = { version = "1", features = ["v5"] }
 
 [dev-dependencies]
 tempfile = "3"
+tokio = { version = "1", features = ["rt", "time"] }
 
 [lints.rust]
 unsafe_code = "forbid"
