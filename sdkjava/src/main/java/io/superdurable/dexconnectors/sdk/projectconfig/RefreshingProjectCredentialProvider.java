@@ -242,7 +242,7 @@ public final class RefreshingProjectCredentialProvider<C> extends ProjectCredent
                 return credentials;
             }
             // Another store or an earlier process may have rotated this token with an unknown outcome.
-            if (refreshLocker.isCurrentCredentialQuarantined(key)) {
+            if (refreshLocker.isCredentialQuarantined(key, material)) {
                 throw new ReauthorizationRequiredException();
             }
             // A rotated refresh token that cannot be written back would strand every other process.
@@ -255,11 +255,22 @@ public final class RefreshingProjectCredentialProvider<C> extends ProjectCredent
             } catch (IOException | RuntimeException error) {
                 throw new RefreshFailedException("project credential refresh failed: the credential cannot be written back");
             }
+            // Persisted before any provider request: a process that exits mid-exchange leaves it in place.
+            try {
+                refreshLocker.recordExchangeAdmission(key, material);
+            } catch (IOException | RuntimeException error) {
+                throw new RefreshFailedException("project credential refresh failed: the exchange cannot be recorded");
+            }
             final Admission admission;
             try {
                 admission = admitRefresh(record, now);
             } catch (ObjectConflictException conflict) {
+                refreshLocker.clearExchangeAdmission(key);
                 return null;
+            } catch (IOException | RuntimeException error) {
+                // The admission failed before the driver ran, so nothing was exchanged.
+                refreshLocker.clearExchangeAdmission(key);
+                throw error;
             }
             return refreshAdmitted(admission, material, state, driver);
         } finally {
@@ -322,6 +333,7 @@ public final class RefreshingProjectCredentialProvider<C> extends ProjectCredent
                     throw new ReauthorizationRequiredException();
                 }
                 finishExchange(admission, "READY");
+                clearExchangeAdmission();
                 if (error instanceof AddressRefusalException) {
                     // An address refusal is a configuration fact the caller must see unchanged, as in Python.
                     throw (AddressRefusalException) error;
@@ -345,6 +357,8 @@ public final class RefreshingProjectCredentialProvider<C> extends ProjectCredent
             // A driver that finished during the grace window is a confirmed rotation and is stored now.
             commitRefresh(admission, new CredentialMaterial(encoded,
                     Rfc3339NanoTimestamp.fromInstant(result.getExpiresAt()), prior.getAuthMethod()));
+            // Only a confirmed write-back retires the admission of the exchanged credential.
+            clearExchangeAdmission();
             return result.getCredentials();
         } finally {
             if (wasInterrupted) {
@@ -355,14 +369,17 @@ public final class RefreshingProjectCredentialProvider<C> extends ProjectCredent
 
     /**
      * Keeps the connection from exchanging the current refresh token again: the shared head becomes
-     * {@code REAUTHORIZATION_REQUIRED}, and a Dex Web store also records a marker every store and
-     * restarted process on the file honors.
+     * {@code REAUTHORIZATION_REQUIRED}, and a Dex Web store keeps the exchange admission it recorded
+     * before sending, which every store and restarted process on the file honors.
      */
     private void markOutcomeUnknown(final Admission admission) throws IOException {
-        if (store.getObjects() instanceof DexWebObjectStore) {
-            ((DexWebObjectStore) store.getObjects()).quarantineCurrentCredential(key);
-        }
         finishExchange(admission, "REAUTHORIZATION_REQUIRED");
+    }
+
+    private void clearExchangeAdmission() throws IOException {
+        if (store.getObjects() instanceof DexWebObjectStore) {
+            ((DexWebObjectStore) store.getObjects()).clearExchangeAdmission(key);
+        }
     }
 
     /** Reports whether a driver failure proves no request reached the token endpoint. */

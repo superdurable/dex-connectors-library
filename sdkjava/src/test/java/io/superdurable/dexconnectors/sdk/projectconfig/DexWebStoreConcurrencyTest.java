@@ -190,6 +190,79 @@ class DexWebStoreConcurrencyTest {
     }
 
     @Test
+    void anExchangeAdmissionIsDurableBeforeTheProviderRequest() throws Exception {
+        writeConnections(credentials("old", "rotating-1"), Instant.now().minusSeconds(60));
+        final LoadedProject project = ProjectConfigurationLoader.loadDexWebProject(connectionsPath);
+        final Path crashSnapshot = Files.createTempDirectory("sdkjava-crash-snapshot");
+        final AtomicInteger calls = new AtomicInteger();
+        final CredentialRefreshDriver<ObjectNode> crashing = new ExpiryOnlyDriver() {
+            @Override
+            public Result<ObjectNode> refresh(final State<ObjectNode> state) throws IOException {
+                calls.incrementAndGet();
+                // The on-disk state at this instant is what a process that exits mid-exchange leaves behind.
+                copyTree(temporaryDirectory, crashSnapshot);
+                return new Result<>(credentials("new", "rotating-2"), Instant.now().plusSeconds(3600));
+            }
+        };
+        assertEquals("new", Credentials.resolveCredential(provider(project), CALL, crashing).get("access").textValue());
+        final LoadedProject afterCrash = ProjectConfigurationLoader.loadDexWebProject(
+                crashSnapshot.resolve(connectionsPath.getFileName()));
+        final AtomicInteger otherCalls = new AtomicInteger();
+        final CredentialRefreshDriver<ObjectNode> counting =
+                lateDriver(Duration.ZERO, otherCalls, new AtomicBoolean(), "other", "rotating-3");
+        assertThrows(ReauthorizationRequiredException.class,
+                () -> Credentials.resolveCredential(provider(afterCrash), CALL, counting));
+        assertEquals(0, otherCalls.get());
+        assertEquals(1, calls.get());
+        // The completed exchange wrote back and retired its admission, so the live file refreshes normally.
+        writeConnections(credentials("expired-again", "rotating-2"), Instant.now().minusSeconds(60));
+        final LoadedProject live = ProjectConfigurationLoader.loadDexWebProject(connectionsPath);
+        assertEquals("other", Credentials.resolveCredential(provider(live), CALL, counting).get("access").textValue());
+    }
+
+    @Test
+    void anUnwritableAdmissionSendsNothing() throws Exception {
+        writeConnections(credentials("old", "rotating-1"), Instant.now().minusSeconds(60));
+        final LoadedProject project = ProjectConfigurationLoader.loadDexWebProject(connectionsPath);
+        // A regular file where the admission directory belongs makes the admission unwritable.
+        Files.write(temporaryDirectory.resolve("refresh-quarantine"), new byte[] {1});
+        final AtomicInteger calls = new AtomicInteger();
+        final CredentialRefreshDriver<ObjectNode> counting =
+                lateDriver(Duration.ZERO, calls, new AtomicBoolean(), "new", "rotating-2");
+        assertThrows(RefreshFailedException.class,
+                () -> Credentials.resolveCredential(provider(project), CALL, counting));
+        assertEquals(0, calls.get());
+    }
+
+    @Test
+    void changingOnlyTheExpiryKeepsAnUnknownOutcomeQuarantined() throws Exception {
+        writeConnections(credentials("old", "rotating-1"), Instant.now().minusSeconds(60));
+        final LoadedProject project = ProjectConfigurationLoader.loadDexWebProject(connectionsPath);
+        final AtomicInteger calls = new AtomicInteger();
+        assertThrows(ReauthorizationRequiredException.class, () -> Credentials.resolveCredential(provider(project),
+                CALL, failingDriver(calls, new ProviderTransportException(false, null, null))));
+        writeConnections(credentials("old", "rotating-1"), Instant.now().minusSeconds(30));
+        final LoadedProject reloaded = ProjectConfigurationLoader.loadDexWebProject(connectionsPath);
+        assertThrows(ReauthorizationRequiredException.class, () -> Credentials.resolveCredential(provider(reloaded),
+                CALL, failingDriver(calls, new ProviderTransportException(false, null, null))));
+        assertEquals(1, calls.get());
+    }
+
+    private static void copyTree(final Path source, final Path target) throws IOException {
+        try (java.util.stream.Stream<Path> paths = Files.walk(source)) {
+            for (Path path : (Iterable<Path>) paths::iterator) {
+                final Path destination = target.resolve(source.relativize(path).toString());
+                if (Files.isDirectory(path)) {
+                    Files.createDirectories(destination);
+                } else if (!path.getFileName().toString().endsWith(".lock")) {
+                    Files.copy(path, destination, java.nio.file.StandardCopyOption.REPLACE_EXISTING,
+                            java.nio.file.StandardCopyOption.COPY_ATTRIBUTES);
+                }
+            }
+        }
+    }
+
+    @Test
     void ambiguousDriverFailuresKeepTheTokenFromBeingExchangedAgain() throws Exception {
         writeConnections(credentials("old", "rotating-1"), Instant.now().minusSeconds(60));
         final LoadedProject project = ProjectConfigurationLoader.loadDexWebProject(connectionsPath);

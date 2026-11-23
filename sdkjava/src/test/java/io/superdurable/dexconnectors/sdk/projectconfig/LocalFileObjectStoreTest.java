@@ -121,6 +121,23 @@ class LocalFileObjectStoreTest {
     }
 
     @Test
+    void anInvalidNewerVersionNeverReplacesTheLastValidOne() throws Exception {
+        final LocalFileObjectStore store = new LocalFileObjectStore(directory);
+        store.initialize();
+        final String key = "projects/local/preview/trigger-inboxes/probe/head";
+        final ProjectObject first = store.createObject(key, "{\"event\":1}".getBytes(StandardCharsets.UTF_8));
+        Files.write(headPointer(key), "corrupt".getBytes(StandardCharsets.US_ASCII));
+        Files.write(versionFile(key, "2"), "{\"key\":\"other\"}".getBytes(StandardCharsets.UTF_8));
+        assertArrayEquals(first.getContents(), store.readObject(key, "").getContents());
+        assertTrue(Files.exists(versionFile(key, "1")));
+        assertTrue(Files.exists(versionFile(key, "2")));
+        assertArrayEquals("1".getBytes(StandardCharsets.US_ASCII), Files.readAllBytes(headPointer(key)));
+
+        Files.write(headPointer(key), "99999999999999999999".getBytes(StandardCharsets.US_ASCII));
+        assertArrayEquals(first.getContents(), store.readObject(key, "").getContents());
+    }
+
+    @Test
     void initializationAndCompareAndSwapDoNotScaleWithUnrelatedObjects() throws Exception {
         final LocalFileObjectStore store = new LocalFileObjectStore(directory);
         store.initialize();

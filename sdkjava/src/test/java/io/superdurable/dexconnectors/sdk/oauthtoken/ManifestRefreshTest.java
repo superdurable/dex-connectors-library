@@ -17,6 +17,8 @@ import io.superdurable.dexconnectors.sdk.CredentialRefreshDriver;
 import io.superdurable.dexconnectors.sdk.ReauthorizationRequiredException;
 import io.superdurable.dexconnectors.sdk.RetryException;
 import io.superdurable.dexconnectors.sdk.SecretString;
+import io.superdurable.dexconnectors.sdk.providerhttp.ProviderHttpTransport;
+import io.superdurable.dexconnectors.sdk.providerhttp.ProviderTransportException;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -237,8 +239,38 @@ class ManifestRefreshTest {
         final ManifestCredentialRefreshDriver<MapCredentials> driver = new ManifestCredentialRefreshDriver<>(
                 "Example", auth, MapCredentials.accessor(FIELDS), transport,
                 Collections.<String, Object>singletonMap("tokenEndpoint", "not-a-url"), Instant::now);
-        assertThrows(RetryException.class, () -> driver.refresh(state(credentials(), null)));
+        final RetryException local = assertThrows(RetryException.class, () -> driver.refresh(state(credentials(), null)));
         assertTrue(transport.requests.isEmpty());
+        // A purely local failure before any request proves no exchange, so stores keep the token usable.
+        assertTrue(local.getCause() instanceof ProviderTransportException
+                && ((ProviderTransportException) local.getCause()).isProvablyNotSent());
+    }
+
+    @Test
+    void aLaterGrantFailureAfterAnEarlierExchangeIsNeverReportedAsUnsent() throws Exception {
+        final ObjectNode auth = auth();
+        ((ObjectNode) oauth(auth).get("refresh")).set("grants", MAPPER.readTree("[{\"refreshTokenCredential\":"
+                + "\"refresh_token\",\"credentialMappings\":[{\"credential\":\"access_token\",\"source\":\"access_token\"},"
+                + "{\"credential\":\"refresh_token\",\"source\":\"refresh_token\"}]},{\"refreshTokenCredential\":"
+                + "\"refresh_token\",\"credentialMappings\":[{\"credential\":\"instance_url\",\"source\":\"instance_url\"}]}]"));
+        final java.util.concurrent.atomic.AtomicInteger sends = new java.util.concurrent.atomic.AtomicInteger();
+        final RecordingTransport first = respond("{\"access_token\":\"next\",\"refresh_token\":\"rotated\","
+                + "\"expires_in\":3600,\"token_type\":\"bearer\",\"scope\":\"files.read\"}");
+        final ProviderHttpTransport twoStep = request -> {
+            if (sends.incrementAndGet() == 1) {
+                return first.send(request);
+            }
+            throw new ProviderTransportException(true, null, null);
+        };
+        final ManifestCredentialRefreshDriver<MapCredentials> driver = new ManifestCredentialRefreshDriver<>(
+                "Example", auth, MapCredentials.accessor(FIELDS), twoStep);
+        final RetryException failure = assertThrows(RetryException.class,
+                () -> driver.refresh(state(credentials(), null)));
+        assertEquals(2, sends.get());
+        for (Throwable current = failure; current != null; current = current.getCause()) {
+            assertFalse(current instanceof ProviderTransportException,
+                    "the first grant may have rotated the token, so the refresh is not provably unsent");
+        }
     }
 
     @Test
