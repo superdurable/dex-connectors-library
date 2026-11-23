@@ -45,9 +45,13 @@ public final class RefreshingProjectCredentialProvider<C> extends ProjectCredent
     private static final Duration REFRESH_TIMEOUT = Duration.ofSeconds(30);
     private static final Duration ADMISSION_TIMEOUT = Duration.ofSeconds(40);
     private static final long OBSERVER_POLL_MILLISECONDS = 100;
+    // A driver that ignores interruption keeps the refresh lock this long after its timeout.
+    private static final Duration DRIVER_EXIT_GRACE = Duration.ofSeconds(10);
     private static final SecureRandom RANDOM = new SecureRandom();
 
     private final Function<C, ObjectNode> encode;
+    private final Duration refreshTimeout;
+    private final Duration driverExitGrace;
 
     /**
      * Binds one connection with private-material codecs.
@@ -75,11 +79,20 @@ public final class RefreshingProjectCredentialProvider<C> extends ProjectCredent
     public RefreshingProjectCredentialProvider(
             final ConnectionStore store, final ConnectionKey key, final Function<ObjectNode, C> decode,
             final Function<C, ObjectNode> encode, final Function<ObjectNode, C> decodeShared) {
+        this(store, key, decode, encode, decodeShared, REFRESH_TIMEOUT, DRIVER_EXIT_GRACE);
+    }
+
+    RefreshingProjectCredentialProvider(
+            final ConnectionStore store, final ConnectionKey key, final Function<ObjectNode, C> decode,
+            final Function<C, ObjectNode> encode, final Function<ObjectNode, C> decodeShared,
+            final Duration refreshTimeout, final Duration driverExitGrace) {
         super(store, key, decode, decodeShared);
         if (encode == null) {
             throw new IllegalArgumentException("project credential encoder is required");
         }
         this.encode = encode;
+        this.refreshTimeout = refreshTimeout;
+        this.driverExitGrace = driverExitGrace;
     }
 
     /**
@@ -126,7 +139,12 @@ public final class RefreshingProjectCredentialProvider<C> extends ProjectCredent
                         // Publishing a recovered credential writes the file, so it holds the refresh lock.
                         final DexWebRefreshLock.Held held = refreshLocker.lockCredentialRefresh();
                         try {
-                            recoverOrWait(store.readRecord(key).record);
+                            // The lock holder may have finished; dispatch on the state reread under the lock.
+                            final ObjectNode reread = store.readRecord(key).record;
+                            final String rereadStatus = ProjectConfigurationRules.text(reread, "status");
+                            if ("AUTHORIZING".equals(rereadStatus) || "REFRESHING".equals(rereadStatus)) {
+                                recoverOrWait(reread);
+                            }
                         } finally {
                             held.close();
                         }
@@ -304,12 +322,14 @@ public final class RefreshingProjectCredentialProvider<C> extends ProjectCredent
         try {
             final Future<CredentialRefreshDriver.Result<C>> future = executor.submit(() -> driver.refresh(state));
             try {
-                return future.get(REFRESH_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
+                return future.get(refreshTimeout.toMillis(), TimeUnit.MILLISECONDS);
             } catch (TimeoutException error) {
                 future.cancel(true);
+                awaitDriverExit(executor);
                 throw error;
             } catch (InterruptedException error) {
                 future.cancel(true);
+                awaitDriverExit(executor);
                 throw error;
             } catch (ExecutionException error) {
                 final Throwable cause = error.getCause();
@@ -320,6 +340,26 @@ public final class RefreshingProjectCredentialProvider<C> extends ProjectCredent
             }
         } finally {
             executor.shutdownNow();
+        }
+    }
+
+    /**
+     * Keeps the caller, and so any held refresh lock, until a cancelled driver thread exits.
+     *
+     * <p>The wait is bounded by the driver exit grace; a driver that ignores interruption longer may
+     * still finish its provider exchange after the lock is released.
+     */
+    private void awaitDriverExit(final ExecutorService executor) {
+        executor.shutdownNow();
+        final boolean wasInterrupted = Thread.interrupted();
+        try {
+            executor.awaitTermination(driverExitGrace.toMillis(), TimeUnit.MILLISECONDS);
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+        } finally {
+            if (wasInterrupted) {
+                Thread.currentThread().interrupt();
+            }
         }
     }
 

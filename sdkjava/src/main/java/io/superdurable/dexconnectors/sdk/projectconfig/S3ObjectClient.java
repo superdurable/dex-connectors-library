@@ -3,6 +3,8 @@
 
 package io.superdurable.dexconnectors.sdk.projectconfig;
 
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import io.superdurable.dexconnectors.sdk.PrivateValueRefusingSerializer;
 import java.io.IOException;
 
 /**
@@ -46,8 +48,9 @@ public interface S3ObjectClient {
     PutResponse putObject(PutRequest request) throws IOException;
 
     /**
-     * One object read.
+     * One object read; it holds private object contents, so Jackson refuses to serialize it.
      */
+    @JsonSerialize(using = PrivateValueRefusingSerializer.class)
     final class GetResponse {
         private final String versionId;
         private final String etag;
@@ -96,8 +99,10 @@ public interface S3ObjectClient {
     }
 
     /**
-     * One conditional object write.
+     * One conditional object write; it holds private object contents, so Jackson refuses to
+     * serialize it. Build the S3 call explicitly from its getters.
      */
+    @JsonSerialize(using = PrivateValueRefusingSerializer.class)
     final class PutRequest {
         private final String bucket;
         private final String key;

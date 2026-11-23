@@ -101,6 +101,12 @@ public final class ProjectConfigurationLoader {
      * <p>Refreshed credentials are written back to {@code connections.json}; Trigger inboxes are
      * kept in a private directory beside it.
      *
+     * <p>Java coordinates credential refresh and inbox writes with JDK file locks, which are
+     * {@code fcntl} locks. On Linux they do not exclude the {@code flock} locks of the Go, Rust, and
+     * Python SDKs, so a local Dex Web workspace must be used by one language only there: never share
+     * one {@code connections.json} between Java and processes of another language on Linux, or a
+     * rotated refresh token can be spent twice.
+     *
      * @param path the {@code connections.json} path
      * @return the loaded project in the {@code local/preview} scope
      * @throws IOException if a file cannot be read

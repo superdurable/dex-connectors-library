@@ -3,6 +3,8 @@
 
 package io.superdurable.dexconnectors.sdk.projectconfig;
 
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import io.superdurable.dexconnectors.sdk.PrivateValueRefusingSerializer;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -73,8 +75,9 @@ public interface BrokerHttpTransport {
     }
 
     /**
-     * One broker HTTP response.
+     * One broker HTTP response; a success body holds credentials, so Jackson refuses to serialize it.
      */
+    @JsonSerialize(using = PrivateValueRefusingSerializer.class)
     final class Response {
         private final int statusCode;
         private final byte[] body;

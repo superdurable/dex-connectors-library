@@ -85,8 +85,16 @@ final class DexWebFiles {
         return value.textValue().isEmpty() ? null : Rfc3339NanoTimestamp.fromWire(value.textValue());
     }
 
+    /**
+     * Identifies credential content independently of member order and white space, as Go does.
+     *
+     * <p>Go decodes the raw credentials with {@code UseNumber} and marshals the generic value, so
+     * object keys are sorted, the last duplicate wins, and number literals keep their spelling.
+     */
     static String credentialDigest(final CredentialMaterial material) {
-        byte[] contents = GoCompatibleJson.encodeSortedMap(material.getCredentials());
+        final StringBuilder canonical = new StringBuilder();
+        writeDigestValue(canonical, GoCompatibleJson.encodeSortedMap(material.getCredentials()));
+        byte[] contents = canonical.toString().getBytes(StandardCharsets.UTF_8);
         if (material.getExpiresAt() != null) {
             final byte[] expiry = ("|" + Rfc3339NanoTimestamp.fromInstant(material.getExpiresAtInstant()).toWire())
                     .getBytes(StandardCharsets.UTF_8);
@@ -96,6 +104,47 @@ final class DexWebFiles {
             contents = combined;
         }
         return GoCompatibleJson.sha256Hex(contents);
+    }
+
+    private static void writeDigestValue(final StringBuilder output, final byte[] raw) {
+        switch (GoRawJson.kind(raw)) {
+            case OBJECT:
+                final java.util.TreeMap<String, byte[]> members = new java.util.TreeMap<>(GoCompatibleJson::compareUtf8);
+                for (java.util.Map.Entry<String, byte[]> member : GoRawJson.objectMembers(raw)) {
+                    members.put(member.getKey(), member.getValue());
+                }
+                output.append('{');
+                boolean isFirst = true;
+                for (java.util.Map.Entry<String, byte[]> member : members.entrySet()) {
+                    if (!isFirst) {
+                        output.append(',');
+                    }
+                    isFirst = false;
+                    GoCompatibleJson.writeString(output, member.getKey());
+                    output.append(':');
+                    writeDigestValue(output, member.getValue());
+                }
+                output.append('}');
+                return;
+            case ARRAY:
+                output.append('[');
+                boolean isFirstElement = true;
+                for (byte[] element : GoRawJson.arrayElements(raw)) {
+                    if (!isFirstElement) {
+                        output.append(',');
+                    }
+                    isFirstElement = false;
+                    writeDigestValue(output, element);
+                }
+                output.append(']');
+                return;
+            case STRING:
+                GoCompatibleJson.writeString(output, GoRawJson.decodeString(GoRawJson.compact(raw)));
+                return;
+            default:
+                // Numbers keep their literal spelling, as json.Number does; true, false, and null are fixed.
+                output.append(new String(GoRawJson.compact(raw), StandardCharsets.UTF_8));
+        }
     }
 
     static byte[] prettyJson(final JsonNode value) throws IOException {
