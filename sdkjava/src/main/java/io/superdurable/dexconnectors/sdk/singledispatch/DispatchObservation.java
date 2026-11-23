@@ -21,6 +21,7 @@ public final class DispatchObservation {
 
     private final Instant writeDeadline;
     private final List<Runnable> cancellations = new ArrayList<>();
+    private final List<Runnable> transportCancellations = new ArrayList<>();
     private volatile Integer statusCode;
     private volatile Thread sendThread;
     private boolean isCancelled;
@@ -112,6 +113,32 @@ public final class DispatchObservation {
         return Instant.now().isBefore(observation.writeDeadline);
     }
 
+    /**
+     * Registers the SDK transport's own cancellation of an in-flight exchange.
+     *
+     * <p>The Fence runs it synchronously, before any application abort action, so it must not block:
+     * an OkHttp {@code Call.cancel()} qualifies. When the dispatch is already cancelled, it runs
+     * immediately on the calling thread.
+     *
+     * @param cancel the non-blocking transport cancellation
+     */
+    public static void registerTransportCancellation(final Runnable cancel) {
+        final DispatchObservation observation = CURRENT.get();
+        if (observation == null || cancel == null) {
+            return;
+        }
+        final boolean shouldRunNow;
+        synchronized (observation) {
+            shouldRunNow = observation.isCancelled;
+            if (!shouldRunNow) {
+                observation.transportCancellations.add(cancel);
+            }
+        }
+        if (shouldRunNow) {
+            cancel.run();
+        }
+    }
+
     static void bind(final DispatchObservation observation) {
         observation.sendThread = Thread.currentThread();
         CURRENT.set(observation);
@@ -134,10 +161,21 @@ public final class DispatchObservation {
      */
     void cancel() {
         final List<Runnable> actions;
+        final List<Runnable> transportActions;
         synchronized (this) {
             isCancelled = true;
             actions = new ArrayList<>(cancellations);
             cancellations.clear();
+            transportActions = new ArrayList<>(transportCancellations);
+            transportCancellations.clear();
+        }
+        // SDK transport cancellation is non-blocking and runs first, so no application action can delay it.
+        for (Runnable transportAction : transportActions) {
+            try {
+                transportAction.run();
+            } catch (RuntimeException ignored) {
+                // Cancelling an already finished exchange has nothing further to abort.
+            }
         }
         if (actions.isEmpty()) {
             return;

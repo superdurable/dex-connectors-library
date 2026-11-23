@@ -251,10 +251,24 @@ public MutationAttempt<String> invoke(final Call call, final String item) throws
 
 The send runs on its own thread so the Fence keeps heartbeating from the Step
 handler thread; the send must not use the Dex Context. The handler thread
-polls Dex cancellation and the write deadline; either one closes the send's
-provider connection, and `ProviderHttpClient` refuses to connect or write after
-them. A send that does not stop blocks further sends of the same Call in this
-process until it ends. Run the Fences of one Step sequentially on the handler
+polls Dex cancellation and the write deadline; either one cancels the send's
+OkHttp call before any application abort action runs, and `ProviderHttpClient`
+checks the dispatch again right before the first request byte. A send whose
+callback does not return keeps its Call ID occupied in this process, so other
+attempts read back instead of sending, until the callback ends.
+
+## Provider HTTP
+
+`ProviderHttpClient` sends through OkHttp 4 (`com.squareup.okhttp3:okhttp`,
+which brings the Kotlin standard library). It never follows redirects, caches,
+or retries; validates the method, header names, and header values before any
+lookup; and bounds each call by an absolute call timeout. A restricted
+`AddressPolicy` resolves the host once, checks every answer, dials only those
+addresses, and never uses an HTTP or SOCKS proxy. `AddressPolicy.UNRESTRICTED`
+honors the system `ProxySelector` on every path, including single-dispatch
+sends. TLS uses `HttpsURLConnection.getDefaultSSLSocketFactory()`, so trust
+material an application installs there applies, with strict hostname
+verification. Run the Fences of one Step sequentially on the handler
 thread.
 
 ## Development
