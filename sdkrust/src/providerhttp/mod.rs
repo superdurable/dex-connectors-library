@@ -186,9 +186,9 @@ impl std::error::Error for BodyTooLargeError {}
 pub struct ProviderTransportError {
     /// Whether DNS, connect, or TLS failed before any HTTP byte was written.
     pub provably_not_sent: bool,
-    /// Status of a response whose body read failed.
+    /// Status of a response with invalid framing or a failed body read.
     pub status: Option<u16>,
-    /// Headers of a response whose body read failed.
+    /// Headers of a response with invalid framing or a failed body read.
     pub headers: Option<ResponseHeaders>,
 }
 
@@ -200,6 +200,13 @@ impl ProviderTransportError {
             status: None,
             headers: None,
         }
+    }
+
+    /// Returns the raw `Retry-After` value of the received response, if any.
+    ///
+    /// Pass it to [`parse_retry_after`] to classify a 429 or 503 whose framing or body failed.
+    pub fn retry_after(&self) -> Option<&str> {
+        self.headers.as_ref()?.get("Retry-After")
     }
 }
 
@@ -257,11 +264,12 @@ impl std::error::Error for ProviderHttpError {
 pub trait ProviderHttpTransport: Send + Sync {
     /// Sends `request` once, bounded by `timeout`, and returns the streaming response.
     ///
-    /// Every HTTP status, including 3xx and errors, is a response.
+    /// Every HTTP status with valid framing, including 3xx and errors, is a response.
     ///
     /// # Errors
     ///
-    /// Returns [`ProviderHttpError`] for a refusal or transport failure.
+    /// Returns [`ProviderHttpError`] for a refusal or transport failure. Invalid response
+    /// framing is a [`ProviderHttpError::Transport`] carrying the status and headers.
     fn send(
         &self,
         request: &ProviderHttpRequest,
@@ -321,9 +329,10 @@ impl ProviderHttpClient {
     ///
     /// Response framing is strict: `Transfer-Encoding` must be exactly `chunked` and must not
     /// appear with `Content-Length`, and every `Content-Length` must be the same decimal value.
-    /// A response with invalid framing still returns its status and headers, so a 429 or 503
-    /// and its `Retry-After` remain visible; [`read_bounded_body`] then fails with a
-    /// [`ProviderHttpError::Transport`] that keeps them.
+    /// A response with invalid framing is never returned as a response, so a caller that
+    /// checks only the status cannot mistake it for success. The send fails with a
+    /// [`ProviderHttpError::Transport`] that is not provably unsent and keeps the status and
+    /// headers, so a 429 or 503 and its [`ProviderTransportError::retry_after`] stay visible.
     ///
     /// [`AddressPolicy::PublicHttps`] allows only HTTPS to public addresses;
     /// [`AddressPolicy::PrivateNetworkHttp`] also allows HTTP to private or loopback addresses.

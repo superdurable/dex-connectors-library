@@ -7,9 +7,9 @@
 //! connection, writes the request once with `Connection: close`, and streams the response
 //! body under the same absolute deadline.
 
+use std::collections::HashMap;
 use std::io::{self, BufRead, BufReader, Read, Write};
 use std::net::{IpAddr, Ipv6Addr, SocketAddr, TcpStream, ToSocketAddrs};
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, OnceLock, PoisonError, mpsc};
 use std::thread;
 use std::time::{Duration, Instant};
@@ -32,6 +32,8 @@ const MAXIMUM_CHUNK_SIZE_LINE_BYTES: usize = 4096;
 const MAXIMUM_TRAILER_BYTES: usize = 64 << 10;
 const SYSTEM_RESOLVER_WORKER_COUNT: usize = 4;
 const SYSTEM_RESOLVER_QUEUE_CAPACITY: usize = 256;
+const SYSTEM_RESOLVER_LEAK_THRESHOLD: Duration = Duration::from_secs(30);
+const SYSTEM_RESOLVER_MAXIMUM_THREAD_COUNT: usize = 64;
 const DEFAULT_USER_AGENT_HEADER: &str = concat!(
     "User-Agent: dex-connectors-sdk/",
     env!("CARGO_PKG_VERSION"),
@@ -149,12 +151,20 @@ impl ProviderHttpTransport for BlockingHttp1Transport {
             .map_err(possibly_sent)?;
         let mut reader = BufReader::new(connection);
         let (status, headers) = read_response_head(&mut reader).map_err(possibly_sent)?;
-        let framing = choose_response_framing(&request.method, status, &headers);
-        let body = response_body(reader, framing);
+        let headers = ResponseHeaders::new(headers);
+        // A status-only caller must not treat a misframed response as success.
+        let Ok(framing) = choose_response_framing(&request.method, status, headers.entries())
+        else {
+            return Err(ProviderHttpError::Transport(ProviderTransportError {
+                provably_not_sent: false,
+                status: Some(status),
+                headers: Some(headers),
+            }));
+        };
         Ok(ProviderHttpResponse::new(
             status,
-            ResponseHeaders::new(headers),
-            body,
+            headers,
+            response_body(reader, framing),
         ))
     }
 }
@@ -350,8 +360,12 @@ fn system_resolver_pool() -> Arc<ResolverPool> {
         .get_or_init(|| {
             Arc::new(ResolverPool::new(
                 Arc::new(SystemHostResolver),
-                SYSTEM_RESOLVER_WORKER_COUNT,
-                SYSTEM_RESOLVER_QUEUE_CAPACITY,
+                ResolverPoolLimits {
+                    worker_count: SYSTEM_RESOLVER_WORKER_COUNT,
+                    queue_capacity: SYSTEM_RESOLVER_QUEUE_CAPACITY,
+                    leak_threshold: SYSTEM_RESOLVER_LEAK_THRESHOLD,
+                    maximum_thread_count: SYSTEM_RESOLVER_MAXIMUM_THREAD_COUNT,
+                },
             ))
         })
         .clone()
@@ -366,37 +380,72 @@ struct ResolutionTask {
     answer_sender: mpsc::SyncSender<ResolutionAnswer>,
 }
 
-/// Lazily started fixed resolver threads with a bounded queue; expired lookups are abandoned.
+/// Sizing of a [`ResolverPool`].
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct ResolverPoolLimits {
+    /// Workers kept available for new lookups.
+    pub(crate) worker_count: usize,
+    /// Lookups waiting for a worker; a full queue fails at once.
+    pub(crate) queue_capacity: usize,
+    /// Lookup age after which its worker counts as leaked and gets a replacement.
+    pub(crate) leak_threshold: Duration,
+    /// Hard cap on resolver threads, leaked ones included.
+    pub(crate) maximum_thread_count: usize,
+}
+
+/// Thread accounting shared by the pool and its workers.
+#[derive(Debug, Default)]
+struct ResolverPoolState {
+    next_worker_id: u64,
+    thread_count: usize,
+    most_thread_count: usize,
+    /// Start time of each worker's in-progress lookup.
+    lookup_started_at: HashMap<u64, Instant>,
+}
+
+impl ResolverPoolState {
+    /// Threads not stuck in a lookup for at least `leak_threshold`.
+    fn available_thread_count(&self, leak_threshold: Duration, now: Instant) -> usize {
+        let leaked_thread_count = self
+            .lookup_started_at
+            .values()
+            .filter(|started_at| now.saturating_duration_since(**started_at) >= leak_threshold)
+            .count();
+        self.thread_count.saturating_sub(leaked_thread_count)
+    }
+}
+
+/// Lazily started resolver threads with a bounded queue; expired lookups are abandoned.
+///
+/// A system lookup cannot be cancelled, so a worker stuck past the leak threshold is replaced
+/// while the thread total stays within the hard cap.
 pub(crate) struct ResolverPool {
     resolver: Arc<dyn HostResolver>,
-    worker_count: usize,
-    queue_capacity: usize,
-    task_sender: OnceLock<mpsc::SyncSender<ResolutionTask>>,
-    live_worker_count: Arc<AtomicUsize>,
+    limits: ResolverPoolLimits,
+    task_sender: mpsc::SyncSender<ResolutionTask>,
+    task_receiver: Arc<Mutex<mpsc::Receiver<ResolutionTask>>>,
+    state: Arc<Mutex<ResolverPoolState>>,
 }
 
 impl ResolverPool {
-    /// Creates a pool whose `worker_count` threads start on the first lookup.
-    pub(crate) fn new(
-        resolver: Arc<dyn HostResolver>,
-        worker_count: usize,
-        queue_capacity: usize,
-    ) -> Self {
+    /// Creates a pool whose threads start on the first lookup.
+    pub(crate) fn new(resolver: Arc<dyn HostResolver>, limits: ResolverPoolLimits) -> Self {
+        let (task_sender, task_receiver) = mpsc::sync_channel(limits.queue_capacity);
         Self {
             resolver,
-            worker_count,
-            queue_capacity,
-            task_sender: OnceLock::new(),
-            live_worker_count: Arc::new(AtomicUsize::new(0)),
+            limits,
+            task_sender,
+            task_receiver: Arc::new(Mutex::new(task_receiver)),
+            state: Arc::new(Mutex::new(ResolverPoolState::default())),
         }
     }
 
     /// Resolves within the deadline; `None` for a full queue or a failed, empty, or late answer.
     fn resolve_before(&self, host: &str, port: u16, deadline: Instant) -> Option<Vec<SocketAddr>> {
-        let remaining = deadline.saturating_duration_since(Instant::now());
-        if remaining.is_zero() {
+        if Instant::now() >= deadline {
             return None;
         }
+        self.start_missing_workers();
         let (answer_sender, answer_receiver) = mpsc::sync_channel(1);
         let task = ResolutionTask {
             host: host.to_string(),
@@ -405,48 +454,75 @@ impl ResolverPool {
             answer_sender,
         };
         // A full queue fails at once instead of letting abandoned lookups accumulate.
-        self.task_sender().try_send(task).ok()?;
-        let answer = answer_receiver.recv_timeout(remaining).ok()?.ok()?;
+        self.task_sender.try_send(task).ok()?;
+        // Measured after startup and enqueueing, so neither extends the deadline.
+        let remaining = deadline.saturating_duration_since(Instant::now());
+        let answer = answer_receiver.recv_timeout(remaining).ok()?;
+        if Instant::now() >= deadline {
+            return None;
+        }
+        let answer = answer.ok()?;
         (!answer.is_empty()).then_some(answer)
     }
 
-    fn task_sender(&self) -> &mpsc::SyncSender<ResolutionTask> {
-        self.task_sender.get_or_init(|| self.start_workers())
-    }
-
-    fn start_workers(&self) -> mpsc::SyncSender<ResolutionTask> {
-        let (task_sender, task_receiver) = mpsc::sync_channel(self.queue_capacity);
-        let task_receiver = Arc::new(Mutex::new(task_receiver));
-        for _ in 0..self.worker_count {
-            self.live_worker_count.fetch_add(1, Ordering::SeqCst);
+    /// Starts workers until enough are available, never exceeding the thread cap.
+    fn start_missing_workers(&self) {
+        let first_worker_id;
+        let missing_worker_count;
+        {
+            let mut state = self.state.lock().unwrap_or_else(PoisonError::into_inner);
+            let available_thread_count =
+                state.available_thread_count(self.limits.leak_threshold, Instant::now());
+            missing_worker_count = self
+                .limits
+                .worker_count
+                .saturating_sub(available_thread_count)
+                .min(
+                    self.limits
+                        .maximum_thread_count
+                        .saturating_sub(state.thread_count),
+                );
+            first_worker_id = state.next_worker_id;
+            state.next_worker_id += missing_worker_count as u64;
+            state.thread_count += missing_worker_count;
+            state.most_thread_count = state.most_thread_count.max(state.thread_count);
+        }
+        // Spawning outside the lock lets a failed spawn's dropped worker release its slot.
+        for worker_id in first_worker_id..first_worker_id + missing_worker_count as u64 {
             let worker = ResolverWorker {
+                worker_id,
                 resolver: Arc::clone(&self.resolver),
-                task_receiver: Arc::clone(&task_receiver),
-                live_worker_count: Arc::clone(&self.live_worker_count),
+                limits: self.limits,
+                task_receiver: Arc::clone(&self.task_receiver),
+                state: Arc::clone(&self.state),
+                is_counted: true,
             };
             // A failed spawn drops the worker; with no workers, every lookup fails as not sent.
             let _spawn_result = thread::Builder::new()
                 .name("dex-provider-dns".to_string())
                 .spawn(move || worker.run());
         }
-        task_sender
     }
 
     #[cfg(test)]
-    fn live_worker_count(&self) -> Arc<AtomicUsize> {
-        Arc::clone(&self.live_worker_count)
+    fn state(&self) -> Arc<Mutex<ResolverPoolState>> {
+        Arc::clone(&self.state)
     }
 }
 
-/// One resolver thread; dropping it, on exit or failed spawn, releases its live count.
+/// One resolver thread; dropping it, on exit or failed spawn, releases its thread slot.
 struct ResolverWorker {
+    worker_id: u64,
     resolver: Arc<dyn HostResolver>,
+    limits: ResolverPoolLimits,
     task_receiver: Arc<Mutex<mpsc::Receiver<ResolutionTask>>>,
-    live_worker_count: Arc<AtomicUsize>,
+    state: Arc<Mutex<ResolverPoolState>>,
+    /// Whether this worker still holds a slot in `thread_count`.
+    is_counted: bool,
 }
 
 impl ResolverWorker {
-    fn run(self) {
+    fn run(mut self) {
         loop {
             // The lock guard ends with this statement, so a hanging lookup blocks one worker.
             let next_task = self
@@ -460,16 +536,46 @@ impl ResolverWorker {
             if Instant::now() >= task.deadline {
                 continue;
             }
+            self.lock_state()
+                .lookup_started_at
+                .insert(self.worker_id, Instant::now());
             let answer = self.resolver.resolve_host(&task.host, task.port);
             // The requester may have stopped waiting at its deadline.
             let _requester_gone = task.answer_sender.try_send(answer);
+            if self.finish_lookup_and_release_surplus_slot() {
+                return;
+            }
         }
+    }
+
+    /// Ends the lookup; returns `true` after releasing this slot when replacements suffice.
+    fn finish_lookup_and_release_surplus_slot(&mut self) -> bool {
+        let mut state = self.lock_state();
+        state.lookup_started_at.remove(&self.worker_id);
+        let is_surplus = state.available_thread_count(self.limits.leak_threshold, Instant::now())
+            > self.limits.worker_count;
+        if is_surplus {
+            state.thread_count -= 1;
+        }
+        drop(state);
+        if is_surplus {
+            self.is_counted = false;
+        }
+        is_surplus
+    }
+
+    fn lock_state(&self) -> std::sync::MutexGuard<'_, ResolverPoolState> {
+        self.state.lock().unwrap_or_else(PoisonError::into_inner)
     }
 }
 
 impl Drop for ResolverWorker {
     fn drop(&mut self) {
-        self.live_worker_count.fetch_sub(1, Ordering::SeqCst);
+        if self.is_counted {
+            let mut state = self.lock_state();
+            state.thread_count -= 1;
+            state.lookup_started_at.remove(&self.worker_id);
+        }
     }
 }
 
@@ -693,35 +799,23 @@ fn choose_response_framing(
     Ok(content_length.map_or(ResponseFraming::UntilClose, ResponseFraming::ContentLength))
 }
 
-/// Builds the streamed body; invalid framing closes the connection and fails every read.
+/// Builds the streamed body for validated framing.
 fn response_body(
     reader: BufReader<ProviderConnection>,
-    framing: Result<ResponseFraming, &'static str>,
+    framing: ResponseFraming,
 ) -> Box<dyn Read + Send> {
     match framing {
-        Ok(ResponseFraming::Empty) => Box::new(io::empty()),
-        Ok(ResponseFraming::ContentLength(length)) => Box::new(ContentLengthBody {
+        ResponseFraming::Empty => Box::new(io::empty()),
+        ResponseFraming::ContentLength(length) => Box::new(ContentLengthBody {
             reader,
             remaining: length,
         }),
-        Ok(ResponseFraming::Chunked) => Box::new(ChunkedBody {
+        ResponseFraming::Chunked => Box::new(ChunkedBody {
             reader,
             remaining_in_chunk: 0,
             is_finished: false,
         }),
-        Ok(ResponseFraming::UntilClose) => Box::new(reader),
-        Err(message) => Box::new(InvalidFramingBody { message }),
-    }
-}
-
-/// Body of a response whose framing is invalid; status and headers stay usable.
-struct InvalidFramingBody {
-    message: &'static str,
-}
-
-impl Read for InvalidFramingBody {
-    fn read(&mut self, _buffer: &mut [u8]) -> io::Result<usize> {
-        Err(invalid_response(self.message))
+        ResponseFraming::UntilClose => Box::new(reader),
     }
 }
 
@@ -817,7 +911,12 @@ impl<R: BufRead> Read for ChunkedBody<R> {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
     use super::*;
+
+    /// Host the hanging resolver answers at once.
+    const FAST_HOST: &str = "fast.example";
 
     fn decode_chunked(encoded: &[u8]) -> io::Result<Vec<u8>> {
         let mut body = ChunkedBody {
@@ -949,7 +1048,7 @@ mod tests {
         assert!(framing_of("GET", 204, &[("Transfer-Encoding", "gzip")]).is_err());
     }
 
-    /// Resolver that blocks until released and records how many lookups run at once.
+    /// Resolver that blocks, except for [`FAST_HOST`], and records concurrent lookups.
     struct HangingResolver {
         is_released: Mutex<bool>,
         release_signal: std::sync::Condvar,
@@ -968,7 +1067,10 @@ mod tests {
     }
 
     impl HostResolver for HangingResolver {
-        fn resolve_host(&self, _host: &str, _port: u16) -> io::Result<Vec<SocketAddr>> {
+        fn resolve_host(&self, host: &str, _port: u16) -> io::Result<Vec<SocketAddr>> {
+            if host == FAST_HOST {
+                return Ok(vec![SocketAddr::from(([127, 0, 0, 1], 9))]);
+            }
             let active = self.active_lookup_count.fetch_add(1, Ordering::SeqCst) + 1;
             self.most_active_lookup_count
                 .fetch_max(active, Ordering::SeqCst);
@@ -1008,30 +1110,42 @@ mod tests {
         }
     }
 
+    fn new_hanging_resolver() -> Arc<HangingResolver> {
+        Arc::new(HangingResolver {
+            is_released: Mutex::new(false),
+            release_signal: std::sync::Condvar::new(),
+            active_lookup_count: AtomicUsize::new(0),
+            most_active_lookup_count: AtomicUsize::new(0),
+        })
+    }
+
+    fn thread_count_of(state: &Mutex<ResolverPoolState>) -> usize {
+        state
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .thread_count
+    }
+
     #[test]
     fn hanging_resolver_keeps_resolver_threads_bounded() {
         const WORKER_COUNT: usize = 2;
         const QUEUE_CAPACITY: usize = 3;
         const REQUEST_COUNT: usize = 20;
         let request_timeout = Duration::from_millis(300);
-        let resolver = Arc::new(HangingResolver {
-            is_released: Mutex::new(false),
-            release_signal: std::sync::Condvar::new(),
-            active_lookup_count: AtomicUsize::new(0),
-            most_active_lookup_count: AtomicUsize::new(0),
-        });
+        let resolver = new_hanging_resolver();
         let release_guard = ReleaseOnDrop(Arc::clone(&resolver));
         let pool = Arc::new(ResolverPool::new(
             Arc::clone(&resolver) as Arc<dyn HostResolver>,
-            WORKER_COUNT,
-            QUEUE_CAPACITY,
+            ResolverPoolLimits {
+                worker_count: WORKER_COUNT,
+                queue_capacity: QUEUE_CAPACITY,
+                leak_threshold: Duration::from_secs(3600),
+                maximum_thread_count: WORKER_COUNT,
+            },
         ));
-        let live_worker_count = pool.live_worker_count();
-        assert_eq!(
-            live_worker_count.load(Ordering::SeqCst),
-            0,
-            "workers start lazily"
-        );
+        let pool_state = pool.state();
+        let live_worker_count = || thread_count_of(&pool_state);
+        assert_eq!(live_worker_count(), 0, "workers start lazily");
         let transport = BlockingHttp1Transport::with_resolver_pool(
             AddressPolicy::Unrestricted,
             Arc::clone(&pool),
@@ -1055,7 +1169,7 @@ mod tests {
             if elapsed < request_timeout / 2 {
                 fast_failure_count += 1;
             }
-            assert!(live_worker_count.load(Ordering::SeqCst) <= WORKER_COUNT);
+            assert!(live_worker_count() <= WORKER_COUNT);
         }
         // Each worker holds one hung lookup and the queue holds abandoned tasks; the rest fail fast.
         assert!(
@@ -1069,16 +1183,81 @@ mod tests {
             resolver.most_active_lookup_count.load(Ordering::SeqCst),
             WORKER_COUNT
         );
-        assert_eq!(live_worker_count.load(Ordering::SeqCst), WORKER_COUNT);
+        assert_eq!(live_worker_count(), WORKER_COUNT);
         drop(release_guard);
         drop(transport);
         drop(pool);
-        wait_until("resolver workers to exit", || {
-            live_worker_count.load(Ordering::SeqCst) == 0
-        });
+        wait_until("resolver workers to exit", || live_worker_count() == 0);
         assert_eq!(
             resolver.most_active_lookup_count.load(Ordering::SeqCst),
             WORKER_COUNT
+        );
+    }
+
+    #[test]
+    fn leaked_resolver_workers_are_replaced_up_to_the_thread_cap() {
+        const WORKER_COUNT: usize = 2;
+        const MAXIMUM_THREAD_COUNT: usize = 4;
+        let leak_threshold = Duration::from_millis(400);
+        let resolver = new_hanging_resolver();
+        let release_guard = ReleaseOnDrop(Arc::clone(&resolver));
+        // The queue is large enough that only worker availability decides each outcome.
+        let pool = ResolverPool::new(
+            Arc::clone(&resolver) as Arc<dyn HostResolver>,
+            ResolverPoolLimits {
+                worker_count: WORKER_COUNT,
+                queue_capacity: 64,
+                leak_threshold,
+                maximum_thread_count: MAXIMUM_THREAD_COUNT,
+            },
+        );
+        let pool_state = pool.state();
+        let resolve_within = |host: &str, timeout: Duration| {
+            pool.resolve_before(host, 443, Instant::now() + timeout)
+        };
+        let hang_workers = |expected_active_count: usize| {
+            for _ in 0..WORKER_COUNT {
+                assert!(resolve_within("hanging.example", Duration::from_millis(100)).is_none());
+            }
+            wait_until("workers to hang", || {
+                resolver.active_lookup_count.load(Ordering::SeqCst) == expected_active_count
+            });
+        };
+        hang_workers(WORKER_COUNT);
+        assert_eq!(thread_count_of(&pool_state), WORKER_COUNT);
+        // Elapsed time past the leak threshold is the behavior under test.
+        thread::sleep(leak_threshold);
+        assert!(
+            resolve_within(FAST_HOST, Duration::from_secs(5)).is_some(),
+            "replacement workers resolve while leaked lookups never return"
+        );
+        assert_eq!(thread_count_of(&pool_state), MAXIMUM_THREAD_COUNT);
+        hang_workers(MAXIMUM_THREAD_COUNT);
+        thread::sleep(leak_threshold);
+        assert!(
+            resolve_within(FAST_HOST, Duration::from_millis(100)).is_none(),
+            "the thread cap stops further replacements"
+        );
+        {
+            let state = pool_state.lock().unwrap_or_else(PoisonError::into_inner);
+            assert_eq!(state.thread_count, MAXIMUM_THREAD_COUNT);
+            assert_eq!(state.most_thread_count, MAXIMUM_THREAD_COUNT);
+        }
+        drop(release_guard);
+        wait_until("surplus workers to exit", || {
+            thread_count_of(&pool_state) == WORKER_COUNT
+        });
+        assert!(resolve_within(FAST_HOST, Duration::from_secs(5)).is_some());
+        drop(pool);
+        wait_until("resolver workers to exit", || {
+            thread_count_of(&pool_state) == 0
+        });
+        assert_eq!(
+            pool_state
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .most_thread_count,
+            MAXIMUM_THREAD_COUNT
         );
     }
 

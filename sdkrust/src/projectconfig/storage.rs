@@ -117,6 +117,17 @@ pub(crate) fn local_object_byte_limit(key: &str) -> usize {
     }
 }
 
+/// Rejects an invalid key or an empty or oversized body, as every local store's write does.
+pub(crate) fn validate_local_object_write(key: &str, contents: &[u8]) -> ProjectConfigResult<()> {
+    validate_object_key(key)?;
+    if contents.is_empty() || contents.len() > local_object_byte_limit(key) {
+        return Err(ProjectConfigError::invalid(
+            "project object body is empty or oversized",
+        ));
+    }
+    Ok(())
+}
+
 pub(crate) fn lock<T>(mutex: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
     // Guarded maps stay consistent even if a panicking thread held the lock.
     mutex.lock().unwrap_or_else(PoisonError::into_inner)
@@ -135,15 +146,6 @@ impl InMemoryObjectStore {
     /// Creates an empty store.
     pub fn new() -> Self {
         Self::default()
-    }
-
-    fn validate_contents(key: &str, contents: &[u8]) -> ProjectConfigResult<()> {
-        if contents.is_empty() || contents.len() > local_object_byte_limit(key) {
-            return Err(ProjectConfigError::invalid(
-                "project object body is empty or oversized",
-            ));
-        }
-        Ok(())
     }
 
     fn append(
@@ -181,8 +183,7 @@ impl ObjectStore for InMemoryObjectStore {
     }
 
     fn create_object(&self, key: &str, contents: &[u8]) -> ProjectConfigResult<ProjectObject> {
-        validate_object_key(key)?;
-        Self::validate_contents(key, contents)?;
+        validate_local_object_write(key, contents)?;
         let mut objects = lock(&self.objects);
         if objects.contains_key(key) {
             return Err(ProjectConfigError::ObjectConflict(
@@ -198,8 +199,7 @@ impl ObjectStore for InMemoryObjectStore {
         expected_etag: &str,
         contents: &[u8],
     ) -> ProjectConfigResult<ProjectObject> {
-        validate_object_key(key)?;
-        Self::validate_contents(key, contents)?;
+        validate_local_object_write(key, contents)?;
         let mut objects = lock(&self.objects);
         let is_current = objects
             .get(key)

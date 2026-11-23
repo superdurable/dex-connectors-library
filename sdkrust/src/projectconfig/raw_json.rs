@@ -28,9 +28,10 @@ pub(crate) type RawJsonMembers = BTreeMap<String, Box<RawValue>>;
 ///
 /// Typed access has two forms. [`RawJsonObject::decode`] decodes the exact text into an
 /// application type, which reports any value that type cannot hold. [`RawJsonObject::to_json_object`]
-/// returns a [`JsonObject`], which holds only integers within the `i64` or `u64` range and
-/// numbers within the finite `f64` range; it reports any other number as an error instead of
-/// approximating it.
+/// returns a [`JsonObject`], which holds integers within the `i64` or `u64` range exactly and
+/// other numbers as `f64`. It rounds a fractional value such as `0.1` to an `f64`, and reports
+/// a non-finite number, a nonzero number that underflows to zero, or an integral number `f64`
+/// cannot hold exactly as an error instead of changing it.
 #[derive(Clone)]
 pub struct RawJsonObject {
     go_compacted: String,
@@ -89,31 +90,49 @@ impl RawJsonObject {
         })
     }
 
-    /// Returns the settings as a [`JsonObject`] without approximating any number.
+    /// Returns the settings as a [`JsonObject`] without silently distorting any number.
+    ///
+    /// An integer lexeme, one without `.`, `e`, or `E`, is kept exactly. Any other number
+    /// becomes the `f64` that `serde_json` parses: a value with a fractional part, such as
+    /// `0.1` or `1.50`, is accepted and rounded to a nearby `f64` (possibly one unit in the
+    /// last place from the nearest). A number whose exact value is an integer must be exactly
+    /// representable, so `2.5E+3` and `1e22` are accepted while `9007199254740993.0` and `1e23`
+    /// are rejected. A nonzero number that would round to zero, such as `1e-400`, is rejected.
     ///
     /// # Errors
     ///
     /// Returns [`ProjectConfigError::Invalid`] for an integer outside the `i64` and `u64`
-    /// ranges or a number outside the finite `f64` range; use [`RawJsonObject::decode`] or
-    /// [`RawJsonObject::as_json_text`] for those.
+    /// ranges, a number outside the finite `f64` range, a nonzero number that underflows to
+    /// zero, or an integral number that `f64` cannot represent exactly; use
+    /// [`RawJsonObject::decode`] or [`RawJsonObject::as_json_text`] for those.
     pub fn to_json_object(&self) -> ProjectConfigResult<JsonObject> {
-        if has_integer_beyond_64_bits(self.as_json_text()) {
+        let lexemes = number_lexemes(self.as_json_text());
+        if lexemes
+            .iter()
+            .any(|lexeme| is_integer_beyond_64_bits(lexeme))
+        {
             return Err(ProjectConfigError::invalid(
                 "JSON settings hold an integer outside the 64-bit range a JsonObject keeps exactly",
             ));
         }
-        match serde_json::from_str(self.as_json_text()) {
-            Ok(Value::Object(object)) => Ok(object),
-            _ => Err(ProjectConfigError::invalid(
+        let Ok(Value::Object(object)) = serde_json::from_str(self.as_json_text()) else {
+            return Err(ProjectConfigError::invalid(
                 "JSON settings hold a number outside the finite f64 range a JsonObject keeps",
-            )),
+            ));
+        };
+        for lexeme in lexemes {
+            if let Some(distortion) = f64_distortion(lexeme) {
+                return Err(ProjectConfigError::invalid(distortion));
+            }
         }
+        Ok(object)
     }
 }
 
-/// Reports an integer lexeme that neither `i64` nor `u64` holds; `text` is valid JSON.
-fn has_integer_beyond_64_bits(text: &str) -> bool {
+/// Returns every number lexeme outside strings; `text` is valid JSON.
+fn number_lexemes(text: &str) -> Vec<&str> {
     let bytes = text.as_bytes();
+    let mut lexemes = Vec::new();
     let mut index = 0;
     while index < bytes.len() {
         match bytes[index] {
@@ -129,16 +148,70 @@ fn has_integer_beyond_64_bits(text: &str) -> bool {
                 while index < bytes.len() && b"+-.eE0123456789".contains(&bytes[index]) {
                     index += 1;
                 }
-                let lexeme = &text[start..index];
-                let is_integer = !lexeme.contains(['.', 'e', 'E']);
-                if is_integer && lexeme.parse::<i64>().is_err() && lexeme.parse::<u64>().is_err() {
-                    return true;
-                }
+                lexemes.push(&text[start..index]);
             }
             _ => index += 1,
         }
     }
-    false
+    lexemes
+}
+
+fn is_float_lexeme(lexeme: &str) -> bool {
+    lexeme.contains(['.', 'e', 'E'])
+}
+
+fn is_integer_beyond_64_bits(lexeme: &str) -> bool {
+    !is_float_lexeme(lexeme) && lexeme.parse::<i64>().is_err() && lexeme.parse::<u64>().is_err()
+}
+
+/// Describes how the `f64` of a finite float `lexeme` misstates its exact value, if it does.
+fn f64_distortion(lexeme: &str) -> Option<&'static str> {
+    const UNDERFLOW: &str =
+        "JSON settings hold a nonzero number that rounds to zero as the f64 a JsonObject keeps";
+    const INEXACT_INTEGRAL: &str = "JSON settings hold an integral number that the f64 a JsonObject keeps cannot represent exactly";
+    if !is_float_lexeme(lexeme) {
+        return None;
+    }
+    let value: f64 = serde_json::from_str(lexeme).ok()?;
+    let (mantissa, exponent_text) = lexeme
+        .trim_start_matches('-')
+        .split_once(['e', 'E'])
+        .map_or(
+            (lexeme.trim_start_matches('-'), None),
+            |(mantissa, exponent)| (mantissa, Some(exponent)),
+        );
+    let (integer_digits, fraction_digits) = mantissa.split_once('.').unwrap_or((mantissa, ""));
+    let all_digits = format!("{integer_digits}{fraction_digits}");
+    let significant = all_digits.trim_start_matches('0').trim_end_matches('0');
+    if significant.is_empty() {
+        return None;
+    }
+    if value == 0.0 {
+        return Some(UNDERFLOW);
+    }
+    let Ok(exponent) = exponent_text.map_or(Ok(0), str::parse::<i64>) else {
+        return Some(INEXACT_INTEGRAL);
+    };
+    let trailing_zeros = all_digits.len() - all_digits.trim_end_matches('0').len();
+    let (Ok(trailing_zeros), Ok(fraction_length)) = (
+        i64::try_from(trailing_zeros),
+        i64::try_from(fraction_digits.len()),
+    ) else {
+        return Some(INEXACT_INTEGRAL);
+    };
+    let decimal_scale = exponent
+        .saturating_add(trailing_zeros)
+        .saturating_sub(fraction_length);
+    if decimal_scale < 0 {
+        return None;
+    }
+    // A finite f64 has at most 309 integer digits, so a longer integer cannot match.
+    let zero_count = match usize::try_from(decimal_scale) {
+        Ok(count) if significant.len() + count <= 309 => count,
+        _ => return Some(INEXACT_INTEGRAL),
+    };
+    let exact = format!("{significant}{}", "0".repeat(zero_count));
+    (format!("{:.0}", value.abs()) != exact).then_some(INEXACT_INTEGRAL)
 }
 
 impl fmt::Debug for RawJsonObject {

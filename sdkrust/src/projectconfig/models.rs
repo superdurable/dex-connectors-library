@@ -563,8 +563,8 @@ impl ConnectionConfiguration {
     ///
     /// # Errors
     ///
-    /// Returns [`ProjectConfigError::Invalid`] when the settings exceed the
-    /// [`RawJsonObject::to_json_object`] numeric range.
+    /// Returns [`ProjectConfigError::Invalid`] when the settings hold a number that
+    /// [`RawJsonObject::to_json_object`] rejects rather than distort.
     pub fn to_wire(&self) -> ProjectConfigResult<Value> {
         let mut object = JsonObject::new();
         object.insert(
@@ -709,8 +709,8 @@ impl TriggerConfiguration {
     ///
     /// # Errors
     ///
-    /// Returns [`ProjectConfigError::Invalid`] when the settings exceed the
-    /// [`RawJsonObject::to_json_object`] numeric range.
+    /// Returns [`ProjectConfigError::Invalid`] when the settings hold a number that
+    /// [`RawJsonObject::to_json_object`] rejects rather than distort.
     pub fn to_wire(&self) -> ProjectConfigResult<Value> {
         let mut object = JsonObject::new();
         object.insert(
@@ -787,8 +787,8 @@ impl OperationConfiguration {
     ///
     /// # Errors
     ///
-    /// Returns [`ProjectConfigError::Invalid`] when the settings exceed the
-    /// [`RawJsonObject::to_json_object`] numeric range.
+    /// Returns [`ProjectConfigError::Invalid`] when the settings hold a number that
+    /// [`RawJsonObject::to_json_object`] rejects rather than distort.
     pub fn to_wire(&self) -> ProjectConfigResult<Value> {
         let mut object = JsonObject::new();
         object.insert(
@@ -1142,8 +1142,8 @@ impl Configuration {
     ///
     /// # Errors
     ///
-    /// Returns [`ProjectConfigError::Invalid`] for an invalid document or settings outside
-    /// the [`RawJsonObject::to_json_object`] numeric range.
+    /// Returns [`ProjectConfigError::Invalid`] for an invalid document or settings holding a
+    /// number that [`RawJsonObject::to_json_object`] rejects rather than distort.
     pub fn to_wire(&self) -> ProjectConfigResult<Value> {
         self.validate()?;
         let mut object = JsonObject::new();

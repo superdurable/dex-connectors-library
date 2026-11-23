@@ -1156,6 +1156,46 @@ fn raw_settings_give_exact_typed_access_or_a_clear_range_error() {
     assert!(RawJsonObject::from_json_text("{").is_err());
 }
 
+#[test]
+fn raw_settings_reject_numbers_an_f64_would_distort() {
+    for (text, expected) in [
+        (r#"{"tiny":1e-400}"#, "rounds to zero"),
+        (r#"{"big":9007199254740993.0}"#, "cannot represent exactly"),
+        (r#"{"big":1e23}"#, "cannot represent exactly"),
+        (r#"{"nested":{"tiny":-0.5e-330}}"#, "rounds to zero"),
+    ] {
+        let settings = RawJsonObject::from_json_text(text).expect("keeps the exact text");
+        let error = settings.to_json_object().expect_err(text);
+        assert!(error.to_string().contains(expected), "{text}: {error}");
+    }
+    // Rust prints the exact integer an f64 holds, which the integral check compares against.
+    assert_eq!(format!("{:.0}", 1e23_f64), "99999999999999991611392");
+
+    let ordinary = RawJsonObject::from_json_text(
+        r#"{"ratio":0.1,"limit":1.50,"scaled":2.5E+3,"exact":9007199254740992.0,"power":1e22,"zero":-0.0e-0,"small":5e-324}"#,
+    )
+    .expect("keeps");
+    let object = ordinary.to_json_object().expect("fits");
+    assert_eq!(object["ratio"], json!(0.1));
+    assert_eq!(object["limit"], json!(1.5));
+    assert_eq!(object["scaled"], json!(2500.0));
+    assert_eq!(object["exact"], json!(9_007_199_254_740_992.0));
+    assert_eq!(object["power"], json!(1e22));
+
+    let mut connection = ConnectionConfiguration::new(
+        "sample",
+        "main",
+        "example.com/sample",
+        "sample",
+        JsonObject::new(),
+    );
+    connection.configuration = RawJsonObject::from_json_text(r#"{"tiny":1e-400}"#).expect("keeps");
+    let error = connection
+        .to_wire()
+        .expect_err("to_wire keeps the rejection");
+    assert!(error.to_string().contains("rounds to zero"), "{error}");
+}
+
 #[cfg(unix)]
 #[test]
 fn dex_web_load_keeps_nested_bytes_across_swaps_like_go() {

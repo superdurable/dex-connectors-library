@@ -173,44 +173,58 @@ fn chunked_and_content_length_responses_are_framed() {
     assert_eq!(error.status, Some(200));
 }
 
+/// Writes a body-less resource and judges success by status alone, ignoring the body.
+fn write_and_check_status(
+    client: &ProviderHttpClient,
+    request: &ProviderHttpRequest,
+) -> Result<bool, ProviderHttpError> {
+    let response = client.send_traced(request)?;
+    Ok((200..300).contains(&response.status()))
+}
+
 #[test]
-fn invalid_framing_keeps_status_and_retry_after() {
-    let port = serve(2, |mut stream| {
+fn invalid_framing_fails_the_send_with_status_and_retry_after() {
+    let port = serve(4, |mut stream| {
         let head = read_request_head(&mut stream);
         let response: &[u8] = if head.starts_with(b"POST /limited ") {
             b"HTTP/1.1 429 Too Many Requests\r\nRetry-After: 7\r\nContent-Length: 2\r\nContent-Length: 3\r\n\r\nno"
+        } else if head.starts_with(b"PUT /conflicting ") {
+            b"HTTP/1.1 200 OK\r\nContent-Length: 0\r\nContent-Length: 1\r\n\r\n"
+        } else if head.starts_with(b"PUT /mixed ") {
+            b"HTTP/1.1 201 Created\r\nTransfer-Encoding: chunked\r\nContent-Length: 0\r\n\r\n0\r\n\r\n"
         } else {
             b"HTTP/1.1 200 OK\r\nTransfer-Encoding: gzip, chunked\r\n\r\n2\r\nok\r\n0\r\n\r\n"
         };
         stream.write_all(response).expect("write response");
     });
     let client = client(AddressPolicy::Unrestricted);
+    for path in ["conflicting", "mixed"] {
+        let write = ProviderHttpRequest::new("PUT", format!("http://127.0.0.1:{port}/{path}"))
+            .body(b"write".to_vec());
+        let Err(ProviderHttpError::Transport(error)) = write_and_check_status(&client, &write)
+        else {
+            panic!("a misframed 2xx must not reach a status-only caller as success: {path}");
+        };
+        assert!(!error.provably_not_sent, "{path}");
+        assert!(matches!(error.status, Some(200 | 201)), "{path}");
+        assert!(error.headers.is_some(), "{path}");
+    }
     let limited = ProviderHttpRequest::new("POST", format!("http://127.0.0.1:{port}/limited"))
         .body(b"write".to_vec());
-    let mut response = client
-        .send_traced(&limited)
-        .expect("status line and headers were received");
-    assert_eq!(response.status(), 429);
-    assert_eq!(response.headers().get("retry-after"), Some("7"));
-    let Err(ProviderHttpError::Transport(error)) = read_bounded_body(&mut response, 64) else {
-        panic!("conflicting Content-Length must fail the body read");
+    let Err(ProviderHttpError::Transport(error)) = client.send_traced(&limited) else {
+        panic!("conflicting Content-Length must fail the send");
     };
     assert!(!error.provably_not_sent);
     assert_eq!(error.status, Some(429));
-    assert_eq!(
-        error
-            .headers
-            .as_ref()
-            .and_then(|headers| headers.get("Retry-After")),
-        Some("7")
-    );
+    assert_eq!(error.retry_after(), Some("7"));
+    let retry_delay = parse_retry_after(error.retry_after().unwrap_or_default(), SystemTime::now());
+    assert_eq!(retry_delay, 7.0);
     let stacked = ProviderHttpRequest::new("GET", format!("http://127.0.0.1:{port}/stacked"));
-    let mut response = client.send_traced(&stacked).expect("response head");
-    assert_eq!(response.status(), 200);
-    let Err(ProviderHttpError::Transport(error)) = read_bounded_body(&mut response, 64) else {
-        panic!("stacked transfer codings must fail the body read");
+    let Err(ProviderHttpError::Transport(error)) = client.send_traced(&stacked) else {
+        panic!("stacked transfer codings must fail the send");
     };
     assert_eq!(error.status, Some(200));
+    assert_eq!(error.retry_after(), None);
 }
 
 /// Fake transport that records the absolute deadline it receives.

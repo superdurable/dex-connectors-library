@@ -281,15 +281,38 @@ A credential the SDK returned before the deletion is outside these checks.
 The final write-back builds the new `connections.json` from a single read. Just before the
 rename it checks that the file bytes are unchanged. If Dex Web deleted, re-authorized, or
 duplicated the connection in the meantime, the write-back is aborted and the refreshed
-credential is not published. A writer that does not take `connections.json.lock` can still
-change the file between that last check and the rename.
+credential is not published.
+
+This check does not close the gap between the last check and the rename. A writer that does
+not take `connections.json.lock` can change the file in that gap, and the SDK's rename then
+overwrites the change. Every editor of `connections.json`, including Dex Web, must take the
+same `connections.json.lock` while it edits; only then is a deletion or a new authorization
+safe against a concurrent refresh.
+
+If writing a refreshed or replaced credential back to `connections.json` fails, for example
+because of a read-only directory, a full disk, or a failed rename:
+- The head write returns the retryable `ProjectConfigError::Io`.
+- The new credential is not published, so memory never gets ahead of the file.
+- For a refresh, the process keeps the provider's exchange result. The next resolution retries
+  only the write-back, with no second provider exchange.
+
+This differs from sdkgo on purpose: sdkgo logs the failure and publishes the rotated credential
+anyway. The kept result lives only in process memory. A restart before a successful retry, or
+another process that refreshes first with the old refresh token, can still lose a rotated
+token and require reauthorization.
 
 The `configuration` field of a connection, a Trigger binding, or an operation holds a
 `RawJsonObject`. It keeps the exact settings text, like Go's `json.RawMessage`, so numbers
 such as `1e400` or `12345678901234567890123` survive a rewrite byte for byte.
 - `decode::<T>()` gives exact typed access.
-- `to_json_object()` returns an error rather than approximate an integer outside the i64 and
-  u64 ranges, or a number outside the finite f64 range.
+- `to_json_object()` and the `to_wire()` methods convert numbers as follows:
+  - Integers within the i64 and u64 ranges are kept exactly.
+  - A fractional number becomes a nearby f64, at most one unit in the last place from the
+    nearest.
+  - These return `ProjectConfigError::Invalid` rather than a changed value: an integer beyond
+    those ranges, a number beyond the finite f64 range, a nonzero number that would become zero
+    (`1e-400`), and an integral value that f64 cannot hold exactly (`9007199254740993.0`,
+    `1e23`).
 
 Provider HTTP requests stop at a deadline. The client caps that deadline at 24 hours from the
 send. `projectconfig::trigger_inbox` holds the durable

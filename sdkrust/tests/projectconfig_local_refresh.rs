@@ -14,9 +14,9 @@ use std::time::{Duration, SystemTime};
 
 use base64::Engine;
 use dex_connectors_sdk::projectconfig::{
-    ConnectionKey, ConnectionStore, CredentialDecoder, CredentialEncoder, DexWebObjectStore,
-    JsonObject, ObjectStore, ProjectConfigError, RefreshingProjectCredentialProvider, Scope,
-    load_dex_web_project,
+    ConnectionKey, ConnectionStore, CredentialDecoder, CredentialEncoder, CredentialMaterial,
+    DexWebObjectStore, JsonObject, MAXIMUM_OBJECT_BYTES, ObjectStore, ProjectConfigError,
+    ProjectObject, RefreshingProjectCredentialProvider, Scope, load_dex_web_project,
 };
 use dex_connectors_sdk::{
     Call, CallId, ConnectionRef, CredentialError, CredentialProvider, CredentialRefreshDriver,
@@ -288,6 +288,134 @@ fn unwritable_directory_refuses_refresh_before_any_provider_request() {
         file_credential(&path),
         json!({"access": "old", "refresh": "refresh-0"})
     );
+}
+
+fn open_connections(path: &Path) -> (Arc<DexWebObjectStore>, ConnectionStore) {
+    let scope = Scope::new("local", "preview");
+    let store = Arc::new(DexWebObjectStore::open(path, scope.clone()).expect("opens"));
+    let objects: Arc<dyn ObjectStore> = store.clone();
+    (store, ConnectionStore::new(objects, scope))
+}
+
+fn head_key() -> String {
+    format!(
+        "{}/head",
+        key().path(&Scope::new("local", "preview")).expect("path")
+    )
+}
+
+#[test]
+fn late_write_back_failure_holds_the_exchange_result_and_a_retry_persists_it() {
+    let directory = tempfile::tempdir().expect("temporary directory");
+    let path = connections_path(&directory);
+    write_connections(&path, &[("old", "refresh-0")]);
+    let file_before = std::fs::read(&path).expect("reads");
+    let (store, connections) = open_connections(&path);
+    let provider = provider(connections.clone());
+    let rotating = RotatingProvider::new("refresh-0");
+    let read_only_directory = directory.path().to_path_buf();
+    // Runs after the write-back precheck, as Go's readOnlyDuringRefreshDriver does.
+    let driver = RotatingDriver {
+        before_exchange: Some(Box::new(move || {
+            std::fs::set_permissions(&read_only_directory, std::fs::Permissions::from_mode(0o500))
+                .expect("makes the directory read-only");
+        })),
+        ..RotatingDriver::new(rotating.clone())
+    };
+    let outcome = resolve_credential(&provider, &call(), &driver);
+    std::fs::set_permissions(directory.path(), std::fs::Permissions::from_mode(0o700))
+        .expect("restores the directory");
+    let error = outcome.expect_err("late write-back fails");
+    let error = project_error(&error);
+    assert!(matches!(error, ProjectConfigError::Io(_)), "{error:?}");
+    assert!(error.is_retryable());
+    assert!(!error.to_string().contains("refresh-1"), "{error}");
+    assert_eq!(rotating.exchanges.load(Ordering::SeqCst), 1);
+    assert_eq!(std::fs::read(&path).expect("reads"), file_before);
+    let head = store.read_object(&head_key(), "").expect("head");
+    assert!(
+        String::from_utf8_lossy(&head.contents).contains("\"REFRESHING\""),
+        "the exchange result stays unpublished"
+    );
+    let (_, reopened) = open_connections(&path);
+    let (material, _) = reopened.read_credential_material(&key()).expect("reads");
+    assert_eq!(material.credentials["refresh"], "refresh-0");
+
+    let retried = resolve_credential(&provider, &call(), &RotatingDriver::new(rotating.clone()))
+        .expect("retry publishes the held result");
+    assert_eq!(retried["refresh"], "refresh-1");
+    assert_eq!(rotating.exchanges.load(Ordering::SeqCst), 1);
+    assert_eq!(rotating.reused_tokens.load(Ordering::SeqCst), 0);
+    assert_eq!(
+        file_credential(&path),
+        json!({"access": "access-1", "refresh": "refresh-1"})
+    );
+    let (_, reopened) = open_connections(&path);
+    let (material, _) = reopened.read_credential_material(&key()).expect("reads");
+    assert_eq!(material.credentials["refresh"], "refresh-1");
+}
+
+/// Delegates to a Dex Web store but pads every connection head swap past the object limit.
+struct PaddingHeadStore {
+    inner: Arc<DexWebObjectStore>,
+}
+
+impl ObjectStore for PaddingHeadStore {
+    fn read_object(&self, key: &str, version: &str) -> Result<ProjectObject, ProjectConfigError> {
+        self.inner.read_object(key, version)
+    }
+
+    fn create_object(
+        &self,
+        key: &str,
+        contents: &[u8],
+    ) -> Result<ProjectObject, ProjectConfigError> {
+        self.inner.create_object(key, contents)
+    }
+
+    fn compare_and_swap_object(
+        &self,
+        key: &str,
+        expected_etag: &str,
+        contents: &[u8],
+    ) -> Result<ProjectObject, ProjectConfigError> {
+        let mut padded = contents.to_vec();
+        if key.ends_with("/head") {
+            padded.resize(MAXIMUM_OBJECT_BYTES + 1, b' ');
+        }
+        self.inner
+            .compare_and_swap_object(key, expected_etag, &padded)
+    }
+}
+
+#[test]
+fn oversized_head_swap_leaves_the_file_and_head_unchanged() {
+    let directory = tempfile::tempdir().expect("temporary directory");
+    let path = connections_path(&directory);
+    write_connections(&path, &[("old", "refresh-0")]);
+    let file_before = std::fs::read(&path).expect("reads");
+    let (store, _) = open_connections(&path);
+    let head_before = store.read_object(&head_key(), "").expect("head");
+    let padding: Arc<dyn ObjectStore> = Arc::new(PaddingHeadStore {
+        inner: store.clone(),
+    });
+    let connections = ConnectionStore::new(padding, Scope::new("local", "preview"));
+    let revision = connections.read_connection(&key()).expect("reads").revision;
+    let mut credentials = JsonObject::new();
+    credentials.insert("access".into(), json!("new"));
+    credentials.insert("refresh".into(), json!("refresh-1"));
+    let material = CredentialMaterial {
+        credentials,
+        expires_at: Some(in_one_hour()),
+        auth_method: "local".into(),
+    };
+    let error = connections
+        .replace_credential(&key(), revision, &material)
+        .expect_err("oversized");
+    assert!(matches!(error, ProjectConfigError::Invalid(_)), "{error:?}");
+    assert_eq!(std::fs::read(&path).expect("reads"), file_before);
+    let head_after = store.read_object(&head_key(), "").expect("head");
+    assert_eq!(head_after.contents, head_before.contents);
 }
 
 #[test]

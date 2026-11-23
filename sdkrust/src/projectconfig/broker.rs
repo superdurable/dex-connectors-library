@@ -18,7 +18,7 @@ use super::models::{
 use super::storage::lock;
 use crate::providerhttp::{
     AddressPolicy, BlockingHttp1Transport, ProviderHttpError, ProviderHttpRequest,
-    ProviderHttpTransport, read_bounded_body,
+    ProviderHttpTransport, ProviderTransportError, read_bounded_body,
 };
 use crate::relaysignature::{
     ParsedRelaySignature, RelayHeaders, matches_relay_signature, parse_relay_signature,
@@ -116,10 +116,20 @@ impl BrokerHttpClient for ProviderHttpBrokerClient {
             .header("Content-Type", "application/json")
             .header("Accept", "application/json")
             .body(body);
-        let mut response = self
-            .transport
-            .send(&request, timeout)
-            .map_err(|_| unavailable())?;
+        let mut response = match self.transport.send(&request, timeout) {
+            Ok(response) => response,
+            // A misframed non-200 keeps its status classification.
+            Err(ProviderHttpError::Transport(ProviderTransportError {
+                status: Some(status),
+                ..
+            })) if status != 200 => {
+                return Ok(BrokerHttpResponse {
+                    status,
+                    body: Vec::new(),
+                });
+            }
+            Err(_) => return Err(unavailable()),
+        };
         let status = response.status();
         if status != 200 {
             return Ok(BrokerHttpResponse {

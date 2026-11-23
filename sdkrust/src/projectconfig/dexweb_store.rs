@@ -25,8 +25,7 @@ use super::raw_json::{
 };
 use super::refresh_lock::{FileRefreshLock, HeldRefreshLock};
 use super::storage::{
-    InMemoryObjectStore, ObjectStore, ProjectObject, local_object_byte_limit, lock,
-    validate_object_key,
+    InMemoryObjectStore, ObjectStore, ProjectObject, lock, validate_local_object_write,
 };
 use crate::timestamps::Rfc3339NanoTimestamp;
 
@@ -314,9 +313,14 @@ fn credential_digest(material: &CredentialMaterial) -> String {
 
 /// Project object store backed by memory and Dex Web's owner-only `connections.json`.
 ///
-/// Connection head reads adopt credentials Dex Web changed. A successful head write
-/// publishes refreshed material back to the file only if Dex Web has not saved another
-/// credential meanwhile. Trigger inbox objects live as private files beside the file.
+/// Connection head reads adopt credentials Dex Web changed. A READY head write first writes
+/// its credential back to the file, only if Dex Web has not saved another credential
+/// meanwhile, and publishes the head only after that write succeeds. A failed file write,
+/// such as a read-only directory or a full disk, returns [`ProjectConfigError::Io`] and
+/// leaves the head unchanged. A refresh provider then keeps its exchange result in this
+/// process, and its next resolution writes that result back without contacting the provider
+/// again; a restart before then loses the result. Trigger inbox objects live as private
+/// files beside the file.
 ///
 /// A head is readable and writable only while the file lists its connection exactly once.
 /// Credential providers refresh while holding the exclusive `flock(2)` of
@@ -420,7 +424,9 @@ impl DexWebObjectStore {
 
     /// Writes a READY head's credential to the file first; an error means do not publish.
     ///
-    /// Returns the written digest; `None` when skipped or after a logged I/O failure, as Go.
+    /// Returns the written digest, or `None` when nothing needs writing. Unlike Go, which logs
+    /// an I/O failure and publishes anyway, an I/O failure is an error, so memory never runs
+    /// ahead of the file that other processes and a restart read.
     fn write_back_before_publish(
         &self,
         key: &ConnectionKey,
@@ -451,9 +457,11 @@ impl DexWebObjectStore {
             Err(ProjectConfigError::Io(message)) => {
                 tracing::error!(
                     reason = %message,
-                    "local connector credential write-back failed; other processes and a restart keep the previous credential"
+                    "local connector credential write-back failed; the credential is not published"
                 );
-                Ok(None)
+                Err(ProjectConfigError::Io(format!(
+                    "local connector credential write-back failed, so the credential is not published; a refreshed credential stays held in this process and a retry writes it back: {message}"
+                )))
             }
             Err(error) => Err(error),
         }
@@ -541,6 +549,8 @@ impl ObjectStore for DexWebObjectStore {
                 .memory
                 .compare_and_swap_object(key, expected_etag, contents);
         }
+        // The memory swap repeats this check; a write it would reject must not reach the file.
+        validate_local_object_write(key, contents)?;
         let _sync = lock(&self.sync_lock);
         let connection_key = self
             .sync()?
@@ -723,12 +733,7 @@ impl LocalFileObjectStore {
         previous: Option<&ProjectObject>,
     ) -> ProjectConfigResult<ProjectObject> {
         // The new version is durable before the superseded file is deleted.
-        validate_object_key(key)?;
-        if contents.is_empty() || contents.len() > local_object_byte_limit(key) {
-            return Err(ProjectConfigError::invalid(
-                "project object body is empty or oversized",
-            ));
-        }
+        validate_local_object_write(key, contents)?;
         let version = previous
             .map_or(1, |item| item.version.parse::<u64>().unwrap_or(0) + 1)
             .to_string();
@@ -970,6 +975,65 @@ mod tests {
             .read_credential_material(&main_key())
             .expect("adopts the new authorization");
         assert_eq!(material.credentials["access"], "dex-web-new");
+    }
+
+    #[test]
+    fn failed_write_back_returns_an_error_and_keeps_the_head() {
+        let fixture = open(CONNECTIONS);
+        let directory = fixture.path.parent().expect("directory").to_path_buf();
+        let head_before = fixture
+            .store
+            .memory
+            .read_object(&fixture.head_key, "")
+            .expect("head");
+        let revision = fixture
+            .connections
+            .read_connection(&main_key())
+            .expect("reads")
+            .revision;
+        fs::set_permissions(&directory, fs::Permissions::from_mode(0o500)).expect("read-only");
+        let outcome =
+            fixture
+                .connections
+                .replace_credential(&main_key(), revision, &refreshed_material());
+        fs::set_permissions(&directory, fs::Permissions::from_mode(0o700)).expect("restores");
+        let error = outcome.expect_err("write-back fails");
+        assert!(matches!(error, ProjectConfigError::Io(_)), "{error}");
+        assert!(error.is_retryable());
+        assert_eq!(
+            fs::read(&fixture.path).expect("reads"),
+            CONNECTIONS.as_bytes()
+        );
+        let head_after = fixture
+            .store
+            .memory
+            .read_object(&fixture.head_key, "")
+            .expect("head");
+        assert_eq!(head_after.contents, head_before.contents);
+        let reopened = Arc::new(
+            DexWebObjectStore::open(&fixture.path, Scope::new("local", "preview")).expect("opens"),
+        );
+        let reopened_objects: Arc<dyn ObjectStore> = reopened;
+        let reopened_connections =
+            ConnectionStore::new(reopened_objects, Scope::new("local", "preview"));
+        for connections in [&fixture.connections, &reopened_connections] {
+            let (material, _) = connections
+                .read_credential_material(&main_key())
+                .expect("reads");
+            assert_eq!(material.credentials["access"], "old");
+        }
+
+        fixture
+            .connections
+            .replace_credential(&main_key(), revision, &refreshed_material())
+            .expect("retry writes back");
+        let (material, _) = fixture
+            .connections
+            .read_credential_material(&main_key())
+            .expect("reads");
+        assert_eq!(material.credentials["access"], "new");
+        let written = String::from_utf8(fs::read(&fixture.path).expect("reads")).expect("UTF-8");
+        assert!(written.contains("\"access\": \"new\""), "{written}");
     }
 
     #[test]
