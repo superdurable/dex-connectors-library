@@ -5,7 +5,6 @@
 
 use std::collections::HashMap;
 use std::fmt;
-use std::io::Read;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant, SystemTime};
 
@@ -13,10 +12,14 @@ use serde_json::Value;
 
 use super::errors::{ProjectConfigError, ProjectConfigResult};
 use super::models::{
-    ApplicationSecretRef, CredentialBrokerConfiguration, JsonObject, go_canonical_json_bytes,
-    parse_url, require_object, validate_broker_endpoint,
+    ApplicationSecretRef, CredentialBrokerConfiguration, JsonObject, parse_url, require_object,
+    validate_broker_endpoint,
 };
 use super::storage::lock;
+use crate::providerhttp::{
+    AddressPolicy, BlockingHttp1Transport, ProviderHttpError, ProviderHttpRequest,
+    ProviderHttpTransport, read_bounded_body,
+};
 use crate::relaysignature::{
     ParsedRelaySignature, RelayHeaders, matches_relay_signature, parse_relay_signature,
 };
@@ -31,13 +34,25 @@ const RELAY_TOKEN_RENEWAL_INTERVAL: Duration = Duration::from_secs(30);
 const BROKER_EXCHANGE_TIMEOUT: Duration = Duration::from_secs(40);
 const ISSUED_CALL_LIMIT: usize = 4096;
 
-/// Status and bounded body of one broker HTTP exchange.
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+/// Status and bounded body of one broker HTTP exchange; `Debug` omits the body bytes.
+#[derive(Clone, Default, Eq, PartialEq)]
 pub struct BrokerHttpResponse {
     /// HTTP status.
     pub status: u16,
     /// Body bytes; read only for status 200, at most the response limit plus one byte.
     pub body: Vec<u8>,
+}
+
+impl fmt::Debug for BrokerHttpResponse {
+    // A READY body carries the shared credential, so only its length is rendered.
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            formatter,
+            "BrokerHttpResponse(status={}, body_bytes={})",
+            self.status,
+            self.body.len()
+        )
+    }
 }
 
 /// Blocking HTTP transport of the broker client; it never follows redirects.
@@ -56,30 +71,37 @@ pub trait BrokerHttpClient: Send + Sync {
     ) -> ProjectConfigResult<BrokerHttpResponse>;
 }
 
-/// [`BrokerHttpClient`] over `ureq` without redirects.
-pub struct UreqBrokerHttpClient {
-    agent: ureq::Agent,
+/// [`BrokerHttpClient`] over the SDK provider HTTP transport.
+///
+/// Each exchange uses a new connection, never follows redirects or retries, and logs no
+/// URL, header, or body. The broker endpoint is trusted configuration, so no address policy
+/// applies.
+pub struct ProviderHttpBrokerClient {
+    transport: Arc<dyn ProviderHttpTransport>,
 }
 
-impl UreqBrokerHttpClient {
-    /// Creates a client with a 40-second exchange timeout and no redirects.
+impl ProviderHttpBrokerClient {
+    /// Creates a client; each exchange is bounded by the timeout passed to it.
     pub fn new() -> Self {
         Self {
-            agent: ureq::AgentBuilder::new()
-                .redirects(0)
-                .timeout(BROKER_EXCHANGE_TIMEOUT)
-                .build(),
+            transport: Arc::new(BlockingHttp1Transport::new(AddressPolicy::Unrestricted)),
         }
     }
 }
 
-impl Default for UreqBrokerHttpClient {
+impl Default for ProviderHttpBrokerClient {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl BrokerHttpClient for UreqBrokerHttpClient {
+impl fmt::Debug for ProviderHttpBrokerClient {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str("ProviderHttpBrokerClient")
+    }
+}
+
+impl BrokerHttpClient for ProviderHttpBrokerClient {
     fn post_json(
         &self,
         url: &str,
@@ -89,24 +111,15 @@ impl BrokerHttpClient for UreqBrokerHttpClient {
     ) -> ProjectConfigResult<BrokerHttpResponse> {
         let unavailable =
             || ProjectConfigError::BrokerUnavailable("credential broker is unavailable".into());
-        let response = match self
-            .agent
-            .post(url)
-            .timeout(timeout)
-            .set("Authorization", &format!("Bearer {token}"))
-            .set("Content-Type", "application/json")
-            .set("Accept", "application/json")
-            .send_bytes(body)
-        {
-            Ok(response) => response,
-            Err(ureq::Error::Status(status, _)) => {
-                return Ok(BrokerHttpResponse {
-                    status,
-                    body: Vec::new(),
-                });
-            }
-            Err(ureq::Error::Transport(_)) => return Err(unavailable()),
-        };
+        let request = ProviderHttpRequest::new("POST", url)
+            .header("Authorization", format!("Bearer {token}"))
+            .header("Content-Type", "application/json")
+            .header("Accept", "application/json")
+            .body(body);
+        let mut response = self
+            .transport
+            .send(&request, timeout)
+            .map_err(|_| unavailable())?;
         let status = response.status();
         if status != 200 {
             return Ok(BrokerHttpResponse {
@@ -114,12 +127,16 @@ impl BrokerHttpClient for UreqBrokerHttpClient {
                 body: Vec::new(),
             });
         }
-        let mut body = Vec::new();
-        response
-            .into_reader()
-            .take((MAXIMUM_BROKER_RESPONSE_BYTES + 1) as u64)
-            .read_to_end(&mut body)
-            .map_err(|_| unavailable())?;
+        // One byte past the limit lets the caller reject an oversized answer.
+        let body = match read_bounded_body(&mut response, MAXIMUM_BROKER_RESPONSE_BYTES + 1) {
+            Ok(body) => body,
+            Err(ProviderHttpError::BodyTooLarge(_)) => {
+                return Err(ProjectConfigError::BrokerRejected(
+                    "credential broker response is too large".into(),
+                ));
+            }
+            Err(_) => return Err(unavailable()),
+        };
         Ok(BrokerHttpResponse { status, body })
     }
 }
@@ -219,7 +236,8 @@ impl CredentialBrokerClient {
         if rejected_revision > 0 {
             request.insert("rejectedRevision".into(), Value::from(rejected_revision));
         }
-        let response = self.exchange(&self.endpoint, &Value::Object(request))?;
+        let encoded = encode_broker_request(&request)?;
+        let response = self.exchange(&self.endpoint, &encoded)?;
         decode_broker_response(&response)
     }
 
@@ -248,13 +266,14 @@ impl CredentialBrokerClient {
             "connectionName".into(),
             Value::String(connection_name.into()),
         );
-        let request = Value::Object(request);
-        if go_canonical_json_bytes(&request)?.len() > MAXIMUM_RELAYED_TRIGGER_REGISTRATION_BYTES {
+        // The limit applies to the exact Go-encoded bytes that are sent.
+        let encoded = encode_broker_request(&request)?;
+        if encoded.len() > MAXIMUM_RELAYED_TRIGGER_REGISTRATION_BYTES {
             return Err(ProjectConfigError::invalid(
                 "relayed Trigger registration request is too large",
             ));
         }
-        let response = self.exchange(&target, &request)?;
+        let response = self.exchange(&target, &encoded)?;
         classify_status(response.status)?;
         let answer: Value = serde_json::from_slice(&response.body).map_err(|_| {
             ProjectConfigError::BrokerRejected("credential broker answer is invalid".into())
@@ -355,11 +374,14 @@ impl CredentialBrokerClient {
         ))
     }
 
-    fn exchange(&self, target_url: &str, body: &Value) -> ProjectConfigResult<BrokerHttpResponse> {
-        let encoded = serde_json::to_vec(body)
-            .map_err(|_| ProjectConfigError::invalid("broker request cannot be encoded"))?;
+    /// Posts `encoded` and, after one 401 and a token reread, resends the same bytes.
+    fn exchange(
+        &self,
+        target_url: &str,
+        encoded: &[u8],
+    ) -> ProjectConfigResult<BrokerHttpResponse> {
         let token = self.cached_or_read_token()?;
-        let response = self.post(target_url, &token, &encoded)?;
+        let response = self.post(target_url, &token, encoded)?;
         if response.status != 401 {
             return Ok(response);
         }
@@ -369,7 +391,7 @@ impl CredentialBrokerClient {
                 "credential broker refused scope token".into(),
             ));
         }
-        self.post(target_url, &renewed, &encoded)
+        self.post(target_url, &renewed, encoded)
     }
 
     fn post(
@@ -455,6 +477,12 @@ impl BrokerReadError {
             BrokerReadError::Project(error) => Box::new(error),
         }
     }
+}
+
+/// Encodes a broker request as Go `encoding/json`, including its `<`, `>`, `&` escapes.
+fn encode_broker_request(request: &JsonObject) -> ProjectConfigResult<Vec<u8>> {
+    crate::go_json::to_go_json_vec(request)
+        .map_err(|_| ProjectConfigError::invalid("broker request cannot be encoded"))
 }
 
 fn classify_status(status: u16) -> ProjectConfigResult<()> {

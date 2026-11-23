@@ -81,6 +81,11 @@ impl Rfc3339NanoTimestamp {
         }
     }
 
+    /// Returns the same instant in UTC, using exact `i128` nanoseconds for every valid year.
+    pub fn to_utc(&self) -> Self {
+        Self::from_unix_nanoseconds_utc(self.unix_nanoseconds)
+    }
+
     /// Returns the canonical wire string.
     pub fn as_wire_str(&self) -> &str {
         &self.wire
@@ -204,12 +209,19 @@ impl GoTimeParts {
                 ));
             }
             let magnitude = i64::from(hours) * 60 + i64::from(minutes);
+            // Go folds an overflowing minute field into the hour, so +08:60 prints +09:00.
+            let canonical_text = format!(
+                "{}{:02}:{:02}",
+                char::from(offset_bytes[0]),
+                magnitude / 60,
+                magnitude % 60
+            );
             if magnitude == 0 {
                 (0, "Z".to_string())
             } else if offset_bytes[0] == b'-' {
-                (-magnitude, offset.to_string())
+                (-magnitude, canonical_text)
             } else {
-                (magnitude, offset.to_string())
+                (magnitude, canonical_text)
             }
         };
         if !(1..=12).contains(&month) || day == 0 || day > days_in_month(year, month) {
@@ -328,6 +340,8 @@ mod tests {
                 "2026-10-29T12:30:45.123456789+08:00",
             ),
             ("0001-01-01T00:00:00Z", "0001-01-01T00:00:00Z"),
+            ("2026-10-29T12:30:45+08:60", "2026-10-29T12:30:45+09:00"),
+            ("2026-10-29T12:30:45-00:30", "2026-10-29T12:30:45-00:30"),
         ];
         for (input, expected) in cases {
             let parsed = Rfc3339NanoTimestamp::from_wire(input).expect("valid timestamp");
@@ -352,5 +366,10 @@ mod tests {
         );
         assert_eq!(later.as_wire_str(), "2026-10-29T12:17:25.123Z");
         assert!(Rfc3339NanoTimestamp::now_utc().as_wire_str().ends_with('Z'));
+        let far_future =
+            Rfc3339NanoTimestamp::from_wire("9999-12-31T23:59:59.5+01:00").expect("valid");
+        assert_eq!(far_future.to_utc().as_wire_str(), "9999-12-31T22:59:59.5Z");
+        let far_past = Rfc3339NanoTimestamp::from_wire("0001-01-01T00:00:00Z").expect("valid");
+        assert_eq!(far_past.to_utc().as_wire_str(), ZERO_TIMESTAMP_WIRE);
     }
 }

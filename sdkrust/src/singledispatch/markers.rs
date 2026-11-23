@@ -89,10 +89,7 @@ impl Marker {
         let integer = |field: &str, default: Option<u32>| -> Result<u32, ValidationError> {
             match object.get(field) {
                 None => default.ok_or_else(invalid),
-                Some(JsonValue::Number(number)) => number
-                    .as_u64()
-                    .and_then(|value| u32::try_from(value).ok())
-                    .ok_or_else(invalid),
+                Some(JsonValue::Number(number)) => go_int32_value(number).ok_or_else(invalid),
                 Some(_) => Err(invalid()),
             }
         };
@@ -121,6 +118,27 @@ impl Marker {
         marker.validate().map_err(|_| invalid())?;
         Ok(marker)
     }
+}
+
+/// Decodes a nonnegative count as Go does from a Dex heartbeat value.
+///
+/// Dex carries heartbeat numbers as doubles, so Go accepts `1.0` and `1e0`: any finite
+/// integral value within `int32`. Negative values are rejected here.
+fn go_int32_value(number: &serde_json::Number) -> Option<u32> {
+    if let Some(value) = number.as_u64() {
+        return u32::try_from(value)
+            .ok()
+            .filter(|value| *value <= i32::MAX.unsigned_abs());
+    }
+    let value = number.as_f64()?;
+    let is_integral_int32 =
+        value.is_finite() && value.fract() == 0.0 && (0.0..=f64::from(i32::MAX)).contains(&value);
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "the range check above bounds the integral value to u32"
+    )]
+    is_integral_int32.then_some(value as u32)
 }
 
 /// Action permitted before credentials or provider lookups.

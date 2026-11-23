@@ -112,6 +112,85 @@ fn reset_after_request_headers_is_possibly_sent() {
 }
 
 #[test]
+fn dropped_delete_is_sent_once_and_possibly_sent() {
+    let listener = TcpListener::bind("127.0.0.1:0").expect("bind loopback");
+    let port = listener.local_addr().expect("local address").port();
+    let (first, _) = thread::scope(|scope| {
+        let server = scope.spawn(|| {
+            let (mut stream, _) = listener.accept().expect("first connection");
+            let head = read_request_head(&mut stream);
+            // Closing without a response is the unknown outcome a retry would duplicate.
+            drop(stream);
+            head
+        });
+        let request =
+            ProviderHttpRequest::new("DELETE", format!("http://127.0.0.1:{port}/items/7"));
+        let error = client(AddressPolicy::Unrestricted)
+            .send_traced(&request)
+            .expect_err("dropped connection fails");
+        assert!(!error.is_provably_not_sent());
+        (server.join().expect("server thread"), error)
+    });
+    let head = String::from_utf8(first).expect("ASCII request head");
+    assert!(head.starts_with("DELETE /items/7 HTTP/1.1\r\n"), "{head}");
+    assert!(head.contains("\r\nConnection: close\r\n"), "{head}");
+    // The send returned synchronously, so any implicit resend would already be queued.
+    listener
+        .set_nonblocking(true)
+        .expect("nonblocking listener");
+    let Err(error) = listener.accept() else {
+        panic!("the transport resent the DELETE");
+    };
+    assert_eq!(error.kind(), io::ErrorKind::WouldBlock);
+}
+
+#[test]
+fn chunked_and_content_length_responses_are_framed() {
+    let port = serve(2, |mut stream| {
+        let head = read_request_head(&mut stream);
+        let response: &[u8] = if head.starts_with(b"GET /chunked ") {
+            b"HTTP/1.1 100 Continue\r\n\r\nHTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n3\r\nabc\r\n2\r\nde\r\n0\r\n\r\nIGNORED"
+        } else {
+            b"HTTP/1.1 200 OK\r\nContent-Length: 10\r\n\r\nshort"
+        };
+        stream.write_all(response).expect("write response");
+    });
+    let client = client(AddressPolicy::Unrestricted);
+    let chunked = ProviderHttpRequest::new("GET", format!("http://127.0.0.1:{port}/chunked"));
+    let mut response = client.send_traced(&chunked).expect("chunked response");
+    assert_eq!(response.status(), 200);
+    assert_eq!(
+        read_bounded_body(&mut response, 64).expect("body"),
+        b"abcde"
+    );
+    let truncated = ProviderHttpRequest::new("GET", format!("http://127.0.0.1:{port}/short"));
+    let mut response = client.send_traced(&truncated).expect("response head");
+    let Err(ProviderHttpError::Transport(error)) = read_bounded_body(&mut response, 64) else {
+        panic!("a body shorter than Content-Length must fail");
+    };
+    assert_eq!(error.status, Some(200));
+}
+
+#[test]
+fn deadline_bounds_a_slow_response_body() {
+    let port = serve(1, |mut stream| {
+        read_request_head(&mut stream);
+        let _ignored_closed_client =
+            stream.write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 1000\r\n\r\nstart");
+        // Hold the connection open past the client deadline without finishing the body.
+        let mut buffer = [0_u8; 16];
+        let _ignored_read = stream.read(&mut buffer);
+    });
+    let client = ProviderHttpClient::new(Duration::from_millis(300), AddressPolicy::Unrestricted)
+        .expect("client");
+    let request = ProviderHttpRequest::new("GET", format!("http://127.0.0.1:{port}/"));
+    let started = std::time::Instant::now();
+    let mut response = client.send_traced(&request).expect("response head");
+    assert!(read_bounded_body(&mut response, 4096).is_err());
+    assert!(started.elapsed() < Duration::from_secs(5));
+}
+
+#[test]
 fn address_policies_refuse_before_dialing_and_allow_private_http() {
     let request = ProviderHttpRequest::new("GET", "http://127.0.0.1:9/");
     let Err(ProviderHttpError::AddressRefusal(refusal)) =

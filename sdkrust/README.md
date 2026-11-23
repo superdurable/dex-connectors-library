@@ -13,8 +13,8 @@ It requires Rust 1.97 or newer and `dex-sdk` 1.45.7 or newer.
 
 The Dex Rust SDK runs Step and RPC handlers synchronously, on a blocking thread pool, so this
 crate is synchronous too. A provider operation does blocking I/O directly inside Execute, and
-the Step method timeout bounds it. `ureq` works inside a Worker-executed Step. The real Dex
-integration test proves this.
+the Step method timeout bounds it. The real Dex integration test sends provider requests with
+`providerhttp::ProviderHttpClient` from inside a Worker-executed Step.
 
 ## Core values, failures, and retry policy
 
@@ -84,6 +84,9 @@ use dex_connectors_sdk::dex_sdk::{
     Attribute, Context, Flow, HandlerResult, PersistenceSchema, Registry, Step, StepDecision,
     StepList,
 };
+use dex_connectors_sdk::providerhttp::{
+    AddressPolicy, ProviderHttpClient, ProviderHttpRequest, read_bounded_body,
+};
 use dex_connectors_sdk::{
     BranchDefinition, BranchTarget, Call, ConnectionRef, ExecuteDurability, Failure,
     FailureKind, OperationRef, Query, QueryAttempt, QueryDefinition, QueryResult, QueryStep,
@@ -98,6 +101,7 @@ static ITEM_RESULT: LazyLock<Attribute<ItemResult>> =
 /// Reads one item from the provider.
 struct GetItem {
     endpoint: String,
+    http: ProviderHttpClient,
 }
 
 impl Query for GetItem {
@@ -120,14 +124,18 @@ impl Query for GetItem {
     }
 
     fn invoke(&self, _call: &Call<'_>, input: &String) -> QueryAttempt<String> {
-        match ureq::get(&format!("{}/items/{input}", self.endpoint)).call() {
-            Ok(response) => QueryAttempt::branch(
+        let request = ProviderHttpRequest::new("GET", format!("{}/items/{input}", self.endpoint));
+        let body = self.http.send_traced(&request).and_then(|mut response| {
+            read_bounded_body(&mut response, 1 << 20).map(|body| (response.status(), body))
+        });
+        match body {
+            Ok((200, body)) => QueryAttempt::branch(
                 "found",
-                response.into_string().unwrap_or_default(),
+                String::from_utf8_lossy(&body).into_owned(),
                 Receipt::default(),
                 None,
             ),
-            Err(_) => QueryAttempt::retry(
+            _ => QueryAttempt::retry(
                 Failure::new(FailureKind::Availability, "sample", "getItem", "unavailable"),
                 0.0,
             ),
@@ -157,7 +165,11 @@ impl ItemLookupFlow {
         let mut config = QueryStepConfig::new(
             "GetItem",
             StepAnnotations::new("sample", "Sample", "Get one sample item."),
-            GetItem { endpoint },
+            GetItem {
+                endpoint,
+                http: ProviderHttpClient::new(Duration::from_secs(10), AddressPolicy::PublicHttps)
+                    .expect("positive timeout"),
+            },
             ConnectionRef::new("sample", "main"),
             |item_id: &String| item_id.clone(),
             BTreeMap::from([("found".to_string(), BranchTarget::to(&found))]),
@@ -244,7 +256,20 @@ manifest's declared token grants.
 
 `LoadedProject` resolves credentials, coordinating refreshes through compare-and-swap on
 storage, and routes shared connections through the credential broker. Local Dex Web refreshes
-are written back to `connections.json`. `projectconfig::trigger_inbox` holds the durable
+are written back to `connections.json`.
+
+Processes that share one `connections.json` coordinate local refreshes through
+`connections.json.lock`, an exclusive `flock(2)` lock compatible with sdkgo. Under the lock a
+refresh does these steps in order:
+
+1. Reread the file.
+2. Check that the refreshed credential can be written back. A read-only directory fails here,
+   before any provider request.
+3. Exchange the credential with the provider.
+4. Publish the result.
+
+A connection deleted in Dex Web stops resolving with `ProjectConfigError::ConnectionNotInFile`.
+After deletion it is never refreshed and never sent to the provider. `projectconfig::trigger_inbox` holds the durable
 Trigger inbox.
 
 ## Triggers
@@ -260,17 +285,25 @@ Trigger inbox.
 `webhooktrigger::WebhookEndpoint` handles one complete HTTP request inside the host's own
 server. Requests relayed through Dex are verified with `relaysignature`.
 
-## Differences from Python and TypeScript
+## Scope of the first version
+
+Version 0.1.0 is not feature-equivalent to the Go, Python, and TypeScript SDKs. It differs as
+follows:
 
 - The API is synchronous.
 - There is no RPC Trigger target. `dex-sdk` 1.45.7 `RpcInvokeOptions` carries no request ID,
-  so the SDK cannot deliver one RPC per event.
+  so the SDK cannot deliver one RPC per event. It waits on
+  [superdurable/dex#1864](https://github.com/superdurable/dex/issues/1864). Only the Flow-start
+  Trigger target exists; `trigger_rpc_request_id` derives the same IDs as the other SDKs.
 - There is no text generation (`textgen`) module.
 - There is no built-in S3 client. Hosted configuration takes an application-supplied
   `projectconfig::S3Client` through `load_from_environment_values`.
 - The polling feed toolkit is not ported. Its fetcher, poller, runner, snapshot, and poll-cursor
   store are missing. The `pollingtrigger` module provides `new_trigger_credential_call` and
   `PollSchedule`.
+- A durable Trigger inbox document containing invalid UTF-8 or lone surrogate escapes is
+  refused. Go reads such a document and replaces those characters with U+FFFD. No SDK writes
+  such a document.
 
 ## Testing
 

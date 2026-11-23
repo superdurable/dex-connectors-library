@@ -171,22 +171,25 @@ impl<'call> Fence<'call> {
 
     /// Reads this call's prior checkpoint entry before any credential or provider lookup.
     ///
-    /// A heartbeat that cannot be decoded counts as no marker.
+    /// A heartbeat whose entries cannot be decoded counts as no marker; an error reading the
+    /// heartbeat fails closed, as in sdkgo.
     pub fn decide(&self) -> Decision {
         let mut state = self.lock_state();
         if let Some(decision) = &state.decision {
             return decision.clone();
         }
-        let previous = self.previous_heartbeat();
-        let decision = decide_dispatch(
-            &self.call.id,
-            self.attempt,
-            previous.as_ref(),
-            self.max_sends,
-        )
-        .unwrap_or_else(|_| {
-            Decision::fail_closed(None, "single-dispatch checkpoint could not be read")
-        });
+        let decision = match self.previous_heartbeat() {
+            Ok(previous) => decide_dispatch(
+                &self.call.id,
+                self.attempt,
+                previous.as_ref(),
+                self.max_sends,
+            )
+            .unwrap_or_else(|_| {
+                Decision::fail_closed(None, "single-dispatch checkpoint could not be read")
+            }),
+            Err(_) => Decision::fail_closed(None, "single-dispatch checkpoint could not be read"),
+        };
         state.decision = Some(decision.clone());
         decision
     }
@@ -356,7 +359,7 @@ impl<'call> Fence<'call> {
         }
     }
 
-    fn previous_heartbeat(&self) -> Option<JsonValue> {
+    fn previous_heartbeat(&self) -> Result<Option<JsonValue>, String> {
         self.step_attempt.last_heartbeat_value()
     }
 
@@ -384,6 +387,8 @@ impl<'call> Fence<'call> {
     fn previous_attempt_markers(&self) -> BTreeMap<String, Marker> {
         // Seeding nothing loses entries, which only overcounts earlier sends.
         self.previous_heartbeat()
+            .ok()
+            .flatten()
             .map(|heartbeat| markers_from_heartbeat(&heartbeat))
             .unwrap_or_default()
     }

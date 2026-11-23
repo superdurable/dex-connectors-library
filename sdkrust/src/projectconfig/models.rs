@@ -6,6 +6,10 @@
 use std::collections::BTreeMap;
 use std::net::IpAddr;
 
+use std::fmt;
+
+use serde::{Deserialize, Serialize};
+use serde_json::value::RawValue;
 use serde_json::{Map, Value};
 use sha2::{Digest, Sha256};
 
@@ -670,6 +674,197 @@ pub struct Configuration {
     pub credential_broker: Option<CredentialBrokerConfiguration>,
     /// Document schema version.
     pub schema_version: String,
+    /// Source bytes of nested settings, so an unchanged document re-encodes as Go does.
+    nested_raw_json: NestedRawConfigurations,
+}
+
+/// Go-compacted source bytes of each entry's nested `configuration`, by entry position.
+///
+/// Go keeps these as `json.RawMessage`, preserving number lexemes and string escapes that a
+/// [`Value`] loses. A slot is used only while the entry still holds the same value.
+#[derive(Clone, Default)]
+pub(crate) struct NestedRawConfigurations {
+    connections: Vec<Option<CapturedRawJson>>,
+    trigger_bindings: Vec<Option<CapturedRawJson>>,
+    operation_configurations: Vec<Option<CapturedRawJson>>,
+}
+
+#[derive(Clone)]
+struct CapturedRawJson {
+    value: Value,
+    go_compacted: String,
+}
+
+impl fmt::Debug for NestedRawConfigurations {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str("NestedRawConfigurations")
+    }
+}
+
+impl PartialEq for NestedRawConfigurations {
+    /// Captured bytes are an encoding cache, never part of document identity.
+    fn eq(&self, _other: &Self) -> bool {
+        true
+    }
+}
+
+/// Mirrors only the nested settings of a configuration or Dex Web document.
+#[derive(Deserialize)]
+struct RawNestedDocument<'source> {
+    #[serde(borrow, default)]
+    connections: Vec<RawNestedEntry<'source>>,
+    #[serde(borrow, default, rename = "triggerBindings")]
+    trigger_bindings: Vec<RawNestedEntry<'source>>,
+    #[serde(borrow, default, rename = "operationConfigurations")]
+    operation_configurations: Vec<RawNestedEntry<'source>>,
+}
+
+#[derive(Deserialize)]
+struct RawNestedEntry<'source> {
+    #[serde(borrow, default)]
+    configuration: Option<&'source RawValue>,
+}
+
+impl NestedRawConfigurations {
+    /// Captures every entry's nested settings from `document`; unreadable input captures none.
+    pub(crate) fn capture(document: &[u8]) -> Self {
+        let Ok(parsed) = serde_json::from_slice::<RawNestedDocument<'_>>(document) else {
+            return Self::default();
+        };
+        let capture_entries = |entries: &[RawNestedEntry<'_>]| {
+            entries
+                .iter()
+                .map(|entry| {
+                    let raw = entry.configuration?;
+                    Some(CapturedRawJson {
+                        value: serde_json::from_str(raw.get()).ok()?,
+                        go_compacted: crate::go_json::compact_go_raw_message(raw.get()),
+                    })
+                })
+                .collect()
+        };
+        Self {
+            connections: capture_entries(&parsed.connections),
+            trigger_bindings: capture_entries(&parsed.trigger_bindings),
+            operation_configurations: capture_entries(&parsed.operation_configurations),
+        }
+    }
+
+    /// Replaces the operation settings with those captured in `other`.
+    pub(crate) fn with_operation_configurations_of(mut self, other: Self) -> Self {
+        self.operation_configurations = other.operation_configurations;
+        self
+    }
+}
+
+/// Returns the Go `json.Marshal` bytes of a nested `configuration` holding `current`.
+fn nested_go_raw_json(
+    captured: &[Option<CapturedRawJson>],
+    position: usize,
+    current: &Value,
+) -> ProjectConfigResult<Box<RawValue>> {
+    let encoded = match captured.get(position) {
+        Some(Some(captured)) if captured.value == *current => captured.go_compacted.clone(),
+        _ => String::from_utf8(go_canonical_json_bytes(current)?)
+            .map_err(|_| ProjectConfigError::invalid("JSON value cannot be encoded"))?,
+    };
+    RawValue::from_string(encoded)
+        .map_err(|_| ProjectConfigError::invalid("JSON value cannot be encoded"))
+}
+
+pub(crate) const TRIGGER_BINDING_FIELDS: [&str; 5] = [
+    "connectorId",
+    "connectionName",
+    "triggerName",
+    "bindingName",
+    "configuration",
+];
+pub(crate) const OPERATION_CONFIGURATION_FIELDS: [&str; 6] = [
+    "connectorId",
+    "connectionName",
+    "operationId",
+    "flowType",
+    "stepType",
+    "configuration",
+];
+
+/// Go `Configuration` field order; nested settings are raw.
+#[derive(Serialize)]
+struct GoConfigurationDocument<'document> {
+    #[serde(rename = "schemaVersion")]
+    schema_version: &'document str,
+    scope: &'document Value,
+    revision: u64,
+    connections: Vec<GoConnectionEntry<'document>>,
+    #[serde(rename = "triggerBindings")]
+    trigger_bindings: Vec<GoTriggerEntry>,
+    #[serde(rename = "operationConfigurations")]
+    operation_configurations: Vec<GoOperationEntry>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    environment: Option<&'document Value>,
+    #[serde(rename = "credentialBroker", skip_serializing_if = "Option::is_none")]
+    credential_broker: Option<&'document Value>,
+}
+
+/// Go `ConnectionConfiguration` field order.
+#[derive(Serialize)]
+struct GoConnectionEntry<'document> {
+    #[serde(rename = "connectorId")]
+    connector_id: &'document str,
+    #[serde(rename = "connectionName")]
+    connection_name: &'document str,
+    #[serde(rename = "modulePath")]
+    module_path: &'document str,
+    provider: &'document str,
+    #[serde(rename = "authMethodId", skip_serializing_if = "str::is_empty")]
+    auth_method_id: &'document str,
+    #[serde(rename = "sharedConnectionId", skip_serializing_if = "str::is_empty")]
+    shared_connection_id: &'document str,
+    configuration: Box<RawValue>,
+}
+
+/// Go `TriggerConfiguration` field order.
+#[derive(Serialize)]
+struct GoTriggerEntry {
+    #[serde(rename = "connectorId")]
+    connector_id: String,
+    #[serde(rename = "connectionName")]
+    connection_name: String,
+    #[serde(rename = "triggerName")]
+    trigger_name: String,
+    #[serde(rename = "bindingName")]
+    binding_name: String,
+    configuration: Box<RawValue>,
+}
+
+/// Go `OperationConfiguration` field order.
+#[derive(Serialize)]
+struct GoOperationEntry {
+    #[serde(rename = "connectorId")]
+    connector_id: String,
+    #[serde(rename = "connectionName")]
+    connection_name: String,
+    #[serde(rename = "operationId")]
+    operation_id: String,
+    #[serde(rename = "flowType")]
+    flow_type: String,
+    #[serde(rename = "stepType")]
+    step_type: String,
+    configuration: Box<RawValue>,
+}
+
+/// Returns `entry` with only `fields`, in that order, as Go's struct encoding writes it.
+fn in_go_field_order(entry: &JsonObject, fields: &[&str]) -> JsonObject {
+    fields
+        .iter()
+        .map(|field| {
+            let value = entry
+                .get(*field)
+                .cloned()
+                .unwrap_or_else(|| Value::String(String::new()));
+            ((*field).to_string(), value)
+        })
+        .collect()
 }
 
 impl Configuration {
@@ -684,7 +879,108 @@ impl Configuration {
             environment: BTreeMap::new(),
             credential_broker: None,
             schema_version: CONFIGURATION_SCHEMA_VERSION.into(),
+            nested_raw_json: NestedRawConfigurations::default(),
         }
+    }
+
+    /// Decodes and validates document bytes, keeping nested settings' source bytes.
+    pub(crate) fn from_json_bytes(contents: &[u8]) -> ProjectConfigResult<Self> {
+        let document: Value = serde_json::from_slice(contents)
+            .map_err(|_| ProjectConfigError::invalid("configuration document is invalid JSON"))?;
+        let mut configuration = Self::from_wire(&document)?;
+        configuration.nested_raw_json = NestedRawConfigurations::capture(contents);
+        Ok(configuration)
+    }
+
+    /// Keeps `nested_raw_json` for encoding entries whose settings still equal it.
+    pub(crate) fn set_nested_raw_json(&mut self, nested_raw_json: NestedRawConfigurations) {
+        self.nested_raw_json = nested_raw_json;
+    }
+
+    /// Encodes the validated document exactly as Go's `json.Marshal` of the same document.
+    ///
+    /// Outer objects use Go struct field order; nested settings decoded from bytes keep
+    /// their Go-compacted source bytes.
+    pub(crate) fn to_go_json_bytes(&self) -> ProjectConfigResult<Vec<u8>> {
+        let wire = self.to_wire()?;
+        let empty = JsonObject::new();
+        let wire = wire.as_object().unwrap_or(&empty);
+        let raw = &self.nested_raw_json;
+        let connections = self
+            .connections
+            .iter()
+            .enumerate()
+            .map(|(position, entry)| {
+                Ok(GoConnectionEntry {
+                    connector_id: &entry.connector_id,
+                    connection_name: &entry.connection_name,
+                    module_path: &entry.module_path,
+                    provider: &entry.provider,
+                    auth_method_id: &entry.auth_method_id,
+                    shared_connection_id: &entry.shared_connection_id,
+                    configuration: nested_go_raw_json(
+                        &raw.connections,
+                        position,
+                        &Value::Object(entry.configuration.clone()),
+                    )?,
+                })
+            })
+            .collect::<ProjectConfigResult<_>>()?;
+        let configuration_of = |entry: &JsonObject| {
+            entry
+                .get("configuration")
+                .cloned()
+                .unwrap_or(Value::Object(JsonObject::new()))
+        };
+        let trigger_bindings = self
+            .trigger_bindings
+            .iter()
+            .enumerate()
+            .map(|(position, entry)| {
+                Ok(GoTriggerEntry {
+                    connector_id: string_member(entry, "connectorId"),
+                    connection_name: string_member(entry, "connectionName"),
+                    trigger_name: string_member(entry, "triggerName"),
+                    binding_name: string_member(entry, "bindingName"),
+                    configuration: nested_go_raw_json(
+                        &raw.trigger_bindings,
+                        position,
+                        &configuration_of(entry),
+                    )?,
+                })
+            })
+            .collect::<ProjectConfigResult<_>>()?;
+        let operation_configurations = self
+            .operation_configurations
+            .iter()
+            .enumerate()
+            .map(|(position, entry)| {
+                Ok(GoOperationEntry {
+                    connector_id: string_member(entry, "connectorId"),
+                    connection_name: string_member(entry, "connectionName"),
+                    operation_id: string_member(entry, "operationId"),
+                    flow_type: string_member(entry, "flowType"),
+                    step_type: string_member(entry, "stepType"),
+                    configuration: nested_go_raw_json(
+                        &raw.operation_configurations,
+                        position,
+                        &configuration_of(entry),
+                    )?,
+                })
+            })
+            .collect::<ProjectConfigResult<_>>()?;
+        let document = GoConfigurationDocument {
+            schema_version: &self.schema_version,
+            scope: wire.get("scope").unwrap_or(&Value::Null),
+            revision: self.revision,
+            connections,
+            trigger_bindings,
+            operation_configurations,
+            environment: wire.get("environment"),
+            credential_broker: wire.get("credentialBroker"),
+        };
+        crate::go_json::to_go_json_vec(&document)
+            .map_err(|_| ProjectConfigError::invalid("configuration encoding failed"))
     }
 
     /// Rejects duplicate identities, an invalid schema, and a missing broker selection.
@@ -739,6 +1035,9 @@ impl Configuration {
                 || identity[2].is_empty()
                 || identity[3].is_empty()
                 || !binding.get("configuration").is_some_and(Value::is_object)
+                || binding
+                    .keys()
+                    .any(|field| !TRIGGER_BINDING_FIELDS.contains(&field.as_str()))
                 || !trigger_identities.insert(identity.clone())
             {
                 return Err(ProjectConfigError::invalid(
@@ -758,6 +1057,9 @@ impl Configuration {
             if !identities.contains(&(identity[0].as_str(), identity[1].as_str()))
                 || identity[2..].iter().any(String::is_empty)
                 || !operation.get("configuration").is_some_and(Value::is_object)
+                || operation
+                    .keys()
+                    .any(|field| !OPERATION_CONFIGURATION_FIELDS.contains(&field.as_str()))
                 || !operation_identities.insert(identity.clone())
             {
                 return Err(ProjectConfigError::invalid(
@@ -846,8 +1148,7 @@ impl Configuration {
             Value::Array(
                 self.trigger_bindings
                     .iter()
-                    .cloned()
-                    .map(Value::Object)
+                    .map(|entry| Value::Object(in_go_field_order(entry, &TRIGGER_BINDING_FIELDS)))
                     .collect(),
             ),
         );
@@ -856,8 +1157,9 @@ impl Configuration {
             Value::Array(
                 self.operation_configurations
                     .iter()
-                    .cloned()
-                    .map(Value::Object)
+                    .map(|entry| {
+                        Value::Object(in_go_field_order(entry, &OPERATION_CONFIGURATION_FIELDS))
+                    })
                     .collect(),
             ),
         );
@@ -944,6 +1246,7 @@ impl Configuration {
                 Some(broker) => Some(CredentialBrokerConfiguration::from_wire(broker)?),
             },
             schema_version: string_member(record, "schemaVersion"),
+            nested_raw_json: NestedRawConfigurations::default(),
         };
         configuration.validate()?;
         Ok(configuration)

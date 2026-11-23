@@ -19,6 +19,9 @@ use dex_connectors_sdk::dex_sdk::{
     HandlerResult, PersistenceSchema, Registry, Step, StepDecision, StepList, Stream, Worker,
     WorkerOptions,
 };
+use dex_connectors_sdk::providerhttp::{
+    AddressPolicy, ProviderHttpClient, ProviderHttpRequest, read_bounded_body,
+};
 use dex_connectors_sdk::singledispatch::Fence;
 use dex_connectors_sdk::{
     BranchDefinition, BranchTarget, Call, CallId, ConnectionRef, ExecuteDurability, Failure,
@@ -130,6 +133,7 @@ fn item_definition() -> QueryDefinition {
 /// Reads one item over HTTP from inside the Dex Worker's Step handler.
 struct GetItem {
     endpoint: String,
+    http: ProviderHttpClient,
 }
 
 impl Query for GetItem {
@@ -150,26 +154,40 @@ impl Query for GetItem {
         })
         .expect("valid progress");
         call.write_text("response ready");
-        match ureq::get(&format!("{}/items/{input}", self.endpoint)).call() {
-            Ok(response) => {
-                let body = response.into_string().unwrap_or_default();
-                QueryAttempt::branch("found", body, Receipt::default(), None)
-            }
-            Err(ureq::Error::Status(404, _)) => QueryAttempt::branch(
+        let request = ProviderHttpRequest::new("GET", format!("{}/items/{input}", self.endpoint));
+        let unreachable =
+            || QueryAttempt::retry(failure(FailureKind::Transport, "provider unreachable"), 0.0);
+        let Ok(mut response) = self.http.send_traced(&request) else {
+            return unreachable();
+        };
+        match response.status() {
+            200..=299 => match read_bounded_body(&mut response, 1 << 20) {
+                Ok(body) => QueryAttempt::branch(
+                    "found",
+                    String::from_utf8_lossy(&body).into_owned(),
+                    Receipt::default(),
+                    None,
+                ),
+                Err(_) => unreachable(),
+            },
+            404 => QueryAttempt::branch(
                 "missing",
                 String::new(),
                 Receipt::default(),
                 Some(failure(FailureKind::NotFound, "item was not found")),
             ),
-            Err(ureq::Error::Status(_, _)) => QueryAttempt::retry(
+            _ => QueryAttempt::retry(
                 failure(FailureKind::Availability, "provider unavailable"),
                 1.0,
             ),
-            Err(ureq::Error::Transport(_)) => {
-                QueryAttempt::retry(failure(FailureKind::Transport, "provider unreachable"), 0.0)
-            }
         }
     }
+}
+
+/// Provider client for the loopback fake provider.
+fn provider_client() -> ProviderHttpClient {
+    ProviderHttpClient::new(Duration::from_secs(10), AddressPolicy::PrivateNetworkHttp)
+        .expect("valid provider client")
 }
 
 /// Completes the Flow with the routed result.
@@ -218,7 +236,10 @@ impl ItemFlow {
         let mut config = QueryStepConfig::new(
             "GetItem",
             StepAnnotations::new("sample", "Sample", "Get one sample item."),
-            GetItem { endpoint },
+            GetItem {
+                endpoint,
+                http: provider_client(),
+            },
             ConnectionRef::new("sample", "main"),
             |input: &String| input.clone(),
             branches,
@@ -259,6 +280,7 @@ impl Flow for ItemFlow {
 /// Creates one item with a fenced, limited-resend write and no read-back.
 struct CreateItem {
     endpoint: String,
+    http: ProviderHttpClient,
 }
 
 impl Mutation for CreateItem {
@@ -290,7 +312,8 @@ impl Mutation for CreateItem {
     fn invoke(&self, call: &Call<'_>, input: &String) -> MutationAttempt<String> {
         let failure =
             |message: &str| Failure::new(FailureKind::Transport, "sample", "createItem", message);
-        let fence = Fence::new(call, Duration::from_secs(10), call.max_sends).expect("valid Fence");
+        let fence =
+            Fence::new(call, Duration::from_secs(10), call.max_sends()).expect("valid Fence");
         let decision = fence.decide();
         if !decision.kind.permits_dispatch() {
             // No read-back exists, so an unconfirmed earlier send is uncertain.
@@ -301,12 +324,17 @@ impl Mutation for CreateItem {
             );
         }
         let url = format!("{}/items", self.endpoint);
+        let request = ProviderHttpRequest::new("POST", url).body(input.as_bytes());
         let sent = fence.dispatch(|deadline| {
-            let timeout = deadline.saturating_duration_since(std::time::Instant::now());
-            ureq::post(&url)
-                .timeout(timeout)
-                .send_string(input)
-                .map(|response| response.into_string().unwrap_or_default())
+            let mut response = self
+                .http
+                .send_traced_before(&request, deadline)
+                .map_err(|error| error.to_string())?;
+            if !(200..300).contains(&response.status()) {
+                return Err(format!("provider HTTP {}", response.status()));
+            }
+            read_bounded_body(&mut response, 1 << 20)
+                .map(|body| String::from_utf8_lossy(&body).into_owned())
                 .map_err(|error| error.to_string())
         });
         match sent {
@@ -335,7 +363,10 @@ impl CreateFlow {
         let mut config = MutationStepConfig::new(
             "CreateItem",
             StepAnnotations::new("sample", "Sample", "Create one sample item."),
-            CreateItem { endpoint },
+            CreateItem {
+                endpoint,
+                http: provider_client(),
+            },
             ConnectionRef::new("sample", "main"),
             |input: &String| input.clone(),
             branches,

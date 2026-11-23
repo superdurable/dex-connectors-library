@@ -30,6 +30,7 @@
 //! ```
 
 mod address_policy;
+mod blocking_http1;
 
 use std::collections::BTreeMap;
 use std::fmt;
@@ -40,6 +41,7 @@ use std::time::{Duration, Instant, SystemTime};
 use serde_json::value::RawValue;
 
 pub use address_policy::{AddressPolicy, AddressRefusal, address_refusal_reason};
+pub(crate) use blocking_http1::BlockingHttp1Transport;
 
 use crate::errors::ValidationError;
 
@@ -251,7 +253,7 @@ impl std::error::Error for ProviderHttpError {
     }
 }
 
-/// Sends one request without following redirects; implemented by the ureq client and fakes.
+/// Sends one request without following redirects; implemented by the SDK transport and fakes.
 pub trait ProviderHttpTransport: Send + Sync {
     /// Sends `request` once, bounded by `timeout`, and returns the streaming response.
     ///
@@ -269,7 +271,7 @@ pub trait ProviderHttpTransport: Send + Sync {
 
 /// Redirect-safe blocking provider client with an optional address policy.
 ///
-/// Clone it freely; clones share the connection pool.
+/// Clone it freely; clones share the TLS configuration. Every request uses a new connection.
 #[derive(Clone)]
 pub struct ProviderHttpClient {
     transport: Arc<dyn ProviderHttpTransport>,
@@ -278,35 +280,35 @@ pub struct ProviderHttpClient {
 }
 
 impl ProviderHttpClient {
-    /// Creates a ureq-backed client.
+    /// Creates a client over the SDK's blocking HTTP/1.1 transport.
+    ///
+    /// The transport opens one connection per request and sends `Connection: close`. It never
+    /// follows redirects, retries, reuses connections, uses environment proxies, or logs
+    /// request lines, URLs, or headers. HTTPS uses rustls with the `webpki-roots` Mozilla
+    /// trust anchors. The timeout is an absolute deadline covering DNS, connect, TLS, the
+    /// request write, and every response read, including the streamed body. The transport
+    /// owns the `Host`, `Content-Length`, `Transfer-Encoding`, and `Connection` headers and
+    /// ignores caller values for them.
     ///
     /// [`AddressPolicy::PublicHttps`] allows only HTTPS to public addresses;
     /// [`AddressPolicy::PrivateNetworkHttp`] also allows HTTP to private or loopback addresses.
     /// Restricted clients check every DNS answer and dial only checked IPs while keeping the
-    /// hostname for Host and TLS verification. Environment proxies are never used.
+    /// hostname for Host and TLS verification.
     ///
     /// # Errors
     ///
     /// Returns [`ValidationError`] for a zero timeout.
     pub fn new(request_timeout: Duration, policy: AddressPolicy) -> Result<Self, ValidationError> {
-        let mut builder = ureq::AgentBuilder::new()
-            .redirects(0)
-            .timeout(request_timeout);
-        if policy != AddressPolicy::Unrestricted {
-            builder = builder.resolver(address_policy::CheckedResolver { policy });
-        }
         let mut client = Self::with_transport(
-            Arc::new(UreqTransport {
-                agent: builder.build(),
-                policy,
-            }),
+            Arc::new(BlockingHttp1Transport::new(policy)),
             request_timeout,
         )?;
         client.address_policy = Some(policy);
         Ok(client)
     }
 
-    /// Returns the address policy of a ureq-backed client, or `None` for a custom transport.
+    /// Returns the address policy of a client from [`ProviderHttpClient::new`], or `None` for
+    /// a custom transport.
     pub fn address_policy(&self) -> Option<AddressPolicy> {
         self.address_policy
     }
@@ -390,84 +392,6 @@ impl fmt::Debug for ProviderHttpClient {
             .debug_struct("ProviderHttpClient")
             .field("request_timeout", &self.request_timeout)
             .finish_non_exhaustive()
-    }
-}
-
-struct UreqTransport {
-    agent: ureq::Agent,
-    policy: AddressPolicy,
-}
-
-impl ProviderHttpTransport for UreqTransport {
-    fn send(
-        &self,
-        request: &ProviderHttpRequest,
-        timeout: Duration,
-    ) -> Result<ProviderHttpResponse, ProviderHttpError> {
-        let scheme = request
-            .url
-            .split_once("://")
-            .map(|(scheme, _)| scheme.to_ascii_lowercase())
-            .unwrap_or_default();
-        if self.policy != AddressPolicy::Unrestricted && scheme != "http" && scheme != "https" {
-            return Err(ProviderHttpError::AddressRefusal(AddressRefusal::new(
-                "URL scheme is not allowed",
-            )));
-        }
-        let mut builder = self
-            .agent
-            .request(&request.method, &request.url)
-            .timeout(timeout);
-        for (name, value) in &request.headers {
-            builder = builder.set(name, value);
-        }
-        address_policy::begin_checked_request(&scheme);
-        let result = if request.body.is_empty() {
-            builder.call()
-        } else {
-            builder.send_bytes(&request.body)
-        };
-        let refusal = address_policy::end_checked_request();
-        match result {
-            Ok(response) | Err(ureq::Error::Status(_, response)) => Ok(convert_response(response)),
-            Err(ureq::Error::Transport(transport)) => {
-                if let Some(refusal) = refusal {
-                    return Err(ProviderHttpError::AddressRefusal(refusal));
-                }
-                Err(ProviderHttpError::Transport(ProviderTransportError::new(
-                    is_pre_dispatch_failure(transport.kind()),
-                )))
-            }
-        }
-    }
-}
-
-fn is_pre_dispatch_failure(kind: ureq::ErrorKind) -> bool {
-    // ureq completes DNS, TCP connect, and the TLS handshake before writing request bytes.
-    matches!(
-        kind,
-        ureq::ErrorKind::Dns
-            | ureq::ErrorKind::ConnectionFailed
-            | ureq::ErrorKind::InvalidUrl
-            | ureq::ErrorKind::UnknownScheme
-            | ureq::ErrorKind::InsecureRequestHttpsOnly
-            | ureq::ErrorKind::InvalidProxyUrl
-            | ureq::ErrorKind::ProxyConnect
-            | ureq::ErrorKind::ProxyUnauthorized
-    )
-}
-
-fn convert_response(response: ureq::Response) -> ProviderHttpResponse {
-    let mut entries = Vec::new();
-    for name in response.headers_names() {
-        for value in response.all(&name) {
-            entries.push((name.clone(), value.to_string()));
-        }
-    }
-    ProviderHttpResponse {
-        status: response.status(),
-        headers: ResponseHeaders::new(entries),
-        body: response.into_reader(),
     }
 }
 

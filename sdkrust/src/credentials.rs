@@ -47,9 +47,19 @@ impl fmt::Debug for SecretString {
 /// Terminal credential state requiring an interactive authorization flow.
 ///
 /// Its message never includes provider details or credentials.
-#[derive(Debug, Default)]
+#[derive(Default)]
 pub struct ReauthorizationRequiredError {
     cause: Option<CredentialError>,
+}
+
+impl fmt::Debug for ReauthorizationRequiredError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // The cause may quote provider responses, so only its presence is shown.
+        formatter
+            .debug_struct("ReauthorizationRequiredError")
+            .field("has_cause", &self.cause.is_some())
+            .finish()
+    }
 }
 
 impl ReauthorizationRequiredError {
@@ -236,5 +246,18 @@ impl<Credential: Clone + Send + Sync> CredentialProvider<Credential>
             .get(&call.connection)
             .cloned()
             .ok_or_else(|| "connection is not configured".into())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn reauthorization_debug_hides_the_cause() {
+        let error = ReauthorizationRequiredError::new(Some("token=INERT_SECRET rejected".into()));
+        let rendered = format!("{error:?} {error}");
+        assert!(!rendered.contains("INERT_SECRET"), "{rendered}");
+        assert!(is_reauthorization_required(&error));
     }
 }

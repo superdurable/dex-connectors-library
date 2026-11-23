@@ -283,12 +283,8 @@ pub struct Call<'attempt> {
     pub operation: OperationRef,
     /// Provider-safe deduplication key; set by [`crate::run_mutation`].
     pub idempotency_key: IdempotencyKey,
-    /// Single-dispatch send cap for this Step execution, within 1 to 10.
-    ///
-    /// A Mutation Step sets the manifest `maxSends` of a `limited` operation, or the
-    /// application's override; otherwise it is 1. Pass it to
-    /// [`crate::singledispatch::Fence::new`].
-    pub max_sends: u32,
+    max_sends: u32,
+    max_sends_override: Option<u32>,
     pub(crate) step_attempt: Option<&'attempt (dyn StepAttemptAccess + 'attempt)>,
 }
 
@@ -315,8 +311,38 @@ impl<'attempt> Call<'attempt> {
             operation,
             idempotency_key: IdempotencyKey::default(),
             max_sends: 1,
+            max_sends_override: None,
             step_attempt: None,
         })
+    }
+
+    /// Returns the effective single-dispatch send cap, within 1 to 10.
+    ///
+    /// [`crate::run_mutation`] sets it from the definition: the manifest `maxSends` of a
+    /// `limited` operation, or the requested override; otherwise 1. Pass it to
+    /// [`crate::singledispatch::Fence::new`].
+    pub fn max_sends(&self) -> u32 {
+        self.max_sends
+    }
+
+    /// Requests a send cap for a `limited` Mutation, within 1 to 10; 1 disables resend.
+    ///
+    /// [`crate::run_mutation`] validates it and selects `defect` for an invalid cap or a
+    /// `safe`, `unsafe`, or undeclared operation.
+    pub fn with_max_sends_override(mut self, max_sends: u32) -> Self {
+        self.max_sends_override = Some(max_sends);
+        self
+    }
+
+    /// Returns the requested send cap override, if any.
+    pub fn max_sends_override(&self) -> Option<u32> {
+        self.max_sends_override
+    }
+
+    pub(crate) fn with_effective_max_sends(&self, max_sends: u32) -> Call<'attempt> {
+        let mut call = self.with_idempotency_key(self.idempotency_key.clone());
+        call.max_sends = max_sends;
+        call
     }
 
     /// Reports whether this Call runs inside a Dex Step attempt.
@@ -342,6 +368,7 @@ impl<'attempt> Call<'attempt> {
             operation: self.operation.clone(),
             idempotency_key,
             max_sends: self.max_sends,
+            max_sends_override: self.max_sends_override,
             step_attempt: self.step_attempt,
         }
     }

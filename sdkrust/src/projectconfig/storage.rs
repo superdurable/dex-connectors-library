@@ -9,6 +9,7 @@ use std::sync::{Arc, Mutex, PoisonError};
 
 use serde_json::Value;
 
+use super::dexweb_store::DexWebObjectStore;
 use super::errors::{ProjectConfigError, ProjectConfigResult};
 use super::models::{
     ApplicationSecretRef, CREDENTIAL_BROKER_TOKEN_SECRET_NAME, Configuration, JsonObject, Scope,
@@ -74,6 +75,15 @@ pub trait ObjectStore: Send + Sync {
         expected_etag: &str,
         contents: &[u8],
     ) -> ProjectConfigResult<ProjectObject>;
+
+    /// Returns this store as a Dex Web connections file store, if it is one.
+    ///
+    /// Credential providers then hold the file's cross-process refresh lock and verify that
+    /// the file still lists a connection before using it. Other stores keep the default
+    /// `None`.
+    fn dex_web_connections_file(&self) -> Option<&DexWebObjectStore> {
+        None
+    }
 }
 
 /// Rejects traversal, separators, controls, and oversized object keys.
@@ -220,7 +230,9 @@ pub struct S3GetObjectOutput {
 }
 
 /// One S3 `PutObject` request with exactly one precondition.
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+///
+/// `Debug` omits the body, which may hold credentials or application secrets.
+#[derive(Clone, Default, Eq, PartialEq)]
 pub struct S3PutObjectInput {
     /// Bucket name.
     pub bucket: String,
@@ -238,6 +250,19 @@ pub struct S3PutObjectInput {
     pub server_side_encryption: String,
     /// KMS key ARN when configured.
     pub sse_kms_key_id: String,
+}
+
+impl fmt::Debug for S3PutObjectInput {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("S3PutObjectInput")
+            .field("bucket", &self.bucket)
+            .field("key", &self.key)
+            .field("body_len", &self.body.len())
+            .field("if_match", &self.if_match)
+            .field("if_none_match", &self.if_none_match)
+            .finish_non_exhaustive()
+    }
 }
 
 /// Response of one S3 `PutObject`.
@@ -562,7 +587,7 @@ impl ConfigurationStore {
         } else {
             super::models::PREVIOUS_CONFIGURATION_SCHEMA_VERSION.into()
         };
-        let contents = go_canonical_json_bytes(&updated.to_wire()?)?;
+        let contents = updated.to_go_json_bytes()?;
         let written = match &previous {
             None => self.objects.create_object(&self.key, &contents),
             Some((_, previous_object)) => {
@@ -734,14 +759,34 @@ impl ConfigurationStore {
                 "configuration document identity is invalid",
             ));
         }
-        let document: Value = serde_json::from_slice(&item.contents)
-            .map_err(|_| ProjectConfigError::invalid("configuration document is invalid JSON"))?;
-        let configuration = Configuration::from_wire(&document)?;
+        let configuration = Configuration::from_json_bytes(&item.contents)?;
         if configuration.scope != self.scope {
             return Err(ProjectConfigError::invalid(
                 "configuration document scope differs",
             ));
         }
         Ok(configuration)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn put_object_input_debug_omits_the_body() {
+        let input = S3PutObjectInput {
+            bucket: "bucket".into(),
+            key: "prefix/secret".into(),
+            body: b"super-secret-token".to_vec(),
+            content_type: "application/json".into(),
+            if_none_match: "*".into(),
+            ..S3PutObjectInput::default()
+        };
+        let rendered = format!("{input:?}");
+        assert!(rendered.contains("body_len: 18"), "{rendered}");
+        assert!(rendered.contains("prefix/secret"), "{rendered}");
+        assert!(!rendered.contains("super-secret-token"), "{rendered}");
+        assert!(!rendered.contains("[115, "), "{rendered}");
     }
 }

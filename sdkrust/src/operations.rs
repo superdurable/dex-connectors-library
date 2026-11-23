@@ -4,11 +4,13 @@
 //! Provider operation contracts independent of Dex Worker registration.
 
 use crate::errors::{Failure, FailureKind, RetryError, ValidationError};
+use crate::singledispatch::{MINIMUM_MAX_SENDS, validate_max_sends};
+use crate::step_attempt::{RunningMutation, StepAttempt};
 use crate::timestamps::Rfc3339NanoTimestamp;
 use crate::types::{
-    Call, CallId, DEFECT_BRANCH_ID, IdempotencyKey, MutationAttempt, MutationDefinition,
-    MutationResult, OperationRef, QueryAttempt, QueryDefinition, QueryResult, Receipt,
-    UNCERTAIN_BRANCH_ID,
+    Call, CallId, ConnectionRef, DEFECT_BRANCH_ID, IdempotencyKey, MutationAttempt,
+    MutationDefinition, MutationResult, OperationRef, QueryAttempt, QueryDefinition, QueryResult,
+    Receipt, RepeatOnUnknown, UNCERTAIN_BRANCH_ID,
 };
 
 /// Read-only provider operation invoked once per Dex Execute attempt.
@@ -135,6 +137,11 @@ pub fn run_query<Operation: Query + ?Sized>(
 /// unconfirmable, non-repeatable write. A call that starts while an earlier call of the same
 /// operation in the same Step attempt is still running selects `defect` without invoking the
 /// operation, so it never sends.
+///
+/// The effective send cap comes from the definition: `maxSends` of a `limited` operation, or
+/// the Call's [`Call::with_max_sends_override`]; otherwise 1. An override on any other tier
+/// selects `defect`. Inside a Step prefer [`run_step_mutation`], which also assigns the
+/// Call's occurrence and admission atomically.
 pub fn run_mutation<Operation: Mutation + ?Sized>(
     operation: &Operation,
     call: &Call<'_>,
@@ -150,18 +157,107 @@ pub fn run_mutation<Operation: Mutation + ?Sized>(
     let Some(step_attempt) = call.step_attempt else {
         return run_validated_mutation(operation, &definition, call, input);
     };
-    if !step_attempt.begin_running_mutation(&definition.operation) {
-        return OperationOutcome::Completed(mutation_defect(
-            call,
-            &format!(
-                "concurrent calls of connector operation {} {} in one Step are not supported; an earlier call of it is still running, so this call was not sent",
-                definition.operation.connector_id, definition.operation.operation_id
-            ),
-        ));
+    let Some(_running) = RunningMutation::begin(step_attempt, &definition.operation) else {
+        return OperationOutcome::Completed(concurrent_mutation_defect(call, &definition));
+    };
+    run_validated_mutation(operation, &definition, call, input)
+}
+
+/// Creates the next Call of a Mutation in `attempt` and runs it once.
+///
+/// The occurrence that derives the Call ID and the concurrency admission are taken in one
+/// critical section, as in sdkgo, so Call IDs follow call order. `max_sends_override`
+/// requests a send cap for a `limited` operation, within 1 to 10. Otherwise it behaves as
+/// [`run_mutation`].
+pub fn run_step_mutation<Operation: Mutation + ?Sized>(
+    operation: &Operation,
+    attempt: &StepAttempt<'_>,
+    connection: ConnectionRef,
+    input: &Operation::Input,
+    max_sends_override: Option<u32>,
+) -> OperationOutcome<MutationResult<Option<Operation::Output>>> {
+    let definition = operation.definition();
+    let (call, running) =
+        match attempt.new_admitted_mutation_call(connection, definition.operation.clone()) {
+            Ok(admitted) => admitted,
+            Err(error) => return OperationOutcome::Completed(unscoped_defect(&definition, &error)),
+        };
+    let call = match max_sends_override {
+        Some(max_sends) => call.with_max_sends_override(max_sends),
+        None => call,
+    };
+    if let Err(error) = definition.validate() {
+        return OperationOutcome::Completed(mutation_defect(&call, error.message()));
     }
-    let outcome = run_validated_mutation(operation, &definition, call, input);
-    step_attempt.end_running_mutation(&definition.operation);
-    outcome
+    let Some(_running) = running else {
+        return OperationOutcome::Completed(concurrent_mutation_defect(&call, &definition));
+    };
+    run_validated_mutation(operation, &definition, &call, input)
+}
+
+/// Resolves the send cap a Mutation Call receives from its definition and override.
+fn effective_max_sends(
+    definition: &MutationDefinition,
+    max_sends_override: Option<u32>,
+) -> Result<u32, ValidationError> {
+    let is_limited = definition.repeat_on_unknown == Some(RepeatOnUnknown::Limited);
+    match max_sends_override {
+        None if is_limited => Ok(definition.max_sends),
+        None => Ok(MINIMUM_MAX_SENDS),
+        Some(max_sends) => {
+            validate_max_sends(max_sends)?;
+            if !is_limited {
+                return Err(ValidationError::new(
+                    "max sends override requires a repeatOnUnknown limited operation",
+                ));
+            }
+            Ok(max_sends)
+        }
+    }
+}
+
+fn concurrent_mutation_defect<T>(
+    call: &Call<'_>,
+    definition: &MutationDefinition,
+) -> MutationResult<Option<T>> {
+    mutation_defect(
+        call,
+        &format!(
+            "concurrent calls of connector operation {} {} in one Step are not supported; an earlier call of it is still running, so this call was not sent",
+            definition.operation.connector_id, definition.operation.operation_id
+        ),
+    )
+}
+
+fn unscoped_defect<T>(
+    definition: &MutationDefinition,
+    error: &ValidationError,
+) -> MutationResult<Option<T>> {
+    let connector_id = if definition.operation.connector_id.is_empty() {
+        "connector".to_string()
+    } else {
+        definition.operation.connector_id.clone()
+    };
+    let operation_id = if definition.operation.operation_id.is_empty() {
+        "operation".to_string()
+    } else {
+        definition.operation.operation_id.clone()
+    };
+    MutationResult {
+        branch: DEFECT_BRANCH_ID.to_string(),
+        value: None,
+        receipt: Receipt {
+            provider: connector_id.clone(),
+            observed_at: Rfc3339NanoTimestamp::now_utc(),
+            ..Receipt::default()
+        },
+        failure: Some(Failure::new(
+            FailureKind::LocalDefect,
+            connector_id,
+            operation_id,
+            error.message(),
+        )),
+    }
 }
 
 fn run_validated_mutation<Operation: Mutation + ?Sized>(
@@ -170,6 +266,11 @@ fn run_validated_mutation<Operation: Mutation + ?Sized>(
     call: &Call<'_>,
     input: &Operation::Input,
 ) -> OperationOutcome<MutationResult<Option<Operation::Output>>> {
+    let call = match effective_max_sends(definition, call.max_sends_override()) {
+        Ok(max_sends) => call.with_effective_max_sends(max_sends),
+        Err(error) => return OperationOutcome::Completed(mutation_defect(call, error.message())),
+    };
+    let call = &call;
     let mut idempotency_key = operation.idempotency_key(&call.id, input);
     if idempotency_key.is_empty() {
         idempotency_key = IdempotencyKey::new(call.id.as_str());

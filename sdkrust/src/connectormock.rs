@@ -1154,8 +1154,8 @@ impl crate::step_attempt::StepAttemptAccess for ReplayStepAttempt {
         &self.checkpoint_markers
     }
 
-    fn last_heartbeat_value(&self) -> Option<JsonValue> {
-        self.previous_heartbeat.clone()
+    fn last_heartbeat_value(&self) -> Result<Option<JsonValue>, String> {
+        Ok(self.previous_heartbeat.clone())
     }
 
     fn record_heartbeat_value(

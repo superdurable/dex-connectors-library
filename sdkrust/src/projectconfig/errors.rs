@@ -41,6 +41,10 @@ pub enum ProjectConfigError {
     RefreshFailed(String),
     /// Another invocation owns provider dispatch for this credential generation.
     ExchangePending,
+    /// The Dex Web connections file no longer lists the connection exactly once, so its
+    /// credential is not used; a refresh reports this as
+    /// [`ProjectConfigError::RefreshFailed`] without contacting the provider.
+    ConnectionNotInFile(String),
 }
 
 impl ProjectConfigError {
@@ -72,7 +76,8 @@ impl fmt::Display for ProjectConfigError {
             | ProjectConfigError::BrokerUnavailable(message)
             | ProjectConfigError::BrokerRejected(message)
             | ProjectConfigError::RejectedCredentialNotRefreshed(message)
-            | ProjectConfigError::RefreshFailed(message) => formatter.write_str(message),
+            | ProjectConfigError::RefreshFailed(message)
+            | ProjectConfigError::ConnectionNotInFile(message) => formatter.write_str(message),
             ProjectConfigError::ObjectNotFound => formatter.write_str("project object not found"),
             ProjectConfigError::ConnectionNotSelected => {
                 formatter.write_str("project connection is not selected by this scope")

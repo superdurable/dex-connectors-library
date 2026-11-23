@@ -20,6 +20,7 @@ use crate::types::{Call, CallId, ConnectionRef, OperationRef, Progress};
 struct FakeStepAttempt {
     attempt: u32,
     previous_heartbeat: Option<JsonValue>,
+    has_read_error: bool,
     heartbeats: Mutex<Vec<String>>,
     checkpoint_markers: Mutex<Option<BTreeMap<String, Marker>>>,
 }
@@ -29,6 +30,7 @@ impl FakeStepAttempt {
         Self {
             attempt,
             previous_heartbeat,
+            has_read_error: false,
             heartbeats: Mutex::new(Vec::new()),
             checkpoint_markers: Mutex::new(None),
         }
@@ -66,8 +68,11 @@ impl StepAttemptAccess for FakeStepAttempt {
         &self.checkpoint_markers
     }
 
-    fn last_heartbeat_value(&self) -> Option<JsonValue> {
-        self.previous_heartbeat.clone()
+    fn last_heartbeat_value(&self) -> Result<Option<JsonValue>, String> {
+        if self.has_read_error {
+            return Err("heartbeat value could not be read".to_string());
+        }
+        Ok(self.previous_heartbeat.clone())
     }
 
     fn record_heartbeat_value(&self, value: CheckpointHeartbeat) -> Result<(), String> {
@@ -244,6 +249,34 @@ fn two_fenced_calls_in_one_step_both_send_and_survive_retry() {
     let gmail_fence = Fence::new(&gmail, Duration::from_secs(30), 1).expect("fence");
     assert_eq!(gmail_fence.decide().kind, DecisionKind::ReadBackRequired);
     assert!(gmail_fence.dispatch(|_deadline| ()).is_err());
+}
+
+#[test]
+fn heartbeat_read_error_fails_closed() {
+    let mut attempt = FakeStepAttempt::new(2, None);
+    attempt.has_read_error = true;
+    let call = call_for(&attempt, "5af8fafa-06ff-5b2d-bb13-04693809fabf");
+    let fence = Fence::new(&call, Duration::from_secs(30), 3).expect("fence");
+    assert_eq!(fence.decide().kind, DecisionKind::FailClosed);
+    assert!(fence.dispatch(|_deadline| ()).is_err());
+}
+
+#[test]
+fn integral_double_counts_decode_as_go_int32() {
+    let call_id = "5af8fafa-06ff-5b2d-bb13-04693809fabf";
+    for attempt_number in [serde_json::json!(1.0), serde_json::json!(1e0)] {
+        let previous = serde_json::json!({"singleDispatchMarkers": {call_id: {
+            "callId": call_id, "attempt": attempt_number, "state": "notSent", "sendCount": 0.0,
+        }}});
+        let attempt = FakeStepAttempt::new(2, Some(previous));
+        let call = call_for(&attempt, call_id);
+        let fence = Fence::new(&call, Duration::from_secs(30), 1).expect("fence");
+        assert_eq!(fence.decide().kind, DecisionKind::SendAllowed);
+    }
+    for invalid in [serde_json::json!(1.5), serde_json::json!(4_294_967_297_u64)] {
+        let marker = serde_json::json!({"callId": call_id, "attempt": invalid, "state": "notSent"});
+        assert!(Marker::from_json(&marker).is_err());
+    }
 }
 
 #[test]

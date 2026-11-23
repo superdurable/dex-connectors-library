@@ -45,6 +45,7 @@ mod errors;
 mod models;
 pub mod poll_cursor;
 mod provider;
+mod refresh_lock;
 mod storage;
 pub mod trigger_inbox;
 
@@ -59,7 +60,7 @@ use serde_json::Value;
 pub use broker::{
     BrokerCredential, BrokerHttpClient, BrokerHttpResponse, BrokerReadError,
     CredentialBrokerClient, MAXIMUM_BROKER_CREDENTIAL_BYTES, MAXIMUM_BROKER_RESPONSE_BYTES,
-    ScopeTokenReader, ScopeTokenReferenceReader, SharedConnection, UreqBrokerHttpClient,
+    ProviderHttpBrokerClient, ScopeTokenReader, ScopeTokenReferenceReader, SharedConnection,
     decode_broker_response,
 };
 pub use connections::{
@@ -86,8 +87,8 @@ pub use storage::{
 };
 
 use crate::relaysignature::RelayHeaders;
-use dexweb_store::read_private_file;
-use models::require_object;
+use dexweb_store::{decode_private_file, read_private_bytes};
+use models::{NestedRawConfigurations, require_object};
 
 /// Environment variable naming Dex Web's local `connections.json`.
 pub const LOCAL_CONNECTIONS_FILE_ENVIRONMENT: &str = "DEX_CONNECTOR_CONFIG_FILE";
@@ -259,7 +260,7 @@ impl LoadedProject {
 
 /// Reads a pinned snapshot from a trusted object store without fetching credentials.
 ///
-/// `broker_http` defaults to [`UreqBrokerHttpClient`]. `connection_store` replaces the
+/// `broker_http` defaults to [`ProviderHttpBrokerClient`]. `connection_store` replaces the
 /// ordinary connection store and cannot bind shared connections.
 ///
 /// # Errors
@@ -302,7 +303,7 @@ pub fn load_project_from_object_store(
                         ProjectConfigError::invalid("credential broker token reference is absent")
                     })
             }),
-            broker_http.unwrap_or_else(|| Arc::new(UreqBrokerHttpClient::new())),
+            broker_http.unwrap_or_else(|| Arc::new(ProviderHttpBrokerClient::new())),
         )?);
         for entry in &configuration.connections {
             if !entry.shared_connection_id.is_empty() {
@@ -351,7 +352,8 @@ const LOCAL_CONNECTION_FIELDS: [&str; 7] = [
 pub fn load_dex_web_project(path: &Path) -> ProjectConfigResult<LoadedProject> {
     let connections_path = std::path::absolute(path)
         .map_err(|_| ProjectConfigError::Io("connections.json path is invalid".into()))?;
-    let source = read_private_file(&connections_path)?;
+    let source_bytes = read_private_bytes(&connections_path)?;
+    let source = decode_private_file(&connections_path, &source_bytes)?;
     if source.get("schemaVersion") != Some(&Value::String(LOCAL_CONNECTIONS_SCHEMA_VERSION.into()))
     {
         return Err(ProjectConfigError::invalid(
@@ -359,8 +361,10 @@ pub fn load_dex_web_project(path: &Path) -> ProjectConfigResult<LoadedProject> {
         ));
     }
     let uses_path = connections_path.with_file_name("use-configurations.json");
+    let mut uses_bytes = Vec::new();
     let uses = if uses_path.exists() {
-        let uses = read_private_file(&uses_path)?;
+        uses_bytes = read_private_bytes(&uses_path)?;
+        let uses = decode_private_file(&uses_path, &uses_bytes)?;
         if uses.get("schemaVersion")
             != Some(&Value::String(
                 LOCAL_USE_CONFIGURATIONS_SCHEMA_VERSION.into(),
@@ -398,22 +402,42 @@ pub fn load_dex_web_project(path: &Path) -> ProjectConfigResult<LoadedProject> {
         }
         entries.push(entry);
     }
-    let objects_of = |document: &JsonObject, name: &str, label: &str| {
+    // Go decodes these into typed structs, dropping members it does not declare.
+    let objects_of = |document: &JsonObject, name: &str, label: &str, fields: &[&str]| {
         document
             .get(name)
             .and_then(Value::as_array)
             .map_or_else(Vec::new, Clone::clone)
             .iter()
-            .map(|item| require_object(Some(item), label).cloned())
-            .collect::<ProjectConfigResult<Vec<_>>>()
+            .map(|item| {
+                Ok(require_object(Some(item), label)?
+                    .iter()
+                    .filter(|(field, _)| fields.contains(&field.as_str()))
+                    .map(|(field, value)| (field.clone(), value.clone()))
+                    .collect())
+            })
+            .collect::<ProjectConfigResult<Vec<JsonObject>>>()
     };
     let scope = Scope::new("local", "preview");
     let store: Arc<dyn ObjectStore> = Arc::new(InMemoryObjectStore::new());
     let configurations = ConfigurationStore::new(store.clone(), scope.clone())?;
     let mut document = Configuration::new(scope.clone(), 1, entries);
-    document.trigger_bindings = objects_of(&source, "triggerBindings", "trigger binding")?;
-    document.operation_configurations =
-        objects_of(&uses, "operationConfigurations", "operation configuration")?;
+    document.trigger_bindings = objects_of(
+        &source,
+        "triggerBindings",
+        "trigger binding",
+        &models::TRIGGER_BINDING_FIELDS,
+    )?;
+    document.operation_configurations = objects_of(
+        &uses,
+        "operationConfigurations",
+        "operation configuration",
+        &models::OPERATION_CONFIGURATION_FIELDS,
+    )?;
+    document.set_nested_raw_json(
+        NestedRawConfigurations::capture(&source_bytes)
+            .with_operation_configurations_of(NestedRawConfigurations::capture(&uses_bytes)),
+    );
     let (written, _) = configurations.write_configuration(0, &document)?;
     let reference = configurations.freeze_configuration(written.revision)?;
     let local_objects: Arc<dyn ObjectStore> =

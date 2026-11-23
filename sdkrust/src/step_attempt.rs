@@ -29,7 +29,7 @@ use crate::types::{Call, CallId, ConnectionRef, OperationRef, Progress, Progress
 ///         ConnectionRef::new("sample", "main"),
 ///         OperationRef::new("sample", "createItem"),
 ///     )?;
-///     assert_eq!(call.max_sends, 1);
+///     assert_eq!(call.max_sends(), 1);
 ///     Ok(())
 /// }
 /// ```
@@ -38,8 +38,7 @@ pub struct StepAttempt<'context> {
     flow_id: String,
     step_execution_id: String,
     attempt: u32,
-    occurrences: Mutex<HashMap<OperationRef, u32>>,
-    running_mutations: Mutex<BTreeSet<OperationRef>>,
+    call_admissions: Mutex<CallAdmissions>,
     pub(crate) checkpoint_markers: Mutex<Option<BTreeMap<String, Marker>>>,
     progress_stream: Option<&'context Stream<ProgressUpdate>>,
     progress_sequence: Mutex<u64>,
@@ -68,8 +67,7 @@ impl<'context> StepAttempt<'context> {
             flow_id,
             step_execution_id,
             attempt,
-            occurrences: Mutex::new(HashMap::new()),
-            running_mutations: Mutex::new(BTreeSet::new()),
+            call_admissions: Mutex::new(CallAdmissions::default()),
             checkpoint_markers: Mutex::new(None),
             progress_stream,
             progress_sequence: Mutex::new(0),
@@ -101,12 +99,7 @@ impl<'context> StepAttempt<'context> {
     /// Returns [`ValidationError`] for an invalid operation.
     pub fn derive_call_id(&self, operation: &OperationRef) -> Result<CallId, ValidationError> {
         operation.validate()?;
-        let occurrence = {
-            let mut occurrences = lock(&self.occurrences);
-            let count = occurrences.entry(operation.clone()).or_insert(0);
-            *count += 1;
-            *count
-        };
+        let occurrence = lock(&self.call_admissions).next_occurrence(operation);
         crate::types::derive_call_id(
             &self.flow_id,
             &self.step_execution_id,
@@ -115,7 +108,10 @@ impl<'context> StepAttempt<'context> {
         )
     }
 
-    /// Creates the next Call of `operation` in this attempt with a send cap of 1.
+    /// Creates the next Call of `operation` in this attempt.
+    ///
+    /// For a Mutation prefer [`crate::run_step_mutation`], which assigns the occurrence and
+    /// admits the call in one step, so concurrent calls cannot reorder Call IDs.
     ///
     /// # Errors
     ///
@@ -177,13 +173,93 @@ impl<'context> StepAttempt<'context> {
         }
     }
 
+    /// Assigns the next occurrence of a Mutation Call and admits it in one critical section.
+    ///
+    /// The refused call still counts, so later Call IDs follow call order, as in sdkgo.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ValidationError`] for an invalid connection or operation.
+    pub(crate) fn new_admitted_mutation_call(
+        &self,
+        connection: ConnectionRef,
+        operation: OperationRef,
+    ) -> Result<(Call<'_>, Option<RunningMutation<'_>>), ValidationError> {
+        connection.validate()?;
+        operation.validate()?;
+        let (occurrence, is_admitted) = lock(&self.call_admissions).admit_mutation(&operation);
+        let id = crate::types::derive_call_id(
+            &self.flow_id,
+            &self.step_execution_id,
+            &operation,
+            occurrence,
+        )?;
+        let running = is_admitted.then(|| RunningMutation {
+            step_attempt: self,
+            operation: operation.clone(),
+        });
+        let mut call = Call::new(id, connection, operation)?;
+        call.step_attempt = Some(self);
+        Ok((call, running))
+    }
+
     /// Marks a Mutation as running; returns `false` while another call of it runs.
     pub(crate) fn begin_running_mutation(&self, operation: &OperationRef) -> bool {
-        lock(&self.running_mutations).insert(operation.clone())
+        lock(&self.call_admissions)
+            .running
+            .insert(operation.clone())
     }
 
     pub(crate) fn end_running_mutation(&self, operation: &OperationRef) {
-        lock(&self.running_mutations).remove(operation);
+        lock(&self.call_admissions).running.remove(operation);
+    }
+}
+
+/// Call occurrences and running Mutations of one attempt, guarded together.
+#[derive(Default)]
+pub(crate) struct CallAdmissions {
+    occurrences: HashMap<OperationRef, u32>,
+    running: BTreeSet<OperationRef>,
+}
+
+impl CallAdmissions {
+    fn next_occurrence(&mut self, operation: &OperationRef) -> u32 {
+        let count = self.occurrences.entry(operation.clone()).or_insert(0);
+        *count += 1;
+        *count
+    }
+
+    /// Returns the next occurrence and whether the call is admitted, in one critical section.
+    fn admit_mutation(&mut self, operation: &OperationRef) -> (u32, bool) {
+        let occurrence = self.next_occurrence(operation);
+        (occurrence, self.running.insert(operation.clone()))
+    }
+}
+
+/// Admission of one running Mutation call; dropping it ends the call.
+pub(crate) struct RunningMutation<'attempt> {
+    step_attempt: &'attempt (dyn StepAttemptAccess + 'attempt),
+    operation: OperationRef,
+}
+
+impl<'attempt> RunningMutation<'attempt> {
+    /// Admits `operation` on `step_attempt`, or returns `None` while another call of it runs.
+    pub(crate) fn begin(
+        step_attempt: &'attempt (dyn StepAttemptAccess + 'attempt),
+        operation: &OperationRef,
+    ) -> Option<Self> {
+        step_attempt
+            .begin_running_mutation(operation)
+            .then(|| Self {
+                step_attempt,
+                operation: operation.clone(),
+            })
+    }
+}
+
+impl Drop for RunningMutation<'_> {
+    fn drop(&mut self) {
+        self.step_attempt.end_running_mutation(&self.operation);
     }
 }
 
@@ -200,8 +276,8 @@ pub(crate) trait StepAttemptAccess: Sync {
     fn begin_running_mutation(&self, operation: &OperationRef) -> bool;
     fn end_running_mutation(&self, operation: &OperationRef);
     fn checkpoint_markers(&self) -> &Mutex<Option<BTreeMap<String, Marker>>>;
-    /// Returns the previous attempt's heartbeat value, or `None` when absent or undecodable.
-    fn last_heartbeat_value(&self) -> Option<serde_json::Value>;
+    /// Returns the previous attempt's heartbeat value, `None` when absent, or a read error.
+    fn last_heartbeat_value(&self) -> Result<Option<serde_json::Value>, String>;
     fn record_heartbeat_value(&self, value: CheckpointHeartbeat) -> Result<(), String>;
 }
 
@@ -242,11 +318,10 @@ impl StepAttemptAccess for StepAttempt<'_> {
         &self.checkpoint_markers
     }
 
-    fn last_heartbeat_value(&self) -> Option<serde_json::Value> {
+    fn last_heartbeat_value(&self) -> Result<Option<serde_json::Value>, String> {
         lock(&self.context)
             .last_heartbeat_value::<serde_json::Value>()
-            .ok()
-            .flatten()
+            .map_err(|error| error.to_string())
     }
 
     fn record_heartbeat_value(&self, value: CheckpointHeartbeat) -> Result<(), String> {
@@ -259,4 +334,47 @@ impl StepAttemptAccess for StepAttempt<'_> {
 pub(crate) fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
     // A panic in another call of the same attempt leaves plain data that stays consistent.
     mutex.lock().unwrap_or_else(PoisonError::into_inner)
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::{Arc, Barrier};
+
+    use super::*;
+
+    #[test]
+    fn mutation_occurrence_and_admission_follow_one_order() {
+        let admissions = Arc::new(Mutex::new(CallAdmissions::default()));
+        let operation = OperationRef::new("sample", "createItem");
+        let first_admitted = Arc::new(Barrier::new(2));
+        let second_checked = Arc::new(Barrier::new(2));
+        let first = {
+            let admissions = Arc::clone(&admissions);
+            let operation = operation.clone();
+            let first_admitted = Arc::clone(&first_admitted);
+            let second_checked = Arc::clone(&second_checked);
+            std::thread::spawn(move || {
+                let admitted = lock(&admissions).admit_mutation(&operation);
+                first_admitted.wait();
+                second_checked.wait();
+                lock(&admissions).running.remove(&operation);
+                admitted
+            })
+        };
+        first_admitted.wait();
+        let second = lock(&admissions).admit_mutation(&operation);
+        second_checked.wait();
+        let first = first.join().expect("first call thread");
+        assert_eq!(
+            first,
+            (1, true),
+            "the first call owns occurrence 1 and runs"
+        );
+        assert_eq!(
+            second,
+            (2, false),
+            "the overlapping call counts and is refused"
+        );
+        assert_eq!(lock(&admissions).admit_mutation(&operation), (3, true));
+    }
 }

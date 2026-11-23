@@ -161,19 +161,22 @@ fn keeps_go_events_byte_for_byte_and_rewrites_as_go_does() {
 fn decodes_and_rewrites_go_decoding_cases() {
     let cases: Vec<serde_json::Value> =
         serde_json::from_slice(&fixture("go-trigger-inbox-decoding-cases.json")).expect("cases");
-    // Rust strings are UTF-8 and serde_json bounds nesting depth, so these Go-accepted
-    // documents are refused instead of rewritten; the coordinator report lists the gap.
-    let unsupported = ["invalid UTF-8 and surrogates"];
+    // Go replaces invalid UTF-8 and lone surrogates with U+FFFD; Rust refuses such a document,
+    // as the README states. Rust and the other SDKs never write one.
+    let refused_by_rust = ["invalid UTF-8 and surrogates"];
     let mut failures = Vec::new();
     for case in cases {
         let name = case["name"].as_str().expect("name");
-        if unsupported.contains(&name) {
-            continue;
-        }
         let input = STANDARD
             .decode(case["input"].as_str().expect("input"))
             .expect("base64");
         let (objects, inbox) = inbox_with(&input);
+        if refused_by_rust.contains(&name) {
+            if inbox.pending().is_ok() {
+                failures.push(format!("{name}: expected the documented refusal"));
+            }
+            continue;
+        }
         if case["error"].as_bool().expect("error flag") {
             if inbox.pending().is_ok() {
                 failures.push(format!("{name}: accepted an invalid document"));

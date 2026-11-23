@@ -33,7 +33,9 @@ pub use credentials::{
     is_reauthorization_required, resolve_credential, resolve_credential_after_rejection,
 };
 pub use errors::{Failure, FailureKind, RetryError, ValidationError};
-pub use operations::{Mutation, OperationOutcome, Query, run_mutation, run_query};
+pub use operations::{
+    Mutation, OperationOutcome, Query, run_mutation, run_query, run_step_mutation,
+};
 pub use retry_policy::{RetryPolicy, default_connector_step_execute_retry_policy};
 pub use step_attempt::StepAttempt;
 pub use steps::{

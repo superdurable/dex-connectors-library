@@ -19,15 +19,19 @@ hmac = "0.12"
 httpdate = "1"
 regex = { version = "1", default-features = false, features = ["std", "unicode-perl"] }
 ring = "0.17"
+rustix = { version = "1", default-features = false, features = ["std", "fs", "process"] }
+# No `logging` feature: the provider transport must not emit TLS or request logs.
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
 serde = { version = "1", features = ["derive"] }
 # preserve_order keeps provider credential and configuration member order, as Go RawMessage does.
 serde_json = { version = "1", features = ["preserve_order", "raw_value"] }
 sha2 = "0.10"
 tracing = "0.1"
-ureq = { version = "2.12", default-features = false, features = ["tls", "json"] }
 uuid = { version = "1", features = ["v4", "v5"] }
+webpki-roots = "1"
 
 [dev-dependencies]
+log = { version = "0.4", features = ["std"] }
 tempfile = "3"
 tokio = { version = "1", features = ["rt", "time"] }
 

@@ -14,6 +14,7 @@ use super::connections::{
     CredentialMaterial, CredentialMutation, CredentialReference, connection_record_wire,
     credential_envelope_wire, parse_optional_timestamp,
 };
+use super::dexweb_store::DexWebObjectStore;
 use super::errors::{ProjectConfigError, ProjectConfigResult};
 use super::models::{JsonObject, digest_bytes, go_canonical_json_bytes, require_object};
 use super::storage::ProjectObject;
@@ -284,7 +285,113 @@ impl<Credential> RefreshingProjectCredentialProvider<Credential> {
         Ok(result.credentials)
     }
 
-    fn recover_or_wait(&self, record: &ConnectionRecord) -> ProjectConfigResult<()> {
+    /// Decodes a READY record's credential and decides whether it needs a refresh now.
+    fn evaluate_ready(
+        &self,
+        record: &ConnectionRecord,
+        driver: &dyn CredentialRefreshDriver<Credential>,
+    ) -> Result<ReadyEvaluation<Credential>, CredentialError> {
+        let material = self
+            .store()
+            .read_material(self.key(), record)
+            .map_err(credential_error)?;
+        let credentials = self.base.decode_material(&material)?;
+        let decided_at = now();
+        let is_unexpired = material
+            .expires_at
+            .as_ref()
+            .is_none_or(|expires_at| expires_at.unix_nanoseconds() > decided_at.unix_nanoseconds());
+        let is_refresh_required = !is_unexpired
+            || driver.is_refresh_required(&CredentialRefreshState {
+                credentials: &credentials,
+                expires_at: material.expires_at.clone(),
+                now: decided_at.clone(),
+            });
+        Ok(ReadyEvaluation {
+            material,
+            credentials,
+            decided_at,
+            is_refresh_required,
+        })
+    }
+
+    /// Admits and performs one refresh; `None` means the record changed or another caller won.
+    fn refresh_ready(
+        &self,
+        record: &ConnectionRecord,
+        ready: &ReadyEvaluation<Credential>,
+        driver: &dyn CredentialRefreshDriver<Credential>,
+    ) -> Result<Option<Credential>, CredentialError> {
+        let admission = match self.admit_refresh(record, &ready.decided_at) {
+            Ok(admission) => admission,
+            Err(ProjectConfigError::ObjectConflict(_)) => return Ok(None),
+            Err(error) => return Err(credential_error(error)),
+        };
+        let state = CredentialRefreshState {
+            credentials: &ready.credentials,
+            expires_at: ready.material.expires_at.clone(),
+            now: ready.decided_at.clone(),
+        };
+        self.refresh_admitted(&admission, &ready.material, &state, driver)
+            .map(Some)
+    }
+
+    /// Rereads under the connections file's refresh lock, adopting another process's
+    /// write-back instead of refreshing again, and proves write-back before any dispatch.
+    fn refresh_while_locked(
+        &self,
+        local_file: &DexWebObjectStore,
+        driver: &dyn CredentialRefreshDriver<Credential>,
+    ) -> Result<Option<Credential>, CredentialError> {
+        let _held = local_file
+            .lock_credential_refresh()
+            .map_err(credential_error)?;
+        let (record, _) = self
+            .store()
+            .read_record(self.key())
+            .map_err(refresh_read_error)?;
+        if record.status != "READY" {
+            return Ok(None);
+        }
+        let ready = self.evaluate_ready(&record, driver)?;
+        if !ready.is_refresh_required {
+            return Ok(Some(ready.credentials));
+        }
+        // A rotated refresh token that cannot be written back would strand every other process.
+        match local_file.verify_credential_write_back(self.key()) {
+            Ok(true) => {}
+            Ok(false) | Err(ProjectConfigError::ObjectConflict(_)) => return Ok(None),
+            Err(error) => {
+                return Err(credential_error(ProjectConfigError::RefreshFailed(
+                    format!("the credential cannot be written back, so nothing was sent: {error}"),
+                )));
+            }
+        }
+        self.refresh_ready(&record, &ready, driver)
+    }
+
+    /// Recovers an exchange while holding the file refresh lock, if any, because publishing a
+    /// recovered credential writes the file; waits after releasing it.
+    fn recover_exchange(
+        &self,
+        record: &ConnectionRecord,
+        local_file: Option<&DexWebObjectStore>,
+    ) -> ProjectConfigResult<()> {
+        let should_wait = {
+            let _held = local_file
+                .map(DexWebObjectStore::lock_credential_refresh)
+                .transpose()?;
+            self.recover_or_report_pending(record)?
+        };
+        if should_wait {
+            // Another replica owns dispatch; poll for its published result.
+            std::thread::sleep(RECOVERY_POLL_INTERVAL);
+        }
+        Ok(())
+    }
+
+    /// Publishes or abandons an exchange; `true` means it is still pending.
+    fn recover_or_report_pending(&self, record: &ConnectionRecord) -> ProjectConfigResult<bool> {
         let mutation = record.mutation.as_ref().ok_or_else(|| {
             ProjectConfigError::invalid("credential exchange admission is absent")
         })?;
@@ -300,19 +407,17 @@ impl<Credential> RefreshingProjectCredentialProvider<Credential> {
             .objects()
             .read_object(&admission.result_key, "")
         {
-            Ok(result) => self.publish_result(&admission, &result),
+            Ok(result) => self.publish_result(&admission, &result).map(|()| false),
             Err(ProjectConfigError::ObjectNotFound) => {
                 if now().unix_nanoseconds() < admission.deadline.unix_nanoseconds() {
-                    // Another replica owns dispatch; poll for its published result.
-                    std::thread::sleep(RECOVERY_POLL_INTERVAL);
-                    return Ok(());
+                    return Ok(true);
                 }
                 let status = if admission.kind == "AUTHORIZING" {
                     "REAUTHORIZATION_REQUIRED"
                 } else {
                     "READY"
                 };
-                self.finish_exchange(&admission, status)
+                self.finish_exchange(&admission, status).map(|()| false)
             }
             Err(error) => Err(error),
         }
@@ -464,11 +569,12 @@ impl<Credential: Send + Sync> CredentialProvider<Credential>
         if let Some(shared) = &self.base.shared {
             return self.base.resolve_shared(shared, call, false);
         }
+        let local_file = self.store().objects().dex_web_connections_file();
         loop {
             let (record, _) = self
                 .store()
                 .read_record(self.key())
-                .map_err(credential_error)?;
+                .map_err(refresh_read_error)?;
             match record.status.as_str() {
                 "REVOKED" | "REAUTHORIZATION_REQUIRED" => {
                     return Err(Box::new(ReauthorizationRequiredError::new(None)));
@@ -481,7 +587,7 @@ impl<Credential: Send + Sync> CredentialProvider<Credential>
                     if is_pending_authorization {
                         return Err(credential_error(ProjectConfigError::ExchangePending));
                     }
-                    match self.recover_or_wait(&record) {
+                    match self.recover_exchange(&record, local_file) {
                         Ok(()) | Err(ProjectConfigError::ObjectConflict(_)) => continue,
                         Err(error) => return Err(credential_error(error)),
                     }
@@ -493,29 +599,17 @@ impl<Credential: Send + Sync> CredentialProvider<Credential>
                     )));
                 }
             }
-            let material = self
-                .store()
-                .read_material(self.key(), &record)
-                .map_err(credential_error)?;
-            let credentials = self.base.decode_material(&material)?;
-            let decided_at = now();
-            let state = CredentialRefreshState {
-                credentials: &credentials,
-                expires_at: material.expires_at.clone(),
-                now: decided_at.clone(),
+            let ready = self.evaluate_ready(&record, driver)?;
+            if !ready.is_refresh_required {
+                return Ok(ready.credentials);
+            }
+            let refreshed = match local_file {
+                None => self.refresh_ready(&record, &ready, driver)?,
+                Some(local_file) => self.refresh_while_locked(local_file, driver)?,
             };
-            let is_unexpired = material.expires_at.as_ref().is_none_or(|expires_at| {
-                expires_at.unix_nanoseconds() > decided_at.unix_nanoseconds()
-            });
-            if is_unexpired && !driver.is_refresh_required(&state) {
+            if let Some(credentials) = refreshed {
                 return Ok(credentials);
             }
-            let admission = match self.admit_refresh(&record, &decided_at) {
-                Ok(admission) => admission,
-                Err(ProjectConfigError::ObjectConflict(_)) => continue,
-                Err(error) => return Err(credential_error(error)),
-            };
-            return self.refresh_admitted(&admission, &material, &state, driver);
         }
     }
 
@@ -547,6 +641,24 @@ impl<Credential: Send + Sync> CredentialProvider<Credential>
             ));
         }
         self.resolve_with_refresh(call, driver)
+    }
+}
+
+/// A READY record's decoded credential and refresh decision.
+struct ReadyEvaluation<Credential> {
+    material: CredentialMaterial,
+    credentials: Credential,
+    decided_at: Rfc3339NanoTimestamp,
+    is_refresh_required: bool,
+}
+
+/// Reports a connection removed from its file as a failed refresh: nothing was sent.
+fn refresh_read_error(error: ProjectConfigError) -> CredentialError {
+    match error {
+        ProjectConfigError::ConnectionNotInFile(message) => credential_error(
+            ProjectConfigError::RefreshFailed(format!("{message}; nothing was sent")),
+        ),
+        other => credential_error(other),
     }
 }
 

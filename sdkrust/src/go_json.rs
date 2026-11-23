@@ -36,6 +36,36 @@ pub fn to_go_json_string<T: Serialize + ?Sized>(value: &T) -> Result<String, ser
         .map_err(|error| serde::ser::Error::custom(format!("encoded JSON is not UTF-8: {error}")))
 }
 
+/// Compacts valid raw JSON as Go's `json.Marshal` does for a nested `json.RawMessage`.
+///
+/// Go's `appendCompact` with HTML escaping removes insignificant whitespace, escapes `<`,
+/// `>`, `&`, U+2028, and U+2029, and copies every other byte, so number lexemes and string
+/// escape sequences such as a Unicode escape or `\/` are preserved. `raw` must already be valid JSON.
+pub(crate) fn compact_go_raw_message(raw: &str) -> String {
+    let mut compacted = String::with_capacity(raw.len());
+    let mut is_in_string = false;
+    let mut is_escaped = false;
+    for character in raw.chars() {
+        match character {
+            '<' => compacted.push_str("\\u003c"),
+            '>' => compacted.push_str("\\u003e"),
+            '&' => compacted.push_str("\\u0026"),
+            '\u{2028}' => compacted.push_str("\\u2028"),
+            '\u{2029}' => compacted.push_str("\\u2029"),
+            ' ' | '\t' | '\n' | '\r' if !is_in_string => {}
+            _ => compacted.push(character),
+        }
+        if is_escaped {
+            is_escaped = false;
+        } else if is_in_string && character == '\\' {
+            is_escaped = true;
+        } else if character == '"' {
+            is_in_string = !is_in_string;
+        }
+    }
+    compacted
+}
+
 /// Compact formatter that adds Go's HTML-safe escapes.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct GoJsonFormatter;
@@ -105,6 +135,16 @@ mod tests {
         assert_eq!(
             encoded,
             "\"élément \\u003c\\u0026\\u003e \\u2028 \\u2029 😀 \\\"\\n\\u0001\""
+        );
+    }
+
+    #[test]
+    fn compacts_raw_messages_like_go_append_compact() {
+        // Expected bytes follow Go's encoding/json appendCompact with escape=true.
+        let raw = "{ \"a b\" : [ 1.50 , -0.0e-0, 12345678901234567890123 ],\n\t\"s\":\"x \\\" <&> \\u00e9 \\/ \u{2028}\" }";
+        assert_eq!(
+            compact_go_raw_message(raw),
+            "{\"a b\":[1.50,-0.0e-0,12345678901234567890123],\"s\":\"x \\\" \\u003c\\u0026\\u003e \\u00e9 \\/ \\u2028\"}"
         );
     }
 }

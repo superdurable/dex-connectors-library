@@ -3,10 +3,8 @@
 
 //! Provider address checks applied to every DNS answer before dialing.
 
-use std::cell::RefCell;
 use std::fmt;
-use std::io;
-use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, ToSocketAddrs};
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 
 /// Selects public HTTPS, private-network HTTP, or unrestricted dialing.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -141,74 +139,25 @@ pub fn address_refusal_reason(
     }
 }
 
-thread_local! {
-    // The resolver runs on the sending thread inside ureq, so the scheme and refusal of the
-    // current request travel through thread-local state.
-    static REQUEST_SCHEME: RefCell<Option<String>> = const { RefCell::new(None) };
-    static LAST_REFUSAL: RefCell<Option<AddressRefusal>> = const { RefCell::new(None) };
-}
-
-pub(crate) fn begin_checked_request(scheme: &str) {
-    REQUEST_SCHEME.with(|current| *current.borrow_mut() = Some(scheme.to_string()));
-    LAST_REFUSAL.with(|refusal| *refusal.borrow_mut() = None);
-}
-
-pub(crate) fn end_checked_request() -> Option<AddressRefusal> {
-    REQUEST_SCHEME.with(|current| *current.borrow_mut() = None);
-    LAST_REFUSAL.with(|refusal| refusal.borrow_mut().take())
-}
-
-/// ureq resolver that checks every DNS answer and returns only checked IPs.
+/// Checks every resolved address and returns the ones to dial, IPv4-mapped ones unmapped.
 ///
-/// ureq keeps the original hostname for the Host header, TLS SNI, and certificate checks.
-pub(crate) struct CheckedResolver {
-    pub(crate) policy: AddressPolicy,
-}
-
-impl CheckedResolver {
-    fn refuse(reason: &str) -> io::Error {
-        let refusal = AddressRefusal::new(reason);
-        LAST_REFUSAL.with(|current| *current.borrow_mut() = Some(refusal.clone()));
-        io::Error::new(io::ErrorKind::PermissionDenied, refusal)
+/// One refused address refuses the whole answer, so a mixed answer cannot reach a private host.
+pub(crate) fn check_resolved_addresses(
+    addresses: Vec<SocketAddr>,
+    scheme: &str,
+    policy: AddressPolicy,
+) -> Result<Vec<SocketAddr>, AddressRefusal> {
+    if policy == AddressPolicy::Unrestricted {
+        return Ok(addresses);
     }
-}
-
-impl ureq::Resolver for CheckedResolver {
-    fn resolve(&self, netloc: &str) -> io::Result<Vec<SocketAddr>> {
-        let scheme = REQUEST_SCHEME.with(|current| current.borrow().clone());
-        let Some(scheme) = scheme.filter(|scheme| scheme == "http" || scheme == "https") else {
-            return Err(Self::refuse("URL scheme is not allowed"));
-        };
-        let (host, port) = split_netloc(netloc)
-            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "invalid address"))?;
-        let addresses: Vec<SocketAddr> = match host.parse::<IpAddr>() {
-            Ok(address) => vec![SocketAddr::new(address, port)],
-            Err(_) => (host, port).to_socket_addrs()?.collect(),
-        };
-        if addresses.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::NotFound,
-                "provider address resolution returned no addresses",
-            ));
+    let mut checked = Vec::with_capacity(addresses.len());
+    for address in addresses {
+        if let Some(reason) = address_refusal_reason(address.ip(), scheme, policy) {
+            return Err(AddressRefusal::new(reason));
         }
-        let mut checked = Vec::with_capacity(addresses.len());
-        for address in addresses {
-            if let Some(reason) = address_refusal_reason(address.ip(), &scheme, self.policy) {
-                return Err(Self::refuse(reason));
-            }
-            checked.push(SocketAddr::new(unmapped(address.ip()), address.port()));
-        }
-        Ok(checked)
+        checked.push(SocketAddr::new(unmapped(address.ip()), address.port()));
     }
-}
-
-fn split_netloc(netloc: &str) -> Option<(&str, u16)> {
-    let (host, port) = netloc.rsplit_once(':')?;
-    let host = host
-        .strip_prefix('[')
-        .and_then(|inner| inner.strip_suffix(']'))
-        .unwrap_or(host);
-    Some((host, port.parse().ok()?))
+    Ok(checked)
 }
 
 #[cfg(test)]

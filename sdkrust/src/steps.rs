@@ -14,7 +14,7 @@ use dex_sdk::{
 
 use crate::configuration_ui::ConnectorConfigurationUi;
 use crate::errors::{Failure, RetryError, ValidationError};
-use crate::operations::{Mutation, OperationOutcome, Query, run_mutation, run_query};
+use crate::operations::{Mutation, OperationOutcome, Query, run_query, run_step_mutation};
 use crate::retry_policy::default_connector_step_execute_retry_policy;
 use crate::singledispatch::{MINIMUM_MAX_SENDS, validate_max_sends};
 use crate::step_attempt::StepAttempt;
@@ -476,13 +476,20 @@ where
         let (outcome, route_context) = {
             let attempt =
                 StepAttempt::with_streams(context, self.config.progress_stream, text_stream);
-            let mut call = attempt
-                .new_call(self.config.connection.clone(), definition.operation.clone())
-                .map_err(HandlerError::from_error)?;
-            call.max_sends = self.max_sends;
             let operation_input = (self.config.map_to_operation_input)(&input);
-            let outcome = run_mutation(&self.config.operation, &call, &operation_input);
-            (outcome, failure_route_context(&call))
+            let outcome = run_step_mutation(
+                &self.config.operation,
+                &attempt,
+                self.config.connection.clone(),
+                &operation_input,
+                self.config.max_sends_override,
+            );
+            let route_context = FailureRouteContext {
+                connector_id: definition.operation.connector_id.clone(),
+                operation_id: definition.operation.operation_id.clone(),
+                connection_name: self.config.connection.name.clone(),
+            };
+            (outcome, route_context)
         };
         let result = match outcome {
             OperationOutcome::Completed(result) => result,
@@ -518,7 +525,7 @@ where
 
 /// Maps a connector [`RetryError`] to the Dex retry signal.
 ///
-/// A Step that calls [`run_query`] or [`run_mutation`] directly returns this as its handler
+/// A Step that calls [`run_query`] or [`crate::run_mutation`] directly returns this as its handler
 /// error. A positive delay, truncated to whole seconds, becomes `HandlerError::retry_after`;
 /// a delay under one second uses the Step retry policy's backoff. Retry exhaustion fails the
 /// Flow.

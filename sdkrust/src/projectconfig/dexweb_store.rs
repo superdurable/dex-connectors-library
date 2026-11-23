@@ -19,6 +19,7 @@ use super::models::{
     JsonObject, LOCAL_CONNECTIONS_SCHEMA_VERSION, Scope, go_canonical_json_bytes, require_object,
     sha256_hex,
 };
+use super::refresh_lock::{FileRefreshLock, HeldRefreshLock};
 use super::storage::{
     InMemoryObjectStore, ObjectStore, ProjectObject, local_object_byte_limit, lock,
     validate_object_key,
@@ -27,9 +28,17 @@ use crate::timestamps::Rfc3339NanoTimestamp;
 
 /// Reads a Dex Web owner-only regular JSON file without following symlinks.
 pub(crate) fn read_private_file(path: &Path) -> ProjectConfigResult<JsonObject> {
-    let name = path
-        .file_name()
-        .map_or_else(String::new, |name| name.to_string_lossy().into_owned());
+    decode_private_file(path, &read_private_bytes(path)?)
+}
+
+fn private_file_name(path: &Path) -> String {
+    path.file_name()
+        .map_or_else(String::new, |name| name.to_string_lossy().into_owned())
+}
+
+/// Reads the exact bytes of a Dex Web owner-only regular file without following symlinks.
+pub(crate) fn read_private_bytes(path: &Path) -> ProjectConfigResult<Vec<u8>> {
+    let name = private_file_name(path);
     let metadata = fs::symlink_metadata(path)
         .map_err(|_| ProjectConfigError::Io(format!("{name} cannot be read")))?;
     if !metadata.file_type().is_file() || !has_owner_only_mode(&metadata) {
@@ -37,9 +46,13 @@ pub(crate) fn read_private_file(path: &Path) -> ProjectConfigResult<JsonObject> 
             "{name} must be a regular 0600 file"
         )));
     }
-    let contents =
-        fs::read(path).map_err(|_| ProjectConfigError::Io(format!("{name} cannot be read")))?;
-    let document: Value = serde_json::from_slice(&contents)
+    fs::read(path).map_err(|_| ProjectConfigError::Io(format!("{name} cannot be read")))
+}
+
+/// Decodes bytes read by [`read_private_bytes`] as one JSON object.
+pub(crate) fn decode_private_file(path: &Path, contents: &[u8]) -> ProjectConfigResult<JsonObject> {
+    let name = private_file_name(path);
+    let document: Value = serde_json::from_slice(contents)
         .map_err(|_| ProjectConfigError::invalid(format!("{name} must be a JSON object")))?;
     Ok(require_object(Some(&document), &name)?.clone())
 }
@@ -55,10 +68,53 @@ fn has_owner_only_mode(_metadata: &fs::Metadata) -> bool {
     true
 }
 
+/// Current Dex Web credentials and how many records list each connection.
+struct LocalConnectionsListing {
+    /// Material of every connection listed exactly once.
+    credentials: HashMap<ConnectionKey, CredentialMaterial>,
+    listing_counts: HashMap<ConnectionKey, usize>,
+}
+
+impl LocalConnectionsListing {
+    /// Returns the connection whose head is `head_key`, or an error unless listed exactly once.
+    fn require_only_listing_of_head(
+        &self,
+        scope: &Scope,
+        head_key: &str,
+    ) -> ProjectConfigResult<()> {
+        for (key, count) in &self.listing_counts {
+            if format!("{}/head", key.path(scope)?) == head_key {
+                return require_only_listing(key, *count);
+            }
+        }
+        Err(ProjectConfigError::ConnectionNotInFile(
+            "the connection is no longer in connections.json".into(),
+        ))
+    }
+
+    fn require_only_listing(&self, key: &ConnectionKey) -> ProjectConfigResult<()> {
+        require_only_listing(key, self.listing_counts.get(key).copied().unwrap_or(0))
+    }
+}
+
+fn require_only_listing(key: &ConnectionKey, count: usize) -> ProjectConfigResult<()> {
+    match count {
+        1 => Ok(()),
+        0 => Err(ProjectConfigError::ConnectionNotInFile(format!(
+            "connection {:?} of connector {:?} is no longer in connections.json",
+            key.connection_name, key.connector_id
+        ))),
+        _ => Err(ProjectConfigError::ConnectionNotInFile(format!(
+            "connection {:?} of connector {:?} is listed more than once in connections.json",
+            key.connection_name, key.connector_id
+        ))),
+    }
+}
+
 /// Reads current Dex Web credential objects without changing frozen settings.
-pub(crate) fn decode_local_credentials(
-    source: &JsonObject,
-) -> ProjectConfigResult<HashMap<ConnectionKey, CredentialMaterial>> {
+///
+/// As in Go, a duplicated connection fails only that connection's resolutions.
+fn decode_local_credentials(source: &JsonObject) -> ProjectConfigResult<LocalConnectionsListing> {
     if source.get("schemaVersion") != Some(&Value::String(LOCAL_CONNECTIONS_SCHEMA_VERSION.into()))
     {
         return Err(ProjectConfigError::invalid(
@@ -71,6 +127,7 @@ pub(crate) fn decode_local_credentials(
         .ok_or_else(|| ProjectConfigError::invalid("connections.json requires connections"))?;
     let local_scope = Scope::new("local", "preview");
     let mut credentials = HashMap::new();
+    let mut listing_counts: HashMap<ConnectionKey, usize> = HashMap::new();
     for (index, raw) in connections.iter().enumerate() {
         let record = require_object(Some(raw), &format!("connection {index}"))?;
         let key = ConnectionKey::new(
@@ -78,9 +135,7 @@ pub(crate) fn decode_local_credentials(
             super::models::string_member(record, "connectionName"),
         );
         key.path(&local_scope)?;
-        if credentials.contains_key(&key) {
-            return Err(ProjectConfigError::invalid("duplicate local connection"));
-        }
+        *listing_counts.entry(key.clone()).or_default() += 1;
         let material = require_object(record.get("credentials"), "credentials")?.clone();
         let auth_method = match record.get("authMethodId").and_then(Value::as_str) {
             Some(method) if !method.is_empty() => method.to_string(),
@@ -115,7 +170,11 @@ pub(crate) fn decode_local_credentials(
             },
         );
     }
-    Ok(credentials)
+    credentials.retain(|key, _| listing_counts.get(key) == Some(&1));
+    Ok(LocalConnectionsListing {
+        credentials,
+        listing_counts,
+    })
 }
 
 fn sorted_json(value: &Value) -> Value {
@@ -136,16 +195,7 @@ fn sorted_json(value: &Value) -> Value {
 }
 
 fn to_utc(value: &Rfc3339NanoTimestamp) -> Rfc3339NanoTimestamp {
-    let nanoseconds = value.unix_nanoseconds();
-    let magnitude = std::time::Duration::from_nanos(
-        u64::try_from(nanoseconds.unsigned_abs()).unwrap_or(u64::MAX),
-    );
-    let instant = if nanoseconds >= 0 {
-        std::time::UNIX_EPOCH + magnitude
-    } else {
-        std::time::UNIX_EPOCH - magnitude
-    };
-    Rfc3339NanoTimestamp::from_system_time_utc(instant)
+    value.to_utc()
 }
 
 /// Identifies local material independently of member order and spacing.
@@ -171,12 +221,17 @@ fn credential_digest(material: &CredentialMaterial) -> String {
 /// Connection head reads adopt credentials Dex Web changed. A successful head write
 /// publishes refreshed material back to the file only if Dex Web has not saved another
 /// credential meanwhile. Trigger inbox objects live as private files beside the file.
-/// This matches Go's process-local synchronization scope.
+///
+/// A head is readable and writable only while the file lists its connection exactly once.
+/// Credential providers refresh while holding the exclusive `flock(2)` of
+/// `connections.json.lock` beside the file, the lock sdkgo processes take, after proving
+/// that the file can be written back.
 pub struct DexWebObjectStore {
     path: PathBuf,
     inboxes: LocalFileObjectStore,
     memory: Arc<InMemoryObjectStore>,
     connections: ConnectionStore,
+    refresh_lock: FileRefreshLock,
     sync_lock: Mutex<()>,
     imported: Mutex<HashMap<ConnectionKey, String>>,
 }
@@ -198,6 +253,7 @@ impl DexWebObjectStore {
             inboxes: LocalFileObjectStore::open(directory.join("trigger-inboxes"))?,
             connections: ConnectionStore::new(memory_objects, scope),
             memory,
+            refresh_lock: FileRefreshLock::beside(connections_path),
             sync_lock: Mutex::new(()),
             imported: Mutex::new(HashMap::new()),
         };
@@ -208,23 +264,62 @@ impl DexWebObjectStore {
         Ok(store)
     }
 
-    fn sync(&self) -> ProjectConfigResult<()> {
-        let source = read_private_file(&self.path)?;
-        for (key, material) in decode_local_credentials(&source)? {
-            let digest = credential_digest(&material);
-            if lock(&self.imported).get(&key) == Some(&digest) {
+    /// Adopts credentials Dex Web saved since the last call and returns the listing read.
+    /// The caller holds `sync_lock`.
+    fn sync(&self) -> ProjectConfigResult<LocalConnectionsListing> {
+        let listing = decode_local_credentials(&read_private_file(&self.path)?)?;
+        for (key, material) in &listing.credentials {
+            let digest = credential_digest(material);
+            if lock(&self.imported).get(key) == Some(&digest) {
                 continue;
             }
-            let revision = match self.connections.read_connection(&key) {
+            let revision = match self.connections.read_connection(key) {
                 Ok(connection) => connection.revision,
                 Err(ProjectConfigError::ObjectNotFound) => 0,
                 Err(error) => return Err(error),
             };
             self.connections
-                .replace_credential(&key, revision, &material)?;
-            lock(&self.imported).insert(key, digest);
+                .replace_credential(key, revision, material)?;
+            lock(&self.imported).insert(key.clone(), digest);
         }
-        Ok(())
+        Ok(listing)
+    }
+
+    /// Waits for the cross-process refresh lock of the connections file.
+    ///
+    /// Never call it while holding `sync_lock`.
+    pub(crate) fn lock_credential_refresh(&self) -> ProjectConfigResult<HeldRefreshLock<'_>> {
+        self.refresh_lock.acquire()
+    }
+
+    /// Rewrites the file unchanged through the write-back path before a provider rotates a
+    /// token, as Go's `verifyCredentialWriteBack` does.
+    ///
+    /// Returns `Ok(false)` when the file's credential differs from the one last imported,
+    /// so the caller rereads instead of refreshing. The caller holds the refresh lock.
+    pub(crate) fn verify_credential_write_back(
+        &self,
+        key: &ConnectionKey,
+    ) -> ProjectConfigResult<bool> {
+        let _sync = lock(&self.sync_lock);
+        let contents = read_private_bytes(&self.path)?;
+        let listing = decode_local_credentials(&decode_private_file(&self.path, &contents)?)?;
+        listing.require_only_listing(key)?;
+        let file_digest = listing.credentials.get(key).map(credential_digest);
+        if file_digest.is_none() || file_digest != lock(&self.imported).get(key).cloned() {
+            return Ok(false);
+        }
+        // A writer that skips the lock could replace the file after this read; keep its write.
+        write_private_file_checked(&self.path, &contents, || {
+            if read_private_bytes(&self.path)? == contents {
+                Ok(())
+            } else {
+                Err(ProjectConfigError::ObjectConflict(
+                    "connections.json changed during the write-back check".into(),
+                ))
+            }
+        })?;
+        Ok(true)
     }
 
     fn write_back(&self, head: &ProjectObject) {
@@ -329,10 +424,15 @@ impl ObjectStore for DexWebObjectStore {
         }
         if is_connection_head(key) {
             let _sync = lock(&self.sync_lock);
-            self.sync()?;
+            self.sync()?
+                .require_only_listing_of_head(self.connections.scope(), key)?;
             return self.memory.read_object(key, version);
         }
         self.memory.read_object(key, version)
+    }
+
+    fn dex_web_connections_file(&self) -> Option<&DexWebObjectStore> {
+        Some(self)
     }
 
     fn create_object(&self, key: &str, contents: &[u8]) -> ProjectConfigResult<ProjectObject> {
@@ -359,7 +459,8 @@ impl ObjectStore for DexWebObjectStore {
                 .compare_and_swap_object(key, expected_etag, contents);
         }
         let _sync = lock(&self.sync_lock);
-        self.sync()?;
+        self.sync()?
+            .require_only_listing_of_head(self.connections.scope(), key)?;
         let result = self
             .memory
             .compare_and_swap_object(key, expected_etag, contents)?;
@@ -370,11 +471,21 @@ impl ObjectStore for DexWebObjectStore {
 
 /// Writes `contents` to `path` atomically as an owner-only file.
 pub(crate) fn write_private_file(path: &Path, contents: &[u8]) -> ProjectConfigResult<()> {
+    write_private_file_checked(path, contents, || Ok(()))
+}
+
+/// Is [`write_private_file`] that calls `check_before_rename` last and keeps `path` when it
+/// fails.
+fn write_private_file_checked(
+    path: &Path,
+    contents: &[u8],
+    check_before_rename: impl FnOnce() -> ProjectConfigResult<()>,
+) -> ProjectConfigResult<()> {
     let directory = path
         .parent()
         .map_or_else(|| PathBuf::from("."), Path::to_path_buf);
     let temporary = directory.join(format!(".write-{}", uuid::Uuid::new_v4().simple()));
-    let io_error = |_| ProjectConfigError::Io("private file write failed".into());
+    let mut check_failure = None;
     let result = (|| -> std::io::Result<()> {
         let mut options = fs::OpenOptions::new();
         options.write(true).create_new(true);
@@ -386,6 +497,10 @@ pub(crate) fn write_private_file(path: &Path, contents: &[u8]) -> ProjectConfigR
         let mut file = options.open(&temporary)?;
         file.write_all(contents)?;
         file.sync_all()?;
+        if let Err(error) = check_before_rename() {
+            check_failure = Some(error);
+            return Err(std::io::Error::other("check before rename failed"));
+        }
         fs::rename(&temporary, path)?;
         #[cfg(unix)]
         if let Ok(directory_file) = fs::File::open(&directory) {
@@ -401,7 +516,10 @@ pub(crate) fn write_private_file(path: &Path, contents: &[u8]) -> ProjectConfigR
     {
         tracing::debug!(error = %error, "temporary private file cleanup failed");
     }
-    result.map_err(io_error)
+    if let Some(error) = check_failure {
+        return Err(error);
+    }
+    result.map_err(|_| ProjectConfigError::Io("private file write failed".into()))
 }
 
 /// Versioned objects kept in memory and as private files, in the Go and TypeScript layout.
@@ -522,7 +640,8 @@ impl LocalFileObjectStore {
             .to_string();
         let item = ProjectObject {
             key: key.to_string(),
-            etag: format!("sha256:{}-{version}", sha256_hex(contents)),
+            // Go's format; files with an earlier `sha256:` prefix stay readable and swappable.
+            etag: format!("{}-{version}", sha256_hex(contents)),
             version,
             contents: contents.to_vec(),
         };

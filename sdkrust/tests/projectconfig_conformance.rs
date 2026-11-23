@@ -589,6 +589,7 @@ type BrokerHandler = dyn Fn(&str, &str, &Value) -> BrokerHttpResponse + Send + S
 
 struct FakeBrokerHttp {
     requests: Mutex<Vec<Value>>,
+    request_bodies: Mutex<Vec<Vec<u8>>>,
     handler: Box<BrokerHandler>,
 }
 
@@ -598,12 +599,18 @@ impl FakeBrokerHttp {
     ) -> Arc<Self> {
         Arc::new(Self {
             requests: Mutex::new(Vec::new()),
+            request_bodies: Mutex::new(Vec::new()),
             handler: Box::new(handler),
         })
     }
 
     fn requests(&self) -> Vec<Value> {
         self.requests.lock().expect("lock").clone()
+    }
+
+    /// Returns the exact request body bytes in send order.
+    fn request_bodies(&self) -> Vec<Vec<u8>> {
+        self.request_bodies.lock().expect("lock").clone()
     }
 }
 
@@ -617,6 +624,10 @@ impl BrokerHttpClient for FakeBrokerHttp {
     ) -> ProjectConfigResult<BrokerHttpResponse> {
         let request: Value = serde_json::from_slice(body).expect("request JSON");
         self.requests.lock().expect("lock").push(request.clone());
+        self.request_bodies
+            .lock()
+            .expect("lock")
+            .push(body.to_vec());
         Ok((self.handler)(url, token, &request))
     }
 }
@@ -688,6 +699,16 @@ fn broker_wire_renewal_and_revision() {
         ))
     ));
     let requests = http.requests();
+    let bodies = http.request_bodies();
+    let first_request_bytes =
+        go_canonical_json_bytes(&fixture["firstRequest"]).expect("fixture encodes");
+    assert_eq!(first_request_bytes, br#"{"sharedConnectionId":"shared-7"}"#);
+    // The first send and the resend after the 401 carry the same Go-encoded bytes.
+    assert_eq!(bodies[0], first_request_bytes);
+    assert_eq!(bodies[1], first_request_bytes);
+    let refresh_request_bytes =
+        go_canonical_json_bytes(&fixture["refreshRequest"]).expect("fixture encodes");
+    assert!(bodies.contains(&refresh_request_bytes));
     assert_eq!(requests[0], fixture["firstRequest"]);
     assert!(requests.contains(&fixture["refreshRequest"]));
     assert_eq!(
@@ -715,6 +736,53 @@ fn broker_wire_renewal_and_revision() {
     assert_eq!(
         fixture["refreshRequest"],
         json!({"sharedConnectionId": "shared-7", "rejectedRevision": 3})
+    );
+}
+
+#[test]
+fn relayed_trigger_registration_sends_go_escaped_bytes() {
+    let http = FakeBrokerHttp::new(|_, token, _| {
+        if token == "old" {
+            return status(401);
+        }
+        ok_json(&json!({"status": "REGISTERED"}))
+    });
+    let broker = broker_with(http.clone());
+    broker
+        .register_relayed_trigger("shared-7", "élément <&>", "/relayed-triggers")
+        .expect("registers");
+    // sdkgo relayedTriggerRegistrationRequest field order with Go HTML escaping.
+    let expected: &[u8] =
+        "{\"sharedConnectionId\":\"shared-7\",\"connectionName\":\"élément \\u003c\\u0026\\u003e\"}"
+            .as_bytes();
+    assert_eq!(
+        http.request_bodies(),
+        vec![expected.to_vec(), expected.to_vec()]
+    );
+
+    // Plain serde bytes fit under 4096, but the Go-escaped bytes sent do not.
+    let oversized = "<".repeat(1000);
+    assert!(matches!(
+        broker.register_relayed_trigger("shared-7", &oversized, "/relayed-triggers"),
+        Err(ProjectConfigError::Invalid(_))
+    ));
+    assert_eq!(http.request_bodies().len(), 2);
+}
+
+#[test]
+fn broker_http_response_debug_omits_body_bytes() {
+    let response = ok_json(&json!({
+        "status": "READY",
+        "credential": {"accessToken": "REDACTED_ACCESS_TOKEN"},
+        "revision": 4
+    }));
+    let rendered = format!("{response:?}");
+    assert!(!rendered.contains("REDACTED_ACCESS_TOKEN"), "{rendered}");
+    assert!(!rendered.contains("82, 69, 65"), "{rendered}");
+    assert!(rendered.contains("status=200"), "{rendered}");
+    assert!(
+        rendered.contains(&format!("body_bytes={}", response.body.len())),
+        "{rendered}"
     );
 }
 
@@ -919,4 +987,83 @@ fn s3_store_failure_classification_and_exact_read() {
         store.read_object("projects/p1/live/head", "v1"),
         Err(ProjectConfigError::Invalid(_))
     ));
+}
+
+/// Go-written document with shuffled outer fields, spacing, and nested number lexemes.
+const SHUFFLED_GO_CONFIGURATION: &str = r#"{"triggerBindings":[{"configuration":{"limit":1.50,"account":12345678901234567890123,"ratio":2.5E+3,"note":"a<b & c>d é \/"},"bindingName":"nightly","triggerName":"poll","connectionName":"main","connectorId":"sample"}],
+ "revision":1,
+ "operationConfigurations":[{"stepType":"Send","configuration":{ "limit" : 1.50 , "tiny" : -0.0e-0 , "list" : [ 1.0 , 2E2 ] },"flowType":"Order","operationId":"createItem","connectionName":"main","connectorId":"sample"}],
+ "scope":{"kind":"preview","projectId":"project-1"},
+ "connections":[{"configuration":{"region":"eu","maxRetries":10,"threshold":1e2},"provider":"sample","modulePath":"example.com/sample","connectionName":"main","connectorId":"sample"}],
+ "schemaVersion":"connectors.dex.dev/project-configuration/v1alpha2"}
+"#;
+
+#[test]
+fn rewritten_configuration_matches_go_raw_message_bytes_and_snapshot_digest() {
+    // Derived by running sdkgo (Go 1.26.5, GOWORK=off) on SHUFFLED_GO_CONFIGURATION:
+    // CreateObject, ReadConfiguration, WriteConfiguration(1), FreezeConfiguration(2).
+    let expected = r#"{"schemaVersion":"connectors.dex.dev/project-configuration/v1alpha2","scope":{"projectId":"project-1","kind":"preview"},"revision":2,"connections":[{"connectorId":"sample","connectionName":"main","modulePath":"example.com/sample","provider":"sample","configuration":{"region":"eu","maxRetries":10,"threshold":1e2}}],"triggerBindings":[{"connectorId":"sample","connectionName":"main","triggerName":"poll","bindingName":"nightly","configuration":{"limit":1.50,"account":12345678901234567890123,"ratio":2.5E+3,"note":"a%LT%b %AMP% c%GT%d é \/"}}],"operationConfigurations":[{"connectorId":"sample","connectionName":"main","operationId":"createItem","flowType":"Order","stepType":"Send","configuration":{"limit":1.50,"tiny":-0.0e-0,"list":[1.0,2E2]}}]}"#;
+    // Go writes `<`, `&`, and `>` as backslash-u escapes; spelled out to keep the source ASCII.
+    let backslash = char::from(0x5c);
+    let expected = expected
+        .replace("%LT%", &format!("{backslash}u003c"))
+        .replace("%AMP%", &format!("{backslash}u0026"))
+        .replace("%GT%", &format!("{backslash}u003e"));
+    let scope = Scope::new("project-1", "preview");
+    let objects: Arc<dyn ObjectStore> = Arc::new(InMemoryObjectStore::new());
+    objects
+        .create_object(
+            "projects/project-1/preview/configuration/head",
+            SHUFFLED_GO_CONFIGURATION.as_bytes(),
+        )
+        .expect("creates");
+    let configurations = ConfigurationStore::new(objects, scope).expect("store");
+    let (document, _) = configurations.read_configuration().expect("reads");
+    let (_, written) = configurations
+        .write_configuration(1, &document)
+        .expect("writes");
+    assert_eq!(
+        String::from_utf8(written.contents).expect("UTF-8"),
+        expected
+    );
+    let snapshot = configurations.freeze_configuration(2).expect("freezes");
+    assert_eq!(
+        snapshot.digest,
+        "sha256:2c9c5fc6a416ceef4982cc614a9e4447f2479b32309163e9cb8ba924279d8226"
+    );
+}
+
+#[test]
+fn changed_nested_settings_are_encoded_from_the_new_value() {
+    let scope = Scope::new("project-1", "preview");
+    let objects: Arc<dyn ObjectStore> = Arc::new(InMemoryObjectStore::new());
+    objects
+        .create_object(
+            "projects/project-1/preview/configuration/head",
+            SHUFFLED_GO_CONFIGURATION.as_bytes(),
+        )
+        .expect("creates");
+    let configurations = ConfigurationStore::new(objects, scope).expect("store");
+    let (mut document, _) = configurations.read_configuration().expect("reads");
+    document.trigger_bindings[0]["configuration"] = json!({"limit": 2});
+    let (_, written) = configurations
+        .write_configuration(1, &document)
+        .expect("writes");
+    let written = String::from_utf8(written.contents).expect("UTF-8");
+    assert!(written.contains(r#""bindingName":"nightly","configuration":{"limit":2}}"#));
+    assert!(written.contains(r#""configuration":{"limit":1.50,"tiny":-0.0e-0,"list":[1.0,2E2]}"#));
+}
+
+#[test]
+fn configuration_rejects_unknown_trigger_binding_fields_as_go_strict_decoding_does() {
+    let scope = Scope::new("project-1", "preview");
+    let entry =
+        ConnectionConfiguration::new("sample", "main", "module", "sample", JsonObject::new());
+    let mut document = Configuration::new(scope, 1, vec![entry]);
+    let binding = json!({
+        "connectorId": "sample", "connectionName": "main", "triggerName": "poll",
+        "bindingName": "nightly", "configuration": {}, "extra": true,
+    });
+    document.trigger_bindings = vec![binding.as_object().expect("object").clone()];
+    assert!(document.validate().is_err());
 }
