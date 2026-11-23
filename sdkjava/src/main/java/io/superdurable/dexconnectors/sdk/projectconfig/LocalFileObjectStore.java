@@ -77,10 +77,10 @@ final class LocalFileObjectStore implements ObjectStore {
                     // Every object file is validated, as before, even when its name is not a version file.
                     final ProjectObject item = decodeLocalObject(Files.readAllBytes(path));
                     final Matcher match = VERSION_FILE_NAME.matcher(name);
-                    if (match.matches() && match.group(1).equals(keyHash(item.getKey()))
+                    final Long version = match.matches() ? parseVersion(match.group(2)) : null;
+                    if (version != null && match.group(1).equals(keyHash(item.getKey()))
                             && match.group(2).equals(item.getVersion())) {
-                        versionsByKey.computeIfAbsent(item.getKey(), ignored -> new ArrayList<>())
-                                .add(Long.parseLong(item.getVersion()));
+                        versionsByKey.computeIfAbsent(item.getKey(), ignored -> new ArrayList<>()).add(version);
                     }
                 }
             }
@@ -167,11 +167,11 @@ final class LocalFileObjectStore implements ObjectStore {
         final String pointer = readHeadPointerIfValid(key);
         if (pointer != null) {
             long version = Long.parseLong(pointer);
-            ProjectObject newest = readVersion(key, version);
+            ProjectObject newest = readValidVersion(key, version);
             final List<Long> superseded = new ArrayList<>();
             // A crash after writing a version but before its pointer leaves the pointer one behind.
-            while (true) {
-                final ProjectObject next = readVersion(key, version + 1);
+            while (version < Long.MAX_VALUE) {
+                final ProjectObject next = readValidVersion(key, version + 1);
                 if (next == null) {
                     break;
                 }
@@ -206,8 +206,9 @@ final class LocalFileObjectStore implements ObjectStore {
         try (DirectoryStream<Path> files = Files.newDirectoryStream(directory, keyHash(key) + "-*.json")) {
             for (Path path : files) {
                 final Matcher match = VERSION_FILE_NAME.matcher(path.getFileName().toString());
-                if (match.matches()) {
-                    versions.add(Long.parseLong(match.group(2)));
+                final Long version = match.matches() ? parseVersion(match.group(2)) : null;
+                if (version != null) {
+                    versions.add(version);
                 }
             }
         }
@@ -215,12 +216,45 @@ final class LocalFileObjectStore implements ObjectStore {
             Files.deleteIfExists(headPointer(key));
             return null;
         }
-        final long newestVersion = publishNewest(key, versions, null);
-        final ProjectObject newest = readVersion(key, newestVersion);
-        if (newest == null) {
-            throw new IllegalArgumentException("local project storage file is invalid");
+        versions.sort(java.util.Collections.reverseOrder());
+        // The head moves only to a version whose content and identity validate; invalid files stay untouched.
+        for (long candidate : versions) {
+            final ProjectObject newest;
+            try {
+                newest = readVersion(key, candidate);
+            } catch (IllegalArgumentException invalid) {
+                continue;
+            }
+            if (newest == null) {
+                continue;
+            }
+            writeHeadPointer(key, Long.toString(candidate));
+            for (long version : versions) {
+                if (version < candidate) {
+                    removeFile(key, Long.toString(version));
+                }
+            }
+            return newest;
         }
-        return newest;
+        throw new IllegalArgumentException("local project storage file is invalid");
+    }
+
+    /** Parses a version file or head number, or returns {@code null} when it is outside {@code long}. */
+    private static Long parseVersion(final String text) {
+        try {
+            return Long.parseLong(text);
+        } catch (NumberFormatException outOfRange) {
+            return null;
+        }
+    }
+
+    /** Reads a version, treating an invalid file as absent so it is neither published nor deleted. */
+    private ProjectObject readValidVersion(final String key, final long version) throws IOException {
+        try {
+            return readVersion(key, version);
+        } catch (IllegalArgumentException invalid) {
+            return null;
+        }
     }
 
     private ProjectObject readVersion(final String key, final long version) throws IOException {
@@ -265,7 +299,8 @@ final class LocalFileObjectStore implements ObjectStore {
             return null;
         }
         final String version = new String(contents, StandardCharsets.US_ASCII);
-        return LOCAL_VERSION.matcher(version).matches() ? version : null;
+        // A numeric head beyond the long range is corrupt, like any other unreadable head.
+        return LOCAL_VERSION.matcher(version).matches() && parseVersion(version) != null ? version : null;
     }
 
     private void writeHeadPointer(final String key, final String version) throws IOException {

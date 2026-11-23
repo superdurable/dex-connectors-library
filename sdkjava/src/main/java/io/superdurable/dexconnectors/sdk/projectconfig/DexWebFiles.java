@@ -106,6 +106,13 @@ final class DexWebFiles {
         return GoCompatibleJson.sha256Hex(contents);
     }
 
+    /** Digests only the private fields, sorted like {@link #credentialDigest}, so expiry changes keep it. */
+    static String credentialFieldsDigest(final CredentialMaterial material) {
+        final StringBuilder canonical = new StringBuilder();
+        writeDigestValue(canonical, GoCompatibleJson.encodeSortedMap(material.getCredentials()));
+        return GoCompatibleJson.sha256Hex(canonical.toString().getBytes(StandardCharsets.UTF_8));
+    }
+
     private static void writeDigestValue(final StringBuilder output, final byte[] raw) {
         switch (GoRawJson.kind(raw)) {
             case OBJECT:

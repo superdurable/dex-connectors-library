@@ -33,6 +33,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -74,6 +76,7 @@ public final class ManifestCredentialRefreshDriver<C> implements CredentialRefre
     private final JsonNode authorization;
     private final CredentialFieldAccessor<C> fields;
     private final ProviderHttpTransport transport;
+    private final Map<Duration, ProviderHttpClient> privateNetworkTransports = new ConcurrentHashMap<>();
     private final Map<String, Object> settings;
     private final Supplier<Instant> now;
 
@@ -212,28 +215,43 @@ public final class ManifestCredentialRefreshDriver<C> implements CredentialRefre
             validateGrant(grant);
         }
         final List<Instant> expiries = new ArrayList<>();
+        // The refresh as a whole touched the provider once any earlier grant was exchanged.
+        boolean hasContactedProvider = false;
         for (ManifestGrant grant : grants) {
             if (!grant.refreshField.isEmpty() && credentialValue(credentials, grant.refreshField).isEmpty()) {
                 continue;
             }
+            final AtomicBoolean hasSendStarted = new AtomicBoolean();
             final TokenResponse token;
             try {
-                token = exchange(grant, credentials);
+                token = exchange(grant, credentials, hasSendStarted);
             } catch (TokenEndpoint.InvalidTokenEndpointUrlException error) {
+                if (hasContactedProvider) {
+                    throw protocolRetry("token endpoint is invalid");
+                }
                 if ("privateNetworkHTTP".equals(grant.tokenEndpointNetworkPolicy)) {
                     throw new AddressRefusalException("URL is invalid");
                 }
-                throw protocolRetry("token endpoint is invalid");
+                throw provablyUnsent(protocolRetry("token endpoint is invalid"), null);
             } catch (AddressRefusalException error) {
+                if (hasContactedProvider) {
+                    // An earlier grant may have rotated a token, so this refusal no longer proves no exchange.
+                    throw protocolRetry("token endpoint address was refused after an earlier grant");
+                }
                 throw error;
             } catch (IOException | IllegalArgumentException error) {
                 final RetryException retry = protocolRetry(error.getMessage());
-                // A provably unsent request keeps its cause, so credential stores may keep the token usable.
-                if (error instanceof ProviderTransportException && ((ProviderTransportException) error).isProvablyNotSent()) {
-                    retry.initCause(error);
+                final boolean isProvablyNotSent = !hasSendStarted.get()
+                        || (error instanceof ProviderTransportException
+                        && ((ProviderTransportException) error).isProvablyNotSent());
+                // Only a refresh that never reached the provider lets credential stores keep the token usable.
+                if (!hasContactedProvider && isProvablyNotSent) {
+                    throw provablyUnsent(retry, error instanceof ProviderTransportException
+                            ? (ProviderTransportException) error : null);
                 }
                 throw retry;
             }
+            hasContactedProvider = true;
             checkScopes(grant, token);
             final Map<String, String> updates = new LinkedHashMap<>();
             for (JsonNode mapping : grant.mappings) {
@@ -368,14 +386,25 @@ public final class ManifestCredentialRefreshDriver<C> implements CredentialRefre
         return lifetime.isZero() ? NO_EXPIRY : now.get().plus(lifetime);
     }
 
-    private TokenResponse exchange(final ManifestGrant grant, final C credentials) throws IOException {
+    private TokenResponse exchange(final ManifestGrant grant, final C credentials, final AtomicBoolean hasSendStarted)
+            throws IOException {
+        ProviderHttpTransport selected = transport;
         if ("privateNetworkHTTP".equals(grant.tokenEndpointNetworkPolicy) && transport instanceof ProviderHttpClient) {
             final Duration timeout = tokenExchangeTimeout(grant.tokenExchangeTimeout);
-            return exchangeWithTransport(grant, credentials,
-                    new ProviderHttpClient(timeout == null ? Duration.ofSeconds(30) : timeout,
-                            AddressPolicy.PRIVATE_NETWORK_HTTP));
+            // One reused private-network client per timeout, so exchanges never accumulate connection pools.
+            selected = privateNetworkTransports.computeIfAbsent(timeout == null ? Duration.ofSeconds(30) : timeout,
+                    requestTimeout -> new ProviderHttpClient(requestTimeout, AddressPolicy.PRIVATE_NETWORK_HTTP));
         }
-        return exchangeWithTransport(grant, credentials, transport);
+        final ProviderHttpTransport selectedTransport = selected;
+        return exchangeWithTransport(grant, credentials, request -> {
+            hasSendStarted.set(true);
+            return selectedTransport.send(request);
+        });
+    }
+
+    private static RetryException provablyUnsent(final RetryException retry, final ProviderTransportException cause) {
+        retry.initCause(cause != null ? cause : new ProviderTransportException(true, null, null));
+        return retry;
     }
 
     private TokenResponse exchangeWithTransport(

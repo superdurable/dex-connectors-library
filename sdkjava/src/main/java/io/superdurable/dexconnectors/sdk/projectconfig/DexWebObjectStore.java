@@ -149,30 +149,41 @@ public final class DexWebObjectStore implements ObjectStore {
     }
 
     /**
-     * Records, under the refresh lock, that the current file credential of a key may already have
-     * been rotated by an exchange whose outcome is unknown.
+     * Records, under the refresh lock and before any provider request, that a credential is being
+     * exchanged.
      *
      * <p>The marker lives beside {@code connections.json}, so every store on the file and every
-     * restarted process sees it, and it is bound to the credential digest: once Dex Web saves a new
-     * authorization the marker no longer applies.
+     * restarted process sees it, and it is bound to the credential's stable identity: the exchanged
+     * private fields without their expiry. It stays until a confirmed write-back or a provably
+     * unsent exchange clears it, so an exchange whose process exited, or whose outcome is unknown,
+     * keeps the credential from being exchanged again. Once Dex Web saves a new authorization the
+     * marker no longer applies.
+     *
+     * @throws IOException if the marker cannot be written; the caller must not send
      */
-    synchronized void quarantineCurrentCredential(final ConnectionKey key) throws IOException {
-        final String digest = importedDigests.get(key);
-        if (digest == null) {
-            return;
-        }
-        // The marker holds only a credential digest; it is written owner-only like the credentials file.
+    synchronized void recordExchangeAdmission(final ConnectionKey key, final CredentialMaterial material)
+            throws IOException {
+        // The marker holds only an identity digest; it is written owner-only like the credentials file.
         Files.createDirectories(quarantineDirectory());
-        DexWebFiles.writePrivateFile(quarantineMarker(key), digest.getBytes(StandardCharsets.US_ASCII));
+        DexWebFiles.writePrivateFile(quarantineMarker(key),
+                exchangeIdentity(material).getBytes(StandardCharsets.US_ASCII));
     }
 
     /**
-     * Reports, under the refresh lock, whether the current file credential of a key must not be
-     * exchanged again because an earlier exchange of it has an unknown outcome.
-     *
-     * <p>A marker for an older credential is removed, since Dex Web saved a new authorization.
+     * Clears the exchange marker after a confirmed write-back or a provably unsent exchange.
      */
-    synchronized boolean isCurrentCredentialQuarantined(final ConnectionKey key) throws IOException {
+    synchronized void clearExchangeAdmission(final ConnectionKey key) throws IOException {
+        Files.deleteIfExists(quarantineMarker(key));
+    }
+
+    /**
+     * Reports, under the refresh lock, whether a credential must not be exchanged because an earlier
+     * exchange of it did not finish with a confirmed outcome.
+     *
+     * <p>A marker for another credential is removed, since Dex Web saved a new authorization.
+     */
+    synchronized boolean isCredentialQuarantined(final ConnectionKey key, final CredentialMaterial material)
+            throws IOException {
         final Path marker = quarantineMarker(key);
         final byte[] contents;
         try {
@@ -183,11 +194,16 @@ public final class DexWebObjectStore implements ObjectStore {
             // An unreadable marker cannot prove the credential is safe to exchange.
             return true;
         }
-        if (new String(contents, StandardCharsets.US_ASCII).equals(importedDigests.get(key))) {
+        if (new String(contents, StandardCharsets.US_ASCII).equals(exchangeIdentity(material))) {
             return true;
         }
         Files.deleteIfExists(marker);
         return false;
+    }
+
+    // Expiry is excluded, so a refresh of only the expiry still matches the admitted credential.
+    static String exchangeIdentity(final CredentialMaterial material) {
+        return DexWebFiles.credentialFieldsDigest(material);
     }
 
     private Path quarantineDirectory() {
