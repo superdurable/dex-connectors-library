@@ -467,7 +467,10 @@ impl<Credential: ManifestCredential> ManifestCredentialRefreshDriver<Credential>
         let mut reported_scope_array: Option<Vec<String>> = None;
         let mut has_scope_array = true;
         if grant.response_scope_field == "scopesArray" {
-            let raw_scopes = token.retained_fields.get("scopes");
+            let raw_scopes = token
+                .retained_fields
+                .get("scopes")
+                .filter(|scopes| !scopes.is_null());
             has_scope_array = raw_scopes.is_some();
             has_reported_scope = false;
             if let Some(raw_scopes) = raw_scopes {
