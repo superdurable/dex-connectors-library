@@ -13,11 +13,12 @@ use dex_connectors_sdk::projectconfig::{
     ApplicationSecretRef, BrokerHttpClient, BrokerHttpResponse, BrokerReadError, Configuration,
     ConfigurationStore, ConnectionConfiguration, ConnectionKey, ConnectionStore,
     CredentialBrokerClient, CredentialBrokerConfiguration, CredentialMaterial, EnvironmentValue,
-    InMemoryObjectStore, JsonObject, ObjectStore, ProjectConfigError, ProjectConfigResult,
-    S3Client, S3Error, S3GetObjectOutput, S3ObjectStore, S3PutObjectInput, S3PutObjectOutput,
-    Scope, SharedConnection, SnapshotRef, decode_broker_response, digest_bytes,
-    go_canonical_json_bytes, load_dex_web_project, load_from_environment_values,
-    load_project_from_object_store, validate_secret_reference, wire,
+    InMemoryObjectStore, JsonObject, ObjectStore, OperationConfiguration, ProjectConfigError,
+    ProjectConfigResult, RawJsonObject, S3Client, S3Error, S3GetObjectOutput, S3ObjectStore,
+    S3PutObjectInput, S3PutObjectOutput, Scope, SharedConnection, SnapshotRef,
+    TriggerConfiguration, decode_broker_response, digest_bytes, go_canonical_json_bytes,
+    load_dex_web_project, load_from_environment_values, load_project_from_object_store,
+    validate_secret_reference, wire,
 };
 use serde_json::{Value, json};
 
@@ -561,10 +562,11 @@ fn configuration_rejects_duplicate_operation_and_public_http_broker() {
     let scope = Scope::new("project-1", "preview");
     let entry =
         ConnectionConfiguration::new("sample", "main", "module", "sample", JsonObject::new());
-    let operation = object(&json!({
+    let operation = OperationConfiguration::from_wire(&json!({
         "connectorId": "sample", "connectionName": "main", "operationId": "getItem",
         "flowType": "ExampleFlow", "stepType": "GetItem", "configuration": {},
-    }));
+    }))
+    .expect("operation");
     let mut duplicated = Configuration::new(scope.clone(), 1, vec![entry.clone()]);
     duplicated.operation_configurations = vec![operation.clone(), operation];
     assert!(duplicated.validate().is_err());
@@ -1045,7 +1047,8 @@ fn changed_nested_settings_are_encoded_from_the_new_value() {
         .expect("creates");
     let configurations = ConfigurationStore::new(objects, scope).expect("store");
     let (mut document, _) = configurations.read_configuration().expect("reads");
-    document.trigger_bindings[0]["configuration"] = json!({"limit": 2});
+    document.trigger_bindings[0].configuration =
+        RawJsonObject::from_json_object(&object(&json!({"limit": 2})));
     let (_, written) = configurations
         .write_configuration(1, &document)
         .expect("writes");
@@ -1056,14 +1059,149 @@ fn changed_nested_settings_are_encoded_from_the_new_value() {
 
 #[test]
 fn configuration_rejects_unknown_trigger_binding_fields_as_go_strict_decoding_does() {
-    let scope = Scope::new("project-1", "preview");
-    let entry =
-        ConnectionConfiguration::new("sample", "main", "module", "sample", JsonObject::new());
-    let mut document = Configuration::new(scope, 1, vec![entry]);
     let binding = json!({
         "connectorId": "sample", "connectionName": "main", "triggerName": "poll",
         "bindingName": "nightly", "configuration": {}, "extra": true,
     });
-    document.trigger_bindings = vec![binding.as_object().expect("object").clone()];
-    assert!(document.validate().is_err());
+    assert!(TriggerConfiguration::from_wire(&binding).is_err());
+    let mut document = json!({
+        "schemaVersion": "connectors.dex.dev/project-configuration/v1alpha2",
+        "scope": {"projectId": "project-1", "kind": "preview"},
+        "revision": 1,
+        "connections": [{
+            "connectorId": "sample", "connectionName": "main", "modulePath": "module",
+            "provider": "sample", "configuration": {},
+        }],
+        "triggerBindings": [binding],
+        "operationConfigurations": [],
+    });
+    assert!(Configuration::from_wire(&document).is_err());
+    document["triggerBindings"][0]
+        .as_object_mut()
+        .expect("object")
+        .remove("extra");
+    assert!(Configuration::from_wire(&document).is_ok());
+}
+
+/// Settings Go keeps as `json.RawMessage`; `1e400` and the big integers exceed a `Value`.
+const RAW_HOSTED_CONFIGURATION: &str = r#"{"schemaVersion":"connectors.dex.dev/project-configuration/v1alpha2","scope":{"projectId":"project-1","kind":"preview"},"revision":1,"connections":[{"connectorId":"sample","connectionName":"main","modulePath":"example.com/sample","provider":"sample","configuration":{ "huge": 1e400, "account": 12345678901234567890123, "note": "x" }},{"connectorId":"sample","connectionName":"other","modulePath":"example.com/sample","provider":"sample","configuration":{"ratio":2.5E+3,"tiny":-0.0e-0}}],"triggerBindings":[{"connectorId":"sample","connectionName":"main","triggerName":"poll","bindingName":"nightly","configuration":{"limit":1.50,"big":1e400}}],"operationConfigurations":[{"connectorId":"sample","connectionName":"main","operationId":"createItem","flowType":"Order","stepType":"Send","configuration":{"limit":1.50,"big":12345678901234567890123}},{"connectorId":"sample","connectionName":"other","operationId":"getItem","flowType":"Order","stepType":"Get","configuration":{"huge":-1E+400}}]}"#;
+
+#[test]
+fn swapped_and_edited_entries_keep_untouched_nested_bytes_like_go() {
+    let scope = Scope::new("project-1", "preview");
+    let objects: Arc<dyn ObjectStore> = Arc::new(InMemoryObjectStore::new());
+    objects
+        .create_object(
+            "projects/project-1/preview/configuration/head",
+            RAW_HOSTED_CONFIGURATION.as_bytes(),
+        )
+        .expect("creates");
+    let configurations = ConfigurationStore::new(objects, scope).expect("store");
+    let (mut document, _) = configurations.read_configuration().expect("reads 1e400");
+    document.connections.swap(0, 1);
+    document.operation_configurations.swap(0, 1);
+    document.connections[0].module_path = "example.com/edited".into();
+    let (_, written) = configurations
+        .write_configuration(1, &document)
+        .expect("writes");
+    // Derived by running sdkgo (Go 1.26.5, GOWORK=off, under /tmp) on RAW_HOSTED_CONFIGURATION:
+    // CreateObject, ReadConfiguration, the same swaps and edit, WriteConfiguration(1),
+    // FreezeConfiguration(2).
+    let expected = r#"{"schemaVersion":"connectors.dex.dev/project-configuration/v1alpha2","scope":{"projectId":"project-1","kind":"preview"},"revision":2,"connections":[{"connectorId":"sample","connectionName":"other","modulePath":"example.com/edited","provider":"sample","configuration":{"ratio":2.5E+3,"tiny":-0.0e-0}},{"connectorId":"sample","connectionName":"main","modulePath":"example.com/sample","provider":"sample","configuration":{"huge":1e400,"account":12345678901234567890123,"note":"x"}}],"triggerBindings":[{"connectorId":"sample","connectionName":"main","triggerName":"poll","bindingName":"nightly","configuration":{"limit":1.50,"big":1e400}}],"operationConfigurations":[{"connectorId":"sample","connectionName":"other","operationId":"getItem","flowType":"Order","stepType":"Get","configuration":{"huge":-1E+400}},{"connectorId":"sample","connectionName":"main","operationId":"createItem","flowType":"Order","stepType":"Send","configuration":{"limit":1.50,"big":12345678901234567890123}}]}"#;
+    assert_eq!(
+        String::from_utf8(written.contents).expect("UTF-8"),
+        expected
+    );
+    let snapshot = configurations.freeze_configuration(2).expect("freezes");
+    assert_eq!(
+        snapshot.digest,
+        "sha256:022afaed8e8567b6a1f15378b5a8d8896cc9301408d0ebde70dac2f88c1441fc"
+    );
+}
+
+#[derive(serde::Deserialize)]
+struct ExactSettings {
+    account: u128,
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct FloatSettings {
+    #[expect(dead_code, reason = "decoding into f64 is the behavior under test")]
+    huge: f64,
+}
+
+#[test]
+fn raw_settings_give_exact_typed_access_or_a_clear_range_error() {
+    let settings =
+        RawJsonObject::from_json_text(r#"{ "huge": 1e400, "account": 12345678901234567890123 }"#)
+            .expect("keeps 1e400");
+    assert_eq!(
+        settings.as_json_text(),
+        r#"{"huge":1e400,"account":12345678901234567890123}"#
+    );
+    let exact: ExactSettings = settings.decode().expect("decodes exactly");
+    assert_eq!(exact.account, 12_345_678_901_234_567_890_123);
+    let error = settings
+        .decode::<FloatSettings>()
+        .expect_err("1e400 is not an f64");
+    assert!(error.to_string().contains("do not decode"), "{error}");
+    let error = settings.to_json_object().expect_err("not exact in a Value");
+    assert!(error.to_string().contains("64-bit"), "{error}");
+    let float_only = RawJsonObject::from_json_text(r#"{"huge":1e400}"#).expect("keeps");
+    let error = float_only.to_json_object().expect_err("not finite");
+    assert!(error.to_string().contains("f64"), "{error}");
+    let ordinary = RawJsonObject::from_json_text(r#"{"limit":1.50,"count":-9}"#).expect("keeps");
+    assert_eq!(ordinary.to_json_object().expect("fits")["count"], json!(-9));
+    assert!(RawJsonObject::from_json_text("[1]").is_err());
+    assert!(RawJsonObject::from_json_text("{").is_err());
+}
+
+#[cfg(unix)]
+#[test]
+fn dex_web_load_keeps_nested_bytes_across_swaps_like_go() {
+    // Each digest derived by running sdkgo LoadDexWebConnectionsFile (Go 1.26.5, GOWORK=off,
+    // under /tmp) on the same files; the second swaps connections and edits `other`'s modulePath.
+    let original = r#"{"schemaVersion":"connectors.dex.dev/local-connections/v1alpha1","connections":[{"connectorId":"sample","connectionName":"main","modulePath":"example.com/sample","provider":"sample","authMethodId":"oauth2","configuration":{"huge": 1e400, "account": 12345678901234567890123},"credentials":{"access":"old","refresh":"r0"},"credentialExpiresAt":"2030-01-01T00:00:00Z","dexWebOnly":{"keep": 1.50}},{"connectorId":"sample","connectionName":"other","modulePath":"example.com/sample","provider":"sample","authMethodId":"apiKey","configuration":{"ratio":2.5E+3, "tiny":-0.0e-0},"credentials":{"apiKey":"k"}}],"triggerBindings":[{"connectorId":"sample","connectionName":"main","triggerName":"poll","bindingName":"nightly","configuration":{"limit":1.50,"big":1e400}}]}"#;
+    let swapped = r#"{"schemaVersion":"connectors.dex.dev/local-connections/v1alpha1","connections":[{"connectorId":"sample","connectionName":"other","modulePath":"example.com/edited","provider":"sample","authMethodId":"apiKey","configuration":{"ratio":2.5E+3, "tiny":-0.0e-0},"credentials":{"apiKey":"k"}},{"connectorId":"sample","connectionName":"main","modulePath":"example.com/sample","provider":"sample","authMethodId":"oauth2","configuration":{"huge": 1e400, "account": 12345678901234567890123},"credentials":{"access":"old","refresh":"r0"},"credentialExpiresAt":"2030-01-01T00:00:00Z","dexWebOnly":{"keep": 1.50}}],"triggerBindings":[{"connectorId":"sample","connectionName":"main","triggerName":"poll","bindingName":"nightly","configuration":{"limit":1.50,"big":1e400}}]}"#;
+    let uses = r#"{"schemaVersion":"connectors.dex.dev/local-use-configurations/v1alpha1","operationConfigurations":[{"connectorId":"sample","connectionName":"main","operationId":"createItem","flowType":"Order","stepType":"Send","configuration":{"limit":1.50,"big":12345678901234567890123}}]}"#;
+    let cases = [
+        (
+            original,
+            "sha256:1203059a245597c309a961d33086283be01279eb98abd4e3edf013b1c127f28e",
+        ),
+        (
+            swapped,
+            "sha256:a1fbeb02926aa26f41721c2ad552ab0e57ff3c6ceb386a75e61fdf0bdc50064e",
+        ),
+    ];
+    for (connections, digest) in cases {
+        let directory = tempfile::tempdir().expect("temporary directory");
+        let path = directory.path().join("connections.json");
+        std::fs::write(&path, connections).expect("writes");
+        set_mode(&path, 0o600);
+        let uses_path = directory.path().join("use-configurations.json");
+        std::fs::write(&uses_path, uses).expect("writes");
+        set_mode(&uses_path, 0o600);
+        let project = load_dex_web_project(&path).expect("loads 1e400");
+        assert_eq!(project.snapshot().digest, digest);
+        let main = project
+            .connection_configuration(&ConnectionKey::new("sample", "main"))
+            .expect("main");
+        assert_eq!(
+            main.configuration.as_json_text(),
+            r#"{"huge":1e400,"account":12345678901234567890123}"#
+        );
+        assert_eq!(
+            project.configuration().trigger_bindings[0]
+                .configuration
+                .as_json_text(),
+            r#"{"limit":1.50,"big":1e400}"#
+        );
+        assert_eq!(
+            project.configuration().operation_configurations[0]
+                .configuration
+                .as_json_text(),
+            r#"{"limit":1.50,"big":12345678901234567890123}"#
+        );
+    }
 }

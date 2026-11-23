@@ -267,6 +267,30 @@ pub trait ProviderHttpTransport: Send + Sync {
         request: &ProviderHttpRequest,
         timeout: Duration,
     ) -> Result<ProviderHttpResponse, ProviderHttpError>;
+
+    /// Sends `request` once so it ends by the absolute `deadline`.
+    ///
+    /// The default fails as provably not sent when `deadline` has passed, and otherwise calls
+    /// [`ProviderHttpTransport::send`] with the remaining time. The SDK transport keeps the
+    /// absolute deadline through DNS, connect, TLS, the write, and every response read, capped
+    /// at 24 hours from the call.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ProviderHttpError`] for a refusal, transport failure, or expired deadline.
+    fn send_before(
+        &self,
+        request: &ProviderHttpRequest,
+        deadline: Instant,
+    ) -> Result<ProviderHttpResponse, ProviderHttpError> {
+        let timeout = deadline.saturating_duration_since(Instant::now());
+        if timeout.is_zero() {
+            return Err(ProviderHttpError::Transport(ProviderTransportError::new(
+                true,
+            )));
+        }
+        self.send(request, timeout)
+    }
 }
 
 /// Redirect-safe blocking provider client with an optional address policy.
@@ -286,9 +310,20 @@ impl ProviderHttpClient {
     /// follows redirects, retries, reuses connections, uses environment proxies, or logs
     /// request lines, URLs, or headers. HTTPS uses rustls with the `webpki-roots` Mozilla
     /// trust anchors. The timeout is an absolute deadline covering DNS, connect, TLS, the
-    /// request write, and every response read, including the streamed body. The transport
+    /// request write, and every response read, including the streamed body. The transport caps
+    /// every request at 24 hours, even when a timeout or deadline is longer. The transport
     /// owns the `Host`, `Content-Length`, `Transfer-Encoding`, and `Connection` headers and
     /// ignores caller values for them.
+    ///
+    /// Hostnames resolve on a small process-wide pool of resolver threads with a bounded queue.
+    /// When the queue is full, or the lookup outlives the deadline, the request fails as
+    /// provably not sent.
+    ///
+    /// Response framing is strict: `Transfer-Encoding` must be exactly `chunked` and must not
+    /// appear with `Content-Length`, and every `Content-Length` must be the same decimal value.
+    /// A response with invalid framing still returns its status and headers, so a 429 or 503
+    /// and its `Retry-After` remain visible; [`read_bounded_body`] then fails with a
+    /// [`ProviderHttpError::Transport`] that keeps them.
     ///
     /// [`AddressPolicy::PublicHttps`] allows only HTTPS to public addresses;
     /// [`AddressPolicy::PrivateNetworkHttp`] also allows HTTP to private or loopback addresses.
@@ -341,6 +376,8 @@ impl ProviderHttpClient {
 
     /// Sends once within the client timeout; the caller reads the streaming body.
     ///
+    /// The SDK transport caps the request at 24 hours.
+    ///
     /// # Errors
     ///
     /// Returns [`ProviderHttpError`] for a refusal or transport failure.
@@ -352,6 +389,9 @@ impl ProviderHttpClient {
     }
 
     /// Sends once within `timeout`, capped by the client timeout.
+    ///
+    /// The SDK transport also caps the request at 24 hours. A zero timeout fails as provably
+    /// not sent without dialing.
     ///
     /// # Errors
     ///
@@ -372,7 +412,10 @@ impl ProviderHttpClient {
 
     /// Sends once so the request ends by `deadline`, such as a Fence write deadline.
     ///
-    /// A deadline already passed fails as provably not sent without dialing.
+    /// The effective deadline is the earlier of `deadline` and the client timeout from now; the
+    /// SDK transport also caps it at 24 hours. The absolute deadline reaches the transport
+    /// unchanged, so a scheduling pause cannot extend it. A deadline already passed fails as
+    /// provably not sent without dialing.
     ///
     /// # Errors
     ///
@@ -382,7 +425,16 @@ impl ProviderHttpClient {
         request: &ProviderHttpRequest,
         deadline: Instant,
     ) -> Result<ProviderHttpResponse, ProviderHttpError> {
-        self.send_traced_within(request, deadline.saturating_duration_since(Instant::now()))
+        let now = Instant::now();
+        let deadline = now
+            .checked_add(self.request_timeout)
+            .map_or(deadline, |client_deadline| deadline.min(client_deadline));
+        if deadline <= now {
+            return Err(ProviderHttpError::Transport(ProviderTransportError::new(
+                true,
+            )));
+        }
+        self.transport.send_before(request, deadline)
     }
 }
 

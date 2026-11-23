@@ -286,6 +286,8 @@ pub struct Call<'attempt> {
     max_sends: u32,
     max_sends_override: Option<u32>,
     pub(crate) step_attempt: Option<&'attempt (dyn StepAttemptAccess + 'attempt)>,
+    /// Set by `StepAttempt::new_call`, whose occurrence precedes Mutation admission.
+    pub(crate) has_unadmitted_occurrence: bool,
 }
 
 impl<'attempt> Call<'attempt> {
@@ -313,6 +315,7 @@ impl<'attempt> Call<'attempt> {
             max_sends: 1,
             max_sends_override: None,
             step_attempt: None,
+            has_unadmitted_occurrence: false,
         })
     }
 
@@ -370,6 +373,7 @@ impl<'attempt> Call<'attempt> {
             max_sends: self.max_sends,
             max_sends_override: self.max_sends_override,
             step_attempt: self.step_attempt,
+            has_unadmitted_occurrence: self.has_unadmitted_occurrence,
         }
     }
 

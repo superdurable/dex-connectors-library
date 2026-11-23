@@ -6,13 +6,15 @@
 use std::collections::BTreeMap;
 use std::io::{self, Read, Write};
 use std::net::{Shutdown, TcpListener, TcpStream};
+use std::sync::{Arc, Mutex};
 use std::thread;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use dex_connectors_sdk::providerhttp::{
     AddressPolicy, ProviderHttpClient, ProviderHttpError, ProviderHttpRequest,
-    ProviderHttpResponse, ResponseHeaders, encode_query_values, is_header_safe_credential,
-    parse_retry_after, read_bounded_body, read_error_tokens, validate_base_url,
+    ProviderHttpResponse, ProviderHttpTransport, ResponseHeaders, encode_query_values,
+    is_header_safe_credential, parse_retry_after, read_bounded_body, read_error_tokens,
+    validate_base_url,
 };
 
 fn read_request_head(stream: &mut TcpStream) -> Vec<u8> {
@@ -169,6 +171,107 @@ fn chunked_and_content_length_responses_are_framed() {
         panic!("a body shorter than Content-Length must fail");
     };
     assert_eq!(error.status, Some(200));
+}
+
+#[test]
+fn invalid_framing_keeps_status_and_retry_after() {
+    let port = serve(2, |mut stream| {
+        let head = read_request_head(&mut stream);
+        let response: &[u8] = if head.starts_with(b"POST /limited ") {
+            b"HTTP/1.1 429 Too Many Requests\r\nRetry-After: 7\r\nContent-Length: 2\r\nContent-Length: 3\r\n\r\nno"
+        } else {
+            b"HTTP/1.1 200 OK\r\nTransfer-Encoding: gzip, chunked\r\n\r\n2\r\nok\r\n0\r\n\r\n"
+        };
+        stream.write_all(response).expect("write response");
+    });
+    let client = client(AddressPolicy::Unrestricted);
+    let limited = ProviderHttpRequest::new("POST", format!("http://127.0.0.1:{port}/limited"))
+        .body(b"write".to_vec());
+    let mut response = client
+        .send_traced(&limited)
+        .expect("status line and headers were received");
+    assert_eq!(response.status(), 429);
+    assert_eq!(response.headers().get("retry-after"), Some("7"));
+    let Err(ProviderHttpError::Transport(error)) = read_bounded_body(&mut response, 64) else {
+        panic!("conflicting Content-Length must fail the body read");
+    };
+    assert!(!error.provably_not_sent);
+    assert_eq!(error.status, Some(429));
+    assert_eq!(
+        error
+            .headers
+            .as_ref()
+            .and_then(|headers| headers.get("Retry-After")),
+        Some("7")
+    );
+    let stacked = ProviderHttpRequest::new("GET", format!("http://127.0.0.1:{port}/stacked"));
+    let mut response = client.send_traced(&stacked).expect("response head");
+    assert_eq!(response.status(), 200);
+    let Err(ProviderHttpError::Transport(error)) = read_bounded_body(&mut response, 64) else {
+        panic!("stacked transfer codings must fail the body read");
+    };
+    assert_eq!(error.status, Some(200));
+}
+
+/// Fake transport that records the absolute deadline it receives.
+struct DeadlineRecordingTransport {
+    received_deadline: Mutex<Option<Instant>>,
+}
+
+impl ProviderHttpTransport for DeadlineRecordingTransport {
+    fn send(
+        &self,
+        _request: &ProviderHttpRequest,
+        _timeout: Duration,
+    ) -> Result<ProviderHttpResponse, ProviderHttpError> {
+        panic!("send_traced_before must pass the absolute deadline");
+    }
+
+    fn send_before(
+        &self,
+        _request: &ProviderHttpRequest,
+        deadline: Instant,
+    ) -> Result<ProviderHttpResponse, ProviderHttpError> {
+        *self.received_deadline.lock().expect("deadline lock") = Some(deadline);
+        Ok(ProviderHttpResponse::new(
+            204,
+            ResponseHeaders::default(),
+            Box::new(io::empty()),
+        ))
+    }
+}
+
+#[test]
+fn absolute_deadline_reaches_the_transport_unchanged() {
+    let transport = Arc::new(DeadlineRecordingTransport {
+        received_deadline: Mutex::new(None),
+    });
+    let client = ProviderHttpClient::with_transport(
+        Arc::clone(&transport) as Arc<dyn ProviderHttpTransport>,
+        Duration::from_secs(60),
+    )
+    .expect("client");
+    let request = ProviderHttpRequest::new("POST", "https://provider.example/items");
+    let fence_deadline = Instant::now() + Duration::from_secs(5);
+    client
+        .send_traced_before(&request, fence_deadline)
+        .expect("fake response");
+    assert_eq!(
+        *transport.received_deadline.lock().expect("deadline lock"),
+        Some(fence_deadline)
+    );
+    let far_deadline = Instant::now() + Duration::from_secs(3600);
+    let before_send = Instant::now();
+    client
+        .send_traced_before(&request, far_deadline)
+        .expect("fake response");
+    let capped = transport
+        .received_deadline
+        .lock()
+        .expect("deadline lock")
+        .expect("recorded deadline");
+    assert!(capped < far_deadline);
+    assert!(capped >= before_send + Duration::from_secs(60));
 }
 
 #[test]

@@ -586,3 +586,181 @@ fn fenced_mutation_resends_up_to_its_cap_then_selects_uncertain() {
         output.receipt.call_id.as_str()
     );
 }
+
+/// Blocks inside `invoke` until the test releases it, so a second call overlaps the first.
+struct GatedCreate {
+    gate: Arc<(Mutex<GateState>, std::sync::Condvar)>,
+}
+
+#[derive(Default)]
+struct GateState {
+    is_first_invoking: bool,
+    is_released: bool,
+}
+
+impl Mutation for GatedCreate {
+    type Input = String;
+    type Output = String;
+
+    fn definition(&self) -> MutationDefinition {
+        MutationDefinition {
+            operation: OperationRef::new("sample", "createItem"),
+            branches: Some(vec![
+                BranchDefinition::new("created", "Item created", false),
+                BranchDefinition::new("defect", "Local defect", true),
+            ]),
+            step_defaults: StepDefaults::default(),
+            repeat_on_unknown: Some(RepeatOnUnknown::Unsafe),
+            max_sends: 0,
+        }
+    }
+
+    fn idempotency_key(&self, _call_id: &CallId, _input: &String) -> IdempotencyKey {
+        IdempotencyKey::default()
+    }
+
+    fn invoke(&self, _call: &Call<'_>, input: &String) -> MutationAttempt<String> {
+        let (state, signal) = &*self.gate;
+        let mut state = state.lock().expect("gate lock");
+        state.is_first_invoking = true;
+        signal.notify_all();
+        let (state, _timeout) = signal
+            .wait_timeout_while(state, Duration::from_secs(10), |state| !state.is_released)
+            .expect("gate wait");
+        assert!(state.is_released, "the overlapping call returned in time");
+        MutationAttempt::branch("created", input.clone(), Receipt::default(), None)
+    }
+}
+
+/// Runs Mutations directly from one Execute to exercise the public low-level entries.
+struct DirectMutationStep {
+    gate: Arc<(Mutex<GateState>, std::sync::Condvar)>,
+}
+
+impl Step for DirectMutationStep {
+    type Input = String;
+
+    fn execute(&self, context: &mut Context, input: String) -> HandlerResult<StepDecision> {
+        let operation = GatedCreate {
+            gate: Arc::clone(&self.gate),
+        };
+        let connection = ConnectionRef::new("sample", "main");
+        let attempt = dex_connectors_sdk::StepAttempt::new(context);
+        let call = attempt
+            .new_call(
+                connection.clone(),
+                OperationRef::new("sample", "createItem"),
+            )
+            .map_err(dex_connectors_sdk::dex_sdk::HandlerError::from_error)?;
+        let unadmitted = match dex_connectors_sdk::run_mutation(&operation, &call, &input) {
+            dex_connectors_sdk::OperationOutcome::Completed(result) => result,
+            dex_connectors_sdk::OperationOutcome::Retry(retry) => {
+                return Err(dex_connectors_sdk::dex_retry_error(&retry));
+            }
+        };
+        let (first, second) = thread::scope(|scope| {
+            let first = scope.spawn(|| {
+                dex_connectors_sdk::run_step_mutation(
+                    &operation,
+                    &attempt,
+                    connection.clone(),
+                    &input,
+                    None,
+                )
+            });
+            {
+                let (state, signal) = &*self.gate;
+                let state = state.lock().expect("gate lock");
+                let _first_invoking = signal
+                    .wait_timeout_while(state, Duration::from_secs(10), |state| {
+                        !state.is_first_invoking
+                    })
+                    .expect("gate wait");
+            }
+            let second = dex_connectors_sdk::run_step_mutation(
+                &operation,
+                &attempt,
+                connection.clone(),
+                &input,
+                None,
+            );
+            {
+                let (state, signal) = &*self.gate;
+                state.lock().expect("gate lock").is_released = true;
+                signal.notify_all();
+            }
+            (first.join().expect("first call thread"), second)
+        });
+        let mut summary: Vec<String> = [unadmitted]
+            .into_iter()
+            .chain([first, second].into_iter().map(|outcome| match outcome {
+                dex_connectors_sdk::OperationOutcome::Completed(result) => result,
+                dex_connectors_sdk::OperationOutcome::Retry(retry) => panic!("retry: {retry}"),
+            }))
+            .map(|result| format!("{} {}", result.branch, result.receipt.call_id))
+            .collect();
+        summary.push(attempt.step_execution_id().to_string());
+        Ok(StepDecision::graceful_complete(summary))
+    }
+
+    fn step_type(&self) -> &'static str {
+        "DirectMutation"
+    }
+}
+
+struct DirectMutationFlow {
+    step: DirectMutationStep,
+}
+
+impl Flow for DirectMutationFlow {
+    type StartInput = String;
+
+    fn flow_type(&self) -> &'static str {
+        "SdkRustDirectMutationFlow"
+    }
+
+    fn steps(&self) -> StepList<'_, String> {
+        StepList::start(&self.step)
+    }
+}
+
+#[test]
+#[ignore = "requires dexcli dev; see the module documentation"]
+fn low_level_mutation_entries_keep_call_ids_in_admission_order() {
+    let new_flow = || DirectMutationFlow {
+        step: DirectMutationStep {
+            gate: Arc::new((Mutex::new(GateState::default()), std::sync::Condvar::new())),
+        },
+    };
+    let registry = Registry::new().register(new_flow()).expect("register Flow");
+    let environment = DexEnvironment::start(registry);
+    let flow_id = unique_flow_id("direct");
+    environment
+        .client
+        .start_flow(&new_flow(), &flow_id, "item-1".to_string())
+        .expect("start Flow");
+    let result = environment
+        .client
+        .wait_for_flow_with_timeout(&flow_id, Duration::from_secs(60))
+        .expect("Flow completes");
+    assert_eq!(
+        result.status(),
+        FlowStatus::Completed,
+        "{:?}",
+        result.error_message()
+    );
+    let summary: Vec<String> = result.single_output().expect("summary");
+    assert_eq!(summary.len(), 4, "{summary:?}");
+    let operation = OperationRef::new("sample", "createItem");
+    let expected = |branch: &str, occurrence: u32| {
+        let call_id =
+            dex_connectors_sdk::derive_call_id(&flow_id, &summary[3], &operation, occurrence)
+                .expect("Call ID");
+        format!("{branch} {call_id}")
+    };
+    // new_call took occurrence 1 and was refused before admission; the admitted call then
+    // owns 2 and the overlapping call counts 3, in admission order.
+    assert_eq!(summary[0], expected("defect", 1));
+    assert_eq!(summary[1], expected("created", 2));
+    assert_eq!(summary[2], expected("defect", 3));
+}

@@ -66,6 +66,69 @@ pub(crate) fn compact_go_raw_message(raw: &str) -> String {
     compacted
 }
 
+/// Indents compact JSON as Go's `json.Indent(dst, compact, "", indent)` does.
+///
+/// Go's `json.MarshalIndent` is `json.Marshal` followed by this step: empty objects and
+/// arrays stay `{}` and `[]`, and a colon is followed by one space. `compact` must be valid
+/// JSON without insignificant whitespace.
+pub(crate) fn indent_go_json(compact: &str, indent: &str) -> String {
+    let mut indented = String::with_capacity(compact.len() * 2);
+    let mut depth = 0usize;
+    let mut needs_indent = false;
+    let mut is_in_string = false;
+    let mut is_escaped = false;
+    let push_newline = |output: &mut String, depth: usize| {
+        output.push('\n');
+        for _ in 0..depth {
+            output.push_str(indent);
+        }
+    };
+    for character in compact.chars() {
+        if is_in_string {
+            indented.push(character);
+            if is_escaped {
+                is_escaped = false;
+            } else if character == '\\' {
+                is_escaped = true;
+            } else if character == '"' {
+                is_in_string = false;
+            }
+            continue;
+        }
+        if needs_indent && character != ']' && character != '}' {
+            needs_indent = false;
+            depth += 1;
+            push_newline(&mut indented, depth);
+        }
+        match character {
+            '"' => {
+                is_in_string = true;
+                indented.push(character);
+            }
+            '{' | '[' => {
+                needs_indent = true;
+                indented.push(character);
+            }
+            ',' => {
+                indented.push(character);
+                push_newline(&mut indented, depth);
+            }
+            ':' => indented.push_str(": "),
+            '}' | ']' => {
+                if needs_indent {
+                    needs_indent = false;
+                } else {
+                    depth = depth.saturating_sub(1);
+                    push_newline(&mut indented, depth);
+                }
+                indented.push(character);
+            }
+            _ => indented.push(character),
+        }
+    }
+    indented
+}
+
 /// Compact formatter that adds Go's HTML-safe escapes.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct GoJsonFormatter;
@@ -145,6 +208,16 @@ mod tests {
         assert_eq!(
             compact_go_raw_message(raw),
             "{\"a b\":[1.50,-0.0e-0,12345678901234567890123],\"s\":\"x \\\" \\u003c\\u0026\\u003e \\u00e9 \\/ \\u2028\"}"
+        );
+    }
+
+    #[test]
+    fn indents_like_go_json_indent() {
+        // Expected bytes from Go 1.26 json.Indent(&out, compact, "", "  "), run under /tmp.
+        let compact = "{\"a\":[],\"b\":{},\"c\":[1,{\"d\":\"x,:{[\\\"\"}],\"e\":1e400}";
+        assert_eq!(
+            indent_go_json(compact, "  "),
+            "{\n  \"a\": [],\n  \"b\": {},\n  \"c\": [\n    1,\n    {\n      \"d\": \"x,:{[\\\"\"\n    }\n  ],\n  \"e\": 1e400\n}"
         );
     }
 }

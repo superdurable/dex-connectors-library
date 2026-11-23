@@ -6,14 +6,14 @@
 use std::collections::BTreeMap;
 use std::net::IpAddr;
 
-use std::fmt;
-
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use serde_json::value::RawValue;
 use serde_json::{Map, Value};
 use sha2::{Digest, Sha256};
 
 use super::errors::{ProjectConfigError, ProjectConfigResult};
+pub use super::raw_json::RawJsonObject;
+use super::raw_json::{decode_raw_members, split_raw_configuration};
 
 /// JSON object whose member order is preserved, as Go's raw configuration objects are.
 pub type JsonObject = Map<String, Value>;
@@ -529,8 +529,8 @@ pub struct ConnectionConfiguration {
     pub module_path: String,
     /// Provider name.
     pub provider: String,
-    /// Ordinary settings in document member order.
-    pub configuration: JsonObject,
+    /// Ordinary settings as exact source text.
+    pub configuration: RawJsonObject,
     /// Selected authorization method; empty when omitted.
     pub auth_method_id: String,
     /// Broker-owned shared connection ID; empty for ordinary connections.
@@ -539,6 +539,8 @@ pub struct ConnectionConfiguration {
 
 impl ConnectionConfiguration {
     /// Creates an ordinary entry without an auth method or shared connection.
+    ///
+    /// `configuration` is stored as its Go `json.Marshal` text.
     pub fn new(
         connector_id: impl Into<String>,
         connection_name: impl Into<String>,
@@ -551,14 +553,19 @@ impl ConnectionConfiguration {
             connection_name: connection_name.into(),
             module_path: module_path.into(),
             provider: provider.into(),
-            configuration,
+            configuration: RawJsonObject::from_json_object(&configuration),
             auth_method_id: String::new(),
             shared_connection_id: String::new(),
         }
     }
 
     /// Encodes the entry with omitted optional members.
-    pub fn to_wire(&self) -> Value {
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ProjectConfigError::Invalid`] when the settings exceed the
+    /// [`RawJsonObject::to_json_object`] numeric range.
+    pub fn to_wire(&self) -> ProjectConfigResult<Value> {
         let mut object = JsonObject::new();
         object.insert(
             "connectorId".into(),
@@ -584,9 +591,9 @@ impl ConnectionConfiguration {
         }
         object.insert(
             "configuration".into(),
-            Value::Object(self.configuration.clone()),
+            Value::Object(self.configuration.to_json_object()?),
         );
-        Value::Object(object)
+        Ok(Value::Object(object))
     }
 
     /// Decodes an ordinary or shared entry.
@@ -614,8 +621,10 @@ impl ConnectionConfiguration {
             connection_name: string_member(record, "connectionName"),
             module_path: string_member(record, "modulePath"),
             provider: string_member(record, "provider"),
-            configuration: require_object(record.get("configuration"), "connection configuration")?
-                .clone(),
+            configuration: RawJsonObject::from_json_object(require_object(
+                record.get("configuration"),
+                "connection configuration",
+            )?),
             auth_method_id: string_member(record, "authMethodId"),
             shared_connection_id: string_member(record, "sharedConnectionId"),
         })
@@ -664,112 +673,169 @@ pub struct Configuration {
     pub revision: u64,
     /// Connection entries.
     pub connections: Vec<ConnectionConfiguration>,
-    /// Trigger binding objects in document order.
-    pub trigger_bindings: Vec<JsonObject>,
-    /// Operation configuration objects in document order.
-    pub operation_configurations: Vec<JsonObject>,
+    /// Trigger bindings in document order.
+    pub trigger_bindings: Vec<TriggerConfiguration>,
+    /// Operation configurations in document order.
+    pub operation_configurations: Vec<OperationConfiguration>,
     /// Application environment, sorted by name.
     pub environment: BTreeMap<String, EnvironmentValue>,
     /// Broker for shared connections.
     pub credential_broker: Option<CredentialBrokerConfiguration>,
     /// Document schema version.
     pub schema_version: String,
-    /// Source bytes of nested settings, so an unchanged document re-encodes as Go does.
-    nested_raw_json: NestedRawConfigurations,
 }
 
-/// Go-compacted source bytes of each entry's nested `configuration`, by entry position.
-///
-/// Go keeps these as `json.RawMessage`, preserving number lexemes and string escapes that a
-/// [`Value`] loses. A slot is used only while the entry still holds the same value.
-#[derive(Clone, Default)]
-pub(crate) struct NestedRawConfigurations {
-    connections: Vec<Option<CapturedRawJson>>,
-    trigger_bindings: Vec<Option<CapturedRawJson>>,
-    operation_configurations: Vec<Option<CapturedRawJson>>,
+/// One Trigger binding's settings, in Go `TriggerConfiguration` field order.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct TriggerConfiguration {
+    /// Manifest connector ID.
+    #[serde(rename = "connectorId")]
+    pub connector_id: String,
+    /// Connection the Trigger listens on.
+    #[serde(rename = "connectionName")]
+    pub connection_name: String,
+    /// Manifest Trigger name.
+    #[serde(rename = "triggerName")]
+    pub trigger_name: String,
+    /// Application binding name, unique per Trigger.
+    #[serde(rename = "bindingName")]
+    pub binding_name: String,
+    /// Trigger settings as exact source text.
+    pub configuration: RawJsonObject,
 }
 
-#[derive(Clone)]
-struct CapturedRawJson {
-    value: Value,
-    go_compacted: String,
-}
+impl TriggerConfiguration {
+    /// Encodes the binding with every member.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ProjectConfigError::Invalid`] when the settings exceed the
+    /// [`RawJsonObject::to_json_object`] numeric range.
+    pub fn to_wire(&self) -> ProjectConfigResult<Value> {
+        let mut object = JsonObject::new();
+        object.insert(
+            "connectorId".into(),
+            Value::String(self.connector_id.clone()),
+        );
+        object.insert(
+            "connectionName".into(),
+            Value::String(self.connection_name.clone()),
+        );
+        object.insert(
+            "triggerName".into(),
+            Value::String(self.trigger_name.clone()),
+        );
+        object.insert(
+            "bindingName".into(),
+            Value::String(self.binding_name.clone()),
+        );
+        object.insert(
+            "configuration".into(),
+            Value::Object(self.configuration.to_json_object()?),
+        );
+        Ok(Value::Object(object))
+    }
 
-impl fmt::Debug for NestedRawConfigurations {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        formatter.write_str("NestedRawConfigurations")
+    /// Decodes one binding; `configuration` must be an object.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ProjectConfigError::Invalid`] for unknown members or absent settings.
+    pub fn from_wire(value: &Value) -> ProjectConfigResult<Self> {
+        let invalid =
+            || ProjectConfigError::invalid("configuration trigger is invalid or duplicated");
+        let record = require_object(Some(value), "trigger")?;
+        require_fields(record, &TRIGGER_BINDING_FIELDS, "trigger").map_err(|_| invalid())?;
+        let configuration = record
+            .get("configuration")
+            .and_then(Value::as_object)
+            .ok_or_else(invalid)?;
+        Ok(Self {
+            connector_id: string_member(record, "connectorId"),
+            connection_name: string_member(record, "connectionName"),
+            trigger_name: string_member(record, "triggerName"),
+            binding_name: string_member(record, "bindingName"),
+            configuration: RawJsonObject::from_json_object(configuration),
+        })
     }
 }
 
-impl PartialEq for NestedRawConfigurations {
-    /// Captured bytes are an encoding cache, never part of document identity.
-    fn eq(&self, _other: &Self) -> bool {
-        true
+/// One operation's settings for a Flow Step, in Go `OperationConfiguration` field order.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct OperationConfiguration {
+    /// Manifest connector ID.
+    #[serde(rename = "connectorId")]
+    pub connector_id: String,
+    /// Connection the operation calls through.
+    #[serde(rename = "connectionName")]
+    pub connection_name: String,
+    /// Manifest operation ID.
+    #[serde(rename = "operationId")]
+    pub operation_id: String,
+    /// Flow type that runs the Step.
+    #[serde(rename = "flowType")]
+    pub flow_type: String,
+    /// Step type that calls the operation.
+    #[serde(rename = "stepType")]
+    pub step_type: String,
+    /// Operation settings as exact source text.
+    pub configuration: RawJsonObject,
+}
+
+impl OperationConfiguration {
+    /// Encodes the operation configuration with every member.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ProjectConfigError::Invalid`] when the settings exceed the
+    /// [`RawJsonObject::to_json_object`] numeric range.
+    pub fn to_wire(&self) -> ProjectConfigResult<Value> {
+        let mut object = JsonObject::new();
+        object.insert(
+            "connectorId".into(),
+            Value::String(self.connector_id.clone()),
+        );
+        object.insert(
+            "connectionName".into(),
+            Value::String(self.connection_name.clone()),
+        );
+        object.insert(
+            "operationId".into(),
+            Value::String(self.operation_id.clone()),
+        );
+        object.insert("flowType".into(), Value::String(self.flow_type.clone()));
+        object.insert("stepType".into(), Value::String(self.step_type.clone()));
+        object.insert(
+            "configuration".into(),
+            Value::Object(self.configuration.to_json_object()?),
+        );
+        Ok(Value::Object(object))
     }
-}
 
-/// Mirrors only the nested settings of a configuration or Dex Web document.
-#[derive(Deserialize)]
-struct RawNestedDocument<'source> {
-    #[serde(borrow, default)]
-    connections: Vec<RawNestedEntry<'source>>,
-    #[serde(borrow, default, rename = "triggerBindings")]
-    trigger_bindings: Vec<RawNestedEntry<'source>>,
-    #[serde(borrow, default, rename = "operationConfigurations")]
-    operation_configurations: Vec<RawNestedEntry<'source>>,
-}
-
-#[derive(Deserialize)]
-struct RawNestedEntry<'source> {
-    #[serde(borrow, default)]
-    configuration: Option<&'source RawValue>,
-}
-
-impl NestedRawConfigurations {
-    /// Captures every entry's nested settings from `document`; unreadable input captures none.
-    pub(crate) fn capture(document: &[u8]) -> Self {
-        let Ok(parsed) = serde_json::from_slice::<RawNestedDocument<'_>>(document) else {
-            return Self::default();
-        };
-        let capture_entries = |entries: &[RawNestedEntry<'_>]| {
-            entries
-                .iter()
-                .map(|entry| {
-                    let raw = entry.configuration?;
-                    Some(CapturedRawJson {
-                        value: serde_json::from_str(raw.get()).ok()?,
-                        go_compacted: crate::go_json::compact_go_raw_message(raw.get()),
-                    })
-                })
-                .collect()
-        };
-        Self {
-            connections: capture_entries(&parsed.connections),
-            trigger_bindings: capture_entries(&parsed.trigger_bindings),
-            operation_configurations: capture_entries(&parsed.operation_configurations),
-        }
+    /// Decodes one operation configuration; `configuration` must be an object.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ProjectConfigError::Invalid`] for unknown members or absent settings.
+    pub fn from_wire(value: &Value) -> ProjectConfigResult<Self> {
+        let invalid =
+            || ProjectConfigError::invalid("configuration operation is invalid or duplicated");
+        let record = require_object(Some(value), "operation")?;
+        require_fields(record, &OPERATION_CONFIGURATION_FIELDS, "operation")
+            .map_err(|_| invalid())?;
+        let configuration = record
+            .get("configuration")
+            .and_then(Value::as_object)
+            .ok_or_else(invalid)?;
+        Ok(Self {
+            connector_id: string_member(record, "connectorId"),
+            connection_name: string_member(record, "connectionName"),
+            operation_id: string_member(record, "operationId"),
+            flow_type: string_member(record, "flowType"),
+            step_type: string_member(record, "stepType"),
+            configuration: RawJsonObject::from_json_object(configuration),
+        })
     }
-
-    /// Replaces the operation settings with those captured in `other`.
-    pub(crate) fn with_operation_configurations_of(mut self, other: Self) -> Self {
-        self.operation_configurations = other.operation_configurations;
-        self
-    }
-}
-
-/// Returns the Go `json.Marshal` bytes of a nested `configuration` holding `current`.
-fn nested_go_raw_json(
-    captured: &[Option<CapturedRawJson>],
-    position: usize,
-    current: &Value,
-) -> ProjectConfigResult<Box<RawValue>> {
-    let encoded = match captured.get(position) {
-        Some(Some(captured)) if captured.value == *current => captured.go_compacted.clone(),
-        _ => String::from_utf8(go_canonical_json_bytes(current)?)
-            .map_err(|_| ProjectConfigError::invalid("JSON value cannot be encoded"))?,
-    };
-    RawValue::from_string(encoded)
-        .map_err(|_| ProjectConfigError::invalid("JSON value cannot be encoded"))
 }
 
 pub(crate) const TRIGGER_BINDING_FIELDS: [&str; 5] = [
@@ -797,13 +863,13 @@ struct GoConfigurationDocument<'document> {
     revision: u64,
     connections: Vec<GoConnectionEntry<'document>>,
     #[serde(rename = "triggerBindings")]
-    trigger_bindings: Vec<GoTriggerEntry>,
+    trigger_bindings: &'document [TriggerConfiguration],
     #[serde(rename = "operationConfigurations")]
-    operation_configurations: Vec<GoOperationEntry>,
+    operation_configurations: &'document [OperationConfiguration],
     #[serde(skip_serializing_if = "Option::is_none")]
-    environment: Option<&'document Value>,
+    environment: Option<Value>,
     #[serde(rename = "credentialBroker", skip_serializing_if = "Option::is_none")]
-    credential_broker: Option<&'document Value>,
+    credential_broker: Option<Value>,
 }
 
 /// Go `ConnectionConfiguration` field order.
@@ -820,51 +886,7 @@ struct GoConnectionEntry<'document> {
     auth_method_id: &'document str,
     #[serde(rename = "sharedConnectionId", skip_serializing_if = "str::is_empty")]
     shared_connection_id: &'document str,
-    configuration: Box<RawValue>,
-}
-
-/// Go `TriggerConfiguration` field order.
-#[derive(Serialize)]
-struct GoTriggerEntry {
-    #[serde(rename = "connectorId")]
-    connector_id: String,
-    #[serde(rename = "connectionName")]
-    connection_name: String,
-    #[serde(rename = "triggerName")]
-    trigger_name: String,
-    #[serde(rename = "bindingName")]
-    binding_name: String,
-    configuration: Box<RawValue>,
-}
-
-/// Go `OperationConfiguration` field order.
-#[derive(Serialize)]
-struct GoOperationEntry {
-    #[serde(rename = "connectorId")]
-    connector_id: String,
-    #[serde(rename = "connectionName")]
-    connection_name: String,
-    #[serde(rename = "operationId")]
-    operation_id: String,
-    #[serde(rename = "flowType")]
-    flow_type: String,
-    #[serde(rename = "stepType")]
-    step_type: String,
-    configuration: Box<RawValue>,
-}
-
-/// Returns `entry` with only `fields`, in that order, as Go's struct encoding writes it.
-fn in_go_field_order(entry: &JsonObject, fields: &[&str]) -> JsonObject {
-    fields
-        .iter()
-        .map(|field| {
-            let value = entry
-                .get(*field)
-                .cloned()
-                .unwrap_or_else(|| Value::String(String::new()));
-            ((*field).to_string(), value)
-        })
-        .collect()
+    configuration: &'document RawJsonObject,
 }
 
 impl Configuration {
@@ -879,108 +901,112 @@ impl Configuration {
             environment: BTreeMap::new(),
             credential_broker: None,
             schema_version: CONFIGURATION_SCHEMA_VERSION.into(),
-            nested_raw_json: NestedRawConfigurations::default(),
         }
     }
 
-    /// Decodes and validates document bytes, keeping nested settings' source bytes.
+    /// Decodes and validates document bytes, capturing settings text before any lossy decode.
     pub(crate) fn from_json_bytes(contents: &[u8]) -> ProjectConfigResult<Self> {
-        let document: Value = serde_json::from_slice(contents)
-            .map_err(|_| ProjectConfigError::invalid("configuration document is invalid JSON"))?;
-        let mut configuration = Self::from_wire(&document)?;
-        configuration.nested_raw_json = NestedRawConfigurations::capture(contents);
+        let invalid_json = || ProjectConfigError::invalid("configuration document is invalid JSON");
+        let text = std::str::from_utf8(contents).map_err(|_| invalid_json())?;
+        let document: &RawValue = serde_json::from_str(text).map_err(|_| invalid_json())?;
+        if !document.get().starts_with('{') {
+            return Err(ProjectConfigError::invalid(
+                "configuration must be a JSON object",
+            ));
+        }
+        let members = decode_raw_members(document.get(), "configuration")?;
+        let mut typed = JsonObject::new();
+        let mut captured: Vec<(&str, Vec<Option<RawJsonObject>>)> = Vec::new();
+        for (name, raw) in &members {
+            let is_entry_array = matches!(
+                name.as_str(),
+                "connections" | "triggerBindings" | "operationConfigurations"
+            ) && raw.get().starts_with('[');
+            if !is_entry_array {
+                let value = serde_json::from_str(raw.get()).map_err(|_| invalid_json())?;
+                typed.insert(name.clone(), value);
+                continue;
+            }
+            let items: Vec<Box<RawValue>> =
+                serde_json::from_str(raw.get()).map_err(|_| invalid_json())?;
+            let mut values = Vec::with_capacity(items.len());
+            let mut configurations = Vec::with_capacity(items.len());
+            for item in &items {
+                if item.get().starts_with('{') {
+                    let (entry, configuration) =
+                        split_raw_configuration(&decode_raw_members(item.get(), name)?, None)?;
+                    values.push(Value::Object(entry));
+                    configurations.push(configuration);
+                } else {
+                    values.push(serde_json::from_str(item.get()).map_err(|_| invalid_json())?);
+                    configurations.push(None);
+                }
+            }
+            typed.insert(name.clone(), Value::Array(values));
+            captured.push((name.as_str(), configurations));
+        }
+        let mut configuration = Self::from_wire(&Value::Object(typed))?;
+        for (name, configurations) in captured {
+            for (position, raw) in configurations.into_iter().enumerate() {
+                let Some(raw) = raw else { continue };
+                match name {
+                    "connections" => configuration.connections[position].configuration = raw,
+                    "triggerBindings" => {
+                        configuration.trigger_bindings[position].configuration = raw;
+                    }
+                    _ => configuration.operation_configurations[position].configuration = raw,
+                }
+            }
+        }
         Ok(configuration)
-    }
-
-    /// Keeps `nested_raw_json` for encoding entries whose settings still equal it.
-    pub(crate) fn set_nested_raw_json(&mut self, nested_raw_json: NestedRawConfigurations) {
-        self.nested_raw_json = nested_raw_json;
     }
 
     /// Encodes the validated document exactly as Go's `json.Marshal` of the same document.
     ///
-    /// Outer objects use Go struct field order; nested settings decoded from bytes keep
-    /// their Go-compacted source bytes.
+    /// Outer objects use Go struct field order; each entry's settings keep their exact text.
     pub(crate) fn to_go_json_bytes(&self) -> ProjectConfigResult<Vec<u8>> {
-        let wire = self.to_wire()?;
-        let empty = JsonObject::new();
-        let wire = wire.as_object().unwrap_or(&empty);
-        let raw = &self.nested_raw_json;
+        self.validate()?;
         let connections = self
             .connections
             .iter()
-            .enumerate()
-            .map(|(position, entry)| {
-                Ok(GoConnectionEntry {
-                    connector_id: &entry.connector_id,
-                    connection_name: &entry.connection_name,
-                    module_path: &entry.module_path,
-                    provider: &entry.provider,
-                    auth_method_id: &entry.auth_method_id,
-                    shared_connection_id: &entry.shared_connection_id,
-                    configuration: nested_go_raw_json(
-                        &raw.connections,
-                        position,
-                        &Value::Object(entry.configuration.clone()),
-                    )?,
-                })
+            .map(|entry| GoConnectionEntry {
+                connector_id: &entry.connector_id,
+                connection_name: &entry.connection_name,
+                module_path: &entry.module_path,
+                provider: &entry.provider,
+                auth_method_id: &entry.auth_method_id,
+                shared_connection_id: &entry.shared_connection_id,
+                configuration: &entry.configuration,
             })
-            .collect::<ProjectConfigResult<_>>()?;
-        let configuration_of = |entry: &JsonObject| {
-            entry
-                .get("configuration")
-                .cloned()
-                .unwrap_or(Value::Object(JsonObject::new()))
-        };
-        let trigger_bindings = self
-            .trigger_bindings
-            .iter()
-            .enumerate()
-            .map(|(position, entry)| {
-                Ok(GoTriggerEntry {
-                    connector_id: string_member(entry, "connectorId"),
-                    connection_name: string_member(entry, "connectionName"),
-                    trigger_name: string_member(entry, "triggerName"),
-                    binding_name: string_member(entry, "bindingName"),
-                    configuration: nested_go_raw_json(
-                        &raw.trigger_bindings,
-                        position,
-                        &configuration_of(entry),
-                    )?,
-                })
-            })
-            .collect::<ProjectConfigResult<_>>()?;
-        let operation_configurations = self
-            .operation_configurations
-            .iter()
-            .enumerate()
-            .map(|(position, entry)| {
-                Ok(GoOperationEntry {
-                    connector_id: string_member(entry, "connectorId"),
-                    connection_name: string_member(entry, "connectionName"),
-                    operation_id: string_member(entry, "operationId"),
-                    flow_type: string_member(entry, "flowType"),
-                    step_type: string_member(entry, "stepType"),
-                    configuration: nested_go_raw_json(
-                        &raw.operation_configurations,
-                        position,
-                        &configuration_of(entry),
-                    )?,
-                })
-            })
-            .collect::<ProjectConfigResult<_>>()?;
+            .collect();
+        let scope = self.scope.to_wire();
         let document = GoConfigurationDocument {
             schema_version: &self.schema_version,
-            scope: wire.get("scope").unwrap_or(&Value::Null),
+            scope: &scope,
             revision: self.revision,
             connections,
-            trigger_bindings,
-            operation_configurations,
-            environment: wire.get("environment"),
-            credential_broker: wire.get("credentialBroker"),
+            trigger_bindings: &self.trigger_bindings,
+            operation_configurations: &self.operation_configurations,
+            environment: self.environment_wire(),
+            credential_broker: self
+                .credential_broker
+                .as_ref()
+                .map(|broker| broker.to_wire()),
         };
         crate::go_json::to_go_json_vec(&document)
             .map_err(|_| ProjectConfigError::invalid("configuration encoding failed"))
+    }
+
+    fn environment_wire(&self) -> Option<Value> {
+        if self.environment.is_empty() {
+            return None;
+        }
+        Some(Value::Object(
+            self.environment
+                .iter()
+                .map(|(name, value)| (name.clone(), value.to_wire()))
+                .collect(),
+        ))
     }
 
     /// Rejects duplicate identities, an invalid schema, and a missing broker selection.
@@ -1026,19 +1052,15 @@ impl Configuration {
         let mut trigger_identities = std::collections::HashSet::new();
         for binding in &self.trigger_bindings {
             let identity = [
-                string_member(binding, "connectorId"),
-                string_member(binding, "connectionName"),
-                string_member(binding, "triggerName"),
-                string_member(binding, "bindingName"),
+                binding.connector_id.as_str(),
+                binding.connection_name.as_str(),
+                binding.trigger_name.as_str(),
+                binding.binding_name.as_str(),
             ];
-            if !identities.contains(&(identity[0].as_str(), identity[1].as_str()))
+            if !identities.contains(&(identity[0], identity[1]))
                 || identity[2].is_empty()
                 || identity[3].is_empty()
-                || !binding.get("configuration").is_some_and(Value::is_object)
-                || binding
-                    .keys()
-                    .any(|field| !TRIGGER_BINDING_FIELDS.contains(&field.as_str()))
-                || !trigger_identities.insert(identity.clone())
+                || !trigger_identities.insert(identity)
             {
                 return Err(ProjectConfigError::invalid(
                     "configuration trigger is invalid or duplicated",
@@ -1048,19 +1070,15 @@ impl Configuration {
         let mut operation_identities = std::collections::HashSet::new();
         for operation in &self.operation_configurations {
             let identity = [
-                string_member(operation, "connectorId"),
-                string_member(operation, "connectionName"),
-                string_member(operation, "operationId"),
-                string_member(operation, "flowType"),
-                string_member(operation, "stepType"),
+                operation.connector_id.as_str(),
+                operation.connection_name.as_str(),
+                operation.operation_id.as_str(),
+                operation.flow_type.as_str(),
+                operation.step_type.as_str(),
             ];
-            if !identities.contains(&(identity[0].as_str(), identity[1].as_str()))
-                || identity[2..].iter().any(String::is_empty)
-                || !operation.get("configuration").is_some_and(Value::is_object)
-                || operation
-                    .keys()
-                    .any(|field| !OPERATION_CONFIGURATION_FIELDS.contains(&field.as_str()))
-                || !operation_identities.insert(identity.clone())
+            if !identities.contains(&(identity[0], identity[1]))
+                || identity[2..].iter().any(|member| member.is_empty())
+                || !operation_identities.insert(identity)
             {
                 return Err(ProjectConfigError::invalid(
                     "configuration operation is invalid or duplicated",
@@ -1124,7 +1142,8 @@ impl Configuration {
     ///
     /// # Errors
     ///
-    /// Returns [`ProjectConfigError::Invalid`] for an invalid document.
+    /// Returns [`ProjectConfigError::Invalid`] for an invalid document or settings outside
+    /// the [`RawJsonObject::to_json_object`] numeric range.
     pub fn to_wire(&self) -> ProjectConfigResult<Value> {
         self.validate()?;
         let mut object = JsonObject::new();
@@ -1140,7 +1159,7 @@ impl Configuration {
                 self.connections
                     .iter()
                     .map(ConnectionConfiguration::to_wire)
-                    .collect(),
+                    .collect::<ProjectConfigResult<_>>()?,
             ),
         );
         object.insert(
@@ -1148,8 +1167,8 @@ impl Configuration {
             Value::Array(
                 self.trigger_bindings
                     .iter()
-                    .map(|entry| Value::Object(in_go_field_order(entry, &TRIGGER_BINDING_FIELDS)))
-                    .collect(),
+                    .map(TriggerConfiguration::to_wire)
+                    .collect::<ProjectConfigResult<_>>()?,
             ),
         );
         object.insert(
@@ -1157,19 +1176,12 @@ impl Configuration {
             Value::Array(
                 self.operation_configurations
                     .iter()
-                    .map(|entry| {
-                        Value::Object(in_go_field_order(entry, &OPERATION_CONFIGURATION_FIELDS))
-                    })
-                    .collect(),
+                    .map(OperationConfiguration::to_wire)
+                    .collect::<ProjectConfigResult<_>>()?,
             ),
         );
-        if !self.environment.is_empty() {
-            let environment = self
-                .environment
-                .iter()
-                .map(|(name, value)| (name.clone(), value.to_wire()))
-                .collect();
-            object.insert("environment".into(), Value::Object(environment));
+        if let Some(environment) = self.environment_wire() {
+            object.insert("environment".into(), environment);
         }
         if let Some(broker) = &self.credential_broker {
             object.insert("credentialBroker".into(), broker.to_wire());
@@ -1231,11 +1243,11 @@ impl Configuration {
                 .collect::<ProjectConfigResult<_>>()?,
             trigger_bindings: triggers
                 .iter()
-                .map(|entry| require_object(Some(entry), "trigger").cloned())
+                .map(TriggerConfiguration::from_wire)
                 .collect::<ProjectConfigResult<_>>()?,
             operation_configurations: operations
                 .iter()
-                .map(|entry| require_object(Some(entry), "operation").cloned())
+                .map(OperationConfiguration::from_wire)
                 .collect::<ProjectConfigResult<_>>()?,
             environment: environment
                 .iter()
@@ -1246,7 +1258,6 @@ impl Configuration {
                 Some(broker) => Some(CredentialBrokerConfiguration::from_wire(broker)?),
             },
             schema_version: string_member(record, "schemaVersion"),
-            nested_raw_json: NestedRawConfigurations::default(),
         };
         configuration.validate()?;
         Ok(configuration)

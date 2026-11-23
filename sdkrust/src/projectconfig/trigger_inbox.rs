@@ -640,27 +640,19 @@ pub fn decode_trigger_event<Payload: DeserializeOwned>(
 /// # Errors
 ///
 /// Returns [`ProjectConfigError::ObjectNotFound`] when the project has no such binding,
-/// [`ProjectConfigError::Invalid`] when its configuration is not an object or does not decode.
+/// [`ProjectConfigError::Invalid`] when its configuration does not decode into `Settings`.
+/// The exact settings text is decoded, so integers beyond 64 bits reach `Settings` unchanged.
 pub fn decode_trigger_configuration<Settings: DeserializeOwned>(
     configuration: &Configuration,
     key: &TriggerInboxKey,
 ) -> Result<Settings, ProjectConfigError> {
-    let field_equals =
-        |entry: &serde_json::Map<String, serde_json::Value>, name: &str, wanted: &str| {
-            entry.get(name).and_then(serde_json::Value::as_str) == Some(wanted)
-        };
     for entry in &configuration.trigger_bindings {
-        if field_equals(entry, "connectorId", &key.connector_id)
-            && field_equals(entry, "connectionName", &key.connection_name)
-            && field_equals(entry, "triggerName", &key.trigger_name)
-            && field_equals(entry, "bindingName", &key.binding_name)
+        if entry.connector_id == key.connector_id
+            && entry.connection_name == key.connection_name
+            && entry.trigger_name == key.trigger_name
+            && entry.binding_name == key.binding_name
         {
-            let Some(value @ serde_json::Value::Object(_)) = entry.get("configuration") else {
-                return Err(ProjectConfigError::Invalid(
-                    "trigger binding configuration must be an object".to_string(),
-                ));
-            };
-            return serde_json::from_value(value.clone()).map_err(|error| {
+            return serde_json::from_str(entry.configuration.as_json_text()).map_err(|error| {
                 ProjectConfigError::Invalid(format!(
                     "trigger binding configuration is invalid: {error}"
                 ))

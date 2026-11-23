@@ -9,7 +9,8 @@
 
 use std::io::{self, BufRead, BufReader, Read, Write};
 use std::net::{IpAddr, Ipv6Addr, SocketAddr, TcpStream, ToSocketAddrs};
-use std::sync::{Arc, mpsc};
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Arc, Mutex, OnceLock, PoisonError, mpsc};
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -29,6 +30,8 @@ const MAXIMUM_RESPONSE_HEADER_COUNT: usize = 256;
 const MAXIMUM_INTERIM_RESPONSES: usize = 8;
 const MAXIMUM_CHUNK_SIZE_LINE_BYTES: usize = 4096;
 const MAXIMUM_TRAILER_BYTES: usize = 64 << 10;
+const SYSTEM_RESOLVER_WORKER_COUNT: usize = 4;
+const SYSTEM_RESOLVER_QUEUE_CAPACITY: usize = 256;
 const DEFAULT_USER_AGENT_HEADER: &str = concat!(
     "User-Agent: dex-connectors-sdk/",
     env!("CARGO_PKG_VERSION"),
@@ -43,6 +46,7 @@ pub(crate) struct BlockingHttp1Transport {
     policy: AddressPolicy,
     // `None` when the TLS configuration cannot be built; HTTPS then fails before dialing.
     tls_configuration: Option<Arc<ClientConfig>>,
+    resolver_pool: Arc<ResolverPool>,
 }
 
 impl BlockingHttp1Transport {
@@ -51,7 +55,25 @@ impl BlockingHttp1Transport {
         Self {
             policy,
             tls_configuration: build_tls_configuration().map(Arc::new),
+            resolver_pool: system_resolver_pool(),
         }
+    }
+
+    #[cfg(test)]
+    fn with_resolver_pool(policy: AddressPolicy, resolver_pool: Arc<ResolverPool>) -> Self {
+        Self {
+            policy,
+            tls_configuration: build_tls_configuration().map(Arc::new),
+            resolver_pool,
+        }
+    }
+
+    /// Resolves `host` within the deadline; `None` for a failed, empty, late, or refused lookup.
+    fn resolve_host(&self, host: &str, port: u16, deadline: Instant) -> Option<Vec<SocketAddr>> {
+        if let Ok(address) = host.parse::<IpAddr>() {
+            return Some(vec![SocketAddr::new(address, port)]);
+        }
+        self.resolver_pool.resolve_before(host, port, deadline)
     }
 
     fn handshake(
@@ -76,7 +98,18 @@ impl ProviderHttpTransport for BlockingHttp1Transport {
         request: &ProviderHttpRequest,
         timeout: Duration,
     ) -> Result<ProviderHttpResponse, ProviderHttpError> {
-        let deadline = Instant::now() + timeout.min(MAXIMUM_REQUEST_TIMEOUT);
+        self.send_before(
+            request,
+            Instant::now() + timeout.min(MAXIMUM_REQUEST_TIMEOUT),
+        )
+    }
+
+    fn send_before(
+        &self,
+        request: &ProviderHttpRequest,
+        deadline: Instant,
+    ) -> Result<ProviderHttpResponse, ProviderHttpError> {
+        let deadline = deadline.min(Instant::now() + MAXIMUM_REQUEST_TIMEOUT);
         let not_sent = || ProviderHttpError::Transport(ProviderTransportError::new(true));
         let scheme = request
             .url
@@ -91,7 +124,9 @@ impl ProviderHttpTransport for BlockingHttp1Transport {
         let target = RequestTarget::parse(&request.url).ok_or_else(not_sent)?;
         let mut encoded_request = encode_request_head(request, &target).ok_or_else(not_sent)?;
         encoded_request.extend_from_slice(&request.body);
-        let resolved = resolve_host(&target.host, target.port, deadline).ok_or_else(not_sent)?;
+        let resolved = self
+            .resolve_host(&target.host, target.port, deadline)
+            .ok_or_else(not_sent)?;
         let addresses = check_resolved_addresses(resolved, &scheme, self.policy)
             .map_err(ProviderHttpError::AddressRefusal)?;
         let stream = connect_first(&addresses, deadline).ok_or_else(not_sent)?;
@@ -114,8 +149,8 @@ impl ProviderHttpTransport for BlockingHttp1Transport {
             .map_err(possibly_sent)?;
         let mut reader = BufReader::new(connection);
         let (status, headers) = read_response_head(&mut reader).map_err(possibly_sent)?;
-        let body =
-            response_body(reader, &request.method, status, &headers).map_err(possibly_sent)?;
+        let framing = choose_response_framing(&request.method, status, &headers);
+        let body = response_body(reader, framing);
         Ok(ProviderHttpResponse::new(
             status,
             ResponseHeaders::new(headers),
@@ -294,29 +329,148 @@ fn encode_request_head(request: &ProviderHttpRequest, target: &RequestTarget) ->
     Some(head.into_bytes())
 }
 
-/// Resolves `host` within the deadline; `None` for a failed, empty, or late answer.
-fn resolve_host(host: &str, port: u16, deadline: Instant) -> Option<Vec<SocketAddr>> {
-    if let Ok(address) = host.parse::<IpAddr>() {
-        return Some(vec![SocketAddr::new(address, port)]);
+/// Blocking hostname lookup: the system resolver in production, a fake in tests.
+pub(crate) trait HostResolver: Send + Sync {
+    /// Returns every address of `host` with `port`.
+    fn resolve_host(&self, host: &str, port: u16) -> io::Result<Vec<SocketAddr>>;
+}
+
+struct SystemHostResolver;
+
+impl HostResolver for SystemHostResolver {
+    fn resolve_host(&self, host: &str, port: u16) -> io::Result<Vec<SocketAddr>> {
+        (host, port).to_socket_addrs().map(Iterator::collect)
     }
-    let (sender, receiver) = mpsc::channel();
-    let lookup_host = host.to_string();
-    // The system resolver cannot time out, so a detached thread runs it under the deadline.
-    thread::Builder::new()
-        .name("dex-provider-dns".to_string())
-        .spawn(move || {
-            let answer = (lookup_host.as_str(), port)
-                .to_socket_addrs()
-                .map(Iterator::collect::<Vec<SocketAddr>>);
-            // The requester may have stopped waiting at its deadline.
-            let _receiver_gone = sender.send(answer);
+}
+
+/// One process-wide pool, so every transport shares the same bounded resolver threads.
+fn system_resolver_pool() -> Arc<ResolverPool> {
+    static SYSTEM_RESOLVER_POOL: OnceLock<Arc<ResolverPool>> = OnceLock::new();
+    SYSTEM_RESOLVER_POOL
+        .get_or_init(|| {
+            Arc::new(ResolverPool::new(
+                Arc::new(SystemHostResolver),
+                SYSTEM_RESOLVER_WORKER_COUNT,
+                SYSTEM_RESOLVER_QUEUE_CAPACITY,
+            ))
         })
-        .ok()?;
-    let answer = receiver
-        .recv_timeout(deadline.saturating_duration_since(Instant::now()))
-        .ok()?
-        .ok()?;
-    (!answer.is_empty()).then_some(answer)
+        .clone()
+}
+
+type ResolutionAnswer = io::Result<Vec<SocketAddr>>;
+
+struct ResolutionTask {
+    host: String,
+    port: u16,
+    deadline: Instant,
+    answer_sender: mpsc::SyncSender<ResolutionAnswer>,
+}
+
+/// Lazily started fixed resolver threads with a bounded queue; expired lookups are abandoned.
+pub(crate) struct ResolverPool {
+    resolver: Arc<dyn HostResolver>,
+    worker_count: usize,
+    queue_capacity: usize,
+    task_sender: OnceLock<mpsc::SyncSender<ResolutionTask>>,
+    live_worker_count: Arc<AtomicUsize>,
+}
+
+impl ResolverPool {
+    /// Creates a pool whose `worker_count` threads start on the first lookup.
+    pub(crate) fn new(
+        resolver: Arc<dyn HostResolver>,
+        worker_count: usize,
+        queue_capacity: usize,
+    ) -> Self {
+        Self {
+            resolver,
+            worker_count,
+            queue_capacity,
+            task_sender: OnceLock::new(),
+            live_worker_count: Arc::new(AtomicUsize::new(0)),
+        }
+    }
+
+    /// Resolves within the deadline; `None` for a full queue or a failed, empty, or late answer.
+    fn resolve_before(&self, host: &str, port: u16, deadline: Instant) -> Option<Vec<SocketAddr>> {
+        let remaining = deadline.saturating_duration_since(Instant::now());
+        if remaining.is_zero() {
+            return None;
+        }
+        let (answer_sender, answer_receiver) = mpsc::sync_channel(1);
+        let task = ResolutionTask {
+            host: host.to_string(),
+            port,
+            deadline,
+            answer_sender,
+        };
+        // A full queue fails at once instead of letting abandoned lookups accumulate.
+        self.task_sender().try_send(task).ok()?;
+        let answer = answer_receiver.recv_timeout(remaining).ok()?.ok()?;
+        (!answer.is_empty()).then_some(answer)
+    }
+
+    fn task_sender(&self) -> &mpsc::SyncSender<ResolutionTask> {
+        self.task_sender.get_or_init(|| self.start_workers())
+    }
+
+    fn start_workers(&self) -> mpsc::SyncSender<ResolutionTask> {
+        let (task_sender, task_receiver) = mpsc::sync_channel(self.queue_capacity);
+        let task_receiver = Arc::new(Mutex::new(task_receiver));
+        for _ in 0..self.worker_count {
+            self.live_worker_count.fetch_add(1, Ordering::SeqCst);
+            let worker = ResolverWorker {
+                resolver: Arc::clone(&self.resolver),
+                task_receiver: Arc::clone(&task_receiver),
+                live_worker_count: Arc::clone(&self.live_worker_count),
+            };
+            // A failed spawn drops the worker; with no workers, every lookup fails as not sent.
+            let _spawn_result = thread::Builder::new()
+                .name("dex-provider-dns".to_string())
+                .spawn(move || worker.run());
+        }
+        task_sender
+    }
+
+    #[cfg(test)]
+    fn live_worker_count(&self) -> Arc<AtomicUsize> {
+        Arc::clone(&self.live_worker_count)
+    }
+}
+
+/// One resolver thread; dropping it, on exit or failed spawn, releases its live count.
+struct ResolverWorker {
+    resolver: Arc<dyn HostResolver>,
+    task_receiver: Arc<Mutex<mpsc::Receiver<ResolutionTask>>>,
+    live_worker_count: Arc<AtomicUsize>,
+}
+
+impl ResolverWorker {
+    fn run(self) {
+        loop {
+            // The lock guard ends with this statement, so a hanging lookup blocks one worker.
+            let next_task = self
+                .task_receiver
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .recv();
+            let Ok(task) = next_task else {
+                return;
+            };
+            if Instant::now() >= task.deadline {
+                continue;
+            }
+            let answer = self.resolver.resolve_host(&task.host, task.port);
+            // The requester may have stopped waiting at its deadline.
+            let _requester_gone = task.answer_sender.try_send(answer);
+        }
+    }
+}
+
+impl Drop for ResolverWorker {
+    fn drop(&mut self) {
+        self.live_worker_count.fetch_sub(1, Ordering::SeqCst);
+    }
 }
 
 fn connect_first(addresses: &[SocketAddr], deadline: Instant) -> Option<TcpStream> {
@@ -485,57 +639,90 @@ fn read_header_lines(
     }
 }
 
-/// Chooses the body framing from the method, status, and headers.
-fn response_body(
-    reader: BufReader<ProviderConnection>,
+/// How the response body ends.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum ResponseFraming {
+    Empty,
+    ContentLength(u64),
+    Chunked,
+    UntilClose,
+}
+
+/// Validates framing headers, then chooses the body framing; RFC 9112 rejects TE with CL.
+fn choose_response_framing(
     method: &str,
     status: u16,
     headers: &[(String, String)],
-) -> io::Result<Box<dyn Read + Send>> {
-    if method.eq_ignore_ascii_case("HEAD") || status == 204 || status == 304 {
-        return Ok(Box::new(io::empty()));
-    }
-    if let Some(final_coding) = header_list_values(headers, "transfer-encoding").last() {
-        if final_coding.eq_ignore_ascii_case("chunked") {
-            return Ok(Box::new(ChunkedBody {
-                reader,
-                remaining_in_chunk: 0,
-                is_finished: false,
-            }));
+) -> Result<ResponseFraming, &'static str> {
+    let header_values = |name: &'static str| {
+        headers
+            .iter()
+            .filter(move |(candidate, _)| candidate.eq_ignore_ascii_case(name))
+            .map(|(_, value)| value.as_str())
+    };
+    let transfer_codings: Vec<&str> = header_values("transfer-encoding")
+        .flat_map(|value| value.split(','))
+        .map(str::trim)
+        .collect();
+    let is_chunked = !transfer_codings.is_empty();
+    if is_chunked {
+        if transfer_codings.len() != 1 || !transfer_codings[0].eq_ignore_ascii_case("chunked") {
+            return Err("provider Transfer-Encoding is not exactly chunked");
         }
-        return Ok(Box::new(reader));
+        if header_values("content-length").next().is_some() {
+            return Err("provider sent both Transfer-Encoding and Content-Length");
+        }
     }
     let mut content_length = None;
-    for value in header_list_values(headers, "content-length") {
+    for value in header_values("content-length") {
         let parsed = Some(value)
-            .filter(|value| value.bytes().all(|byte| byte.is_ascii_digit()))
+            .filter(|value| !value.is_empty() && value.bytes().all(|byte| byte.is_ascii_digit()))
             .and_then(|value| value.parse::<u64>().ok())
-            .ok_or_else(|| invalid_response("provider Content-Length is invalid"))?;
+            .ok_or("provider Content-Length is invalid")?;
         if content_length.is_some_and(|previous| previous != parsed) {
-            return Err(invalid_response("provider Content-Length values conflict"));
+            return Err("provider Content-Length values conflict");
         }
         content_length = Some(parsed);
     }
-    match content_length {
-        Some(length) => Ok(Box::new(ContentLengthBody {
+    if method.eq_ignore_ascii_case("HEAD") || status == 204 || status == 304 {
+        return Ok(ResponseFraming::Empty);
+    }
+    if is_chunked {
+        return Ok(ResponseFraming::Chunked);
+    }
+    Ok(content_length.map_or(ResponseFraming::UntilClose, ResponseFraming::ContentLength))
+}
+
+/// Builds the streamed body; invalid framing closes the connection and fails every read.
+fn response_body(
+    reader: BufReader<ProviderConnection>,
+    framing: Result<ResponseFraming, &'static str>,
+) -> Box<dyn Read + Send> {
+    match framing {
+        Ok(ResponseFraming::Empty) => Box::new(io::empty()),
+        Ok(ResponseFraming::ContentLength(length)) => Box::new(ContentLengthBody {
             reader,
             remaining: length,
-        })),
-        None => Ok(Box::new(reader)),
+        }),
+        Ok(ResponseFraming::Chunked) => Box::new(ChunkedBody {
+            reader,
+            remaining_in_chunk: 0,
+            is_finished: false,
+        }),
+        Ok(ResponseFraming::UntilClose) => Box::new(reader),
+        Err(message) => Box::new(InvalidFramingBody { message }),
     }
 }
 
-/// Returns the nonempty comma-separated elements of every `name` header, in order.
-fn header_list_values<'headers>(
-    headers: &'headers [(String, String)],
-    name: &'headers str,
-) -> impl Iterator<Item = &'headers str> {
-    headers
-        .iter()
-        .filter(move |(candidate, _)| candidate.eq_ignore_ascii_case(name))
-        .flat_map(|(_, value)| value.split(','))
-        .map(str::trim)
-        .filter(|value| !value.is_empty())
+/// Body of a response whose framing is invalid; status and headers stay usable.
+struct InvalidFramingBody {
+    message: &'static str,
+}
+
+impl Read for InvalidFramingBody {
+    fn read(&mut self, _buffer: &mut [u8]) -> io::Result<usize> {
+        Err(invalid_response(self.message))
+    }
 }
 
 /// Body of exactly `remaining` bytes; an early close is an error, not a short body.
@@ -653,6 +840,246 @@ mod tests {
         assert!(decode_chunked(b"4\r\nWikiXX").is_err());
         assert!(decode_chunked(b"zz\r\n").is_err());
         assert!(decode_chunked(b"4\r\nWiki\r\n").is_err());
+    }
+
+    fn framing_of(
+        method: &str,
+        status: u16,
+        headers: &[(&str, &str)],
+    ) -> Result<ResponseFraming, &'static str> {
+        let headers: Vec<(String, String)> = headers
+            .iter()
+            .map(|(name, value)| ((*name).to_string(), (*value).to_string()))
+            .collect();
+        choose_response_framing(method, status, &headers)
+    }
+
+    /// Method, status, headers, and the framing they select.
+    type FramingCase = (
+        &'static str,
+        u16,
+        &'static [(&'static str, &'static str)],
+        ResponseFraming,
+    );
+
+    #[test]
+    fn response_framing_accepts_supported_forms() {
+        let cases: [FramingCase; 8] = [
+            (
+                "GET",
+                200,
+                &[("Content-Length", "5")],
+                ResponseFraming::ContentLength(5),
+            ),
+            (
+                "GET",
+                200,
+                &[("Content-Length", "5"), ("content-length", "5")],
+                ResponseFraming::ContentLength(5),
+            ),
+            (
+                "GET",
+                200,
+                &[("Transfer-Encoding", "Chunked")],
+                ResponseFraming::Chunked,
+            ),
+            ("GET", 200, &[], ResponseFraming::UntilClose),
+            (
+                "HEAD",
+                200,
+                &[("Content-Length", "99")],
+                ResponseFraming::Empty,
+            ),
+            ("GET", 204, &[], ResponseFraming::Empty),
+            (
+                "GET",
+                304,
+                &[("Transfer-Encoding", "chunked")],
+                ResponseFraming::Empty,
+            ),
+            (
+                "GET",
+                429,
+                &[("Content-Length", "0")],
+                ResponseFraming::ContentLength(0),
+            ),
+        ];
+        for (method, status, headers, expected) in cases {
+            assert_eq!(
+                framing_of(method, status, headers),
+                Ok(expected),
+                "{headers:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn response_framing_rejects_ambiguous_or_unsupported_forms() {
+        let cases: [&[(&str, &str)]; 14] = [
+            &[("Content-Length", "")],
+            &[("Content-Length", "abc")],
+            &[("Content-Length", "-1")],
+            &[("Content-Length", "+5")],
+            &[("Content-Length", "5,")],
+            &[("Content-Length", "5, 5")],
+            &[("Content-Length", "99999999999999999999999")],
+            &[("Content-Length", "5"), ("Content-Length", "6")],
+            &[("Transfer-Encoding", "gzip")],
+            &[("Transfer-Encoding", "gzip, chunked")],
+            &[("Transfer-Encoding", "chunked, chunked")],
+            &[
+                ("Transfer-Encoding", "chunked"),
+                ("Transfer-Encoding", "chunked"),
+            ],
+            &[("Transfer-Encoding", "")],
+            &[("Transfer-Encoding", "chunked"), ("Content-Length", "5")],
+        ];
+        for headers in cases {
+            assert!(framing_of("GET", 200, headers).is_err(), "{headers:?}");
+        }
+        // Framing headers are validated even when the response carries no body.
+        assert!(
+            framing_of(
+                "HEAD",
+                200,
+                &[("Content-Length", "5"), ("Content-Length", "6")]
+            )
+            .is_err()
+        );
+        assert!(framing_of("GET", 204, &[("Transfer-Encoding", "gzip")]).is_err());
+    }
+
+    /// Resolver that blocks until released and records how many lookups run at once.
+    struct HangingResolver {
+        is_released: Mutex<bool>,
+        release_signal: std::sync::Condvar,
+        active_lookup_count: AtomicUsize,
+        most_active_lookup_count: AtomicUsize,
+    }
+
+    impl HangingResolver {
+        fn release(&self) {
+            *self
+                .is_released
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner) = true;
+            self.release_signal.notify_all();
+        }
+    }
+
+    impl HostResolver for HangingResolver {
+        fn resolve_host(&self, _host: &str, _port: u16) -> io::Result<Vec<SocketAddr>> {
+            let active = self.active_lookup_count.fetch_add(1, Ordering::SeqCst) + 1;
+            self.most_active_lookup_count
+                .fetch_max(active, Ordering::SeqCst);
+            let mut is_released = self
+                .is_released
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner);
+            while !*is_released {
+                is_released = self
+                    .release_signal
+                    .wait(is_released)
+                    .unwrap_or_else(PoisonError::into_inner);
+            }
+            drop(is_released);
+            self.active_lookup_count.fetch_sub(1, Ordering::SeqCst);
+            Ok(vec![SocketAddr::from(([127, 0, 0, 1], 9))])
+        }
+    }
+
+    /// Releases hung lookups even when an assertion fails first.
+    struct ReleaseOnDrop(Arc<HangingResolver>);
+
+    impl Drop for ReleaseOnDrop {
+        fn drop(&mut self) {
+            self.0.release();
+        }
+    }
+
+    fn wait_until(description: &str, condition: impl Fn() -> bool) {
+        let started = Instant::now();
+        while !condition() {
+            assert!(
+                started.elapsed() < Duration::from_secs(10),
+                "timed out waiting for {description}"
+            );
+            thread::yield_now();
+        }
+    }
+
+    #[test]
+    fn hanging_resolver_keeps_resolver_threads_bounded() {
+        const WORKER_COUNT: usize = 2;
+        const QUEUE_CAPACITY: usize = 3;
+        const REQUEST_COUNT: usize = 20;
+        let request_timeout = Duration::from_millis(300);
+        let resolver = Arc::new(HangingResolver {
+            is_released: Mutex::new(false),
+            release_signal: std::sync::Condvar::new(),
+            active_lookup_count: AtomicUsize::new(0),
+            most_active_lookup_count: AtomicUsize::new(0),
+        });
+        let release_guard = ReleaseOnDrop(Arc::clone(&resolver));
+        let pool = Arc::new(ResolverPool::new(
+            Arc::clone(&resolver) as Arc<dyn HostResolver>,
+            WORKER_COUNT,
+            QUEUE_CAPACITY,
+        ));
+        let live_worker_count = pool.live_worker_count();
+        assert_eq!(
+            live_worker_count.load(Ordering::SeqCst),
+            0,
+            "workers start lazily"
+        );
+        let transport = BlockingHttp1Transport::with_resolver_pool(
+            AddressPolicy::Unrestricted,
+            Arc::clone(&pool),
+        );
+        let request = ProviderHttpRequest::new("POST", "http://hanging.example/items")
+            .body(b"write".to_vec());
+        let mut fast_failure_count = 0;
+        for _ in 0..REQUEST_COUNT {
+            let started = Instant::now();
+            let Err(ProviderHttpError::Transport(error)) =
+                transport.send(&request, request_timeout)
+            else {
+                panic!("a hanging lookup must fail as a transport error");
+            };
+            let elapsed = started.elapsed();
+            assert!(error.provably_not_sent);
+            assert!(
+                elapsed < request_timeout + Duration::from_secs(1),
+                "{elapsed:?}"
+            );
+            if elapsed < request_timeout / 2 {
+                fast_failure_count += 1;
+            }
+            assert!(live_worker_count.load(Ordering::SeqCst) <= WORKER_COUNT);
+        }
+        // Each worker holds one hung lookup and the queue holds abandoned tasks; the rest fail fast.
+        assert!(
+            fast_failure_count >= REQUEST_COUNT - WORKER_COUNT - QUEUE_CAPACITY,
+            "{fast_failure_count}"
+        );
+        wait_until("every worker to hang", || {
+            resolver.active_lookup_count.load(Ordering::SeqCst) == WORKER_COUNT
+        });
+        assert_eq!(
+            resolver.most_active_lookup_count.load(Ordering::SeqCst),
+            WORKER_COUNT
+        );
+        assert_eq!(live_worker_count.load(Ordering::SeqCst), WORKER_COUNT);
+        drop(release_guard);
+        drop(transport);
+        drop(pool);
+        wait_until("resolver workers to exit", || {
+            live_worker_count.load(Ordering::SeqCst) == 0
+        });
+        assert_eq!(
+            resolver.most_active_lookup_count.load(Ordering::SeqCst),
+            WORKER_COUNT
+        );
     }
 
     #[test]

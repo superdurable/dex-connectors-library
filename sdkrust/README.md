@@ -71,6 +71,9 @@ Execute attempt.
   `run_query` or `run_mutation` itself uses the same mapping.
 - `StepAttempt` holds one Execute attempt's Call occurrences and its Fence checkpoint. It also
   holds the progress Stream and the text Stream.
+- A Step that runs a Mutation itself calls `run_step_mutation`. It assigns the Call
+  occurrence and the concurrency admission together. `run_mutation` refuses a Call from
+  `StepAttempt::new_call` with `defect`; `new_call` serves Queries.
 
 The complete example below is the minimal consuming application. Its full runnable form is
 `tests/dex_integration.rs`:
@@ -268,8 +271,28 @@ refresh does these steps in order:
 3. Exchange the credential with the provider.
 4. Publish the result.
 
-A connection deleted in Dex Web stops resolving with `ProjectConfigError::ConnectionNotInFile`.
-After deletion it is never refreshed and never sent to the provider. `projectconfig::trigger_inbox` holds the durable
+Once a connection is deleted in Dex Web, the SDK refuses it at two points:
+- Reading its credential again fails with `ProjectConfigError::ConnectionNotInFile`.
+- A refresh fails with the retryable `ProjectConfigError::RefreshFailed`, and no provider
+  request is sent.
+
+A credential the SDK returned before the deletion is outside these checks.
+
+The final write-back builds the new `connections.json` from a single read. Just before the
+rename it checks that the file bytes are unchanged. If Dex Web deleted, re-authorized, or
+duplicated the connection in the meantime, the write-back is aborted and the refreshed
+credential is not published. A writer that does not take `connections.json.lock` can still
+change the file between that last check and the rename.
+
+The `configuration` field of a connection, a Trigger binding, or an operation holds a
+`RawJsonObject`. It keeps the exact settings text, like Go's `json.RawMessage`, so numbers
+such as `1e400` or `12345678901234567890123` survive a rewrite byte for byte.
+- `decode::<T>()` gives exact typed access.
+- `to_json_object()` returns an error rather than approximate an integer outside the i64 and
+  u64 ranges, or a number outside the finite f64 range.
+
+Provider HTTP requests stop at a deadline. The client caps that deadline at 24 hours from the
+send. `projectconfig::trigger_inbox` holds the durable
 Trigger inbox.
 
 ## Triggers

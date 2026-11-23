@@ -11,6 +11,7 @@ use std::sync::{Arc, Mutex};
 
 use base64::Engine;
 use serde_json::Value;
+use serde_json::value::RawValue;
 use sha2::{Digest, Sha256};
 
 use super::connections::{ConnectionKey, ConnectionStore, CredentialMaterial};
@@ -19,6 +20,9 @@ use super::models::{
     JsonObject, LOCAL_CONNECTIONS_SCHEMA_VERSION, Scope, go_canonical_json_bytes, require_object,
     sha256_hex,
 };
+use super::raw_json::{
+    RawJsonMembers, decode_raw_members, decode_raw_object_array, raw_member_value,
+};
 use super::refresh_lock::{FileRefreshLock, HeldRefreshLock};
 use super::storage::{
     InMemoryObjectStore, ObjectStore, ProjectObject, local_object_byte_limit, lock,
@@ -26,12 +30,7 @@ use super::storage::{
 };
 use crate::timestamps::Rfc3339NanoTimestamp;
 
-/// Reads a Dex Web owner-only regular JSON file without following symlinks.
-pub(crate) fn read_private_file(path: &Path) -> ProjectConfigResult<JsonObject> {
-    decode_private_file(path, &read_private_bytes(path)?)
-}
-
-fn private_file_name(path: &Path) -> String {
+pub(crate) fn private_file_name(path: &Path) -> String {
     path.file_name()
         .map_or_else(String::new, |name| name.to_string_lossy().into_owned())
 }
@@ -49,12 +48,117 @@ pub(crate) fn read_private_bytes(path: &Path) -> ProjectConfigResult<Vec<u8>> {
     fs::read(path).map_err(|_| ProjectConfigError::Io(format!("{name} cannot be read")))
 }
 
-/// Decodes bytes read by [`read_private_bytes`] as one JSON object.
-pub(crate) fn decode_private_file(path: &Path, contents: &[u8]) -> ProjectConfigResult<JsonObject> {
+/// Decodes private file bytes as one object whose members stay raw, so `1e400` survives.
+pub(crate) fn decode_private_raw_file(
+    path: &Path,
+    contents: &[u8],
+) -> ProjectConfigResult<RawJsonMembers> {
     let name = private_file_name(path);
-    let document: Value = serde_json::from_slice(contents)
+    let text = std::str::from_utf8(contents)
         .map_err(|_| ProjectConfigError::invalid(format!("{name} must be a JSON object")))?;
-    Ok(require_object(Some(&document), &name)?.clone())
+    decode_raw_members(text, &name)
+}
+
+/// Dex Web `connections.json` decoded one level deep from one read of its bytes.
+pub(crate) struct DexWebConnectionsFile {
+    members: RawJsonMembers,
+    connections: Vec<RawJsonMembers>,
+}
+
+impl DexWebConnectionsFile {
+    /// Decodes the file and requires its schema version and `connections` array.
+    pub(crate) fn decode(path: &Path, contents: &[u8]) -> ProjectConfigResult<Self> {
+        let members = decode_private_raw_file(path, contents)?;
+        if raw_member_value(&members, "schemaVersion")?
+            != Some(Value::String(LOCAL_CONNECTIONS_SCHEMA_VERSION.into()))
+        {
+            return Err(ProjectConfigError::invalid(
+                "unsupported connector configuration schema version",
+            ));
+        }
+        let connections = decode_raw_object_array(&members, "connections", "connection")?
+            .ok_or_else(|| ProjectConfigError::invalid("connections.json requires connections"))?;
+        Ok(Self {
+            members,
+            connections,
+        })
+    }
+
+    /// Returns the raw connection records in file order.
+    pub(crate) fn connections(&self) -> &[RawJsonMembers] {
+        &self.connections
+    }
+
+    /// Returns the raw top-level members.
+    pub(crate) fn members(&self) -> &RawJsonMembers {
+        &self.members
+    }
+
+    /// Encodes the file with `key`'s credential replaced, as Go's raw `MarshalIndent` write-back.
+    fn encode_with_credential(
+        &self,
+        key: &ConnectionKey,
+        material: &CredentialMaterial,
+    ) -> ProjectConfigResult<Vec<u8>> {
+        let encoding_failed = || ProjectConfigError::invalid("connections.json cannot be encoded");
+        let raw_text = |text: String| RawValue::from_string(text).map_err(|_| encoding_failed());
+        let mut records = self.connections.clone();
+        let record = records
+            .iter_mut()
+            .find(|record| record_key(record).is_ok_and(|record_key| record_key == *key))
+            .ok_or_else(|| {
+                ProjectConfigError::ConnectionNotInFile(
+                    "the connection is no longer in connections.json".into(),
+                )
+            })?;
+        let credentials = go_canonical_json_bytes(&Value::Object(material.credentials.clone()))?;
+        record.insert(
+            "credentials".into(),
+            raw_text(String::from_utf8(credentials).map_err(|_| encoding_failed())?)?,
+        );
+        match &material.expires_at {
+            None => {
+                record.remove("credentialExpiresAt");
+            }
+            Some(expires_at) => {
+                let expiry = crate::go_json::to_go_json_string(&to_utc(expires_at).to_string())
+                    .map_err(|_| encoding_failed())?;
+                record.insert("credentialExpiresAt".into(), raw_text(expiry)?);
+            }
+        }
+        let mut file = self.members.clone();
+        let records = crate::go_json::to_go_json_string(&records).map_err(|_| encoding_failed())?;
+        file.insert("connections".into(), raw_text(records)?);
+        let compacted: RawJsonMembers = file
+            .into_iter()
+            .map(|(name, raw)| {
+                Ok((
+                    name,
+                    raw_text(crate::go_json::compact_go_raw_message(raw.get()))?,
+                ))
+            })
+            .collect::<ProjectConfigResult<_>>()?;
+        let compact =
+            crate::go_json::to_go_json_string(&compacted).map_err(|_| encoding_failed())?;
+        let mut encoded = crate::go_json::indent_go_json(&compact, "  ").into_bytes();
+        encoded.push(b'\n');
+        Ok(encoded)
+    }
+}
+
+/// Returns a raw record's connection identity, read as Go's typed decode reads strings.
+pub(crate) fn record_key(record: &RawJsonMembers) -> ProjectConfigResult<ConnectionKey> {
+    let text = |name: &str| -> ProjectConfigResult<String> {
+        Ok(match raw_member_value(record, name)? {
+            Some(Value::String(text)) => text,
+            None | Some(Value::Null) => String::new(),
+            Some(other) => other.to_string(),
+        })
+    };
+    Ok(ConnectionKey::new(
+        text("connectorId")?,
+        text("connectionName")?,
+    ))
 }
 
 #[cfg(unix)]
@@ -81,10 +185,10 @@ impl LocalConnectionsListing {
         &self,
         scope: &Scope,
         head_key: &str,
-    ) -> ProjectConfigResult<()> {
+    ) -> ProjectConfigResult<ConnectionKey> {
         for (key, count) in &self.listing_counts {
             if format!("{}/head", key.path(scope)?) == head_key {
-                return require_only_listing(key, *count);
+                return require_only_listing(key, *count).map(|()| key.clone());
             }
         }
         Err(ProjectConfigError::ConnectionNotInFile(
@@ -114,40 +218,32 @@ fn require_only_listing(key: &ConnectionKey, count: usize) -> ProjectConfigResul
 /// Reads current Dex Web credential objects without changing frozen settings.
 ///
 /// As in Go, a duplicated connection fails only that connection's resolutions.
-fn decode_local_credentials(source: &JsonObject) -> ProjectConfigResult<LocalConnectionsListing> {
-    if source.get("schemaVersion") != Some(&Value::String(LOCAL_CONNECTIONS_SCHEMA_VERSION.into()))
-    {
-        return Err(ProjectConfigError::invalid(
-            "unsupported connector configuration schema version",
-        ));
-    }
-    let connections = source
-        .get("connections")
-        .and_then(Value::as_array)
-        .ok_or_else(|| ProjectConfigError::invalid("connections.json requires connections"))?;
+fn decode_local_credentials(
+    file: &DexWebConnectionsFile,
+) -> ProjectConfigResult<LocalConnectionsListing> {
     let local_scope = Scope::new("local", "preview");
     let mut credentials = HashMap::new();
     let mut listing_counts: HashMap<ConnectionKey, usize> = HashMap::new();
-    for (index, raw) in connections.iter().enumerate() {
-        let record = require_object(Some(raw), &format!("connection {index}"))?;
-        let key = ConnectionKey::new(
-            super::models::string_member(record, "connectorId"),
-            super::models::string_member(record, "connectionName"),
-        );
+    for record in file.connections() {
+        let key = record_key(record)?;
         key.path(&local_scope)?;
         *listing_counts.entry(key.clone()).or_default() += 1;
-        let material = require_object(record.get("credentials"), "credentials")?.clone();
-        let auth_method = match record.get("authMethodId").and_then(Value::as_str) {
-            Some(method) if !method.is_empty() => method.to_string(),
-            _ => match record.get("authMethodIds").and_then(Value::as_array) {
-                Some(methods) if methods.len() == 1 => match &methods[0] {
+        let material = require_object(
+            raw_member_value(record, "credentials")?.as_ref(),
+            "credentials",
+        )?
+        .clone();
+        let auth_method = match raw_member_value(record, "authMethodId")? {
+            Some(Value::String(method)) if !method.is_empty() => method,
+            _ => match raw_member_value(record, "authMethodIds")? {
+                Some(Value::Array(methods)) if methods.len() == 1 => match &methods[0] {
                     Value::String(method) => method.clone(),
                     other => other.to_string(),
                 },
                 _ => "local".to_string(),
             },
         };
-        let expires_at = match record.get("credentialExpiresAt") {
+        let expires_at = match raw_member_value(record, "credentialExpiresAt")?.as_ref() {
             None | Some(Value::Null) => None,
             Some(Value::String(text)) if text.is_empty() => None,
             Some(Value::String(text)) => {
@@ -234,6 +330,9 @@ pub struct DexWebObjectStore {
     refresh_lock: FileRefreshLock,
     sync_lock: Mutex<()>,
     imported: Mutex<HashMap<ConnectionKey, String>>,
+    /// Runs once inside the next pre-rename check, so tests interleave another writer.
+    #[cfg(test)]
+    before_rename_check: Mutex<Option<Box<dyn FnOnce() + Send>>>,
 }
 
 impl DexWebObjectStore {
@@ -256,6 +355,8 @@ impl DexWebObjectStore {
             refresh_lock: FileRefreshLock::beside(connections_path),
             sync_lock: Mutex::new(()),
             imported: Mutex::new(HashMap::new()),
+            #[cfg(test)]
+            before_rename_check: Mutex::new(None),
         };
         {
             let _sync = lock(&store.sync_lock);
@@ -267,7 +368,9 @@ impl DexWebObjectStore {
     /// Adopts credentials Dex Web saved since the last call and returns the listing read.
     /// The caller holds `sync_lock`.
     fn sync(&self) -> ProjectConfigResult<LocalConnectionsListing> {
-        let listing = decode_local_credentials(&read_private_file(&self.path)?)?;
+        let contents = read_private_bytes(&self.path)?;
+        let listing =
+            decode_local_credentials(&DexWebConnectionsFile::decode(&self.path, &contents)?)?;
         for (key, material) in &listing.credentials {
             let digest = credential_digest(material);
             if lock(&self.imported).get(key) == Some(&digest) {
@@ -303,117 +406,97 @@ impl DexWebObjectStore {
     ) -> ProjectConfigResult<bool> {
         let _sync = lock(&self.sync_lock);
         let contents = read_private_bytes(&self.path)?;
-        let listing = decode_local_credentials(&decode_private_file(&self.path, &contents)?)?;
+        let listing =
+            decode_local_credentials(&DexWebConnectionsFile::decode(&self.path, &contents)?)?;
         listing.require_only_listing(key)?;
         let file_digest = listing.credentials.get(key).map(credential_digest);
         if file_digest.is_none() || file_digest != lock(&self.imported).get(key).cloned() {
             return Ok(false);
         }
         // A writer that skips the lock could replace the file after this read; keep its write.
-        write_private_file_checked(&self.path, &contents, || {
-            if read_private_bytes(&self.path)? == contents {
-                Ok(())
-            } else {
-                Err(ProjectConfigError::ObjectConflict(
-                    "connections.json changed during the write-back check".into(),
-                ))
-            }
-        })?;
+        self.write_if_file_unchanged(&contents, &contents)?;
         Ok(true)
     }
 
-    fn write_back(&self, head: &ProjectObject) {
-        if let Err(error) = self.try_write_back(head) {
-            tracing::warn!(reason = %error, "local connector credential write-back skipped");
-        }
-    }
-
-    fn try_write_back(&self, head: &ProjectObject) -> ProjectConfigResult<()> {
-        let document: Value = serde_json::from_slice(&head.contents)
-            .map_err(|_| ProjectConfigError::invalid("connection head is invalid"))?;
-        let record = require_object(Some(&document), "connection head")?;
-        if record.get("status").and_then(Value::as_str) != Some("READY")
-            || !record.get("credential").is_some_and(Value::is_object)
-        {
-            return Ok(());
-        }
-        let identity = require_object(record.get("connection"), "connection identity")?;
-        let key = ConnectionKey::new(
-            super::models::string_member(identity, "connectorId"),
-            super::models::string_member(identity, "connectionName"),
-        );
-        let (material, _) = self.connections.read_credential_material(&key)?;
+    /// Writes a READY head's credential to the file first; an error means do not publish.
+    ///
+    /// Returns the written digest; `None` when skipped or after a logged I/O failure, as Go.
+    fn write_back_before_publish(
+        &self,
+        key: &ConnectionKey,
+        head_contents: &[u8],
+    ) -> ProjectConfigResult<Option<String>> {
+        let material = match self.connections.decode_record(key, head_contents) {
+            Ok(record) if record.status == "READY" && record.credential.is_some() => {
+                match self.connections.read_material(key, &record) {
+                    Ok(material) => material,
+                    Err(error) => {
+                        tracing::warn!(reason = %error, "local connector credential write-back skipped");
+                        return Ok(None);
+                    }
+                }
+            }
+            Ok(_) => return Ok(None),
+            Err(error) => {
+                tracing::warn!(reason = %error, "local connector credential write-back skipped");
+                return Ok(None);
+            }
+        };
         let digest = credential_digest(&material);
-        if lock(&self.imported).get(&key) == Some(&digest) {
-            return Ok(());
+        if lock(&self.imported).get(key) == Some(&digest) {
+            return Ok(None);
         }
-        self.replace_in_file(&key, &material)?;
-        lock(&self.imported).insert(key, digest);
-        Ok(())
+        match self.replace_in_file(key, &material) {
+            Ok(()) => Ok(Some(digest)),
+            Err(ProjectConfigError::Io(message)) => {
+                tracing::error!(
+                    reason = %message,
+                    "local connector credential write-back failed; other processes and a restart keep the previous credential"
+                );
+                Ok(None)
+            }
+            Err(error) => Err(error),
+        }
     }
 
+    /// Replaces `key`'s credential, building and checking the new file from one read.
+    ///
+    /// Deleted or duplicated: `ConnectionNotInFile`; newer credential or changed file: `ObjectConflict`.
     fn replace_in_file(
         &self,
         key: &ConnectionKey,
         material: &CredentialMaterial,
     ) -> ProjectConfigResult<()> {
-        let mut source = read_private_file(&self.path)?;
-        let imported_digest = lock(&self.imported).get(key).cloned();
-        let records = source
-            .get_mut("connections")
-            .and_then(Value::as_array_mut)
-            .ok_or_else(|| ProjectConfigError::invalid("connections.json requires connections"))?;
-        let record = records
-            .iter_mut()
-            .filter_map(Value::as_object_mut)
-            .find(|record| {
-                record.get("connectorId").and_then(Value::as_str) == Some(key.connector_id.as_str())
-                    && record.get("connectionName").and_then(Value::as_str)
-                        == Some(key.connection_name.as_str())
-            })
-            .ok_or_else(|| {
-                ProjectConfigError::invalid("the connection is no longer in the file")
-            })?;
-        let prior = require_object(record.get("credentials"), "credentials")?.clone();
-        let prior_expiry = match record.get("credentialExpiresAt") {
-            None | Some(Value::Null) => None,
-            Some(Value::String(text)) if text.is_empty() => None,
-            Some(Value::String(text)) => Some(Rfc3339NanoTimestamp::from_wire(text)?),
-            Some(_) => {
-                return Err(ProjectConfigError::invalid(
-                    "local credential expiry is invalid",
-                ));
-            }
-        };
-        let prior_digest = credential_digest(&CredentialMaterial {
-            credentials: prior,
-            expires_at: prior_expiry,
-            auth_method: material.auth_method.clone(),
-        });
-        if Some(prior_digest) != imported_digest {
-            return Err(ProjectConfigError::invalid(
-                "the file holds a newer credential",
+        let contents = read_private_bytes(&self.path)?;
+        let file = DexWebConnectionsFile::decode(&self.path, &contents)?;
+        let listing = decode_local_credentials(&file)?;
+        listing.require_only_listing(key)?;
+        let file_digest = listing.credentials.get(key).map(credential_digest);
+        if file_digest != lock(&self.imported).get(key).cloned() {
+            return Err(ProjectConfigError::ObjectConflict(
+                "connections.json holds a newer credential".into(),
             ));
         }
-        record.insert(
-            "credentials".into(),
-            Value::Object(material.credentials.clone()),
-        );
-        match &material.expires_at {
-            None => {
-                record.remove("credentialExpiresAt");
+        let updated = file.encode_with_credential(key, material)?;
+        self.write_if_file_unchanged(&contents, &updated)
+    }
+
+    /// Replaces the file with `updated` only while it still holds exactly `read`.
+    ///
+    /// A lock-skipping writer can still land between check and rename.
+    fn write_if_file_unchanged(&self, read: &[u8], updated: &[u8]) -> ProjectConfigResult<()> {
+        write_private_file_checked(&self.path, updated, || {
+            #[cfg(test)]
+            if let Some(hook) = lock(&self.before_rename_check).take() {
+                hook();
             }
-            Some(expires_at) => {
-                record.insert(
-                    "credentialExpiresAt".into(),
-                    Value::String(to_utc(expires_at).to_string()),
-                );
+            match read_private_bytes(&self.path) {
+                Ok(current) if current == read => Ok(()),
+                _ => Err(ProjectConfigError::ObjectConflict(
+                    "connections.json changed before the credential write-back".into(),
+                )),
             }
-        }
-        let mut encoded = serde_json::to_vec_pretty(&Value::Object(source))
-            .map_err(|_| ProjectConfigError::invalid("connections.json cannot be encoded"))?;
-        encoded.push(b'\n');
-        write_private_file(&self.path, &encoded)
+        })
     }
 }
 
@@ -459,12 +542,23 @@ impl ObjectStore for DexWebObjectStore {
                 .compare_and_swap_object(key, expected_etag, contents);
         }
         let _sync = lock(&self.sync_lock);
-        self.sync()?
+        let connection_key = self
+            .sync()?
             .require_only_listing_of_head(self.connections.scope(), key)?;
+        // Every head write holds `sync_lock`, so this check stays true until the swap below.
+        let current = self.memory.read_object(key, "")?;
+        if expected_etag.is_empty() || current.etag != expected_etag {
+            return Err(ProjectConfigError::ObjectConflict(
+                "project object compare-and-swap conflict".into(),
+            ));
+        }
+        let written_digest = self.write_back_before_publish(&connection_key, contents)?;
         let result = self
             .memory
             .compare_and_swap_object(key, expected_etag, contents)?;
-        self.write_back(&result);
+        if let Some(digest) = written_digest {
+            lock(&self.imported).insert(connection_key, digest);
+        }
         Ok(result)
     }
 }
@@ -713,4 +807,204 @@ fn is_trigger_inbox_key(key: &str) -> bool {
 
 fn is_connection_head(key: &str) -> bool {
     key.contains("/connections/") && key.ends_with("/head")
+}
+
+#[cfg(all(test, unix))]
+mod tests {
+    use std::os::unix::fs::PermissionsExt;
+
+    use super::*;
+
+    /// Dex Web file with exact nested numbers that a `Value` cannot hold.
+    const CONNECTIONS: &str = r#"{"schemaVersion":"connectors.dex.dev/local-connections/v1alpha1","connections":[{"connectorId":"sample","connectionName":"main","modulePath":"example.com/sample","provider":"sample","authMethodId":"oauth2","configuration":{"huge": 1e400, "account": 12345678901234567890123},"credentials":{"access":"old","refresh":"r0"},"credentialExpiresAt":"2030-01-01T00:00:00Z","dexWebOnly":{"keep": 1.50}},{"connectorId":"sample","connectionName":"other","modulePath":"example.com/sample","provider":"sample","authMethodId":"apiKey","configuration":{"ratio":2.5E+3, "tiny":-0.0e-0},"credentials":{"apiKey":"k"}}],"triggerBindings":[{"connectorId":"sample","connectionName":"main","triggerName":"poll","bindingName":"nightly","configuration":{"limit":1.50,"big":1e400}}]}"#;
+
+    struct Fixture {
+        _directory: tempfile::TempDir,
+        path: PathBuf,
+        store: Arc<DexWebObjectStore>,
+        connections: ConnectionStore,
+        head_key: String,
+    }
+
+    fn write_private(path: &Path, contents: &[u8]) {
+        fs::write(path, contents).expect("writes");
+        fs::set_permissions(path, fs::Permissions::from_mode(0o600)).expect("chmod");
+    }
+
+    fn open(contents: &str) -> Fixture {
+        let directory = tempfile::tempdir().expect("temporary directory");
+        let path = directory.path().join("connections.json");
+        write_private(&path, contents.as_bytes());
+        let scope = Scope::new("local", "preview");
+        let store = Arc::new(DexWebObjectStore::open(&path, scope.clone()).expect("opens"));
+        let objects: Arc<dyn ObjectStore> = store.clone();
+        let head_key = format!("{}/head", main_key().path(&scope).expect("path"));
+        Fixture {
+            _directory: directory,
+            path,
+            store,
+            connections: ConnectionStore::new(objects, scope),
+            head_key,
+        }
+    }
+
+    fn main_key() -> ConnectionKey {
+        ConnectionKey::new("sample", "main")
+    }
+
+    fn refreshed_material() -> CredentialMaterial {
+        let mut credentials = JsonObject::new();
+        credentials.insert("access".into(), Value::String("new".into()));
+        credentials.insert("refresh".into(), Value::String("r1".into()));
+        CredentialMaterial {
+            credentials,
+            expires_at: Some(
+                Rfc3339NanoTimestamp::from_wire("2030-01-02T03:04:05.123456789+02:00")
+                    .expect("timestamp"),
+            ),
+            auth_method: "oauth2".into(),
+        }
+    }
+
+    /// Saves the refreshed credential, running `interleave` between the final read and rename.
+    fn refresh_with(
+        fixture: &Fixture,
+        interleave: impl FnOnce() + Send + 'static,
+    ) -> ProjectConfigResult<()> {
+        *lock(&fixture.store.before_rename_check) = Some(Box::new(interleave));
+        let revision = fixture
+            .connections
+            .read_connection(&main_key())
+            .expect("reads")
+            .revision;
+        fixture
+            .connections
+            .replace_credential(&main_key(), revision, &refreshed_material())
+            .map(|_| ())
+    }
+
+    #[test]
+    fn write_back_matches_go_and_keeps_untouched_raw_members() {
+        let fixture = open(CONNECTIONS);
+        refresh_with(&fixture, || {}).expect("refreshes");
+        // Derived by running Go 1.26.5 (GOWORK=off, under /tmp) on CONNECTIONS with the code of
+        // sdkgo dexWebStore.replaceInFile: map[string]json.RawMessage records, json.MarshalIndent.
+        let expected = "{\n  \"connections\": [\n    {\n      \"authMethodId\": \"oauth2\",\n      \"configuration\": {\n        \"huge\": 1e400,\n        \"account\": 12345678901234567890123\n      },\n      \"connectionName\": \"main\",\n      \"connectorId\": \"sample\",\n      \"credentialExpiresAt\": \"2030-01-02T01:04:05.123456789Z\",\n      \"credentials\": {\n        \"access\": \"new\",\n        \"refresh\": \"r1\"\n      },\n      \"dexWebOnly\": {\n        \"keep\": 1.50\n      },\n      \"modulePath\": \"example.com/sample\",\n      \"provider\": \"sample\"\n    },\n    {\n      \"authMethodId\": \"apiKey\",\n      \"configuration\": {\n        \"ratio\": 2.5E+3,\n        \"tiny\": -0.0e-0\n      },\n      \"connectionName\": \"other\",\n      \"connectorId\": \"sample\",\n      \"credentials\": {\n        \"apiKey\": \"k\"\n      },\n      \"modulePath\": \"example.com/sample\",\n      \"provider\": \"sample\"\n    }\n  ],\n  \"schemaVersion\": \"connectors.dex.dev/local-connections/v1alpha1\",\n  \"triggerBindings\": [\n    {\n      \"connectorId\": \"sample\",\n      \"connectionName\": \"main\",\n      \"triggerName\": \"poll\",\n      \"bindingName\": \"nightly\",\n      \"configuration\": {\n        \"limit\": 1.50,\n        \"big\": 1e400\n      }\n    }\n  ]\n}\n";
+        assert_eq!(
+            String::from_utf8(fs::read(&fixture.path).expect("reads")).expect("UTF-8"),
+            expected
+        );
+        let (material, _) = fixture
+            .connections
+            .read_credential_material(&main_key())
+            .expect("reads the published credential");
+        assert_eq!(material.credentials["access"], "new");
+    }
+
+    #[test]
+    fn deletion_before_rename_aborts_write_back_and_publish() {
+        let fixture = open(CONNECTIONS);
+        let head_before = fixture
+            .store
+            .memory
+            .read_object(&fixture.head_key, "")
+            .expect("head");
+        let deleted =
+            r#"{"schemaVersion":"connectors.dex.dev/local-connections/v1alpha1","connections":[]}"#;
+        let deleted_path = fixture.path.clone();
+        let error = refresh_with(&fixture, move || {
+            write_private(&deleted_path, deleted.as_bytes());
+        })
+        .expect_err("aborts");
+        assert!(
+            matches!(error, ProjectConfigError::ObjectConflict(_)),
+            "{error}"
+        );
+        assert_eq!(fs::read(&fixture.path).expect("reads"), deleted.as_bytes());
+        let head_after = fixture
+            .store
+            .memory
+            .read_object(&fixture.head_key, "")
+            .expect("head");
+        assert_eq!(head_after.contents, head_before.contents);
+        assert!(matches!(
+            fixture.store.read_object(&fixture.head_key, ""),
+            Err(ProjectConfigError::ConnectionNotInFile(_))
+        ));
+    }
+
+    #[test]
+    fn new_authorization_before_rename_aborts_write_back_and_is_adopted() {
+        let fixture = open(CONNECTIONS);
+        let head_before = fixture
+            .store
+            .memory
+            .read_object(&fixture.head_key, "")
+            .expect("head");
+        let reauthorized = CONNECTIONS.replace(
+            r#"{"access":"old","refresh":"r0"}"#,
+            r#"{"access":"dex-web-new","refresh":"r9"}"#,
+        );
+        let reauthorized_path = fixture.path.clone();
+        let written = reauthorized.clone();
+        let error = refresh_with(&fixture, move || {
+            write_private(&reauthorized_path, written.as_bytes());
+        })
+        .expect_err("aborts");
+        assert!(
+            matches!(error, ProjectConfigError::ObjectConflict(_)),
+            "{error}"
+        );
+        assert_eq!(
+            fs::read(&fixture.path).expect("reads"),
+            reauthorized.as_bytes()
+        );
+        let head_after = fixture
+            .store
+            .memory
+            .read_object(&fixture.head_key, "")
+            .expect("head");
+        assert_eq!(head_after.contents, head_before.contents);
+        let (material, _) = fixture
+            .connections
+            .read_credential_material(&main_key())
+            .expect("adopts the new authorization");
+        assert_eq!(material.credentials["access"], "dex-web-new");
+    }
+
+    #[test]
+    fn duplicated_listing_aborts_publish_without_writing() {
+        let fixture = open(CONNECTIONS);
+        let revision = fixture
+            .connections
+            .read_connection(&main_key())
+            .expect("reads")
+            .revision;
+        let head = fixture
+            .store
+            .memory
+            .read_object(&fixture.head_key, "")
+            .expect("head");
+        let duplicated =
+            CONNECTIONS.replace(r#""connectionName":"other""#, r#""connectionName":"main""#);
+        write_private(&fixture.path, duplicated.as_bytes());
+        let error = fixture
+            .connections
+            .replace_credential(&main_key(), revision, &refreshed_material())
+            .expect_err("duplicated");
+        assert!(
+            matches!(error, ProjectConfigError::ConnectionNotInFile(_)),
+            "{error}"
+        );
+        assert_eq!(
+            fs::read(&fixture.path).expect("reads"),
+            duplicated.as_bytes()
+        );
+        let head_after = fixture
+            .store
+            .memory
+            .read_object(&fixture.head_key, "")
+            .expect("head");
+        assert_eq!(head_after.contents, head.contents);
+    }
 }

@@ -110,7 +110,8 @@ impl<'context> StepAttempt<'context> {
 
     /// Creates the next Call of `operation` in this attempt.
     ///
-    /// For a Mutation prefer [`crate::run_step_mutation`], which assigns the occurrence and
+    /// Use it for a Query. [`crate::run_mutation`] refuses a Call made here with `defect`:
+    /// a Mutation runs through [`crate::run_step_mutation`], which assigns the occurrence and
     /// admits the call in one step, so concurrent calls cannot reorder Call IDs.
     ///
     /// # Errors
@@ -125,6 +126,7 @@ impl<'context> StepAttempt<'context> {
         let id = self.derive_call_id(&operation)?;
         let mut call = Call::new(id, connection, operation)?;
         call.step_attempt = Some(self);
+        call.has_unadmitted_occurrence = true;
         Ok(call)
     }
 

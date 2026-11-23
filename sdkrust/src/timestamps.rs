@@ -114,8 +114,32 @@ impl fmt::Display for Rfc3339NanoTimestamp {
     }
 }
 
+impl Rfc3339NanoTimestamp {
+    /// Reports whether Go can encode this time: its offset is under 24 hours.
+    ///
+    /// Input accepts Go's lenient offsets up to `+24:60`, but Go's JSON encoding refuses an
+    /// offset of 24 hours or more, so serialization does too.
+    pub fn is_go_encodable(&self) -> bool {
+        if self.wire.ends_with('Z') {
+            return true;
+        }
+        let hours = self
+            .wire
+            .len()
+            .checked_sub(5)
+            .and_then(|start| self.wire.get(start..start + 2))
+            .and_then(|hours| hours.parse::<u32>().ok());
+        hours.is_some_and(|hours| hours < 24)
+    }
+}
+
 impl Serialize for Rfc3339NanoTimestamp {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        if !self.is_go_encodable() {
+            return Err(serde::ser::Error::custom(
+                "timestamp timezone offset of 24 hours or more cannot be encoded",
+            ));
+        }
         serializer.serialize_str(&self.wire)
     }
 }
@@ -369,6 +393,32 @@ mod tests {
         let far_future =
             Rfc3339NanoTimestamp::from_wire("9999-12-31T23:59:59.5+01:00").expect("valid");
         assert_eq!(far_future.to_utc().as_wire_str(), "9999-12-31T22:59:59.5Z");
+        for (lenient_input, normalized, utc) in [
+            (
+                "2026-10-29T12:30:45+24:60",
+                "2026-10-29T12:30:45+25:00",
+                "\"2026-10-28T11:30:45Z\"",
+            ),
+            (
+                "2026-10-29T12:30:45-23:60",
+                "2026-10-29T12:30:45-24:00",
+                "\"2026-10-30T12:30:45Z\"",
+            ),
+        ] {
+            let lenient = Rfc3339NanoTimestamp::from_wire(lenient_input).expect("Go accepts");
+            assert_eq!(lenient.as_wire_str(), normalized);
+            assert!(!lenient.is_go_encodable());
+            assert!(serde_json::to_string(&lenient).is_err());
+            assert_eq!(
+                serde_json::to_string(&lenient.to_utc()).expect("UTC encodes"),
+                utc
+            );
+        }
+        let encodable =
+            Rfc3339NanoTimestamp::from_wire("2026-10-29T12:30:45+23:59").expect("valid");
+        let encoded = serde_json::to_string(&encodable).expect("encodes");
+        let decoded: Rfc3339NanoTimestamp = serde_json::from_str(&encoded).expect("reads back");
+        assert_eq!(decoded, encodable);
         let far_past = Rfc3339NanoTimestamp::from_wire("0001-01-01T00:00:00Z").expect("valid");
         assert_eq!(far_past.to_utc().as_wire_str(), ZERO_TIMESTAMP_WIRE);
     }

@@ -140,13 +140,20 @@ pub fn run_query<Operation: Query + ?Sized>(
 ///
 /// The effective send cap comes from the definition: `maxSends` of a `limited` operation, or
 /// the Call's [`Call::with_max_sends_override`]; otherwise 1. An override on any other tier
-/// selects `defect`. Inside a Step prefer [`run_step_mutation`], which also assigns the
-/// Call's occurrence and admission atomically.
+/// selects `defect`. Inside a Dex Step use [`run_step_mutation`], which assigns the Call's
+/// occurrence and admission atomically; a Call from [`StepAttempt::new_call`] selects `defect`
+/// here without invoking the operation, because its occurrence was assigned before admission.
 pub fn run_mutation<Operation: Mutation + ?Sized>(
     operation: &Operation,
     call: &Call<'_>,
     input: &Operation::Input,
 ) -> OperationOutcome<MutationResult<Option<Operation::Output>>> {
+    if call.has_unadmitted_occurrence {
+        return OperationOutcome::Completed(mutation_defect(
+            call,
+            "a Mutation Call from StepAttempt::new_call is not admitted; run it with run_step_mutation, so its occurrence and admission are assigned together",
+        ));
+    }
     let definition = operation.definition();
     if let Err(error) = definition
         .validate()

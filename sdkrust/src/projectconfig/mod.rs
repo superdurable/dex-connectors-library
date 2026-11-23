@@ -45,6 +45,7 @@ mod errors;
 mod models;
 pub mod poll_cursor;
 mod provider;
+mod raw_json;
 mod refresh_lock;
 mod storage;
 pub mod trigger_inbox;
@@ -72,9 +73,10 @@ pub use models::{
     ApplicationSecretRef, CONFIGURATION_SCHEMA_VERSION, CREDENTIAL_BROKER_TOKEN_SECRET_NAME,
     Configuration, ConnectionConfiguration, CredentialBrokerConfiguration, EnvironmentValue,
     JsonObject, LOCAL_CONNECTIONS_SCHEMA_VERSION, LOCAL_USE_CONFIGURATIONS_SCHEMA_VERSION,
-    PREVIOUS_CONFIGURATION_SCHEMA_VERSION, Scope, SnapshotRef, digest_bytes,
-    go_canonical_json_bytes, is_application_environment_name, validate_broker_endpoint,
-    validate_environment_value, validate_secret_reference,
+    OperationConfiguration, PREVIOUS_CONFIGURATION_SCHEMA_VERSION, RawJsonObject, Scope,
+    SnapshotRef, TriggerConfiguration, digest_bytes, go_canonical_json_bytes,
+    is_application_environment_name, validate_broker_endpoint, validate_environment_value,
+    validate_secret_reference,
 };
 pub use provider::{
     CredentialDecoder, CredentialEncoder, ProjectCredentialProvider,
@@ -87,8 +89,10 @@ pub use storage::{
 };
 
 use crate::relaysignature::RelayHeaders;
-use dexweb_store::{decode_private_file, read_private_bytes};
-use models::{NestedRawConfigurations, require_object};
+use dexweb_store::{DexWebConnectionsFile, decode_private_raw_file, read_private_bytes};
+use raw_json::{
+    RawJsonMembers, decode_raw_object_array, raw_member_value, split_raw_configuration,
+};
 
 /// Environment variable naming Dex Web's local `connections.json`.
 pub const LOCAL_CONNECTIONS_FILE_ENVIRONMENT: &str = "DEX_CONNECTOR_CONFIG_FILE";
@@ -341,6 +345,26 @@ const LOCAL_CONNECTION_FIELDS: [&str; 7] = [
     "sharedConnectionId",
 ];
 
+/// Decodes the entries of the array member `name`, keeping each `configuration` as exact text.
+///
+/// Go decodes these into typed structs, dropping members it does not declare.
+fn decode_local_entries<Entry>(
+    members: &RawJsonMembers,
+    name: &str,
+    label: &str,
+    fields: &[&str],
+    decode_entry: fn(&Value) -> ProjectConfigResult<Entry>,
+) -> ProjectConfigResult<Vec<(Entry, Option<RawJsonObject>)>> {
+    decode_raw_object_array(members, name, label)?
+        .unwrap_or_default()
+        .iter()
+        .map(|record| {
+            let (selected, raw_configuration) = split_raw_configuration(record, Some(fields))?;
+            Ok((decode_entry(&Value::Object(selected))?, raw_configuration))
+        })
+        .collect()
+}
+
 /// Loads Dex Web's `connections.json` and its `use-configurations.json` sidecar.
 ///
 /// Both files must be owner-only (0600) regular files. Credentials Dex Web saves later are
@@ -353,20 +377,12 @@ pub fn load_dex_web_project(path: &Path) -> ProjectConfigResult<LoadedProject> {
     let connections_path = std::path::absolute(path)
         .map_err(|_| ProjectConfigError::Io("connections.json path is invalid".into()))?;
     let source_bytes = read_private_bytes(&connections_path)?;
-    let source = decode_private_file(&connections_path, &source_bytes)?;
-    if source.get("schemaVersion") != Some(&Value::String(LOCAL_CONNECTIONS_SCHEMA_VERSION.into()))
-    {
-        return Err(ProjectConfigError::invalid(
-            "unsupported connector configuration schema version",
-        ));
-    }
+    let source = DexWebConnectionsFile::decode(&connections_path, &source_bytes)?;
     let uses_path = connections_path.with_file_name("use-configurations.json");
-    let mut uses_bytes = Vec::new();
     let uses = if uses_path.exists() {
-        uses_bytes = read_private_bytes(&uses_path)?;
-        let uses = decode_private_file(&uses_path, &uses_bytes)?;
-        if uses.get("schemaVersion")
-            != Some(&Value::String(
+        let uses = decode_private_raw_file(&uses_path, &read_private_bytes(&uses_path)?)?;
+        if raw_member_value(&uses, "schemaVersion")?
+            != Some(Value::String(
                 LOCAL_USE_CONFIGURATIONS_SCHEMA_VERSION.into(),
             ))
         {
@@ -376,21 +392,16 @@ pub fn load_dex_web_project(path: &Path) -> ProjectConfigResult<LoadedProject> {
         }
         uses
     } else {
-        JsonObject::new()
+        RawJsonMembers::new()
     };
-    let raw_connections = source
-        .get("connections")
-        .and_then(Value::as_array)
-        .ok_or_else(|| ProjectConfigError::invalid("connections.json requires connections"))?;
-    let mut entries = Vec::with_capacity(raw_connections.len());
-    for (index, raw) in raw_connections.iter().enumerate() {
-        let record = require_object(Some(raw), &format!("connection {index}"))?;
-        let selected: JsonObject = record
-            .iter()
-            .filter(|(key, _)| LOCAL_CONNECTION_FIELDS.contains(&key.as_str()))
-            .map(|(key, value)| (key.clone(), value.clone()))
-            .collect();
-        let entry = ConnectionConfiguration::from_wire(&Value::Object(selected))?;
+    let mut entries = Vec::with_capacity(source.connections().len());
+    for record in source.connections() {
+        let (selected, raw_configuration) =
+            split_raw_configuration(record, Some(&LOCAL_CONNECTION_FIELDS))?;
+        let mut entry = ConnectionConfiguration::from_wire(&Value::Object(selected))?;
+        if let Some(raw_configuration) = raw_configuration {
+            entry.configuration = raw_configuration;
+        }
         if entry.connector_id.is_empty()
             || entry.connection_name.is_empty()
             || entry.module_path.is_empty()
@@ -402,42 +413,40 @@ pub fn load_dex_web_project(path: &Path) -> ProjectConfigResult<LoadedProject> {
         }
         entries.push(entry);
     }
-    // Go decodes these into typed structs, dropping members it does not declare.
-    let objects_of = |document: &JsonObject, name: &str, label: &str, fields: &[&str]| {
-        document
-            .get(name)
-            .and_then(Value::as_array)
-            .map_or_else(Vec::new, Clone::clone)
-            .iter()
-            .map(|item| {
-                Ok(require_object(Some(item), label)?
-                    .iter()
-                    .filter(|(field, _)| fields.contains(&field.as_str()))
-                    .map(|(field, value)| (field.clone(), value.clone()))
-                    .collect())
-            })
-            .collect::<ProjectConfigResult<Vec<JsonObject>>>()
-    };
     let scope = Scope::new("local", "preview");
     let store: Arc<dyn ObjectStore> = Arc::new(InMemoryObjectStore::new());
     let configurations = ConfigurationStore::new(store.clone(), scope.clone())?;
     let mut document = Configuration::new(scope.clone(), 1, entries);
-    document.trigger_bindings = objects_of(
-        &source,
+    document.trigger_bindings = decode_local_entries(
+        source.members(),
         "triggerBindings",
         "trigger binding",
         &models::TRIGGER_BINDING_FIELDS,
-    )?;
-    document.operation_configurations = objects_of(
+        TriggerConfiguration::from_wire,
+    )?
+    .into_iter()
+    .map(|(mut binding, raw)| {
+        if let Some(raw) = raw {
+            binding.configuration = raw;
+        }
+        binding
+    })
+    .collect();
+    document.operation_configurations = decode_local_entries(
         &uses,
         "operationConfigurations",
         "operation configuration",
         &models::OPERATION_CONFIGURATION_FIELDS,
-    )?;
-    document.set_nested_raw_json(
-        NestedRawConfigurations::capture(&source_bytes)
-            .with_operation_configurations_of(NestedRawConfigurations::capture(&uses_bytes)),
-    );
+        OperationConfiguration::from_wire,
+    )?
+    .into_iter()
+    .map(|(mut operation, raw)| {
+        if let Some(raw) = raw {
+            operation.configuration = raw;
+        }
+        operation
+    })
+    .collect();
     let (written, _) = configurations.write_configuration(0, &document)?;
     let reference = configurations.freeze_configuration(written.revision)?;
     let local_objects: Arc<dyn ObjectStore> =

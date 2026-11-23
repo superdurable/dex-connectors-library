@@ -513,8 +513,24 @@ impl ConnectionStore {
     ) -> ProjectConfigResult<(ConnectionRecord, ProjectObject)> {
         let path = key.path(&self.scope)?;
         let item = self.objects.read_object(&format!("{path}/head"), "")?;
+        if item.version.is_empty() || item.etag.is_empty() {
+            return Err(ProjectConfigError::invalid(
+                "project connection identity is invalid",
+            ));
+        }
+        let record = self.decode_record(key, &item.contents)?;
+        Ok((record, item))
+    }
+
+    /// Decodes and validates the connection head bytes of `key`.
+    pub(crate) fn decode_record(
+        &self,
+        key: &ConnectionKey,
+        contents: &[u8],
+    ) -> ProjectConfigResult<ConnectionRecord> {
+        let path = key.path(&self.scope)?;
         let invalid = || ProjectConfigError::invalid("project connection identity is invalid");
-        let document: Value = serde_json::from_slice(&item.contents)
+        let document: Value = serde_json::from_slice(contents)
             .map_err(|_| ProjectConfigError::invalid("connection head must be a JSON object"))?;
         let document = require_object(Some(&document), "connection head")?.clone();
         let positive = |name: &str| {
@@ -531,11 +547,9 @@ impl ConnectionStore {
         let (Some(revision), Some(fence)) = (positive("revision"), positive("fence")) else {
             return Err(invalid());
         };
-        if item.version.is_empty()
-            || item.etag.is_empty()
-            || document
-                .keys()
-                .any(|field| !CONNECTION_HEAD_FIELDS.contains(&field.as_str()))
+        if document
+            .keys()
+            .any(|field| !CONNECTION_HEAD_FIELDS.contains(&field.as_str()))
             || document.get("schemaVersion")
                 != Some(&Value::String(CONNECTION_SCHEMA_VERSION.into()))
             || document.get("scope") != Some(&self.scope.to_wire())
@@ -603,7 +617,7 @@ impl ConnectionStore {
             mutation,
             document,
         };
-        Ok((record, item))
+        Ok(record)
     }
 
     fn parse_mutation(
