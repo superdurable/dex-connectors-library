@@ -148,6 +148,17 @@ public final class LoadedProject {
     }
 
     /**
+     * Binds one Trigger binding's durable inbox in this project's storage.
+     *
+     * @param key the binding identity
+     * @return the inbox, bound without I/O
+     * @throws IllegalArgumentException for an invalid identity
+     */
+    public TriggerInbox triggerInbox(final TriggerInboxKey key) {
+        return new TriggerInbox(connections.getObjects(), configuration.getScope(), key);
+    }
+
+    /**
      * Returns the shared connection ID of a configured connection.
      *
      * @param key the connection key

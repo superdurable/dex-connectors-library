@@ -23,9 +23,11 @@ public final class CallId {
     /** The empty Call ID of an uncorrelated receipt. */
     public static final CallId EMPTY = new CallId("");
 
+    private static final UUID URL_NAMESPACE = UUID.fromString("6ba7b811-9dad-11d1-80b4-00c04fd430c8");
+
     /** The pinned UUIDv5 namespace of every derived Call ID. */
     public static final UUID NAMESPACE = nameBasedSha1(
-            UUID.fromString("6ba7b811-9dad-11d1-80b4-00c04fd430c8"),
+            URL_NAMESPACE,
             "https://superdurable.dev/dex-connectors/call-id/v1".getBytes(StandardCharsets.UTF_8));
 
     private static final Pattern UUID_TEXT = Pattern.compile(
@@ -97,6 +99,21 @@ public final class CallId {
             appendLengthPrefixed(payload, Integer.toString(occurrence));
         }
         return new CallId(nameBasedSha1(NAMESPACE, payload.toByteArray()).toString());
+    }
+
+    /**
+     * Derives a UUIDv5 Call ID in the RFC 4122 URL namespace from a UTF-8 name.
+     *
+     * <p>Trigger credential calls use it, so every language derives the same ID from one name.
+     *
+     * @param name the URL-shaped name
+     * @return the lowercase UUIDv5 Call ID
+     */
+    public static CallId fromUrlName(final String name) {
+        if (name == null || name.isEmpty()) {
+            throw new IllegalArgumentException("call ID name is required");
+        }
+        return new CallId(nameBasedSha1(URL_NAMESPACE, name.getBytes(StandardCharsets.UTF_8)).toString());
     }
 
     /**

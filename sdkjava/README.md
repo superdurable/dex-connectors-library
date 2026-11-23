@@ -39,6 +39,25 @@ hand-written connector Step.
 | `...sdk.projectconfig` | Dex Web and project connection storage, credential broker, project credential provider |
 | `...sdk.oauthtoken`, `...sdk.providerhttp` | Manifest-driven OAuth refresh and provider HTTP |
 | `...sdk.trigger`, `...sdk.webhooktrigger`, `...sdk.relaysignature` | Trigger definitions, delivery to Dex Flows, webhook endpoints, relay signatures |
+| `...sdk.projectconfig` Trigger inbox | `TriggerInbox`, `DurableTriggerTarget`, `TriggerEventCodec`: acknowledged events kept in project storage, byte-compatible with Go |
+| `...sdk.pollingtrigger` | `TriggerCredentialCalls`: the stable credential Call of a polling Trigger |
+
+## Scope
+
+This release covers what the Gmail and Slack Java ports need. It does not yet
+include the polling Trigger kit beyond `TriggerCredentialCalls`, or text
+generation. Three Dex Java SDK gaps limit parity with the other SDKs; the SDK
+does not work around them:
+
+- RPC request IDs ([superdurable/dex#1864](https://github.com/superdurable/dex/issues/1864)):
+  the Dex Java Client cannot send one request ID per RPC Trigger event, so an
+  RPC Trigger target is not public yet. Flow-start Trigger targets are.
+- Stable handler error types ([superdurable/dex#2174](https://github.com/superdurable/dex/issues/2174)):
+  a Java Worker reports a handler failure by its Java class name, so other
+  languages' Trigger targets cannot recognize a Java undeliverable marker.
+- Step attempt deadline ([superdurable/dex#2175](https://github.com/superdurable/dex/issues/2175)):
+  the Dex Java `Context` has no deadline, so the single-dispatch Fence budgets
+  from the Execute timeout alone.
 
 ## Operations
 

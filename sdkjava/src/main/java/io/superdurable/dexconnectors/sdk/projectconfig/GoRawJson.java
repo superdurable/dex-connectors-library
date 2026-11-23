@@ -227,6 +227,24 @@ final class GoRawJson {
         return characters.toString();
     }
 
+    /** Decodes bytes as UTF-8, replacing each invalid byte with U+FFFD as Go does. */
+    static String goText(final byte[] raw) {
+        final StringBuilder characters = new StringBuilder(raw.length);
+        int index = 0;
+        while (index < raw.length) {
+            final int value = raw[index] & 0xff;
+            if (value < 0x80) {
+                characters.append((char) value);
+                index++;
+                continue;
+            }
+            final int[] rune = decodeRune(raw, index);
+            characters.appendCodePoint(rune[0]);
+            index += rune[1];
+        }
+        return characters.toString();
+    }
+
     static String encodeString(final String text) {
         final StringBuilder output = new StringBuilder();
         GoCompatibleJson.writeString(output, text);
