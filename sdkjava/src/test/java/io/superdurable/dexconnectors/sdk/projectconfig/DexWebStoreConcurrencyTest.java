@@ -17,6 +17,7 @@ import io.superdurable.dexconnectors.sdk.ConnectionRef;
 import io.superdurable.dexconnectors.sdk.CredentialRefreshDriver;
 import io.superdurable.dexconnectors.sdk.Credentials;
 import io.superdurable.dexconnectors.sdk.OperationRef;
+import io.superdurable.dexconnectors.sdk.ReauthorizationRequiredException;
 import io.superdurable.dexconnectors.sdk.Rfc3339NanoTimestamp;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -36,6 +37,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -120,31 +122,71 @@ class DexWebStoreConcurrencyTest {
     }
 
     @Test
-    void timedOutDriverKeepsTheLockUntilItsThreadExits() throws Exception {
+    void driverFinishingInTheGraceWindowIsPersistedUnderTheLock() throws Exception {
         writeConnections(credentials("old", "rotating-1"), Instant.now().minusSeconds(60));
         final LoadedProject project = ProjectConfigurationLoader.loadDexWebProject(connectionsPath);
-        final RefreshingProjectCredentialProvider<ObjectNode> provider = new RefreshingProjectCredentialProvider<>(
-                project.getConnections(), KEY, ObjectNode::deepCopy, ObjectNode::deepCopy, null,
+        final RefreshingProjectCredentialProvider<ObjectNode> provider = shortTimeouts(project,
                 Duration.ofMillis(200), Duration.ofSeconds(5));
         final AtomicBoolean hasDriverExited = new AtomicBoolean();
-        final CredentialRefreshDriver<ObjectNode> driver = new ExpiryOnlyDriver() {
-            @Override
-            public Result<ObjectNode> refresh(final State<ObjectNode> state) {
-                final long until = System.nanoTime() + TimeUnit.SECONDS.toNanos(1);
-                while (System.nanoTime() < until) {
-                    try {
-                        Thread.sleep(50);
-                    } catch (InterruptedException ignored) {
-                        // This driver deliberately ignores cancellation.
-                    }
-                }
-                hasDriverExited.set(true);
-                return new Result<>(credentials("late", "rotating-2"), Instant.now().plusSeconds(3600));
-            }
-        };
-        assertThrows(RefreshFailedException.class, () -> Credentials.resolveCredential(provider, CALL, driver));
+        final AtomicInteger calls = new AtomicInteger();
+        final CredentialRefreshDriver<ObjectNode> driver =
+                lateDriver(Duration.ofSeconds(1), calls, hasDriverExited, "late", "rotating-2");
+        assertEquals("late", Credentials.resolveCredential(provider, CALL, driver).get("access").textValue());
         assertTrue(hasDriverExited.get(), "the refresh lock was released while the driver still ran");
         new DexWebRefreshLock(connectionsPath, Duration.ofMillis(300)).acquire().close();
+        // The rotated token was stored, so the next caller uses it without another exchange.
+        assertEquals("late", Credentials.resolveCredential(provider, CALL, driver).get("access").textValue());
+        assertEquals(1, calls.get());
+        assertTrue(new String(Files.readAllBytes(connectionsPath), StandardCharsets.UTF_8).contains("rotating-2"));
+    }
+
+    @Test
+    void driverStillRunningAfterTheGraceWindowNeverResubmitsTheToken() throws Exception {
+        writeConnections(credentials("old", "rotating-1"), Instant.now().minusSeconds(60));
+        final LoadedProject project = ProjectConfigurationLoader.loadDexWebProject(connectionsPath);
+        final RefreshingProjectCredentialProvider<ObjectNode> provider = shortTimeouts(project,
+                Duration.ofMillis(200), Duration.ofMillis(300));
+        final AtomicInteger calls = new AtomicInteger();
+        final CredentialRefreshDriver<ObjectNode> driver =
+                lateDriver(Duration.ofSeconds(3), calls, new AtomicBoolean(), "late", "rotating-2");
+        assertThrows(ReauthorizationRequiredException.class, () -> Credentials.resolveCredential(provider, CALL, driver));
+        assertThrows(ReauthorizationRequiredException.class, () -> Credentials.resolveCredential(provider, CALL, driver));
+        assertEquals(1, calls.get());
+        assertEquals("REAUTHORIZATION_REQUIRED",
+                project.getConnections().readRecord(KEY).record.get("status").textValue());
+    }
+
+    @Test
+    void repeatedInterruptsDoNotEndTheGraceWait() throws Exception {
+        writeConnections(credentials("old", "rotating-1"), Instant.now().minusSeconds(60));
+        final LoadedProject project = ProjectConfigurationLoader.loadDexWebProject(connectionsPath);
+        final RefreshingProjectCredentialProvider<ObjectNode> provider = shortTimeouts(project,
+                Duration.ofSeconds(5), Duration.ofSeconds(5));
+        final AtomicInteger calls = new AtomicInteger();
+        final AtomicBoolean hasDriverExited = new AtomicBoolean();
+        final CredentialRefreshDriver<ObjectNode> driver =
+                lateDriver(Duration.ofMillis(800), calls, hasDriverExited, "late", "rotating-2");
+        final AtomicReference<Object> outcome = new AtomicReference<>();
+        final AtomicBoolean wasInterruptFlagKept = new AtomicBoolean();
+        final Thread caller = new Thread(() -> {
+            try {
+                outcome.set(Credentials.resolveCredential(provider, CALL, driver));
+            } catch (Exception error) {
+                outcome.set(error);
+            }
+            wasInterruptFlagKept.set(Thread.currentThread().isInterrupted());
+        });
+        caller.start();
+        Thread.sleep(100);
+        caller.interrupt();
+        Thread.sleep(200);
+        caller.interrupt();
+        caller.join(10_000);
+        assertTrue(hasDriverExited.get());
+        assertTrue(outcome.get() instanceof ObjectNode, String.valueOf(outcome.get()));
+        assertEquals("late", ((ObjectNode) outcome.get()).get("access").textValue());
+        assertTrue(wasInterruptFlagKept.get());
+        assertEquals(1, calls.get());
     }
 
     @Test
@@ -200,8 +242,11 @@ class DexWebStoreConcurrencyTest {
         Files.write(oldFile, ("{\"key\":\"" + oldKey + "\",\"version\":\"3\",\"etag\":\"sha256:ab-3\",\"contents\":\"e30=\"}")
                 .getBytes(StandardCharsets.UTF_8));
         Files.setPosixFilePermissions(oldFile, PosixFilePermissions.fromString("rw-------"));
-        assertEquals("sha256:ab-3", store.readObject(oldKey, "").getEtag());
-        final ProjectObject swapped = store.compareAndSwapObject(oldKey, "sha256:ab-3", contents);
+        // A file written by an older release is migrated when a store initializes the directory.
+        final LocalFileObjectStore reopened = new LocalFileObjectStore(directory);
+        reopened.initialize();
+        assertEquals("sha256:ab-3", reopened.readObject(oldKey, "").getEtag());
+        final ProjectObject swapped = reopened.compareAndSwapObject(oldKey, "sha256:ab-3", contents);
         assertEquals(hex + "-4", swapped.getEtag());
     }
 
@@ -233,6 +278,34 @@ class DexWebStoreConcurrencyTest {
         document.putArray("triggerBindings");
         Files.write(connectionsPath, MAPPER.writeValueAsBytes(document));
         Files.setPosixFilePermissions(connectionsPath, PosixFilePermissions.fromString("rw-------"));
+    }
+
+    private static RefreshingProjectCredentialProvider<ObjectNode> shortTimeouts(
+            final LoadedProject project, final Duration refreshTimeout, final Duration driverExitGrace) {
+        return new RefreshingProjectCredentialProvider<>(project.getConnections(), KEY, ObjectNode::deepCopy,
+                ObjectNode::deepCopy, null, refreshTimeout, driverExitGrace);
+    }
+
+    /** A driver that ignores cancellation and rotates the token after the given time. */
+    private static CredentialRefreshDriver<ObjectNode> lateDriver(
+            final Duration runFor, final AtomicInteger calls, final AtomicBoolean hasExited,
+            final String access, final String refresh) {
+        return new ExpiryOnlyDriver() {
+            @Override
+            public Result<ObjectNode> refresh(final State<ObjectNode> state) {
+                calls.incrementAndGet();
+                final long until = System.nanoTime() + runFor.toNanos();
+                while (System.nanoTime() < until) {
+                    try {
+                        Thread.sleep(20);
+                    } catch (InterruptedException ignored) {
+                        // This driver deliberately ignores cancellation.
+                    }
+                }
+                hasExited.set(true);
+                return new Result<>(credentials(access, refresh), Instant.now().plusSeconds(3600));
+            }
+        };
     }
 
     private static RefreshingProjectCredentialProvider<ObjectNode> provider(final LoadedProject project) {

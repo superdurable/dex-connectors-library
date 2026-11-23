@@ -16,12 +16,8 @@ import java.io.IOException;
 import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
 
 /**
@@ -30,6 +26,11 @@ import java.util.function.Function;
  * <p>For ordinary entries, a conditional head write grants one caller provider dispatch.
  * Observers recover the immutable result or restore an abandoned admission. Shared entries use
  * the broker without consulting the refresh driver.
+ *
+ * <p>A driver exchange runs for at most 30 seconds, then is interrupted and given 10 more
+ * seconds. A driver that finishes in that grace window is a confirmed result and is stored. One
+ * still running afterwards may already have rotated the refresh token, so the connection becomes
+ * {@code REAUTHORIZATION_REQUIRED} instead of resubmitting that token.
  *
  * <pre>{@code
  * RefreshingProjectCredentialProvider<GmailCredentials> provider = new RefreshingProjectCredentialProvider<>(
@@ -45,7 +46,8 @@ public final class RefreshingProjectCredentialProvider<C> extends ProjectCredent
     private static final Duration REFRESH_TIMEOUT = Duration.ofSeconds(30);
     private static final Duration ADMISSION_TIMEOUT = Duration.ofSeconds(40);
     private static final long OBSERVER_POLL_MILLISECONDS = 100;
-    // A driver that ignores interruption keeps the refresh lock this long after its timeout.
+    // A driver that ignores interruption keeps the refresh lock this long after its timeout; one still
+    // running afterwards leaves the connection REAUTHORIZATION_REQUIRED so its token is never resubmitted.
     private static final Duration DRIVER_EXIT_GRACE = Duration.ofSeconds(10);
     private static final SecureRandom RANDOM = new SecureRandom();
 
@@ -279,9 +281,29 @@ public final class RefreshingProjectCredentialProvider<C> extends ProjectCredent
     private C refreshAdmitted(
             final Admission admission, final CredentialMaterial prior, final CredentialRefreshDriver.State<C> state,
             final CredentialRefreshDriver<C> driver) throws IOException, InterruptedException {
+        final DriverRun<C> run = new DriverRun<>(driver, state);
+        boolean wasInterrupted = false;
+        try {
+            run.awaitCompletion(refreshTimeout);
+        } catch (InterruptedException interrupted) {
+            wasInterrupted = true;
+        }
+        if (!run.isDone()) {
+            run.cancel();
+            // Driver completion decides what is stored, so later interrupts do not shorten the grace.
+            wasInterrupted |= run.awaitCompletionUninterruptibly(driverExitGrace);
+        }
+        if (!run.isDone()) {
+            // The provider may already have rotated the refresh token, so it is never resubmitted.
+            finishExchange(admission, "REAUTHORIZATION_REQUIRED");
+            if (wasInterrupted) {
+                Thread.currentThread().interrupt();
+            }
+            throw new ReauthorizationRequiredException();
+        }
         final CredentialRefreshDriver.Result<C> result;
         try {
-            result = refreshWithTimeout(driver, state);
+            result = run.result();
         } catch (ReauthorizationRequiredException error) {
             finishExchange(admission, "REAUTHORIZATION_REQUIRED");
             throw error;
@@ -307,59 +329,83 @@ public final class RefreshingProjectCredentialProvider<C> extends ProjectCredent
             finishExchange(admission, "READY");
             throw new RefreshFailedException("refreshed credential encoding failed");
         }
+        // A driver that finished during the grace window is a confirmed rotation and is stored now.
         commitRefresh(admission, new CredentialMaterial(encoded, Rfc3339NanoTimestamp.fromInstant(result.getExpiresAt()),
                 prior.getAuthMethod()));
+        if (wasInterrupted) {
+            Thread.currentThread().interrupt();
+        }
         return result.getCredentials();
     }
 
-    private CredentialRefreshDriver.Result<C> refreshWithTimeout(
-            final CredentialRefreshDriver<C> driver, final CredentialRefreshDriver.State<C> state) throws Exception {
-        final ExecutorService executor = Executors.newSingleThreadExecutor(runnable -> {
-            final Thread thread = new Thread(runnable, "dex-connector-credential-refresh");
-            thread.setDaemon(true);
-            return thread;
-        });
-        try {
-            final Future<CredentialRefreshDriver.Result<C>> future = executor.submit(() -> driver.refresh(state));
-            try {
-                return future.get(refreshTimeout.toMillis(), TimeUnit.MILLISECONDS);
-            } catch (TimeoutException error) {
-                future.cancel(true);
-                awaitDriverExit(executor);
-                throw error;
-            } catch (InterruptedException error) {
-                future.cancel(true);
-                awaitDriverExit(executor);
-                throw error;
-            } catch (ExecutionException error) {
-                final Throwable cause = error.getCause();
-                if (cause instanceof Exception) {
-                    throw (Exception) cause;
-                }
-                throw new IOException("credential refresh failed");
-            }
-        } finally {
-            executor.shutdownNow();
-        }
-    }
-
     /**
-     * Keeps the caller, and so any held refresh lock, until a cancelled driver thread exits.
+     * One driver exchange on its own daemon thread, with a completion signal independent of the
+     * thread's exit.
      *
-     * <p>The wait is bounded by the driver exit grace; a driver that ignores interruption longer may
-     * still finish its provider exchange after the lock is released.
+     * @param <C> the credential type
      */
-    private void awaitDriverExit(final ExecutorService executor) {
-        executor.shutdownNow();
-        final boolean wasInterrupted = Thread.interrupted();
-        try {
-            executor.awaitTermination(driverExitGrace.toMillis(), TimeUnit.MILLISECONDS);
-        } catch (InterruptedException interrupted) {
-            Thread.currentThread().interrupt();
-        } finally {
-            if (wasInterrupted) {
-                Thread.currentThread().interrupt();
+    private static final class DriverRun<C> {
+        private final CountDownLatch completed = new CountDownLatch(1);
+        private final Thread thread;
+        private volatile CredentialRefreshDriver.Result<C> result;
+        private volatile Throwable failure;
+
+        private DriverRun(final CredentialRefreshDriver<C> driver, final CredentialRefreshDriver.State<C> state) {
+            thread = new Thread(() -> {
+                try {
+                    result = driver.refresh(state);
+                } catch (Throwable error) {
+                    failure = error;
+                } finally {
+                    completed.countDown();
+                }
+            }, "dex-connector-credential-refresh");
+            thread.setDaemon(true);
+            thread.start();
+        }
+
+        private void awaitCompletion(final Duration timeout) throws InterruptedException {
+            completed.await(timeout.toNanos(), TimeUnit.NANOSECONDS);
+        }
+
+        /** Waits through interrupts until completion or the deadline; returns whether any interrupt arrived. */
+        private boolean awaitCompletionUninterruptibly(final Duration grace) {
+            final long deadline = System.nanoTime() + grace.toNanos();
+            boolean wasInterrupted = Thread.interrupted();
+            while (completed.getCount() > 0) {
+                final long remaining = deadline - System.nanoTime();
+                if (remaining <= 0) {
+                    break;
+                }
+                try {
+                    completed.await(remaining, TimeUnit.NANOSECONDS);
+                } catch (InterruptedException interrupted) {
+                    wasInterrupted = true;
+                }
             }
+            return wasInterrupted;
+        }
+
+        private boolean isDone() {
+            return completed.getCount() == 0;
+        }
+
+        private void cancel() {
+            thread.interrupt();
+        }
+
+        private CredentialRefreshDriver.Result<C> result() throws Exception {
+            final Throwable error = failure;
+            if (error == null) {
+                if (result == null) {
+                    throw new IOException("credential refresh returned no result");
+                }
+                return result;
+            }
+            if (error instanceof Exception) {
+                throw (Exception) error;
+            }
+            throw new IOException("credential refresh failed");
         }
     }
 
