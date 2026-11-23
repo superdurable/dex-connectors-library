@@ -57,7 +57,8 @@ type connectorCatalogItem struct {
 	Categories []string          `yaml:"categories" json:"categories"`
 	Version    string            `yaml:"version" json:"version"`
 	Languages  map[string]string `yaml:"languages,omitempty" json:"languages,omitempty"`
-	// LanguagePackages maps each listed Python or TypeScript language to its PyPI or npm package name. A package
+	// LanguagePackages maps each listed Python, TypeScript, Java, or Rust language to its PyPI, npm, Maven Central
+	// (groupId:artifactId), or crates.io package name. A package
 	// name belongs to exactly one connector directory, so a host resolves an exact package version to the release
 	// tag <directory>/<language>/v<version>.
 	LanguagePackages map[string]string `yaml:"languagePackages,omitempty" json:"languagePackages,omitempty"`
@@ -213,18 +214,13 @@ func validateUniqueLanguagePackageNames(entries []connectorDirectoryEntry) error
 		if entry.Manifest.Spec.Languages == nil {
 			continue
 		}
-		for _, language := range []struct {
-			name        string
-			declaration *schema.LanguagePackage
-		}{
-			{name: "python", declaration: entry.Manifest.Spec.Languages.Python},
-			{name: "typescript", declaration: entry.Manifest.Spec.Languages.TypeScript},
-		} {
-			if language.declaration == nil {
+		for _, languageName := range schema.PackageLanguageNames() {
+			declaration := entry.Manifest.Spec.Languages.DeclarationOfLanguage(languageName)
+			if declaration == nil {
 				continue
 			}
-			packageName := languagePackageName(entry.Directory, language.name, language.declaration.Package)
-			if err := claimLanguagePackageName(directoriesByPackage, language.name, packageName, entry.Directory); err != nil {
+			packageName := languagePackageName(entry.Directory, languageName, declaration.Package)
+			if err := claimLanguagePackageName(directoriesByPackage, languageName, packageName, entry.Directory); err != nil {
 				return err
 			}
 		}
@@ -356,25 +352,29 @@ func releaseMatrixCommand(args []string) error {
 		if entry.Manifest.Spec.Languages == nil {
 			continue
 		}
-		languages := []struct {
-			name               string
-			packageDeclaration *schema.LanguagePackage
-		}{
-			{name: "python", packageDeclaration: entry.Manifest.Spec.Languages.Python},
-			{name: "typescript", packageDeclaration: entry.Manifest.Spec.Languages.TypeScript},
-		}
-		for _, language := range languages {
-			if language.packageDeclaration == nil {
+		for _, languageName := range schema.PackageLanguageNames() {
+			packageDeclaration := entry.Manifest.Spec.Languages.DeclarationOfLanguage(languageName)
+			if packageDeclaration == nil {
 				continue
 			}
-			componentPath := entry.Directory + "/" + language.name
+			componentPath := entry.Directory + "/" + languageName
+			if languageName == "java" || languageName == "rust" {
+				hasDirectory, err := hasReleasePackageDirectory(repositoryRoot, componentPath)
+				if err != nil {
+					return err
+				}
+				if !hasDirectory {
+					fmt.Fprintf(os.Stderr, "::notice::%s is absent; skipping package release\n", componentPath)
+					continue
+				}
+			}
 			latestRelease := latestReleases[componentPath]
-			isPending, transitionErr := validateConnectorVersionTransition(latestRelease.Version, language.packageDeclaration.Version)
+			isPending, transitionErr := validateConnectorVersionTransition(latestRelease.Version, packageDeclaration.Version)
 			if transitionErr != nil {
 				return fmt.Errorf("%s: %w", componentPath, transitionErr)
 			}
 			if isPending {
-				if err := validateConnectionCompatibility(repositoryRoot, entry, latestRelease, language.packageDeclaration.Version); err != nil {
+				if err := validateConnectionCompatibility(repositoryRoot, entry, latestRelease, packageDeclaration.Version); err != nil {
 					return err
 				}
 			}
@@ -384,8 +384,8 @@ func releaseMatrixCommand(args []string) error {
 			}
 			languageMatrix.Include = append(languageMatrix.Include, connectorReleaseMatrixItem{
 				Directory: entry.Directory, ManifestPath: entry.ManifestPath, TagPrefix: componentPath + "/",
-				Version: language.packageDeclaration.Version, DisplayName: entry.Manifest.Metadata.DisplayName,
-				Language: language.name, Package: languagePackageName(entry.Directory, language.name, language.packageDeclaration.Package),
+				Version: packageDeclaration.Version, DisplayName: entry.Manifest.Metadata.DisplayName,
+				Language: languageName, Package: languagePackageName(entry.Directory, languageName, packageDeclaration.Package),
 			})
 		}
 	}
@@ -700,11 +700,10 @@ func encodeConnectorCatalog(entries []connectorDirectoryEntry, completedGoTags, 
 					declaredLanguages = releasedManifest.Spec.Languages
 				} else {
 					retainedLanguages := *declaredLanguages
-					if retainedLanguages.Python == nil {
-						retainedLanguages.Python = releasedManifest.Spec.Languages.Python
-					}
-					if retainedLanguages.TypeScript == nil {
-						retainedLanguages.TypeScript = releasedManifest.Spec.Languages.TypeScript
+					for _, languageName := range schema.PackageLanguageNames() {
+						if retainedLanguages.DeclarationOfLanguage(languageName) == nil {
+							retainedLanguages.ReplaceDeclarationOfLanguage(languageName, releasedManifest.Spec.Languages.DeclarationOfLanguage(languageName))
+						}
 					}
 					declaredLanguages = &retainedLanguages
 				}
@@ -714,14 +713,12 @@ func encodeConnectorCatalog(entries []connectorDirectoryEntry, completedGoTags, 
 		var releasedLanguages *schema.Languages
 		if declaredLanguages != nil {
 			filtered := *declaredLanguages
-			var declarationErr error
-			filtered.Python, declarationErr = releasedLanguageDeclaration(entry, "python", filtered.Python, completedLanguageTags, repositoryRoot)
-			if declarationErr != nil {
-				return nil, declarationErr
-			}
-			filtered.TypeScript, declarationErr = releasedLanguageDeclaration(entry, "typescript", filtered.TypeScript, completedLanguageTags, repositoryRoot)
-			if declarationErr != nil {
-				return nil, declarationErr
+			for _, languageName := range schema.PackageLanguageNames() {
+				released, declarationErr := releasedLanguageDeclaration(entry, languageName, filtered.DeclarationOfLanguage(languageName), completedLanguageTags, repositoryRoot)
+				if declarationErr != nil {
+					return nil, declarationErr
+				}
+				filtered.ReplaceDeclarationOfLanguage(languageName, released)
 			}
 			releasedLanguages = &filtered
 		}
@@ -749,23 +746,21 @@ func encodeConnectorCatalog(entries []connectorDirectoryEntry, completedGoTags, 
 			Description: metadata.Description, Categories: metadata.Categories, Version: metadata.Version, Directory: entry.Directory,
 			UIUnits: uiUnits, Triggers: triggers, Operations: operations,
 		}
-		if releasedLanguages != nil && (releasedLanguages.Python != nil || releasedLanguages.TypeScript != nil) {
+		if releasedLanguages.HasAnyPackage() {
 			item.Languages = map[string]string{"go": metadata.Version}
-			item.LanguagePackages = make(map[string]string, 2)
-			if python := releasedLanguages.Python; python != nil {
-				item.Languages["python"] = python.Version
-				item.LanguagePackages["python"] = languagePackageName(entry.Directory, "python", python.Package)
-				if pypiPublishedLanguageTags != nil {
-					tag := entry.Directory + "/python/" + python.Version
-					item.PythonPackage = &catalogPythonPackage{
-						Name: languagePackageName(entry.Directory, "python", python.Package), Tag: tag,
-						IsPyPIPublished: pypiPublishedLanguageTags[tag],
-					}
+			item.LanguagePackages = make(map[string]string, len(schema.PackageLanguageNames()))
+			for _, languageName := range schema.PackageLanguageNames() {
+				if declaration := releasedLanguages.DeclarationOfLanguage(languageName); declaration != nil {
+					item.Languages[languageName] = declaration.Version
+					item.LanguagePackages[languageName] = languagePackageName(entry.Directory, languageName, declaration.Package)
 				}
 			}
-			if typeScript := releasedLanguages.TypeScript; typeScript != nil {
-				item.Languages["typescript"] = typeScript.Version
-				item.LanguagePackages["typescript"] = languagePackageName(entry.Directory, "typescript", typeScript.Package)
+			if python := releasedLanguages.Python; python != nil && pypiPublishedLanguageTags != nil {
+				tag := entry.Directory + "/python/" + python.Version
+				item.PythonPackage = &catalogPythonPackage{
+					Name: languagePackageName(entry.Directory, "python", python.Package), Tag: tag,
+					IsPyPIPublished: pypiPublishedLanguageTags[tag],
+				}
 			}
 		}
 		if entry.Manifest.HasMocks() {
@@ -777,7 +772,7 @@ func encodeConnectorCatalog(entries []connectorDirectoryEntry, completedGoTags, 
 	// Released declarations can differ from the current ones, so the published names are checked as well.
 	directoriesByPackage := make(map[string]string)
 	for _, item := range catalog.Connectors {
-		for _, language := range []string{"python", "typescript"} {
+		for _, language := range schema.PackageLanguageNames() {
 			if packageName, isListed := item.LanguagePackages[language]; isListed {
 				if err := claimLanguagePackageName(directoriesByPackage, language, packageName, item.Directory); err != nil {
 					return nil, err
@@ -886,12 +881,7 @@ func releasedLanguageDeclaration(entry connectorDirectoryEntry, language string,
 	if releasedManifest.Spec.Languages == nil {
 		return nil, fmt.Errorf("%s release manifest has no language declarations", selectedTag)
 	}
-	var releasedDeclaration *schema.LanguagePackage
-	if language == "python" {
-		releasedDeclaration = releasedManifest.Spec.Languages.Python
-	} else {
-		releasedDeclaration = releasedManifest.Spec.Languages.TypeScript
-	}
+	releasedDeclaration := releasedManifest.Spec.Languages.DeclarationOfLanguage(language)
 	if releasedDeclaration == nil || releasedDeclaration.Version != selectedVersion {
 		return nil, fmt.Errorf("%s release manifest has a different language version", selectedTag)
 	}
@@ -899,26 +889,21 @@ func releasedLanguageDeclaration(entry connectorDirectoryEntry, language string,
 }
 
 func capabilityLanguages(languages *schema.Languages, capabilityName string, isTrigger bool) []string {
-	if languages == nil || (languages.Python == nil && languages.TypeScript == nil) {
+	if !languages.HasAnyPackage() {
 		return nil
 	}
 	supported := []string{"go"}
-	for _, language := range []struct {
-		name        string
-		declaration *schema.LanguagePackage
-	}{
-		{name: "python", declaration: languages.Python},
-		{name: "typescript", declaration: languages.TypeScript},
-	} {
-		if language.declaration == nil {
+	for _, languageName := range schema.PackageLanguageNames() {
+		declaration := languages.DeclarationOfLanguage(languageName)
+		if declaration == nil {
 			continue
 		}
-		names := language.declaration.Operations
+		names := declaration.Operations
 		if isTrigger {
-			names = language.declaration.Triggers
+			names = declaration.Triggers
 		}
 		if slices.Contains(names, capabilityName) {
-			supported = append(supported, language.name)
+			supported = append(supported, languageName)
 		}
 	}
 	return supported

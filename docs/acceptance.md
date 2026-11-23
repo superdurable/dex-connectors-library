@@ -82,7 +82,7 @@ CI behavior is accepted when:
 - every event replays the conformance scenarios of every selected connector,
   in a job parallel to the package tests; the conformance mutation self-test
   never runs in the merge queue;
-- a Python or TypeScript package without conformance scenarios fails replay
+- a Python, TypeScript, Java, or Rust package without conformance scenarios fails replay
   on every event, base commit, diff, and scope, unless
   `conformance/exemptions.yaml` exempts its connector;
 - the `ci-summary` check reports a result even when a matrix is empty;

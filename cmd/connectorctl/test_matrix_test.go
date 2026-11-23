@@ -587,6 +587,7 @@ var reviewedNonConnectorToolingReferences = map[string]bool{
 	".cursor/hooks/validate-branch-off-main.sh references branch_off_main_policy": true,
 	// Release and token-check workflows, which CI never runs.
 	".github/workflows/check-npm-token.yml references npm_publish":              true,
+	".github/workflows/release-candidate.yml references language_publish":       true,
 	".github/workflows/release-candidate.yml references npm_publish":            true,
 	".github/workflows/release-connector.yml references connectors_mcp_release": true,
 	".github/workflows/release-connector.yml references language_publish":       true,

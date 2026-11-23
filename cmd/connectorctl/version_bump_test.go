@@ -203,6 +203,43 @@ func TestReplaceUVLockPackageVersionEditsOnlyTheRootPackage(t *testing.T) {
 	require.ErrorContains(t, err, "found 2")
 }
 
+func TestReplaceJavaAndRustPackageVersionsEditOnlyThePackageItself(t *testing.T) {
+	properties := "# Maven coordinate\ngroup=io.superdurable\nartifactId=dex-connector-acme-chat\nversion=0.1.0\ndexConnectorsSdkVersion=0.1.0\n"
+	updated, err := replaceGradlePropertiesVersion([]byte(properties), "0.2.0")
+	require.NoError(t, err)
+	require.Equal(t, strings.Replace(properties, "\nversion=0.1.0\n", "\nversion=0.2.0\n", 1), string(updated))
+	_, err = replaceGradlePropertiesVersion([]byte("group=io.superdurable\n"), "0.2.0")
+	require.ErrorContains(t, err, "must declare one version, found 0")
+
+	cargo := "[package]\nname = \"dex-connector-acme-chat\"\nversion = \"0.1.0\"\n\n[dependencies]\ndex-connectors-sdk = { version = \"=0.1.0\" }\n"
+	updated, err = replaceCargoPackageVersion([]byte(cargo), "0.2.0")
+	require.NoError(t, err)
+	require.Equal(t, strings.Replace(cargo, "version = \"0.1.0\"", "version = \"0.2.0\"", 1), string(updated))
+	_, err = replaceCargoPackageVersion([]byte("[package]\nname = \"x\"\nversion.workspace = true\n"), "0.2.0")
+	require.ErrorContains(t, err, "found 0")
+
+	const registryEntry = "[[package]]\nname = \"dex-connector-acme-chat\"\nversion = \"0.1.0\"\nsource = \"registry+https://github.com/rust-lang/crates.io-index\"\nchecksum = \"abc\"\n"
+	const rootEntry = "[[package]]\nname = \"dex-connector-acme-chat\"\nversion = \"0.1.0\"\ndependencies = [\n \"serde\",\n]\n"
+	lock := "version = 4\n\n" + registryEntry + "\n" + rootEntry
+	updated, err = replaceCargoLockRootPackageVersion([]byte(lock), "dex-connector-acme-chat", "0.2.0")
+	require.NoError(t, err)
+	require.Equal(t, "version = 4\n\n"+registryEntry+"\n"+strings.Replace(rootEntry, `"0.1.0"`, `"0.2.0"`, 1), string(updated))
+	_, err = replaceCargoLockRootPackageVersion([]byte(registryEntry), "dex-connector-acme-chat", "0.2.0")
+	require.ErrorContains(t, err, "found 0")
+}
+
+func TestJavaAndRustREADMEVersionPins(t *testing.T) {
+	contents := []byte("implementation(\"io.superdurable:dex-connector-acme-chat:0.1.0\")\n" +
+		"dex-connector-acme-chat = \"0.1.0\"\n" +
+		"dex-connector-acme-chat = \"=0.1.0\"\n" +
+		"io.superdurable:dex-connector-acme-chat:0.1.0-rc.1\n")
+	javaPins := findREADMEVersionPins("README.md", contents, versionBumpChat, nil, "java", "io.superdurable:dex-connector-acme-chat")
+	require.Len(t, javaPins, 1)
+	require.Equal(t, "0.1.0", javaPins[0].version)
+	rustPins := findREADMEVersionPins("README.md", contents, versionBumpChat, nil, "rust", "dex-connector-acme-chat")
+	require.Len(t, rustPins, 2)
+}
+
 func TestStaleREADMEVersionPinsReportsEveryDeclaredPackage(t *testing.T) {
 	repositoryRoot := writeVersionBumpRepository(t)
 	connectorPath := filepath.Join(repositoryRoot, filepath.FromSlash(versionBumpChat))
@@ -247,7 +284,7 @@ func TestBumpRejectsAMissingPackageAndInvalidArguments(t *testing.T) {
 
 	require.ErrorContains(t, bumpCommand([]string{connectorPath, "--python", "minor"}, &bytes.Buffer{}),
 		"connectors/acme/mail has no python package to bump: connector.yaml does not declare spec.languages.python")
-	require.ErrorContains(t, bumpCommand([]string{connectorPath}, &bytes.Buffer{}), "at least one of --go, --python, or --typescript")
+	require.ErrorContains(t, bumpCommand([]string{connectorPath}, &bytes.Buffer{}), "at least one of --go, --python, --typescript, --java, or --rust")
 	require.ErrorContains(t, bumpCommand([]string{connectorPath, "--go", "minor", "extra"}, &bytes.Buffer{}), bumpUsage)
 	require.ErrorContains(t, bumpCommand([]string{connectorPath, "--go", "breaking"}, &bytes.Buffer{}), `--go must be patch, minor, or major, got "breaking"`)
 	requireVersionBumpMailFiles(t, repositoryRoot, "v0.2.0")

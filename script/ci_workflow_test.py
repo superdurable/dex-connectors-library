@@ -502,7 +502,10 @@ class QueueOnlyJobsTest(unittest.TestCase):
 
     def test_every_event_replays_the_selected_connectors_and_only_pull_requests_and_canaries_mutate(self) -> None:
         conditions = self.step_conditions("connector-conformance")
-        self.assertEqual({"make test-connector-conformance", "python3 script/connector_conformance.py --mutation-self-test"}, set(conditions))
+        rust_toolchain = 'rustup toolchain install "${RUSTUP_TOOLCHAIN}" --profile minimal && rustup default "${RUSTUP_TOOLCHAIN}"'
+        self.assertEqual({rust_toolchain, "make test-connector-conformance",
+                          "python3 script/connector_conformance.py --mutation-self-test"}, set(conditions))
+        self.assertEqual("", conditions[rust_toolchain], "Rust packages replay on every event")
         self.assertEqual("", conditions["make test-connector-conformance"], "the queue replays every selected fixture")
         mutation = conditions["python3 script/connector_conformance.py --mutation-self-test"]
         for event_name, runs in (("pull_request", True), ("merge_group", False), ("push", False), ("schedule", True),

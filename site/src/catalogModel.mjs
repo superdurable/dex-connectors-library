@@ -8,6 +8,9 @@ export const rawRepositoryRoot =
 
 export const connectorLibraryRepositoryUrl = "https://github.com/superdurable/dex-connectors-library";
 
+/** Every language a connector release can list, in catalog display order; Go comes first. */
+export const catalogLanguages = ["go", "python", "typescript", "java", "rust"];
+
 export function companyDirectory(directory) {
   if (!directory.startsWith("connectors/")) {
     throw new Error(`connector directory must start with connectors/: ${directory}`);
@@ -64,6 +67,7 @@ export function readCatalogDocument(text) {
       version: requiredText(connector.version, "version"),
       languages,
       pythonPackage: readPythonPackage(connector.pythonPackage, directory, languages.python),
+      languagePackages: readLanguagePackages(connector.languagePackages, languages),
       directory,
       companyDirectory: companyDirectory(directory),
       uiUnits: readCapabilities(connector.uiUnits, "ui-unit"),
@@ -135,7 +139,7 @@ export function categoryConnectorCounts(categories, connectors) {
 }
 
 export function languageConnectorCounts(connectors) {
-  return new Map(["all", "go", "python", "typescript"].map((language) =>
+  return new Map(["all", ...catalogLanguages].map((language) =>
     [language, connectors.filter((connector) => connectorMatchesLanguage(connector, language)).length]));
 }
 
@@ -145,11 +149,52 @@ function readLanguages(value, goVersion) {
     throw new Error("catalog languages must be an object");
   }
   for (const [language, version] of Object.entries(languages)) {
-    if (!["go", "python", "typescript"].includes(language) || !/^v\d+\.\d+\.\d+$/.test(version)) {
+    if (!catalogLanguages.includes(language) || !/^v\d+\.\d+\.\d+$/.test(version)) {
       throw new Error(`invalid catalog language: ${language}`);
     }
   }
   return languages;
+}
+
+function readLanguagePackages(value, languages) {
+  if (value == null) {
+    return {};
+  }
+  if (typeof value !== "object" || Array.isArray(value)) {
+    throw new Error("catalog languagePackages must be an object");
+  }
+  for (const [language, packageName] of Object.entries(value)) {
+    if (language === "go" || !Object.hasOwn(languages, language)) {
+      throw new Error(`catalog languagePackages lists unlisted language: ${language}`);
+    }
+    requiredText(packageName, `${language} package name`);
+  }
+  return value;
+}
+
+/** Returns the Maven and Gradle dependency snippets of the listed Java package, or null without one. */
+export function javaInstall(connector) {
+  const coordinate = connector.languagePackages.java;
+  const version = connector.languages.java;
+  if (!coordinate || !version) {
+    return null;
+  }
+  const [groupId, artifactId] = coordinate.split(":");
+  return {
+    gradle: `implementation("${coordinate}:${version.slice(1)}")`,
+    maven: `<dependency>\n  <groupId>${groupId}</groupId>\n  <artifactId>${artifactId}</artifactId>\n` +
+      `  <version>${version.slice(1)}</version>\n</dependency>`,
+  };
+}
+
+/** Returns the cargo command that adds the listed Rust crate, or null without one. */
+export function rustInstall(connector) {
+  const crateName = connector.languagePackages.rust;
+  const version = connector.languages.rust;
+  if (!crateName || !version) {
+    return null;
+  }
+  return `cargo add ${crateName}@${version.slice(1)}`;
 }
 
 function readPythonPackage(value, directory, pythonVersion) {
@@ -268,7 +313,7 @@ export function readOperations(text) {
     name: requiredText(operation.name, "operation name"),
     kind: requiredText(operation.kind, "operation kind"),
     description: requiredText(operation.description, "operation description"),
-    languages: ["go", ...["python", "typescript"].filter((language) =>
+    languages: ["go", ...catalogLanguages.slice(1).filter((language) =>
       spec.languages?.[language]?.[operation.kind === "trigger" ? "triggers" : "operations"]?.includes(operation.name))],
   }));
 }
@@ -293,9 +338,9 @@ function readCapabilityLanguages(value) {
     return ["go"];
   }
   if (!Array.isArray(value) || value.length === 0 || value[0] !== "go" ||
-      value.some((language) => !["go", "python", "typescript"].includes(language)) ||
+      value.some((language) => !catalogLanguages.includes(language)) ||
       new Set(value).size !== value.length ||
-      value.join(",") !== ["go", "python", "typescript"].filter((language) => value.includes(language)).join(",")) {
+      value.join(",") !== catalogLanguages.filter((language) => value.includes(language)).join(",")) {
     throw new Error("catalog capability languages must be sorted, unique, and include go");
   }
   return value;

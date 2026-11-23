@@ -111,6 +111,65 @@ func TestLanguageReleaseMatrixUsesIndependentVersions(t *testing.T) {
 	require.Equal(t, "@superdurable/connector-acme-chat", languageMatrix.Include[1].Package)
 }
 
+func TestJavaAndRustFirstReleasesJoinTheLanguageMatrixAndCatalog(t *testing.T) {
+	repositoryRoot := t.TempDir()
+	directory := "connectors/acme/chat"
+	writeConnectorFixture(t, repositoryRoot, directory, "example.com/connectors/acme/chat")
+	manifestPath := filepath.Join(repositoryRoot, directory, "connector.yaml")
+	replaceInFile(t, manifestPath, "spec:\n", "spec:\n  languages:\n    java: {version: v0.1.0, operations: [appendRows], triggers: []}\n    rust: {version: v0.1.0, operations: [], triggers: []}\n")
+	require.NoError(t, os.MkdirAll(filepath.Join(repositoryRoot, directory, "java"), 0o755))
+	require.NoError(t, os.MkdirAll(filepath.Join(repositoryRoot, directory, "rust"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(repositoryRoot, directory, "java", "gradle.properties"),
+		[]byte("group=io.superdurable\nartifactId=dex-connector-acme-chat\nversion=0.1.0\n"), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(repositoryRoot, directory, "rust", "Cargo.toml"),
+		[]byte("[package]\nname = \"dex-connector-acme-chat\"\nversion = \"0.1.0\"\n"), 0o600))
+	catalogPath := filepath.Join(repositoryRoot, "catalog.yaml")
+	require.NoError(t, os.WriteFile(catalogPath, []byte("apiVersion: connectors.dex.dev/catalog-source/v1alpha1\nkind: ConnectorCatalogSource\ndirectories:\n  - connectors/acme/chat\n"), 0o600))
+	initializeConnectorReleaseRepository(t, repositoryRoot, directory+"/go/v0.1.0")
+	outputPath := filepath.Join(t.TempDir(), "output")
+	require.NoError(t, releaseMatrixCommand([]string{"--catalog", catalogPath, "--github-output", outputPath}))
+	output, err := os.ReadFile(outputPath)
+	require.NoError(t, err)
+	var languageMatrix connectorReleaseMatrix
+	for _, line := range strings.Split(string(output), "\n") {
+		if strings.HasPrefix(line, "language_matrix=") {
+			require.NoError(t, json.Unmarshal([]byte(strings.TrimPrefix(line, "language_matrix=")), &languageMatrix))
+		}
+	}
+	require.Equal(t, []connectorReleaseMatrixItem{
+		{Directory: directory, ManifestPath: directory + "/connector.yaml", TagPrefix: directory + "/java/",
+			Version: "v0.1.0", DisplayName: "Google Sheets Fixture", Language: "java", Package: "io.superdurable:dex-connector-acme-chat"},
+		{Directory: directory, ManifestPath: directory + "/connector.yaml", TagPrefix: directory + "/rust/",
+			Version: "v0.1.0", DisplayName: "Google Sheets Fixture", Language: "rust", Package: "dex-connector-acme-chat"},
+	}, languageMatrix.Include)
+
+	tagConnectorRelease(t, repositoryRoot, directory+"/java/v0.1.0")
+	tagConnectorRelease(t, repositoryRoot, directory+"/rust/v0.1.0")
+	outputDirectory := t.TempDir()
+	jsonPath := filepath.Join(outputDirectory, "catalog.json")
+	completedTagsPath := filepath.Join(outputDirectory, "completed-tags")
+	require.NoError(t, os.WriteFile(completedTagsPath, []byte(directory+"/java/v0.1.0\n"+directory+"/rust/v0.1.0\n"), 0o600))
+	require.NoError(t, catalogCommand([]string{"--catalog", catalogPath, "--output", filepath.Join(outputDirectory, "catalog.yaml"),
+		"--json-output", jsonPath, "--completed-language-tags", completedTagsPath}))
+	contents, err := os.ReadFile(jsonPath)
+	require.NoError(t, err)
+	var document struct {
+		Connectors []struct {
+			Languages        map[string]string `json:"languages"`
+			LanguagePackages map[string]string `json:"languagePackages"`
+			Operations       []struct {
+				Languages []string `json:"languages"`
+			} `json:"operations"`
+		} `json:"connectors"`
+	}
+	require.NoError(t, json.Unmarshal(contents, &document))
+	require.Equal(t, map[string]string{"go": "v0.1.0", "java": "v0.1.0", "rust": "v0.1.0"}, document.Connectors[0].Languages)
+	require.Equal(t, map[string]string{"java": "io.superdurable:dex-connector-acme-chat", "rust": "dex-connector-acme-chat"},
+		document.Connectors[0].LanguagePackages)
+	require.Equal(t, []string{"go", "java"}, document.Connectors[0].Operations[0].Languages,
+		"a capability lists only the languages whose package implements it")
+}
+
 func TestScheduledReleaseMatrixIncludesPendingGoAndTaggedLanguages(t *testing.T) {
 	repositoryRoot := t.TempDir()
 	directory := "connectors/acme/chat"

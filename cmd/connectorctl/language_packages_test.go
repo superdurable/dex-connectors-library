@@ -60,3 +60,53 @@ func TestValidateLanguagePackageFilesAndVersions(t *testing.T) {
 	_, err = load(manifestPath)
 	require.ErrorContains(t, err, "spec.languages.python requires")
 }
+
+func TestValidateJavaAndRustPackageFilesAndVersions(t *testing.T) {
+	repositoryRoot := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(repositoryRoot, "catalog.yaml"), []byte("connectors: []\n"), 0o600))
+	connectorDirectory := filepath.Join(repositoryRoot, "connectors", "google", "gmail")
+	require.NoError(t, os.MkdirAll(filepath.Join(connectorDirectory, "java"), 0o755))
+	require.NoError(t, os.MkdirAll(filepath.Join(connectorDirectory, "rust"), 0o755))
+	manifestPath := filepath.Join(connectorDirectory, "connector.yaml")
+	manifest := strings.Replace(readFixtureManifest(t), "spec:\n", "spec:\n  languages:\n    java: {version: v0.2.0, operations: [appendRows], triggers: []}\n    rust: {version: v0.3.0, operations: [appendRows], triggers: []}\n", 1)
+	require.NoError(t, os.WriteFile(manifestPath, []byte(manifest), 0o600))
+	propertiesPath := filepath.Join(connectorDirectory, "java", "gradle.properties")
+	cargoPath := filepath.Join(connectorDirectory, "rust", "Cargo.toml")
+	require.NoError(t, os.WriteFile(propertiesPath, []byte("# Maven Central coordinate\ngroup=io.superdurable\nartifactId=dex-connector-google-gmail\nversion=0.2.0\ndexConnectorsSdkVersion=0.1.0\n"), 0o600))
+	require.NoError(t, os.WriteFile(cargoPath, []byte("[package]\nname = \"dex-connector-google-gmail\"\nversion = \"0.3.0\"\n\n[dependencies]\ndex-connectors-sdk = \"=0.1.0\"\n"), 0o600))
+	_, err := load(manifestPath)
+	require.NoError(t, err)
+
+	var capabilities bytes.Buffer
+	require.NoError(t, languageCapabilitiesCommand(manifestPath, "rust", &capabilities))
+	require.JSONEq(t, `{"operations":["appendRows"],"triggers":[]}`, capabilities.String())
+
+	require.NoError(t, os.WriteFile(propertiesPath, []byte("group=com.example\nartifactId=dex-connector-google-gmail\nversion=0.2.0\n"), 0o600))
+	_, err = load(manifestPath)
+	require.ErrorContains(t, err, "group, artifactId, and version must match spec.languages.java (io.superdurable:dex-connector-google-gmail v0.2.0)")
+	require.NoError(t, os.WriteFile(propertiesPath, []byte("group=io.superdurable\nartifactId=dex-connector-google-gmail\nversion=0.1.0\n"), 0o600))
+	_, err = load(manifestPath)
+	require.ErrorContains(t, err, "spec.languages.java")
+	require.NoError(t, os.Remove(propertiesPath))
+	_, err = load(manifestPath)
+	require.ErrorIs(t, err, errLanguagePackageFileMissing)
+	require.ErrorContains(t, err, "spec.languages.java requires")
+
+	require.NoError(t, os.WriteFile(propertiesPath, []byte("group=io.superdurable\nartifactId=dex-connector-google-gmail\nversion=0.2.0\n"), 0o600))
+	require.NoError(t, os.WriteFile(cargoPath, []byte("[package]\nname = \"dex-connector-gmail\"\nversion = \"0.3.0\"\n"), 0o600))
+	_, err = load(manifestPath)
+	require.ErrorContains(t, err, "[package] name and version must match spec.languages.rust (dex-connector-google-gmail v0.3.0)")
+	require.NoError(t, os.Remove(cargoPath))
+	_, err = load(manifestPath)
+	require.ErrorIs(t, err, errLanguagePackageFileMissing)
+	require.ErrorContains(t, err, "spec.languages.rust requires")
+}
+
+func TestLanguagePackageNamesFollowEachRegistryConvention(t *testing.T) {
+	require.Equal(t, "dex-connector-google-gmail", languagePackageName("connectors/google/gmail", "python", ""))
+	require.Equal(t, "@superdurable/connector-google-gmail", languagePackageName("connectors/google/gmail", "typescript", ""))
+	require.Equal(t, "io.superdurable:dex-connector-google-gmail", languagePackageName("connectors/google/gmail", "java", ""))
+	require.Equal(t, "dex-connector-slack", languagePackageName("connectors/slack", "rust", ""))
+	require.Equal(t, "io.superdurable:dex-connector-mail", languagePackageName("connectors/google/gmail", "java", "io.superdurable:dex-connector-mail"))
+	require.Panics(t, func() { languagePackageName("connectors/slack", "go", "") })
+}

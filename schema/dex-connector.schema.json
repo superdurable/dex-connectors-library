@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Dex Connector package manifest",
-  "description": "Static factory metadata for Python and TypeScript Flow source analysis and agent tool discovery.",
+  "description": "Static factory metadata for Python, TypeScript, Java, and Rust Flow source analysis and agent tool discovery.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -35,7 +35,9 @@
           "enum": [
             "go",
             "pypi",
-            "npm"
+            "npm",
+            "maven",
+            "cargo"
           ]
         },
         "name": {

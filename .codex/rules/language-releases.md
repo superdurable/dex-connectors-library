@@ -1,24 +1,27 @@
-# Python and TypeScript connector releases
+# Connector language package releases
 
-`AGENTS.md` owns repository release rules. Keep Python packages in `sdkpython/`
-or a connector's `python/` directory, and TypeScript packages in `sdkts/` or a
-connector's `typescript/` directory. Their manifest language versions, package
-metadata, and tags are independent of Go and each other. Release the matching
-SDK first. Use `sdkpython:`, `sdkts:`, or `connector(<slug>):` subjects for
-single modules.
+`AGENTS.md` owns repository release rules. Keep language SDKs in `sdkpython/`,
+`sdkts/`, `sdkjava/`, and `sdkrust/`, and connector packages in their
+`python/`, `typescript/`, `java/`, and `rust/` directories outside `go/`.
+Each `spec.languages.<language>.version` matches its package metadata and
+releases independently. SDK tags end in `/vX.Y.Z` and connector language tags
+end in `/<language>/vX.Y.Z`. Java packages publish to Maven Central as
+`io.superdurable:dex-connector-<slug>` and Rust packages to crates.io as
+`dex-connector-<slug>`. Release the matching SDK first. Use `sdkpython:`,
+`sdkts:`, `sdkjava:`, `sdkrust:`, or `connector(<slug>):` for single modules.
 
 A breaking change to only some language packages uses the scoped marker
-`(breaking: <language>[, <language>...])`, such as `(breaking: typescript)`;
-plain `(breaking)` applies to every package. Markers inside Markdown code are
+`(breaking: <language>[, <language>...])` with `go`, `python`, `typescript`,
+`java`, or `rust`. Plain `(breaking)` applies to every package. Markers inside Markdown code are
 ignored, and any other spelling outside code fails the release. `AGENTS.md`
 owns the full rule.
 
-A Python or TypeScript package lists exactly the operations and Triggers it implements in `spec.languages.<language>`; the catalog and site show per-capability language support.
+A language package lists exactly the operations and Triggers it implements in `spec.languages.<language>`; the catalog and site show per-capability language support.
 
-Every Python and TypeScript connector package must replay Go-verified provider
+Every Python, TypeScript, Java, and Rust connector package must replay Go-verified provider
 scenarios from `conformance/connectors/<directory>/scenarios.json`. Cover each
 Go-tested operation branch, Retry, uncertainty, request count, and provider
-idempotency-key behavior. CI requires fixtures for every Python and TypeScript
+idempotency-key behavior. CI requires fixtures for every language
 package on every event and scope, unless `conformance/exemptions.yaml` exempts
 its connector.
 Porters write scenario inputs, prior state, and provider responses; Go record
@@ -57,8 +60,8 @@ batch. Python first uploads to PyPI may lag behind their GitHub releases because
 PyPI limits new-project creation rates. Each Release run starts at most
 `GO_RELEASE_LIMIT` (default 15) Go connector releases and defers the rest, with
 their language packages, to later runs. Other PRs follow the one released module
-rule in `AGENTS.md`. Use `connectors(python):` or `connectors(typescript):`
-subjects for batch ports.
+rule in `AGENTS.md`. Use `connectors(python):`, `connectors(typescript):`,
+`connectors(java):`, or `connectors(rust):` subjects for batch ports.
 
 The first npm publish uses the scoped CI token; later publishes use trusted
 publishing when configured. Keep token rotation and optional trust setup in

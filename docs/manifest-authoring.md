@@ -7,19 +7,22 @@ catalog and declarative release workflow; see
 after merge; leaving it unchanged explicitly defers release. See
 [Choosing a connector version](versioning-and-releases.md#choosing-a-connector-version).
 
-Optional `spec.languages.python` and `spec.languages.typescript` entries each
-require a stable `vX.Y.Z` version and explicit `operations` and `triggers`
-name lists; they may specify a distribution `package`
-override. Go remains implied by `go/go.mod` and `metadata.version`. The Python
-package lives in `python/` and declares its matching name and version under
-`[project]` in `pyproject.toml`, where it requires the Python Connector SDK
-by version floor, `dex-connectors-sdk>=X.Y.Z,<1`, with `uv.lock` resolving
-that floor; see [Release order](versioning-and-releases.md#release-order).
-The TypeScript package lives in
-`typescript/` and declares them in `package.json`. By default their package
-names are `dex-connector-<slug>` and `@superdurable/connector-<slug>`, with
-`<slug>` formed from the connector path below `connectors/` by replacing `/`
-with `-`. The public catalog records language availability and versions.
+Optional `spec.languages` entries for `python`, `typescript`, `java`, and
+`rust` each require a stable `vX.Y.Z` version and explicit `operations` and
+`triggers` lists. An optional `package` overrides the default registry name.
+Go is implied by `go/go.mod` and `metadata.version`.
+
+| Package metadata | Identity fields | Default package |
+| --- | --- | --- |
+| `python/pyproject.toml` | `[project].name`, `[project].version` | `dex-connector-<slug>` |
+| `typescript/package.json` | `name`, `version` | `@superdurable/connector-<slug>` |
+| `java/gradle.properties` | `group`, `artifactId`, `version` | `io.superdurable:dex-connector-<slug>` |
+| `rust/Cargo.toml` | `[package].name`, `[package].version` | `dex-connector-<slug>` |
+
+The package metadata version omits the leading `v`. The slug comes from the
+connector path below `connectors/` with `/` replaced by `-`. The public
+catalog records language availability and versions. See
+[Release order](versioning-and-releases.md#release-order) for SDK requirements.
 Python import paths replace `/` and `-` with `_`; a path beginning with a digit
 gets a leading `_`, so `connectors/365api` imports as `dex_connectors._365api`.
 Each list names exactly the operations or Triggers implemented by that language
@@ -28,9 +31,13 @@ and Triggers. For example, `python: {version: v0.1.0, operations: [getMessage],
 triggers: []}` advertises only the Python `getMessage` Step. The catalog records
 the languages for each operation and Trigger; Go-only entries omit that field.
 
-`connectorctl generate` also writes `dex-connector.json` for each declared
-language. Python places it in `python/src/dex_connectors/<slug_with_underscores>/`;
-npm places it beside `typescript/package.json`. Check in the generated files and
+`connectorctl generate` also writes `dex-connector.json` for Python and
+TypeScript packages. Python places it in
+`python/src/dex_connectors/<slug_with_underscores>/` and TypeScript places it
+beside `typescript/package.json`. Java packages place the descriptor in
+`java/src/main/resources/META-INF/dex-connectors/<connector path>/`, where the
+path starts below `connectors/`. Rust packages place it beside `rust/Cargo.toml`.
+Check in the generated files and
 run `connectorctl generate --check <connector.yaml>` to detect drift. The JSON file
 maps the manifest's operation factories, branch IDs and optional status, package
 identity, and fields used by Dex CLI's Python and TypeScript source analyzers.
@@ -212,16 +219,15 @@ validation rejects missing or misplaced files.
 
 The manifest's `releaseTag` is the **Go connector release tag**
 `connectors/<connector-directory>/go/<metadata.version>`. Dex Web reads that
-release's `connector-release.json` and UI assets for Connections. Each Python
-and TypeScript release also carries its own `connector-release.json`, which a
-host resolves from the package name and exact version; see
-[Python and TypeScript connector release metadata](versioning-and-releases.md#python-and-typescript-connector-release-metadata).
-The `package`
-object separately records the PyPI or npm package name and its own version.
+release's `connector-release.json` and UI assets for Connections. Each language
+release also carries its own `connector-release.json`; see
+[Connector language release metadata](versioning-and-releases.md#connector-language-release-metadata).
+The `package` object separately records the registry package name or Maven
+coordinate and its own version.
 Before a language package is published, release validation requires that Go tag
 to be reachable from `main` and its GitHub release to contain
-`connector-release.complete`. The built wheel, sdist, or npm tarball must contain
-the generated JSON with a package version matching the release version. A
+`connector-release.complete`. The built wheel, sdist, npm tarball, Java runtime
+JAR, or Rust crate must contain the descriptor with the released package version. A
 release dry run checks the manifest identity and archives without requiring the
 new Go release to have been published yet.
 Language release candidates have the same completed Go release prerequisite;
@@ -1686,7 +1692,7 @@ path.
 Developers do not run Docker locally. See
 [`conformance/connectors/README.md`](../conformance/connectors/README.md#native-wire-protocol-exemptions).
 
-Python and TypeScript connector packages replay the Go-verified provider
+Python, TypeScript, Java, and Rust connector packages replay the Go-verified provider
 [scenarios](../conformance/connectors/README.md). Create
 `conformance/connectors/<directory>/scenarios.json` with every Go-tested branch,
 retry, duplicate-safety path, read-back outcome, and uncertainty path. Author
@@ -1713,7 +1719,7 @@ selects a retired branch fails. Each operation needs separate 429
 and 5xx Retry scenarios whose classified status is the first exchange of the
 final attempt, plus a transport-failure scenario. Operations declaring
 uncertainty need an uncertainty scenario unless the operation is `safe` or
-its `uncertain` branch is retired. Python and TypeScript compare the
+its `uncertain` branch is retired. The language runners compare the
 complete recorded requests and exact outputs through their production Dex SDK
 codecs, and derive mutation idempotency keys through their production SDK paths.
 Other recovery paths remain a review requirement.
@@ -1731,14 +1737,14 @@ See the [conformance contract](../conformance/connectors/README.md) for the stre
 format and secret-safe recording rules.
 
 Keep the language runners in `conformance/runners/`, outside published packages.
-Connector Python and TypeScript tests import them by repository path and only
+Connector language package tests use the shared runners and only
 map operations to typed inputs and construct a client. The connector's Go test
 is generated from `conformance_adapter_test.go` by `connectorctl generate`;
 `generate --check` catches drift. Run `make test-connector-conformance
 CONNECTOR_DIRECTORY=connectors/<directory>` after editing the fixture. CI also
 mutates classification, output including a wrong nonempty list, exchange, optional query, form, MIME, production
 idempotency key, read 5xx, and rejected pending cases to prove
-every applicable runner fails. Every Python and TypeScript package requires
-fixtures unless `conformance/exemptions.yaml` exempts its connector. A shared matcher fixture checks missing, empty, repeated,
-JSON array, and decoded MIME request fields in all three languages.
+every applicable runner fails. Every language package requires
+fixtures unless `conformance/exemptions.yaml` exempts its connector. The shared matcher fixture checks missing, empty, repeated,
+JSON array, and decoded MIME request fields.
 Existing runnable examples remain the end-to-end verification path.

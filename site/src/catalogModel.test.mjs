@@ -13,8 +13,10 @@ import {
   catalogTotals,
   connectorMatchesQuery,
   connectorMatchesLanguage,
+  javaInstall,
   pythonInstall,
   readCatalog,
+  rustInstall,
   readCatalogDocument,
   readOperations,
   allCategories,
@@ -74,9 +76,11 @@ test("category counts include every category, count secondary membership, and fo
   assert.deepEqual([...categoryConnectorCounts(categories, pythonMatches)], [
     ["all", 1], ["ai", 1], ["communication", 1], ["finance-payments", 0], ["hr-recruiting", 0],
   ]);
-  assert.deepEqual([...languageConnectorCounts(connectors)], [["all", 4], ["go", 4], ["python", 1], ["typescript", 0]]);
+  assert.deepEqual([...languageConnectorCounts(connectors)],
+    [["all", 4], ["go", 4], ["python", 1], ["typescript", 0], ["java", 0], ["rust", 0]]);
   const aiMatches = connectors.filter((connector) => connectorMatchesCategory(connector, "ai"));
-  assert.deepEqual([...languageConnectorCounts(aiMatches)], [["all", 2], ["go", 2], ["python", 1], ["typescript", 0]]);
+  assert.deepEqual([...languageConnectorCounts(aiMatches)],
+    [["all", 2], ["go", 2], ["python", 1], ["typescript", 0], ["java", 0], ["rust", 0]]);
 });
 
 test("category filter composes with search, and search matches category names", () => {
@@ -256,6 +260,49 @@ test("Python install uses PyPI only after the upload is published", () => {
   const [unknown] = readCatalog(pythonCatalog(""));
   assert.equal(unknown.pythonPackage, null);
   assert.equal(pythonInstall(unknown), null);
+});
+
+test("Java and Rust packages list Maven, Gradle, and Cargo install snippets and per-capability support", () => {
+  const [slack] = readCatalog(`
+${categoryTaxonomy}connectors:
+  - company: Slack
+    id: slack
+    name: Slack
+    description: Chat connector.
+    version: v1.4.0
+    categories: [communication]
+    languages: {go: v1.4.0, java: v0.1.0, rust: v0.2.0}
+    languagePackages: {java: "io.superdurable:dex-connector-slack", rust: dex-connector-slack}
+    directory: connectors/slack
+    uiUnits: []
+    triggers:
+      - {name: messageReceived, description: Receive messages., languages: [go, rust]}
+    operations:
+      - {name: postMessage, kind: mutation, description: Post a message., languages: [go, java, rust]}
+`);
+  assert.deepEqual(javaInstall(slack), {
+    gradle: 'implementation("io.superdurable:dex-connector-slack:0.1.0")',
+    maven: "<dependency>\n  <groupId>io.superdurable</groupId>\n  <artifactId>dex-connector-slack</artifactId>\n" +
+      "  <version>0.1.0</version>\n</dependency>",
+  });
+  assert.equal(rustInstall(slack), "cargo add dex-connector-slack@0.2.0");
+  assert.equal(connectorMatchesLanguage(slack, "java"), true);
+  assert.equal(capabilityMatchesLanguage(slack.triggers[0], "java"), false);
+  assert.equal(capabilityMatchesLanguage(slack.triggers[0], "rust"), true);
+  assert.equal(languageConnectorCounts([slack]).get("rust"), 1);
+  assert.equal(javaInstall({ ...slack, languagePackages: {} }), null);
+  assert.throws(() => readCatalog(`
+${categoryTaxonomy}connectors:
+  - {company: Slack, id: slack, name: Slack, description: Chat., version: v1.4.0, categories: [communication],
+     languages: {go: v1.4.0}, languagePackages: {rust: dex-connector-slack}, directory: connectors/slack,
+     uiUnits: [], triggers: [], operations: []}
+`), /unlisted language: rust/);
+  assert.throws(() => readCatalog(`
+${categoryTaxonomy}connectors:
+  - {company: Slack, id: slack, name: Slack, description: Chat., version: v1.4.0, categories: [communication],
+     directory: connectors/slack, uiUnits: [], triggers: [],
+     operations: [{name: postMessage, kind: mutation, description: Post., languages: [go, rust, java]}]}
+`), /sorted, unique, and include go/);
 });
 
 test("catalog rejects a Python package that differs from the listed Python release", () => {

@@ -38,6 +38,10 @@ concurrency:
   group: release-connectors-and-catalog
   cancel-in-progress: false
 
+env:
+  # Matches the Dex Rust SDK release toolchain.
+  RUSTUP_TOOLCHAIN: '1.97.1'
+
 jobs:
   plan:
     if: github.ref == 'refs/heads/main'
@@ -499,6 +503,16 @@ jobs:
           token: ''
       - uses: astral-sh/setup-uv@v7
         if: matrix.language == 'python'
+      - uses: actions/setup-java@v5
+        if: matrix.language == 'java'
+        with:
+          distribution: zulu
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v6
+        if: matrix.language == 'java'
+      - name: Install Rust
+        if: matrix.language == 'rust'
+        run: rustup toolchain install "${RUSTUP_TOOLCHAIN}" --profile minimal
       # Every language release builds the connector's Studio UI, so Python jobs need Node too.
       - uses: actions/setup-node@v6
         with:
@@ -567,6 +581,24 @@ jobs:
           npm run build --prefix "${COMPONENT_PATH}"
           mkdir -p "${RUNNER_TEMP}/language-work/dist"
           npm pack "./${COMPONENT_PATH}" --pack-destination "${RUNNER_TEMP}/language-work/dist"
+      - name: Test and build Java package
+        if: steps.state.outputs.release_required == 'true' && matrix.language == 'java'
+        run: |
+          test -x "${COMPONENT_PATH}/gradlew" || { echo 'Java package Gradle wrapper is missing' >&2; exit 1; }
+          (cd "${COMPONENT_PATH}" && ./gradlew --no-daemon clean build)
+          artifact_id="${PACKAGE_NAME#*:}"
+          mkdir -p "${RUNNER_TEMP}/language-work/dist"
+          cp "${COMPONENT_PATH}/build/libs/${artifact_id}-${RELEASE_VERSION#v}.jar" \
+            "${COMPONENT_PATH}/build/libs/${artifact_id}-${RELEASE_VERSION#v}-sources.jar" \
+            "${RUNNER_TEMP}/language-work/dist/"
+      - name: Test and build Rust package
+        if: steps.state.outputs.release_required == 'true' && matrix.language == 'rust'
+        run: |
+          test -f "${COMPONENT_PATH}/Cargo.lock" || { echo 'Rust lockfile is missing' >&2; exit 1; }
+          cargo test --locked --manifest-path "${COMPONENT_PATH}/Cargo.toml"
+          cargo package --locked --manifest-path "${COMPONENT_PATH}/Cargo.toml"
+          mkdir -p "${RUNNER_TEMP}/language-work/dist"
+          cp "${COMPONENT_PATH}/target/package/${PACKAGE_NAME}-${RELEASE_VERSION#v}.crate" "${RUNNER_TEMP}/language-work/dist/"
       - name: Build and test Connector Studio UI
         if: steps.state.outputs.release_required == 'true'
         env:
@@ -667,6 +699,16 @@ jobs:
         if: matrix.language == 'typescript'
         with:
           node-version: 24
+      - uses: actions/setup-java@v5
+        if: matrix.language == 'java'
+        with:
+          distribution: zulu
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v6
+        if: matrix.language == 'java'
+      - name: Install Rust
+        if: matrix.language == 'rust'
+        run: rustup toolchain install "${RUSTUP_TOOLCHAIN}" --profile minimal
       - uses: actions/download-artifact@v4
         with:
           name: language-${{ matrix.artifact_index }}
@@ -706,11 +748,13 @@ jobs:
       - name: Verify package archives before publication
         if: steps.state.outputs.release_required == 'true'
         run: |
-          if [ "${LANGUAGE}" = python ]; then
-            assets=("${RUNNER_TEMP}"/language-work/dist/*.whl "${RUNNER_TEMP}"/language-work/dist/*.tar.gz)
-          else
-            assets=("${RUNNER_TEMP}"/language-work/dist/*.tgz)
-          fi
+          case "${LANGUAGE}" in
+            python) assets=("${RUNNER_TEMP}"/language-work/dist/*.whl "${RUNNER_TEMP}"/language-work/dist/*.tar.gz) ;;
+            typescript) assets=("${RUNNER_TEMP}"/language-work/dist/*.tgz) ;;
+            java) assets=("${RUNNER_TEMP}"/language-work/dist/*.jar) ;;
+            rust) assets=("${RUNNER_TEMP}"/language-work/dist/*.crate) ;;
+            *) echo "Unsupported release language: ${LANGUAGE}" >&2; exit 1 ;;
+          esac
           arguments=()
           for asset in "${assets[@]}"; do arguments+=(--asset "${asset}"); done
           python3 script/release/component_release.py verify-language-artifacts \
@@ -736,11 +780,13 @@ jobs:
             --plan "${RUNNER_TEMP}/trusted-language-plan.json" --repository "${GITHUB_REPOSITORY}" \
             --output "${RUNNER_TEMP}/language-work/notes.md"
           rm -f "${RUNNER_TEMP}"/language-work/dist/*.sha256 "${RUNNER_TEMP}/language-work/dist/language-release.json"
-          if [ "${LANGUAGE}" = python ]; then
-            assets=("${RUNNER_TEMP}"/language-work/dist/*.whl "${RUNNER_TEMP}"/language-work/dist/*.tar.gz)
-          else
-            assets=("${RUNNER_TEMP}"/language-work/dist/*.tgz)
-          fi
+          case "${LANGUAGE}" in
+            python) assets=("${RUNNER_TEMP}"/language-work/dist/*.whl "${RUNNER_TEMP}"/language-work/dist/*.tar.gz) ;;
+            typescript) assets=("${RUNNER_TEMP}"/language-work/dist/*.tgz) ;;
+            java) assets=("${RUNNER_TEMP}"/language-work/dist/*.jar) ;;
+            rust) assets=("${RUNNER_TEMP}"/language-work/dist/*.crate) ;;
+            *) echo "Unsupported release language: ${LANGUAGE}" >&2; exit 1 ;;
+          esac
           arguments=()
           for asset in "${assets[@]}"; do arguments+=(--asset "${asset}"); done
           python3 "${RUNNER_TEMP}/component_release.py" language-manifest \
@@ -793,6 +839,47 @@ jobs:
           package_tarball=("${RUNNER_TEMP}"/language-work/dist/*.tgz)
           python3 "${RUNNER_TEMP}/npm_publish.py" publish --package "${PACKAGE_NAME}" \
             --version "${RELEASE_VERSION}" --tarball "${package_tarball[0]}"
+      - name: Publish Maven Central package
+        if: steps.state.outputs.release_required == 'true' && matrix.language == 'java'
+        env:
+          ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+          ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+          ORG_GRADLE_PROJECT_signingKey: ${{ secrets.GPG_SECRET_KEY }}
+          ORG_GRADLE_PROJECT_signingPassword: ''
+        run: |
+          # The trusted-metadata step left the release source checked out, so Gradle builds the tagged package.
+          if [ ! -f "${COMPONENT_PATH}/gradle.properties" ]; then
+            echo "::notice::${COMPONENT_PATH} has no Java package; skipping the Maven Central upload."
+            exit 0
+          fi
+          python3 "${RUNNER_TEMP}/language_publish.py" registry-version-state --language java \
+            --package "${PACKAGE_NAME}" --version "${RELEASE_VERSION}" --github-output "${RUNNER_TEMP}/maven-state"
+          if grep -qx 'published=true' "${RUNNER_TEMP}/maven-state"; then
+            echo "::notice::${PACKAGE_NAME} ${RELEASE_VERSION} is already on Maven Central; skipping the upload."
+            exit 0
+          fi
+          [[ -n "${ORG_GRADLE_PROJECT_mavenCentralUsername}" ]] || { echo 'MAVEN_CENTRAL_USERNAME is missing' >&2; exit 1; }
+          [[ -n "${ORG_GRADLE_PROJECT_mavenCentralPassword}" ]] || { echo 'MAVEN_CENTRAL_PASSWORD is missing' >&2; exit 1; }
+          [[ -n "${ORG_GRADLE_PROJECT_signingKey}" ]] || { echo 'GPG_SECRET_KEY is missing' >&2; exit 1; }
+          (cd "${COMPONENT_PATH}" && ./gradlew --no-daemon publishToSonatype closeAndReleaseSonatypeStagingRepository)
+      - name: Publish crates.io package
+        if: steps.state.outputs.release_required == 'true' && matrix.language == 'rust'
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
+        run: |
+          # The trusted-metadata step left the release source checked out, so cargo publishes the tagged crate.
+          if [ ! -f "${COMPONENT_PATH}/Cargo.toml" ]; then
+            echo "::notice::${COMPONENT_PATH} has no Rust package; skipping the crates.io upload."
+            exit 0
+          fi
+          python3 "${RUNNER_TEMP}/language_publish.py" registry-version-state --language rust \
+            --package "${PACKAGE_NAME}" --version "${RELEASE_VERSION}" --github-output "${RUNNER_TEMP}/crates-state"
+          if grep -qx 'published=true' "${RUNNER_TEMP}/crates-state"; then
+            echo "::notice::${PACKAGE_NAME} ${RELEASE_VERSION} is already on crates.io; skipping the upload."
+            exit 0
+          fi
+          [[ -n "${CARGO_REGISTRY_TOKEN}" ]] || { echo 'CRATES_IO_TOKEN is missing' >&2; exit 1; }
+          cargo publish --locked --manifest-path "${COMPONENT_PATH}/Cargo.toml"
       - name: Describe the pending PyPI upload in the release notes
         if: steps.state.outputs.release_required == 'true' && matrix.language == 'python' && (steps.first-limit.outputs.status == 'deferred' || steps.python-publish.outputs.status == 'deferred')
         env:
