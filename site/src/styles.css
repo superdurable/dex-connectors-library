@@ -110,6 +110,8 @@
   --go-blue: #007d9c;
   --python-blue: #3776ab;
   --typescript-blue: #3178c6;
+  --java-orange: #c2410c;
+  --rust-ink: #7a3b1d;
   /* Company logos are drawn for light backgrounds in both themes. */
   --logo-tile: #ffffff;
 }
@@ -147,6 +149,8 @@
   --go-blue: #00add8;
   --python-blue: #6aa6d8;
   --typescript-blue: #5c9ded;
+  --java-orange: #f0a35e;
+  --rust-ink: #e0a27c;
 }
 
 * { box-sizing: border-box; }
@@ -1230,6 +1234,8 @@ h2, h3 {
   font-size: 0.82rem;
   line-height: 1.5;
   overflow-wrap: anywhere;
+  /* Keeps the line breaks of a multiline snippet, such as a Maven dependency. */
+  white-space: pre-wrap;
 }
 
 .copy-button {
@@ -1318,6 +1324,8 @@ h2, h3 {
 .language-icon svg { width: 20px; height: 20px; fill: currentColor; }
 .language-icon-python { color: var(--python-blue); }
 .language-icon-typescript { color: var(--typescript-blue); }
+.language-icon-java { color: var(--java-orange); }
+.language-icon-rust { color: var(--rust-ink); }
 
 .kind {
   display: inline-flex;
@@ -1778,7 +1786,7 @@ h2, h3 {
   .card { min-height: 0; }
   .install-command { flex-direction: column; align-items: stretch; }
   .copy-button { align-self: flex-end; }
-  /* Four options with logos and counts fit a phone as a two-by-two grid. */
+  /* Six options with logos and counts fit a phone as a two-column grid. */
   .language-filter { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; border-radius: 18px; }
   .language-filter label,
   .language-filter .segment-indicator { border-radius: 14px; }

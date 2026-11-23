@@ -5,13 +5,18 @@ Go module, and versions and releases each module on its own. A Dex application
 depends only on the connector modules it uses, and a change to one connector
 releases only that connector.
 
-Python and TypeScript SDKs and connector packages have independent versions.
-`sdkpython/` publishes `dex-connectors-sdk` on PyPI; `sdkts/` publishes
-`@superdurable/connectors-sdk` on npm. A connector's `python/` and
-`typescript/` directories publish `dex-connector-<slug>` and
-`@superdurable/connector-<slug>`, where the slug replaces directory separators
-below `connectors/` with hyphens. A manifest package override may change the
-distribution name.
+Python, TypeScript, Java, and Rust SDKs and connector packages have independent
+versions.
+
+| Language | Registry | SDK directory and package | Connector directory and default package |
+| --- | --- | --- | --- |
+| Python | PyPI | `sdkpython/` · `dex-connectors-sdk` | `python/` · `dex-connector-<slug>` |
+| TypeScript | npm | `sdkts/` · `@superdurable/connectors-sdk` | `typescript/` · `@superdurable/connector-<slug>` |
+| Java | Maven Central | `sdkjava/` · `io.superdurable:dex-connectors-sdk` | `java/` · `io.superdurable:dex-connector-<slug>` |
+| Rust | crates.io | `sdkrust/` · `dex-connectors-sdk` | `rust/` · `dex-connector-<slug>` |
+
+The slug replaces directory separators below `connectors/` with hyphens.
+A manifest package override may change the distribution name.
 
 ## Module and tag identity
 
@@ -20,12 +25,15 @@ The module directory determines the Git tag prefix:
 - `sdkgo` uses `sdkgo/vMAJOR.MINOR.PATCH`.
 - `sdkpython` uses `sdkpython/vMAJOR.MINOR.PATCH`.
 - `sdkts` uses `sdkts/vMAJOR.MINOR.PATCH`.
+- `sdkjava` uses `sdkjava/vMAJOR.MINOR.PATCH`.
+- `sdkrust` uses `sdkrust/vMAJOR.MINOR.PATCH`.
 - `connectors/linkedin` uses `connectors/linkedin/go/vMAJOR.MINOR.PATCH`.
 - `connectors/openai` uses `connectors/openai/go/vMAJOR.MINOR.PATCH`.
 - Company-owned families keep independent modules below one directory, such as
   `connectors/google/gmail` and `connectors/google/spreadsheet`.
-- Python and TypeScript packages append `/python/vMAJOR.MINOR.PATCH` or
-  `/typescript/vMAJOR.MINOR.PATCH` to their connector directory.
+- Python, TypeScript, Java, and Rust packages append
+  `/<language>/vMAJOR.MINOR.PATCH` to their connector directory, for example
+  `connectors/google/gmail/java/v0.1.0` and `connectors/google/gmail/rust/v0.1.0`.
 - `connectorsmcp` uses `connectorsmcp/vMAJOR.MINOR.PATCH` on release commits
   off `main`; see
   [Connectors MCP server releases](#connectors-mcp-server-releases).
@@ -37,14 +45,15 @@ merge. Leaving it unchanged explicitly defers release, even when connector code
 changes. Directory-prefixed Git tags record completed releases. Generated Go
 application APIs do not expose the release version.
 
-`spec.languages.python.version` and `spec.languages.typescript.version` are
-separate release sources. Each must match its `pyproject.toml` or `package.json`
-version without the leading `v`. A change to one language version releases only
+`spec.languages.<language>.version` is each package's release source. It must
+match the version in `pyproject.toml`, `package.json`, `gradle.properties`, or
+`Cargo.toml` without the leading `v`. A change to one language version releases only
 that language. The same patch, minor, major, and `(breaking)` rules apply to
 each language independently; a scoped `(breaking: <language>)` marker limits a
 breaking change to the named packages, as
-[Breaking change markers](#breaking-change-markers) describes. Use `sdkpython:` and `sdkts:` commit and PR subjects
-for their SDKs; single-connector changes use `connector(<slug>):`.
+[Breaking change markers](#breaking-change-markers) describes. Use
+`sdkpython:`, `sdkts:`, `sdkjava:`, and `sdkrust:` for SDK commits and PRs.
+Single-connector changes use `connector(<slug>):`.
 
 A connector batch port PR may include five to eight connectors of one language
 when each package is a first `v0.1.0` release and passes the shared
@@ -57,21 +66,20 @@ field, and separate 5xx and 429 Retry coverage for each operation.
 Before a TypeScript package's first release, its checked-in examples import
 connector code from local `src`, because the package name is not published yet.
 `make test-typescript-connectors` checks those imports and builds the package.
-Every Python and TypeScript package must have these fixtures unless
+Every Python, TypeScript, Java, and Rust package must have these fixtures unless
 `conformance/exemptions.yaml` exempts its connector; replay fails a package
 without them on every event and scope.
 The coordinator merges one batch at a time and confirms its Release run
 created every package's GitHub release, and published each new npm project,
 before merging the next batch. Python first uploads to PyPI may lag behind
 their GitHub releases by days because PyPI limits new-project creation rates.
-Use
-`connectors(python):` or `connectors(typescript):` for a batch commit and PR.
+Use `connectors(python):`, `connectors(typescript):`, `connectors(java):`, or
+`connectors(rust):` for a batch commit and PR.
 
 GitHub Release titles are human-readable labels. SDK releases use
-`Go SDK vMAJOR.MINOR.PATCH`, `Python SDK vMAJOR.MINOR.PATCH`, or
-`TypeScript SDK vMAJOR.MINOR.PATCH`. Connector releases and release candidates
-use the manifest `metadata.displayName`, the language (`Go`, `Python`, or
-`TypeScript`), and the version, such as `Zoom Go v0.24.0`,
+`<Language> SDK vMAJOR.MINOR.PATCH`. Connector releases and release candidates
+use the manifest `metadata.displayName`, the language (`Go`, `Python`,
+`TypeScript`, `Java`, or `Rust`), and the version, such as `Zoom Go v0.24.0`,
 `Stripe Python v0.1.0`, `Stripe TypeScript v0.1.0`, or
 `Stripe Go v0.25.0-rc.1`. `script/release/component_release.py release-title`
 is the one place that formats this title for the release workflows.
@@ -115,8 +123,9 @@ Old module paths and tags remain as history; no release is published there.
 Every version that a connector's README files pin for its own module, such as
 `go get` commands, example tag URLs, and the `release-artifact` command's
 `--version` and `--tag`, stays on the manifest version. The exact
-`<python package>==X.Y.Z` and `<typescript package>@X.Y.Z` pins stay on the
-declared package versions. A test enforces both.
+package pins, such as `<python package>==X.Y.Z`, `<typescript package>@X.Y.Z`,
+`<Maven coordinate>:X.Y.Z`, and `<crate> = "=X.Y.Z"`, stay on the declared
+package versions. A test enforces these rules.
 
 `connectorctl` and the release workflow reject a version that is not a stable
 semantic version or is behind the connector's latest reachable tag, a release
@@ -135,10 +144,10 @@ git fetch origin main --tags
 go run ./cmd/connectorctl bump connectors/datadog --go minor --python minor --typescript patch
 ```
 
-Each flag takes `patch`, `minor`, or `major`. The command computes the next
+The package flags are `--go`, `--python`, `--typescript`, `--java`, and
+`--rust`. Each takes `patch`, `minor`, or `major`. The command computes the next
 version from the package's latest release tag reachable from `HEAD`,
-`<directory>/go/vX.Y.Z`, `<directory>/python/vX.Y.Z`, or
-`<directory>/typescript/vX.Y.Z`, never from the manifest, so running it again
+`<directory>/<language>/vX.Y.Z`, so running it again
 on the same branch changes nothing. Run it on a branch rebased onto the latest
 `origin/main`; it fails when a local stable release tag of the package is not
 reachable from `HEAD`. A package without a release tag gets
@@ -155,20 +164,22 @@ restores the files it already replaced and removes the ones it created.
 It edits only the version fields and lines, keeping the rest of each file
 byte for byte:
 
-- `connector.yaml` `metadata.version` for Go, and
-  `spec.languages.python.version` or `spec.languages.typescript.version`;
+- `connector.yaml` `metadata.version` for Go and
+  `spec.languages.<language>.version` for other packages;
 - `python/pyproject.toml` `[project]` `version` and, in `python/uv.lock`, the
   version of the root package, the one whose source is `{ editable = "." }`
   or `{ virtual = "." }`;
 - `typescript/package.json` `version` and the root `version` and
   `packages[""].version` in `typescript/package-lock.json`;
-- in every README of the connector, the Go pins that the README test above
-  checks, and the exact `<python package>==X.Y.Z` and
-  `<typescript package>@X.Y.Z` pins. A version with a prerelease or build
+- `java/gradle.properties` `version`;
+- `rust/Cargo.toml` `[package].version` and the root crate's version in
+  `rust/Cargo.lock`;
+- in every README of the connector, the package version pins described
+  above. A version with a prerelease or build
   suffix, such as a `-rc.1` candidate tag, is not a pin, and prose such as
   "version `0.1.0`" is left for review.
 
-It then regenerates the Python and TypeScript `dex-connector.json` files,
+It then refreshes the language packages' `dex-connector.json` files,
 whose `releaseTag` names the Go version and whose `package.version` names
 the package version, so `connectorctl generate --check` needs no further run.
 The command prints each planned version and each file it changed.
@@ -281,11 +292,31 @@ for npm provenance: `type` is `git`, `url` is
 `directory` is its repository-relative package path, such as `sdkts` or
 `connectors/newsapi/typescript`.
 
+Java connectors declare the released Connector SDK version in
+`gradle.properties` as `dexConnectorsSdkVersion=X.Y.Z`. Rust connectors use
+`dex-connectors-sdk = "=X.Y.Z"` in `Cargo.toml` and commit `Cargo.lock`.
+`connectorctl generate` writes the Java descriptor to
+`java/src/main/resources/META-INF/dex-connectors/<connector directory>/dex-connector.json`
+and the Rust descriptor to `rust/dex-connector.json`, relative to the connector.
+The Java resource path uses the directory below `connectors/`.
+Release validation requires package metadata for every declared language. A
+manual candidate request fails if the language package directory is missing.
+An automatic candidate dispatch may skip a missing directory and reports the
+skip in its log.
+
 The workflows build a wheel and source distribution or npm tarball, publish the archives
 to PyPI or npm, then upload those same files, SHA-256 digests, and
 `language-release.json` to GitHub Releases. A Python connector first release,
 whose PyPI project does not exist yet, reverses that order: it ships on GitHub
 first and PyPI receives the same archives later, as described below.
+For Java, the trusted publisher verifies the POM coordinates, dependencies, and
+SCM metadata, then signs and uploads the built runtime JAR, sources JAR, POM,
+and Javadoc JAR through the Maven Central Portal. It uses
+`MAVEN_CENTRAL_USERNAME`, `MAVEN_CENTRAL_PASSWORD`, and the unencrypted signing
+key in `GPG_SECRET_KEY`. GitHub receives the runtime and sources JARs.
+For Rust, the trusted publisher uses `CRATES_IO_TOKEN` to upload the verified
+`.crate` to crates.io and attaches the same archive to GitHub.
+Both include the archive digests and `language-release.json`.
 `dry_run` builds and tests without creating a tag, release,
 registry upload, or catalog deployment.
 
@@ -413,8 +444,8 @@ selection step enforces GitHub's 256-job matrix limit on the Go matrix it
 emits. Pending versions wait once the matrix is full. The plan fails only if
 more than 256 tagged versions must run in one run.
 
-A language package names its Go release in `releaseTag` and requires it. The
-Python and TypeScript packages of a connector whose Go release is deferred
+A language package names its Go release in `releaseTag` and requires it.
+Non-Go packages of a connector whose Go release is deferred
 therefore wait as deferred with `go_release_deferred`. As a result, a run
 starts at most the Go cap of npm first publishes, so they need no separate cap.
 One hundred new connectors release over about seven hourly runs.
@@ -458,14 +489,14 @@ Its event gate is:
 | Schedule | Yes | Any | Yes |
 | Schedule | No | Yes | Yes |
 
-The deployed catalog lists Python and TypeScript versions and capabilities
+The deployed catalog lists Python, TypeScript, Java, and Rust versions and capabilities
 only after their GitHub release contains `language-release.complete`. While a
 newer manifest language version is pending, it keeps the latest completed
 version and reads that version's capability declarations from its release tag. The
 catalog generator accepts a completed-tag inventory with
 `--completed-language-tags`; without one, it omits language entries rather than
 advertising a pending version. The local site preview, `npm run dev` in `site/`,
-passes every local Python and TypeScript connector tag as completed; run
+passes every local stable language connector tag as completed; run
 `git fetch --tags` first to approximate the deployed catalog. The catalog
 build also asks PyPI which listed Python releases it serves and passes those
 tags with
@@ -555,7 +586,7 @@ connector entry comes from its latest reachable Go tag with a GitHub release
 carrying `connector-release.complete`; an unreleased manifest bump keeps the
 previous released entry, and a connector without a completed Go release is
 omitted. Older release manifests without directory categories use the current
-catalog categories. Python and TypeScript versions likewise appear only after their
+catalog categories. Other language versions likewise appear only after their
 language releases carry `language-release.complete`.
 Each operation and Trigger also lists its supported languages for connectors
 with language packages. Language release validation checks declared operations
@@ -628,9 +659,9 @@ entry is missing, has no `hostKeptCredentials`, or has `null` instead of an
 array, so every release, candidate, and compatibility build carries the key. A
 host fails closed on a release without it.
 
-### Python and TypeScript connector release metadata
+### Connector language release metadata
 
-Every Python and TypeScript connector release, tagged
+Every Python, TypeScript, Java, and Rust connector release, tagged
 `<connector directory>/<language>/vX.Y.Z` such as
 `connectors/slack/typescript/v0.5.0`, also carries `connector-release.json`
 and `connector-release.json.sha256`. A connector with Connector Studio UI also
@@ -644,15 +675,16 @@ exists, and every such release built by this workflow already has
 `connector-release.json`. Backfilled releases are the exception described
 below.
 
-`connectorctl release-artifact --language python|typescript` writes the file
+`connectorctl release-artifact --language python|typescript|java|rust` writes the file
 with `main`'s tooling from `connector.yaml` at the release source commit. It
 has the Go schema with two additions and one omission:
 
-- `language` is `python` or `typescript`, and `package` is the PyPI or npm
-  package name. Both are absent from Go releases.
+- `language` is `python`, `typescript`, `java`, or `rust`, and `package` is
+  the registry package name or Maven coordinate. Both are absent from Go releases.
 - `modulePath` is omitted. A Go release always carries it.
 - `version` and `tag` are the language release's, such as `v0.5.0` and
-  `connectors/slack/typescript/v0.5.0`. They are not the Go version.
+  `connectors/slack/typescript/v0.5.0`. Java and Rust releases use the same
+  form with `/java/` and `/rust/` in the tag.
 - `manifest`, `manifestSha256`, `sourceSha`, `ui`, and `authMethods` are
   computed as for Go releases. `manifest.spec.languages.<language>` lists the
   operations and Triggers that the package implements.
@@ -665,10 +697,9 @@ Before the file is written, the command requires several conditions:
 - the tag is `<connector directory>/<language>/<version>`;
 - any `--package` given equals the manifest's effective package name.
 
-Go output is unchanged byte for byte. The golden files in
-`cmd/connectorctl/testdata/release-artifact/` pin all three shapes. The build
-job checks the file before any registry upload, so a manifest that `main`'s
-tooling rejects publishes nothing.
+The golden files in `cmd/connectorctl/testdata/release-artifact/` pin Go,
+Python, and TypeScript output. The build job checks the file before any
+registry upload, so a manifest that `main`'s tooling rejects publishes nothing.
 
 A `dex-app.yaml` declares a Python or TypeScript connector by package and exact
 version, such as `package: "@superdurable/connector-slack"` and
@@ -676,8 +707,8 @@ version, such as `package: "@superdurable/connector-slack"` and
 
 1. It reads `https://connectors.superdurable.io/catalog.json` and finds the
    one connector whose `languagePackages` maps a language to that package.
-   `languagePackages` lists each Python and TypeScript language that the
-   catalog lists in `languages`, with its effective PyPI or npm name.
+   `languagePackages` lists the catalog's non-Go languages with their effective
+   registry package names or Maven coordinates.
 2. It builds the tag `<directory>/<language>/v<version>`, adding the `v`
    prefix to the version: `connectors/slack/typescript/v0.5.0`.
 3. It reads that release's `connector-release.json.sha256` and then
@@ -704,8 +735,8 @@ Unchecked tags wait for a later run. `release-artifact` exits with code 3 only
 when the manifest's content fails a schema, version, tag, package, or
 `authMethods` rule. A missing or unreadable file exits with 1, and a Studio
 manifest without `--ui-artifact` exits with 4, so the check retries with a
-placeholder tarball. A declared language whose `pyproject.toml` or
-`package.json` is missing exits with 5. The check decides from `git ls-tree`
+placeholder tarball. A declared language whose package metadata file is
+missing exits with 5. The check decides from `git ls-tree`
 whether the tag has `catalog.yaml`, `connector.yaml`, that package metadata,
 and, for Studio UI, `ui/package-lock.json`, and rejects a tag that lacks one. A tag's source never changes, so
 scheduled and drain runs keep only these rejected tags in an Actions cache
@@ -738,7 +769,7 @@ them as `unsupported`. Release a new patch version of such a package to make
 it resolvable. The catalog still lists these releases, because language
 completeness remains `language-release.complete` alone.
 
-Python and TypeScript release candidates carry the same files, built with
+Language package release candidates carry the same files, built with
 `main`'s tooling from the candidate commit, before their
 `language-release.complete`.
 
@@ -750,17 +781,17 @@ bump. At v1 or later, a breaking release requires a major bump and the Go
 module path must be migrated before publishing v2 or later.
 
 Plain `(breaking)` marks the change breaking for every package the commit
-releases: Go, Python, and TypeScript. When only some language packages break,
+releases: Go, Python, TypeScript, Java, and Rust. When only some language packages break,
 use the scoped marker `(breaking: <language>[, <language>...])` with the
-lowercase names `go`, `python`, and `typescript`, such as
-`(breaking: typescript)` or `(breaking: python, typescript)`. The breaking rules
+lowercase names `go`, `python`, `typescript`, `java`, and `rust`, such as
+`(breaking: java)` or `(breaking: java, rust)`. The breaking rules
 then apply only to the named packages; the change appears under Changes for the
 others, which may release a patch. A Go package's commits include every change
-in the connector directory, and a Python or TypeScript package's commits include
+in the connector directory, and a language package's commits include
 changes to the shared `connector.yaml`, so a plain marker on a TypeScript-only
 breaking change also blocks Go and Python patch releases. SDK releases use
-their language: `sdkgo` is `go`, `sdkpython` is `python`, and `sdkts` is
-`typescript`.
+their language: `sdkgo` is `go`, `sdkpython` is `python`, `sdkts` is
+`typescript`, `sdkjava` is `java`, and `sdkrust` is `rust`.
 
 A plain marker together with a scoped one, in the same pull request or in
 another commit of the release, still marks every package. A change that breaks
@@ -779,20 +810,24 @@ different case such as `(Breaking: typescript)`, other spacing such as
 `(breaking: ts)`, and an unclosed `(breaking:`. Edit the pull request text or
 commit message and rerun the release.
 
-For a Python or TypeScript connector release, a marked commit is breaking for
+For a connector language package release, a marked commit is breaking for
 that language only when it changes the language package beyond its generated
 `dex-connector.json`. Descriptor-only changes appear under Changes. Package
 source, other generated code, and shared-manifest-only changes still count.
 
 ## Release candidates
 
-Python and TypeScript candidates use their language tag prefixes. Their
-packages use PyPI `X.Y.ZrcN` and npm `X.Y.Z-rc.N`, published to npm with the
-`next` dist-tag. The candidate workflow accepts optional `language` and
+Language package candidates use their language tag prefixes. The packages
+use `X.Y.ZrcN` on PyPI and `X.Y.Z-rc.N` on npm, Maven Central, and crates.io.
+npm candidates publish with the `next` dist-tag. The workflow accepts optional `language` and
 `dry_run` inputs. A dry run builds and verifies without publishing. An npm
 candidate requires an existing placeholder or stable release, so it cannot
 become that package's first `latest` version. Candidates use `NPM_TOKEN`
 because trusted publishing is configured for the stable workflow.
+Java and Rust candidates upload archives built in the read-only verification
+job. The publish job signs the staged Maven files or uploads the verified
+`.crate` directly. An absent `java/` or `rust/` directory skips the candidate
+with a notice.
 
 A release candidate lets an application use a connector change before review.
 It publishes one connector from a commit that is not on `main` yet, tagged

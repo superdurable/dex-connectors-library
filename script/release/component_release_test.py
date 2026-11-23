@@ -966,7 +966,7 @@ class ComponentReleaseTest(unittest.TestCase):
         self.assertEqual(release.connector_release_title("Google Sheets", "go", "v1.0.0"), "Google Sheets Go v1.0.0")
 
     def test_connector_release_title_rejects_invalid_input(self) -> None:
-        for display_name, language, version in (("Zoom", "rust", "v0.1.0"), ("Zoom", "Go", "v0.1.0"),
+        for display_name, language, version in (("Zoom", "ruby", "v0.1.0"), ("Zoom", "Go", "v0.1.0"),
                                                 ("Zoom", "go", "0.1.0"), ("", "go", "v0.1.0"),
                                                 ("Zoom\n", "go", "v0.1.0x"), ("Zo\nom", "go", "v0.1.0")):
             with self.assertRaises(ValueError, msg=(display_name, language, version)):
@@ -1515,6 +1515,8 @@ class ScopedBreakingMarkerTest(unittest.TestCase):
         "go": "connectors/hackernews/go",
         "python": "connectors/hackernews/python",
         "typescript": "connectors/hackernews/typescript",
+        "java": "connectors/hackernews/java",
+        "rust": "connectors/hackernews/rust",
     }
 
     def patch_plan(self, component_path: str, commits: tuple[str, ...] = ("change",)) -> release.ReleasePlan:
@@ -1551,7 +1553,13 @@ class ScopedBreakingMarkerTest(unittest.TestCase):
 
     def test_typescript_scoped_marker_allows_go_and_python_patches(self) -> None:
         title = "connector(hackernews): make listStoryIDs feed and limit optional (breaking: typescript)"
-        for language, is_patch_allowed in (("go", True), ("python", True), ("typescript", False)):
+        for language, is_patch_allowed in (("go", True), ("python", True), ("typescript", False), ("java", True), ("rust", True)):
+            with self.subTest(language=language):
+                self.assert_patch_allowed(language, [self.pull(title)], ["squash"], is_patch_allowed)
+
+    def test_java_and_rust_scoped_markers_reject_only_their_patches(self) -> None:
+        title = "connector(hackernews): rename the Java and Rust factories (breaking: java, rust)"
+        for language, is_patch_allowed in (("go", True), ("python", True), ("typescript", True), ("java", False), ("rust", False)):
             with self.subTest(language=language):
                 self.assert_patch_allowed(language, [self.pull(title)], ["squash"], is_patch_allowed)
 
@@ -1623,7 +1631,9 @@ class ScopedBreakingMarkerTest(unittest.TestCase):
     def test_marked_breaking_languages(self) -> None:
         self.assertEqual(release.marked_breaking_languages("no marker", "breaking change", "(breaking changes)",
                                                            "Breaking Changes: none"), frozenset())
-        self.assertEqual(release.marked_breaking_languages("x (breaking)"), frozenset({"go", "python", "typescript"}))
+        self.assertEqual(release.marked_breaking_languages("x (breaking)"),
+                         frozenset({"go", "python", "typescript", "java", "rust"}))
+        self.assertEqual(release.marked_breaking_languages("x (breaking: java, rust)"), frozenset({"java", "rust"}))
         self.assertEqual(release.marked_breaking_languages("x (breaking: typescript)"), frozenset({"typescript"}))
         self.assertEqual(release.marked_breaking_languages("(breaking: go, python)"), frozenset({"go", "python"}))
         self.assertEqual(release.marked_breaking_languages("(breaking: go, python, typescript)"),
@@ -1633,7 +1643,8 @@ class ScopedBreakingMarkerTest(unittest.TestCase):
 
     def test_invalid_scoped_marker_fails_release_notes(self) -> None:
         for text in ("(breaking: ts)", "(breaking: TypeScript)", "(breaking: )", "(breaking:)",
-                     "(breaking: go,)", "(breaking: go python)", "(breaking: go", "(breaking) and (breaking: rust)",
+                     "(breaking: go,)", "(breaking: go python)", "(breaking: go", "(breaking) and (breaking: ruby)",
+                     "(breaking: Java)", "(breaking: rs)", "(breaking: kotlin)",
                      "(breaking : typescript)", "( breaking: typescript)", "(Breaking: typescript)",
                      "(BREAKING)", "(Breaking)", "( breaking )", "(breaking )", "(breaking:typescript)",
                      "(breaking:  typescript)", "(breaking: typescript )", "(breaking: go,python)",
@@ -1699,9 +1710,170 @@ class ScopedBreakingMarkerTest(unittest.TestCase):
             ("sdkgo", "go"), ("sdkpython", "python"), ("sdkts", "typescript"),
             ("connectors/google/gmail/go", "go"), ("connectors/google/gmail/python", "python"),
             ("connectors/google/gmail/typescript", "typescript"), ("connectors/zoom", "go"),
+            ("sdkjava", "java"), ("sdkrust", "rust"),
+            ("connectors/google/gmail/java", "java"), ("connectors/slack/rust", "rust"),
         ):
             with self.subTest(component_path=component_path):
                 self.assertEqual(release.component_language(component_path), language)
+
+
+class JavaAndRustPackageTest(unittest.TestCase):
+    """Covers Java and Rust package metadata, SDK requirements, and release archives."""
+
+    GMAIL_JAVA_COORDINATE = "io.superdurable:dex-connector-google-gmail"
+
+    def setUp(self) -> None:
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name)
+
+    @staticmethod
+    def connector_manifest(ecosystem: str, name: str, version: str) -> bytes:
+        return json.dumps({"connectorId": "gmail", "releaseTag": "connectors/google/gmail/go/v0.9.0",
+                           "package": {"ecosystem": ecosystem, "name": name, "version": version},
+                           "factories": []}).encode()
+
+    def write_java_jars(self, directory: Path, manifest_path: str, manifest: bytes) -> list[Path]:
+        directory.mkdir(parents=True, exist_ok=True)
+        main_jar = directory / "dex-connector-google-gmail-0.1.0.jar"
+        with zipfile.ZipFile(main_jar, "w") as archive:
+            archive.writestr("META-INF/MANIFEST.MF", "Manifest-Version: 1.0\n")
+            archive.writestr(manifest_path, manifest)
+        sources_jar = directory / "dex-connector-google-gmail-0.1.0-sources.jar"
+        with zipfile.ZipFile(sources_jar, "w") as archive:
+            archive.writestr("io/superdurable/Gmail.java", "class Gmail {}\n")
+        return [main_jar, sources_jar]
+
+    def write_crate(self, directory: Path, cargo_toml: str, manifest: bytes | None) -> Path:
+        directory.mkdir(parents=True, exist_ok=True)
+        crate = directory / "dex-connector-slack-0.1.0.crate"
+        with tarfile.open(crate, "w:gz") as archive:
+            files = {"dex-connector-slack-0.1.0/Cargo.toml": cargo_toml.encode()}
+            if manifest is not None:
+                files["dex-connector-slack-0.1.0/dex-connector.json"] = manifest
+            for name, contents in files.items():
+                info = tarfile.TarInfo(name)
+                info.size = len(contents)
+                archive.addfile(info, io.BytesIO(contents))
+        return crate
+
+    def test_java_package_metadata_names_the_maven_coordinate(self) -> None:
+        package = self.root / "connectors/google/gmail/java"
+        package.mkdir(parents=True)
+        (package / "gradle.properties").write_text(
+            "# Maven Central coordinate\ngroup=io.superdurable\nartifactId=dex-connector-google-gmail\n"
+            "version=0.1.0\ndexConnectorsSdkVersion=0.2.0\n", encoding="utf-8")
+        self.assertEqual(release.module_path(package), self.GMAIL_JAVA_COORDINATE)
+        self.assertEqual(release.declared_package_version(package), "0.1.0")
+
+    def test_rust_package_metadata_and_exact_sdk_requirement(self) -> None:
+        package = self.root / "connectors/slack/rust"
+        package.mkdir(parents=True)
+        cargo = package / "Cargo.toml"
+        cargo.write_text('[package]\nname = "dex-connector-slack"\nversion = "0.1.0"\n\n'
+                         '[dependencies]\ndex-connectors-sdk = "=0.2.0"\n', encoding="utf-8")
+        self.assertEqual(release.module_path(package), "dex-connector-slack")
+        self.assertEqual(release.declared_package_version(package), "0.1.0")
+        self.assertEqual(release.rust_sdk_requirement_versions(package), ["0.2.0"])
+        cargo.write_text('[package]\nname = "dex-connector-slack"\nversion = "0.1.0"\n\n'
+                         '[dependencies]\ndex-connectors-sdk = { version = "^0.2.0" }\n', encoding="utf-8")
+        self.assertEqual(release.rust_sdk_requirement_versions(package), [])
+        cargo.write_text('[package]\nname = "dex-connector-slack"\nversion = "0.1.0"\n\n'
+                         '[dependencies]\ndex-connectors-sdk = { path = "../../../sdkrust" }\n', encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "cannot use path, git, workspace, or patch dependencies"):
+            release.rust_sdk_requirement_versions(package)
+
+    def test_java_release_archives(self) -> None:
+        manifest_path = "META-INF/dex-connectors/google/gmail/dex-connector.json"
+        assets = self.write_java_jars(self.root / "dist", manifest_path,
+                                      self.connector_manifest("maven", self.GMAIL_JAVA_COORDINATE, "0.1.0"))
+        release.verify_language_artifacts("java", self.GMAIL_JAVA_COORDINATE, "v0.1.0", assets)
+        with self.assertRaisesRegex(ValueError, "artifacts must be exactly"):
+            release.verify_language_artifacts("java", self.GMAIL_JAVA_COORDINATE, "v0.2.0", assets)
+        with self.assertRaisesRegex(ValueError, "artifacts must be exactly"):
+            release.verify_language_artifacts("java", self.GMAIL_JAVA_COORDINATE, "v0.1.0", assets[:1])
+        with self.assertRaisesRegex(ValueError, "io.superdurable:<artifactId> coordinate"):
+            release.verify_language_artifacts("java", "dex-connector-google-gmail", "v0.1.0", assets)
+        wrong_identity = self.write_java_jars(self.root / "wrong-identity", manifest_path,
+                                              self.connector_manifest("npm", self.GMAIL_JAVA_COORDINATE, "0.1.0"))
+        with self.assertRaisesRegex(ValueError, "package identity must equal maven"):
+            release.verify_language_artifacts("java", self.GMAIL_JAVA_COORDINATE, "v0.1.0", wrong_identity)
+        wrong_path = self.write_java_jars(self.root / "wrong-path", "META-INF/dex-connectors/slack/dex-connector.json",
+                                          self.connector_manifest("maven", self.GMAIL_JAVA_COORDINATE, "0.1.0"))
+        with self.assertRaisesRegex(ValueError, "must be at META-INF/dex-connectors/google/gmail/dex-connector.json"):
+            release.verify_language_artifacts("java", self.GMAIL_JAVA_COORDINATE, "v0.1.0", wrong_path)
+
+    def test_rust_release_archive(self) -> None:
+        cargo_toml = '[package]\nname = "dex-connector-slack"\nversion = "0.1.0"\n'
+        crate = self.write_crate(self.root / "dist", cargo_toml,
+                                 self.connector_manifest("cargo", "dex-connector-slack", "0.1.0"))
+        release.verify_language_artifacts("rust", "dex-connector-slack", "v0.1.0", [crate])
+        output = self.root / "dist/language-release.json"
+        release.write_language_release_manifest(output, "rust", "dex-connector-slack", "v0.1.0",
+                                                "connectors/slack/rust/v0.1.0", "abc", [crate])
+        self.assertEqual(json.loads(output.read_text())["language"], "rust")
+        release.verify_language_artifacts("rust", "dex-connector-slack", "v0.1.0", [crate])
+        renamed = self.write_crate(self.root / "renamed", cargo_toml.replace("dex-connector-slack", "slack"),
+                                   self.connector_manifest("cargo", "dex-connector-slack", "0.1.0"))
+        with self.assertRaisesRegex(ValueError, "identity slack@0.1.0 differs"):
+            release.verify_language_artifacts("rust", "dex-connector-slack", "v0.1.0", [renamed])
+        missing_manifest = self.write_crate(self.root / "missing", cargo_toml, None)
+        with self.assertRaisesRegex(ValueError, "must contain one dex-connector.json"):
+            release.verify_language_artifacts("rust", "dex-connector-slack", "v0.1.0", [missing_manifest])
+
+    def test_language_connector_manifest_paths(self) -> None:
+        self.assertEqual(release.language_connector_manifest_path(Path("connectors/slack/rust"), "rust"),
+                         Path("connectors/slack/rust/dex-connector.json"))
+        self.assertEqual(release.language_connector_manifest_path(Path("connectors/google/gmail/java"), "java"),
+                         Path("connectors/google/gmail/java/src/main/resources/META-INF/dex-connectors/google/gmail/dex-connector.json"))
+
+    def test_registry_lookups_name_maven_central_and_crates_io(self) -> None:
+        published = mock.MagicMock()
+        published.__enter__.return_value.status = 200
+        lookup = release.DependencyReleaseLookup("origin/main")
+        with mock.patch.object(release.urllib.request, "urlopen", return_value=published) as urlopen:
+            self.assertTrue(lookup.is_language_sdk_published("java", "0.1.0"))
+            self.assertTrue(lookup.is_language_sdk_published("rust", "0.1.0"))
+        urls = [call.args[0].full_url for call in urlopen.call_args_list]
+        self.assertEqual(urls, [
+            "https://repo1.maven.org/maven2/io/superdurable/dex-connectors-sdk/0.1.0/dex-connectors-sdk-0.1.0.pom",
+            "https://crates.io/api/v1/crates/dex-connectors-sdk/0.1.0",
+        ])
+        missing = urllib.error.HTTPError("https://crates.io", 404, "Not Found", None, None)
+        self.addCleanup(missing.close)
+        with mock.patch.object(release.urllib.request, "urlopen", side_effect=missing):
+            self.assertFalse(lookup.is_language_sdk_published("rust", "9.9.9"))
+        with self.assertRaisesRegex(ValueError, "unsupported language"):
+            lookup.is_language_sdk_published("ruby", "0.1.0")
+
+    def test_candidate_version_stamping_rewrites_only_the_package_itself(self) -> None:
+        java = self.root / "connectors/google/gmail/java"
+        java.mkdir(parents=True)
+        (java / "gradle.properties").write_text(
+            "group=io.superdurable\nartifactId=dex-connector-google-gmail\nversion=0.1.0\ndexConnectorsSdkVersion=0.1.0\n",
+            encoding="utf-8")
+        release.stamp_package_candidate_version(java, "java", "v0.1.0-rc.2")
+        self.assertEqual("0.1.0-rc.2", release.declared_package_version(java))
+        self.assertIn("dexConnectorsSdkVersion=0.1.0\n", (java / "gradle.properties").read_text(encoding="utf-8"))
+        rust = self.root / "connectors/slack/rust"
+        rust.mkdir(parents=True)
+        (rust / "Cargo.toml").write_text('[package]\nname = "dex-connector-slack"\nversion = "0.1.0"\n\n'
+                                         '[dependencies]\ndex-connectors-sdk = { version = "=0.1.0" }\n', encoding="utf-8")
+        dependency = ('[[package]]\nname = "dex-connectors-sdk"\nversion = "0.1.0"\n'
+                      'source = "registry+https://github.com/rust-lang/crates.io-index"\n')
+        (rust / "Cargo.lock").write_text('version = 4\n\n' + dependency + '\n[[package]]\nname = "dex-connector-slack"\n'
+                                         'version = "0.1.0"\n', encoding="utf-8")
+        release.stamp_package_candidate_version(rust, "rust", "v0.1.0-rc.1")
+        self.assertEqual("0.1.0-rc.1", release.declared_package_version(rust))
+        self.assertIn('dex-connectors-sdk = { version = "=0.1.0" }', (rust / "Cargo.toml").read_text(encoding="utf-8"))
+        self.assertEqual('version = 4\n\n' + dependency + '\n[[package]]\nname = "dex-connector-slack"\nversion = "0.1.0-rc.1"\n',
+                         (rust / "Cargo.lock").read_text(encoding="utf-8"))
+        with self.assertRaisesRegex(ValueError, "must equal 0.1.0 before candidate build"):
+            release.stamp_package_candidate_version(rust, "rust", "v0.1.0-rc.2")
+
+    def test_release_titles_name_java_and_rust(self) -> None:
+        self.assertEqual(release.connector_release_title("Gmail", "java", "v0.1.0"), "Gmail Java v0.1.0")
+        self.assertEqual(release.connector_release_title("Slack", "rust", "v0.1.0"), "Slack Rust v0.1.0")
 
 
 class PythonSDKRegistryLookupTest(unittest.TestCase):

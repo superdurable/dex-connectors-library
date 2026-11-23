@@ -511,6 +511,7 @@ class PackagesWithoutScenariosTest(unittest.TestCase):
     def setUp(self) -> None:
         self.root = Path(tempfile.mkdtemp())
         for connector, package in (("acme/python-only", "python/pyproject.toml"), ("acme/typescript-only", "typescript/package.json"),
+                                   ("acme/java-only", "java/gradle.properties"), ("acme/rust-only", "rust/Cargo.toml"),
                                    ("acme/native", "python/pyproject.toml")):
             (self.root / "connectors" / connector / package).parent.mkdir(parents=True)
             (self.root / "connectors" / connector / "connector.yaml").write_text("kind: Connector\n")
@@ -529,7 +530,7 @@ class PackagesWithoutScenariosTest(unittest.TestCase):
 
     def test_package_without_scenarios_fails_for_every_diff(self) -> None:
         # Scope all, an empty diff, and an unknown base reach replay with no changed paths.
-        for connector in ("acme/python-only", "acme/typescript-only"):
+        for connector in ("acme/python-only", "acme/typescript-only", "acme/java-only", "acme/rust-only"):
             for paths in ([], ["catalog.yaml"], [f"connectors/{connector}/go/client.go"], [f"connectors/{connector}/python/x.py"]):
                 with self.subTest(connector=connector, paths=paths), self.assertRaisesRegex(
                         ValueError, f"connectors/{connector} has no conformance scenarios; add "
@@ -544,8 +545,25 @@ class PackagesWithoutScenariosTest(unittest.TestCase):
     def test_connector_without_language_packages_needs_no_scenarios(self) -> None:
         self.assertEqual("", self.run_connector("acme/go-only", ["connectors/acme/go-only/go/client.go"]))
 
+    def test_java_and_rust_runners_use_gradle_and_cargo(self) -> None:
+        package = self.root / "connectors/acme/java-only/java"
+        self.assertFalse(connector_conformance.has_language_conformance_runner("java", package))
+        runner = package / "src/test/java/io/superdurable/dex/connectors/acme/ConnectorConformanceTest.java"
+        runner.parent.mkdir(parents=True)
+        runner.write_text("class ConnectorConformanceTest {}\n")
+        self.assertTrue(connector_conformance.has_language_conformance_runner("java", package))
+        self.assertEqual(([], (["./gradlew", "--no-daemon", "--info", "test", "--rerun",
+                               "--tests", "*ConnectorConformanceTest"], package)),
+                         connector_conformance.language_conformance_commands("java", package))
+        rust = self.root / "connectors/acme/rust-only/rust"
+        self.assertEqual(([], (["cargo", "test", "--locked", "--test", "conformance"], rust)),
+                         connector_conformance.language_conformance_commands("rust", rust))
+        with patch.object(connector_conformance, "ROOT", self.root):
+            self.assertEqual([("rust", rust)], connector_conformance.language_packages(self.root / "connectors/acme/rust-only"))
+
     def test_removed_language_package_or_partial_fixture_still_requires_scenarios(self) -> None:
-        for path in ("connectors/acme/go-only/python/pyproject.toml", "conformance/connectors/acme/go-only/README.md"):
+        for path in ("connectors/acme/go-only/python/pyproject.toml", "connectors/acme/go-only/rust/Cargo.toml",
+                     "connectors/acme/go-only/java/build.gradle", "conformance/connectors/acme/go-only/README.md"):
             with self.subTest(path=path), self.assertRaisesRegex(ValueError, "connectors/acme/go-only has no conformance scenarios"):
                 self.run_connector("acme/go-only", [path])
 
@@ -555,7 +573,8 @@ class PackagesWithoutScenariosTest(unittest.TestCase):
         missing = []
         tracked = subprocess.run(["git", "ls-files", "-z", "connectors"], cwd=root, capture_output=True, text=True, check=True).stdout
         for path in filter(None, tracked.split("\0")):
-            if not path.endswith(("/python/pyproject.toml", "/typescript/package.json")):
+            if not path.endswith(("/python/pyproject.toml", "/typescript/package.json", "/java/gradle.properties",
+                                  "/rust/Cargo.toml")):
                 continue
             manifest = root / path
             if not (manifest.parents[1] / "connector.yaml").is_file():

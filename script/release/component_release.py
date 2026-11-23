@@ -48,8 +48,22 @@ LIBRARY_MODULE_PATH = "github.com/superdurable/dex-connectors-library"
 CONNECTOR_MODULE_PATH_PREFIX = f"{LIBRARY_MODULE_PATH}/connectors/"
 CONNECTOR_RELEASE_COMPLETE_ASSET = "connector-release.complete"
 NPM_REPOSITORY_URL = "git+https://github.com/superdurable/dex-connectors-library.git"
-LANGUAGE_DISPLAY_NAMES = {"go": "Go", "python": "Python", "typescript": "TypeScript"}
-RELEASE_LANGUAGE_ALTERNATIVES = "go|python|typescript"
+LANGUAGE_DISPLAY_NAMES = {"go": "Go", "python": "Python", "typescript": "TypeScript", "java": "Java", "rust": "Rust"}
+# Languages that release a registry package beside the Go module, each from <connector directory>/<language>.
+PACKAGE_LANGUAGES = ("python", "typescript", "java", "rust")
+# The package URL type of each language; dex-connector.json names it as package.ecosystem.
+LANGUAGE_PACKAGE_ECOSYSTEMS = {"python": "pypi", "typescript": "npm", "java": "maven", "rust": "cargo"}
+# The file that names and versions a language package; module_path and declared_package_version read it.
+LANGUAGE_PACKAGE_METADATA_FILES = {"python": "pyproject.toml", "typescript": "package.json",
+                                   "java": "gradle.properties", "rust": "Cargo.toml"}
+LANGUAGE_SDK_TAG_PREFIXES = {"python": "sdkpython/", "typescript": "sdkts/", "java": "sdkjava/", "rust": "sdkrust/"}
+JAVA_GROUP_ID = "io.superdurable"
+JAVA_SDK_ARTIFACT_ID = "dex-connectors-sdk"
+RUST_SDK_CRATE = "dex-connectors-sdk"
+REGISTRY_LOOKUP_ATTEMPTS = 4
+REGISTRY_USER_AGENT = "dex-connector-release/1"
+JAVA_PROPERTY_LINE = re.compile(r"^\s*([A-Za-z][A-Za-z0-9_.-]*)\s*=\s*(\S+)\s*$")
+RELEASE_LANGUAGE_ALTERNATIVES = "go|python|typescript|java|rust"
 # The only accepted markers: "(breaking)" and "(breaking: python, typescript)".
 CANONICAL_BREAKING_MARKER_PATTERN = re.compile(
     rf"\(breaking(?:: (?:{RELEASE_LANGUAGE_ALTERNATIVES})(?:, (?:{RELEASE_LANGUAGE_ALTERNATIVES}))*)?\)"
@@ -60,7 +74,7 @@ UNCLOSED_BREAKING_MARKER_PATTERN = re.compile(r"\(\s*breaking\s*:", re.IGNORECAS
 MARKDOWN_FENCE_OPENING_PATTERN = re.compile(r"^ {0,3}(`{3,}|~{3,})")
 MARKDOWN_INLINE_CODE_SPAN_PATTERN = re.compile(r"(?<!`)(`+)(?!`).*?(?<!`)\1(?!`)", re.DOTALL)
 CANONICAL_BREAKING_MARKER_SYNTAX = ("(breaking) or (breaking: <language>[, <language>...]) with lowercase "
-                                    "go, python, or typescript separated by a comma and one space")
+                                    "go, python, typescript, java, or rust separated by a comma and one space")
 
 
 @dataclass(frozen=True)
@@ -99,7 +113,8 @@ class DependencyReleaseLookup:
 
     def release_asset_names(self, tag: str, allow_missing: bool = False) -> frozenset[str]:
         try:
-            cache_path = os.environ.get("GH_SDK_RELEASE_CACHE_PATH") if tag.startswith(("sdkpython/", "sdkts/")) else None
+            cache_path = (os.environ.get("GH_SDK_RELEASE_CACHE_PATH")
+                          if tag.startswith(tuple(LANGUAGE_SDK_TAG_PREFIXES.values())) else None)
             assets = release_assets(tag, os.environ.get("GH_RELEASE_INVENTORY_PATH"), cache_path=cache_path)
         except GitHubRateLimitError as error:
             raise RuntimeError(f"infrastructure failure: GitHub release lookup for {tag}: {error}") from error
@@ -127,6 +142,15 @@ class DependencyReleaseLookup:
                         raise ValueError(f"PyPI SDK lookup failed: {getattr(error, 'reason', error)}") from error
                 time.sleep(2 ** attempt)
             raise AssertionError("retry loop always returns or raises")
+        if language == "java":
+            return self.is_registry_url_published(
+                f"https://repo1.maven.org/maven2/{JAVA_GROUP_ID.replace('.', '/')}/{JAVA_SDK_ARTIFACT_ID}/{version}/"
+                f"{JAVA_SDK_ARTIFACT_ID}-{version}.pom", "Maven Central SDK lookup")
+        if language == "rust":
+            return self.is_registry_url_published(
+                f"https://crates.io/api/v1/crates/{RUST_SDK_CRATE}/{version}", "crates.io SDK lookup")
+        if language != "typescript":
+            raise ValueError(f"unsupported language: {language}")
         for attempt in range(1, NPM_LOOKUP_ATTEMPTS + 1):
             result = subprocess.run(("npm", "view", f"@superdurable/connectors-sdk@{version}", "version", "--json",
                                      "--registry", "https://registry.npmjs.org"),
@@ -137,6 +161,24 @@ class DependencyReleaseLookup:
                 return False
             if attempt == NPM_LOOKUP_ATTEMPTS or not any(code in result.stderr for code in TRANSIENT_NPM_ERROR_CODES):
                 raise ValueError(f"npm SDK lookup failed: {result.stderr.strip()[:500]}")
+            time.sleep(2 ** attempt)
+        raise AssertionError("retry loop always returns or raises")
+
+    def is_registry_url_published(self, url: str, description: str) -> bool:
+        """Returns whether url answers 200, False on 404, retrying 429, 5xx, and connection failures."""
+        request = urllib.request.Request(url, headers={"User-Agent": REGISTRY_USER_AGENT})
+        for attempt in range(1, REGISTRY_LOOKUP_ATTEMPTS + 1):
+            try:
+                with urllib.request.urlopen(request, timeout=15) as response:
+                    return response.status == 200
+            except urllib.error.HTTPError as error:
+                if error.code == 404:
+                    return False
+                if attempt == REGISTRY_LOOKUP_ATTEMPTS or not (error.code == 429 or 500 <= error.code <= 599):
+                    raise ValueError(f"{description} failed: HTTP {error.code}") from error
+            except TRANSIENT_CONNECTION_ERRORS as error:
+                if attempt == REGISTRY_LOOKUP_ATTEMPTS or is_certificate_verification_failure(error):
+                    raise ValueError(f"{description} failed: {getattr(error, 'reason', error)}") from error
             time.sleep(2 ** attempt)
         raise AssertionError("retry loop always returns or raises")
 
@@ -258,6 +300,16 @@ def module_path(component_path: Path) -> str:
         return project["name"]
     if (component_path / "package.json").is_file():
         return json.loads((component_path / "package.json").read_text(encoding="utf-8"))["name"]
+    if (component_path / "gradle.properties").is_file():
+        properties = java_package_properties(component_path)
+        if not properties.get("group") or not properties.get("artifactId"):
+            raise ValueError(f"{component_path}/gradle.properties has no group and artifactId")
+        return f"{properties['group']}:{properties['artifactId']}"
+    if (component_path / "Cargo.toml").is_file():
+        package = tomllib.loads((component_path / "Cargo.toml").read_text(encoding="utf-8")).get("package", {})
+        if not isinstance(package.get("name"), str):
+            raise ValueError(f"{component_path}/Cargo.toml has no package name")
+        return package["name"]
     go_mod = component_path / "go.mod"
     for line in go_mod.read_text(encoding="utf-8").splitlines():
         if line.startswith("module "):
@@ -265,9 +317,28 @@ def module_path(component_path: Path) -> str:
     raise ValueError(f"{go_mod} does not declare a module")
 
 
+def java_package_properties(component_path: Path) -> dict[str, str]:
+    """Read the key=value lines of a Java package's gradle.properties; comments and other separators are skipped."""
+    properties: dict[str, str] = {}
+    for line in (component_path / "gradle.properties").read_text(encoding="utf-8").splitlines():
+        if match := JAVA_PROPERTY_LINE.fullmatch(line):
+            properties[match.group(1)] = match.group(2)
+    return properties
+
+
 def declared_package_version(component_path: Path) -> str:
     if (component_path / "package.json").is_file():
         return json.loads((component_path / "package.json").read_text(encoding="utf-8"))["version"]
+    if (component_path / "gradle.properties").is_file():
+        version = java_package_properties(component_path).get("version")
+        if not version:
+            raise ValueError(f"{component_path}/gradle.properties has no version")
+        return version
+    if (component_path / "Cargo.toml").is_file():
+        version = tomllib.loads((component_path / "Cargo.toml").read_text(encoding="utf-8")).get("package", {}).get("version")
+        if not isinstance(version, str):
+            raise ValueError(f"{component_path}/Cargo.toml has no literal package version")
+        return version
     project_section = (component_path / "pyproject.toml").read_text(encoding="utf-8").split("[project]", 1)
     if len(project_section) != 2:
         raise ValueError(f"{component_path}/pyproject.toml has no [project] section")
@@ -328,12 +399,17 @@ def latest_reachable_tag(tag_prefix: str) -> tuple[str, str]:
     return tag, version
 
 
+def language_component_suffixes() -> tuple[str, ...]:
+    """Returns the /<language> suffix of every connector language package component."""
+    return tuple("/" + language for language in PACKAGE_LANGUAGES)
+
+
 def component_commits(component_path: str, baseline_tag: str, release_ref: str = "HEAD") -> tuple[str, ...]:
     revision = f"{baseline_tag}..{release_ref}" if baseline_tag else release_ref
     paths = [component_path]
     if component_path.startswith("connectors/") and component_path.endswith("/go"):
         paths.append(str(Path(component_path).parent))
-    if component_path.startswith("connectors/") and component_path.endswith(("/python", "/typescript")):
+    if component_path.startswith("connectors/") and component_path.endswith(language_component_suffixes()):
         paths.append(str(Path(component_path).parent / "connector.yaml"))
     result = git(
         "log",
@@ -353,7 +429,8 @@ def create_plan(
     target_version: str = "",
 ) -> ReleasePlan:
     path = Path(component_path)
-    if not path.is_dir() or not any((path / name).is_file() for name in ("go.mod", "pyproject.toml", "package.json")):
+    if not path.is_dir() or not any((path / name).is_file()
+                                    for name in ("go.mod", *LANGUAGE_PACKAGE_METADATA_FILES.values())):
         raise ValueError(f"component has no supported package manifest: {component_path}")
     package_json = path / "package.json"
     if package_json.is_file():
@@ -417,7 +494,7 @@ def commit_message(commit: str) -> str:
 
 
 def commit_changes_beyond_language_descriptor(commit: str, component_path: str) -> bool:
-    if not component_path.startswith("connectors/") or not component_path.endswith(("/python", "/typescript")):
+    if not component_path.startswith("connectors/") or not component_path.endswith(language_component_suffixes()):
         return True
     parents = git("rev-list", "--parents", "-n", "1", commit).stdout.split()
     if len(parents) > 1:
@@ -433,9 +510,12 @@ def commit_changes_beyond_language_descriptor(commit: str, component_path: str) 
         is_python_descriptor = (component_path.endswith("/python") and len(parts) == 4
                                 and parts[:2] == ("src", "dex_connectors")
                                 and parts[3] == "dex-connector.json")
-        is_typescript_descriptor = (component_path.endswith("/typescript")
-                                    and parts == ("dex-connector.json",))
-        if not (is_python_descriptor or is_typescript_descriptor):
+        is_package_root_descriptor = (component_path.endswith(("/typescript", "/rust"))
+                                      and parts == ("dex-connector.json",))
+        is_java_descriptor = (component_path.endswith("/java") and len(parts) >= 6
+                              and parts[:5] == ("src", "main", "resources", "META-INF", "dex-connectors")
+                              and parts[-1] == "dex-connector.json")
+        if not (is_python_descriptor or is_package_root_descriptor or is_java_descriptor):
             return True
     return False
 
@@ -448,11 +528,15 @@ def associated_pull_request(repository: str, commit: str) -> dict[str, object] |
 
 
 def component_language(component_path: str) -> str:
-    """Returns the package language a component releases: go, python, or typescript."""
+    """Returns the package language a component releases: go, python, typescript, java, or rust."""
     if component_path == "sdkpython" or component_path.endswith("/python"):
         return "python"
     if component_path == "sdkts" or component_path.endswith("/typescript"):
         return "typescript"
+    if component_path == "sdkjava" or component_path.endswith("/java"):
+        return "java"
+    if component_path == "sdkrust" or component_path.endswith("/rust"):
+        return "rust"
     return "go"
 
 
@@ -568,8 +652,8 @@ def write_github_output(path: Path, plan: ReleasePlan) -> None:
 def write_language_release_manifest(
     output: Path, language: str, package: str, version: str, tag: str, source_sha: str, assets: list[Path]
 ) -> None:
-    if language not in {"python", "typescript"}:
-        raise ValueError("language release requires Python or TypeScript")
+    if language not in PACKAGE_LANGUAGES:
+        raise ValueError("language release requires Python, TypeScript, Java, or Rust")
     if not RELEASE_ARTIFACT_VERSION_PATTERN.fullmatch(version) or not tag.endswith("/" + version):
         raise ValueError("language release tag and version disagree")
     verify_language_artifacts(language, package, version, assets)
@@ -590,6 +674,11 @@ def write_language_release_manifest(
 
 def verify_language_artifacts(language: str, package: str, version: str, assets: list[Path]) -> None:
     """Reject package builds whose archive identity or file set differs from the release plan."""
+    if language in {"java", "rust"}:
+        verify_java_or_rust_artifacts(language, package, version, assets)
+        return
+    if language not in {"python", "typescript"}:
+        raise ValueError(f"unsupported language: {language}")
     if len(assets) != (2 if language == "python" else 1) or len({asset.name for asset in assets}) != len(assets):
         raise ValueError("language release has an unexpected artifact count")
     expected_version = version.removeprefix("v")
@@ -684,6 +773,87 @@ def verify_language_artifacts(language: str, package: str, version: str, assets:
                     raise ValueError(f"{asset.name} dex-connector.json must be at {expected_path}")
 
 
+def expected_language_artifact_names(language: str, package: str, version: str) -> list[str]:
+    """Returns the sorted release archive names of a Java or Rust package at version."""
+    expected_version = version.removeprefix("v")
+    if language == "java":
+        group_id, separator, artifact_id = package.partition(":")
+        if separator != ":" or group_id != JAVA_GROUP_ID or not artifact_id:
+            raise ValueError(f"Java package must be a {JAVA_GROUP_ID}:<artifactId> coordinate, not {package}")
+        return sorted([f"{artifact_id}-{expected_version}.jar", f"{artifact_id}-{expected_version}-sources.jar"])
+    if language == "rust":
+        return [f"{package}-{expected_version}.crate"]
+    raise ValueError(f"unsupported language: {language}")
+
+
+def verify_java_or_rust_artifacts(language: str, package: str, version: str, assets: list[Path]) -> None:
+    """Check a Java jar and sources jar, or a Rust .crate, against the planned package and version.
+
+    The main jar carries dex-connector.json at META-INF/dex-connectors/<connector directory>/; a crate carries it
+    at its root. Either file must name the planned package and version.
+    """
+    expected_version = version.removeprefix("v")
+    expected_names = expected_language_artifact_names(language, package, version)
+    if sorted(asset.name for asset in assets) != expected_names:
+        raise ValueError(f"language release artifacts must be exactly {expected_names}")
+    if len({asset.parent.resolve() for asset in assets}) != 1:
+        raise ValueError("language release artifacts must share a directory")
+    entries = [path for path in assets[0].parent.iterdir() if path.is_file() or path.is_symlink()]
+    if any(path.is_symlink() for path in entries):
+        raise ValueError("language release directory contains non-regular files")
+    release_names = (set(expected_names) | {name + ".sha256" for name in expected_names}
+                     | {"language-release.json", "language-release.json.sha256"})
+    if {path.name for path in entries} not in (set(expected_names), release_names):
+        raise ValueError("language release directory contains unexpected files")
+    for asset in assets:
+        if language == "rust":
+            verify_crate_archive(asset, package, expected_version)
+            continue
+        with zipfile.ZipFile(asset) as archive:
+            archive_entries = archive.infolist()
+            names = [entry.filename for entry in archive_entries]
+            if len(set(names)) != len(names) or any(not safe_archive_path(name) for name in names):
+                raise ValueError(f"{asset.name} has duplicate or unsafe paths")
+            if any(stat.S_IFMT(entry.external_attr >> 16) == stat.S_IFLNK for entry in archive_entries):
+                raise ValueError(f"{asset.name} contains a symbolic link")
+            if asset.name.endswith("-sources.jar"):
+                continue
+            manifests = [name for name in names
+                         if re.fullmatch(r"META-INF/dex-connectors/[a-z0-9-]+(?:/[a-z0-9-]+)*/dex-connector\.json", name)]
+            if len(manifests) != 1:
+                raise ValueError(f"{asset.name} must contain one META-INF/dex-connectors/<connector directory>/dex-connector.json")
+            connector_directory = verify_packaged_connector_directory(archive.read(manifests[0]), language, package,
+                                                                      expected_version)
+            expected_path = f"META-INF/dex-connectors/{connector_directory}/dex-connector.json"
+            if manifests[0] != expected_path:
+                raise ValueError(f"{asset.name} dex-connector.json must be at {expected_path}")
+
+
+def verify_crate_archive(asset: Path, crate_name: str, expected_version: str) -> None:
+    """Check a .crate's paths, its Cargo.toml identity, and its root dex-connector.json."""
+    expected_root = f"{crate_name}-{expected_version}"
+    with tarfile.open(asset, "r:gz") as archive:
+        members = archive.getmembers()
+        names = [member.name for member in members]
+        if (len(set(names)) != len(names)
+                or any(not safe_archive_path(name) or name.split("/")[0] != expected_root
+                       or not (member.isfile() or member.isdir()) for name, member in zip(names, members))):
+            raise ValueError(f"{asset.name} has duplicate, unsafe, or unexpected paths")
+        cargo_toml = archive.extractfile(f"{expected_root}/Cargo.toml") if f"{expected_root}/Cargo.toml" in names else None
+        if cargo_toml is None:
+            raise ValueError(f"{asset.name} must contain {expected_root}/Cargo.toml")
+        try:
+            package = tomllib.loads(cargo_toml.read().decode("utf-8")).get("package", {})
+        except (UnicodeDecodeError, tomllib.TOMLDecodeError) as error:
+            raise ValueError(f"{asset.name} Cargo.toml is unreadable") from error
+        if (package.get("name"), package.get("version")) != (crate_name, expected_version):
+            raise ValueError(f"{asset.name} identity {package.get('name')}@{package.get('version')} differs from "
+                             f"planned {crate_name}@{expected_version}")
+        _, manifest_bytes = read_archive_connector_manifest(
+            archive, [name for name in names if name == f"{expected_root}/dex-connector.json"])
+    verify_packaged_connector_directory(manifest_bytes, "rust", crate_name, expected_version)
+
+
 def read_wheel_connector_manifest(archive: zipfile.ZipFile, names: list[str]) -> tuple[str, bytes]:
     matches = [name for name in names if re.fullmatch(r"dex_connectors/[^/]+/dex-connector\.json", name)]
     if len(matches) != 1:
@@ -707,12 +877,18 @@ def read_archive_connector_manifest(archive: tarfile.TarFile, names: list[str]) 
 
 
 def verify_packaged_connector_manifest(contents: bytes, language: str, package: str, version: str) -> str:
+    """Check a packaged dex-connector.json and return the Python import package of its connector."""
+    return python_connector_import_package(verify_packaged_connector_directory(contents, language, package, version))
+
+
+def verify_packaged_connector_directory(contents: bytes, language: str, package: str, version: str) -> str:
+    """Check a packaged dex-connector.json identity and return its connector directory below connectors/."""
     try:
         document = json.loads(contents)
     except (UnicodeDecodeError, json.JSONDecodeError) as error:
         raise ValueError("dex-connector.json is invalid JSON") from error
     identity = document.get("package") if isinstance(document, dict) else None
-    expected_ecosystem = "pypi" if language == "python" else "npm"
+    expected_ecosystem = LANGUAGE_PACKAGE_ECOSYSTEMS[language]
     if not isinstance(identity, dict) or identity.get("ecosystem") != expected_ecosystem or \
             identity.get("name") != package or identity.get("version") != version:
         raise ValueError(f"dex-connector.json package identity must equal {expected_ecosystem}:{package}@{version}")
@@ -721,7 +897,7 @@ def verify_packaged_connector_manifest(contents: bytes, language: str, package: 
         if isinstance(release_tag, str) else None
     if match is None:
         raise ValueError("dex-connector.json releaseTag must name a stable Go connector release")
-    return python_connector_import_package(match.group(1))
+    return match.group(1)
 
 
 def python_connector_import_package(connector_directory: str) -> str:
@@ -897,6 +1073,8 @@ def validate_language_package(
 
     A Python package requires the SDK as a legacy exact pin or a version floor; see
     parse_python_sdk_requirement. A TypeScript package names one version, optionally with >=, ^, or ~.
+    A Java package sets dexConnectorsSdkVersion=X.Y.Z in gradle.properties. A Rust package requires
+    dex-connectors-sdk = "=X.Y.Z" in [dependencies].
     """
     path = Path(component_path)
     if language == "python":
@@ -927,6 +1105,16 @@ def validate_language_package(
         match = re.fullmatch(r"(?:>=|\^|~)?([0-9]+\.[0-9]+\.[0-9]+)", sdk_version)
         sdk_versions = [match.group(1)] if match else []
         tag_prefix = "sdkts/"
+    elif language == "java":
+        properties = java_package_properties(path)
+        sdk_name = f"{JAVA_GROUP_ID}:{JAVA_SDK_ARTIFACT_ID}"
+        sdk_version = properties.get("dexConnectorsSdkVersion", "")
+        sdk_versions = [sdk_version] if re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", sdk_version) else []
+        tag_prefix = "sdkjava/"
+    elif language == "rust":
+        sdk_name = RUST_SDK_CRATE
+        sdk_versions = rust_sdk_requirement_versions(path)
+        tag_prefix = "sdkrust/"
     else:
         raise ValueError(f"unsupported language: {language}")
     if len(sdk_versions) != 1:
@@ -942,6 +1130,26 @@ def validate_language_package(
     return tag
 
 
+def rust_sdk_requirement_versions(path: Path) -> list[str]:
+    """Return the exact =X.Y.Z dex-connectors-sdk requirement of a Rust package; anything else returns no version.
+
+    A path, git, or workspace source fails, because crates.io rejects a published crate that depends on one.
+    """
+    manifest = tomllib.loads((path / "Cargo.toml").read_text(encoding="utf-8"))
+    tables = [manifest.get(name, {}) for name in ("dependencies", "dev-dependencies", "build-dependencies")]
+    tables.extend(target.get(name, {}) for target in manifest.get("target", {}).values()
+                  for name in ("dependencies", "dev-dependencies", "build-dependencies"))
+    if "patch" in manifest or any(isinstance(requirement, dict) and ({"path", "git"} & requirement.keys()
+                                                                     or requirement.get("workspace") is True)
+                                  for table in tables for requirement in table.values()):
+        raise ValueError("Rust package cannot use path, git, workspace, or patch dependencies")
+    requirement = manifest.get("dependencies", {}).get(RUST_SDK_CRATE)
+    if isinstance(requirement, dict):
+        requirement = requirement.get("version")
+    match = re.fullmatch(r"=([0-9]+\.[0-9]+\.[0-9]+)", requirement) if isinstance(requirement, str) else None
+    return [match.group(1)] if match else []
+
+
 def validate_language_connector_release(
     path: Path, language: str, lookup: DependencyReleaseLookup, require_completed_release: bool = True,
     allow_pending_go_release: bool = False,
@@ -951,7 +1159,7 @@ def validate_language_connector_release(
         raise ValueError(f"{path} must contain generated {connector_manifest_path}")
     document = json.loads(connector_manifest_path.read_text(encoding="utf-8"))
     package_identity = document.get("package") if isinstance(document, dict) else None
-    expected_ecosystem = "pypi" if language == "python" else "npm"
+    expected_ecosystem = LANGUAGE_PACKAGE_ECOSYSTEMS[language]
     if not isinstance(package_identity, dict) or package_identity.get("ecosystem") != expected_ecosystem or \
             package_identity.get("name") != module_path(path) or \
             package_identity.get("version") != declared_package_version(path):
@@ -1042,6 +1250,55 @@ def stamp_language_candidate_connector_manifest(path: Path, language: str, candi
     connector_manifest_path.write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
 
 
+def stamp_package_candidate_version(path: Path, language: str, candidate_version: str) -> None:
+    """Rewrite a Java or Rust package's own version to a release candidate before its candidate build.
+
+    Java changes the version= line of gradle.properties. Rust changes [package] version in Cargo.toml and the
+    locked version of the crate itself in Cargo.lock, so cargo package --locked still accepts the lock file.
+    """
+    if not re.fullmatch(r"v[0-9]+\.[0-9]+\.[0-9]+-rc\.[1-9][0-9]*", candidate_version):
+        raise ValueError(f"invalid language candidate version: {candidate_version}")
+    version = candidate_version.removeprefix("v")
+    stable_version = version.split("-rc.", 1)[0]
+    if declared_package_version(path) != stable_version:
+        raise ValueError(f"{path} package version must equal {stable_version} before candidate build")
+    if language == "java":
+        stamp_first_matching_line(path / "gradle.properties", None, r"(\s*version\s*=\s*)\S+(\s*)", version)
+        return
+    if language != "rust":
+        raise ValueError(f"candidate version stamping supports Java and Rust, not {language}")
+    crate_name = module_path(path)
+    stamp_first_matching_line(path / "Cargo.toml", "[package]", r'(\s*version\s*=\s*")[^"]+("\s*(?:#.*)?)', version)
+    lock_text = (path / "Cargo.lock").read_text(encoding="utf-8")
+    blocks = lock_text.split("\n[[package]]\n")
+    root_blocks = [index for index, block in enumerate(blocks)
+                   if f'\nname = "{crate_name}"\n' in "\n" + block + "\n" and "\nsource = " not in "\n" + block]
+    if len(root_blocks) != 1:
+        raise ValueError(f"{path}/Cargo.lock must lock root crate {crate_name} once, found {len(root_blocks)}")
+    blocks[root_blocks[0]] = re.sub(r'(?m)^version = "[^"]+"$', f'version = "{version}"', blocks[root_blocks[0]], count=1)
+    (path / "Cargo.lock").write_text("\n[[package]]\n".join(blocks), encoding="utf-8")
+
+
+def stamp_first_matching_line(file_path: Path, section: str | None, pattern: str, value: str) -> None:
+    """Replace the value between pattern's two groups on its one matching line, optionally inside one TOML table."""
+    lines = file_path.read_text(encoding="utf-8").splitlines(keepends=True)
+    is_in_section = section is None
+    matches = 0
+    for index, line in enumerate(lines):
+        stripped = line.strip()
+        if section is not None and stripped.startswith("["):
+            is_in_section = stripped == section
+        if not is_in_section:
+            continue
+        body = line.rstrip("\n")
+        if match := re.fullmatch(pattern, body):
+            lines[index] = match.group(1) + value + match.group(2) + line[len(body):]
+            matches += 1
+    if matches != 1:
+        raise ValueError(f"{file_path} must declare one package version, found {matches}")
+    file_path.write_text("".join(lines), encoding="utf-8")
+
+
 def language_connector_manifest_path(path: Path, language: str) -> Path:
     if "connectors" not in path.parts or path.name != language:
         raise ValueError(f"language connector package is outside connectors/: {path}")
@@ -1051,8 +1308,10 @@ def language_connector_manifest_path(path: Path, language: str) -> Path:
     if language == "python":
         import_package = python_connector_import_package(connector_directory)
         return path / "src" / "dex_connectors" / import_package / "dex-connector.json"
-    if language == "typescript":
+    if language in {"typescript", "rust"}:
         return path / "dex-connector.json"
+    if language == "java":
+        return path / "src" / "main" / "resources" / "META-INF" / "dex-connectors" / connector_directory / "dex-connector.json"
     raise ValueError(f"unsupported language: {language}")
 
 
@@ -1189,25 +1448,29 @@ def main() -> int:
     validate_parser.add_argument("--main-ref", default="origin/main")
     language_validate_parser = subparsers.add_parser("validate-language-package")
     language_validate_parser.add_argument("--component-path", required=True)
-    language_validate_parser.add_argument("--language", choices=("python", "typescript"), required=True)
+    language_validate_parser.add_argument("--language", choices=PACKAGE_LANGUAGES, required=True)
     language_validate_parser.add_argument("--main-ref", default="origin/main")
     language_validate_mode = language_validate_parser.add_mutually_exclusive_group()
     language_validate_mode.add_argument("--dry-run", action="store_true")
     language_validate_mode.add_argument("--allow-pending-go-release", action="store_true")
     candidate_manifest_parser = subparsers.add_parser("stamp-language-candidate-manifest")
     candidate_manifest_parser.add_argument("--component-path", type=Path, required=True)
-    candidate_manifest_parser.add_argument("--language", choices=("python", "typescript"), required=True)
+    candidate_manifest_parser.add_argument("--language", choices=PACKAGE_LANGUAGES, required=True)
     candidate_manifest_parser.add_argument("--version", required=True)
+    candidate_version_parser = subparsers.add_parser("stamp-package-candidate-version")
+    candidate_version_parser.add_argument("--component-path", type=Path, required=True)
+    candidate_version_parser.add_argument("--language", choices=("java", "rust"), required=True)
+    candidate_version_parser.add_argument("--version", required=True)
     manifest_parser = subparsers.add_parser("language-manifest")
     manifest_parser.add_argument("--output", type=Path, required=True)
-    manifest_parser.add_argument("--language", choices=("python", "typescript"), required=True)
+    manifest_parser.add_argument("--language", choices=PACKAGE_LANGUAGES, required=True)
     manifest_parser.add_argument("--package", required=True)
     manifest_parser.add_argument("--version", required=True)
     manifest_parser.add_argument("--tag", required=True)
     manifest_parser.add_argument("--source-sha", required=True)
     manifest_parser.add_argument("--asset", type=Path, action="append", required=True)
     verify_parser = subparsers.add_parser("verify-language-artifacts")
-    verify_parser.add_argument("--language", choices=("python", "typescript"), required=True)
+    verify_parser.add_argument("--language", choices=PACKAGE_LANGUAGES, required=True)
     verify_parser.add_argument("--package", required=True)
     verify_parser.add_argument("--version", required=True)
     verify_parser.add_argument("--asset", type=Path, action="append", required=True)
@@ -1254,6 +1517,8 @@ def main() -> int:
         elif arguments.command == "stamp-language-candidate-manifest":
             stamp_language_candidate_connector_manifest(arguments.component_path, arguments.language,
                                                         arguments.version)
+        elif arguments.command == "stamp-package-candidate-version":
+            stamp_package_candidate_version(arguments.component_path, arguments.language, arguments.version)
         else:
             tags = validate_connector(
                 arguments.component_path,

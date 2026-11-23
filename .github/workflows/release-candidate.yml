@@ -23,7 +23,7 @@ on:
         required: true
         type: string
       language:
-        description: python or typescript; leave empty for Go
+        description: python, typescript, java, or rust; leave empty for Go
         required: false
         type: string
       dry_run:
@@ -46,6 +46,8 @@ env:
   CANDIDATE_LANGUAGE: ${{ github.event.client_payload.language || inputs.language }}
   CANDIDATE_DRY_RUN: ${{ github.event.client_payload.dry_run || inputs.dry_run }}
   GOWORK: "off"
+  # Matches the Dex Rust SDK release toolchain.
+  RUSTUP_TOOLCHAIN: '1.97.1'
 
 jobs:
   plan:
@@ -60,6 +62,7 @@ jobs:
       display_name: ${{ steps.candidate.outputs.display_name }}
       language: ${{ steps.candidate.outputs.language }}
       package: ${{ steps.candidate.outputs.package }}
+      skipped: ${{ steps.candidate.outputs.skipped }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -75,6 +78,10 @@ jobs:
         run: |
           git fetch --no-tags origin "${CANDIDATE_COMMIT}"
           git worktree add --detach "${RUNNER_TEMP}/candidate" "${CANDIDATE_COMMIT}"
+          skip_arguments=()
+          if [ "${GITHUB_EVENT_NAME}" = repository_dispatch ]; then
+            skip_arguments+=(--skip-missing-package)
+          fi
           go run ./cmd/connectorctl release-candidate \
             --catalog catalog.yaml \
             --candidate-root "${RUNNER_TEMP}/candidate" \
@@ -82,11 +89,12 @@ jobs:
             --commit "${CANDIDATE_COMMIT}" \
             --version "${CANDIDATE_VERSION}" \
             --language "${CANDIDATE_LANGUAGE}" \
+            "${skip_arguments[@]}" \
             --github-output "${GITHUB_OUTPUT}"
 
   verify:
     needs: plan
-    if: needs.plan.outputs.language == ''
+    if: needs.plan.outputs.skipped != 'true' && needs.plan.outputs.language == ''
     runs-on: ubuntu-latest
     env:
       MANIFEST_PATH: ${{ needs.plan.outputs.manifest_path }}
@@ -153,7 +161,7 @@ jobs:
 
   publish:
     needs: [plan, verify]
-    if: needs.plan.outputs.language == ''
+    if: needs.plan.outputs.skipped != 'true' && needs.plan.outputs.language == ''
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -240,7 +248,7 @@ jobs:
 
   verify-language:
     needs: plan
-    if: needs.plan.outputs.language != ''
+    if: needs.plan.outputs.skipped != 'true' && needs.plan.outputs.language != ''
     runs-on: ubuntu-latest
     env:
       COMPONENT_PATH: ${{ github.event.client_payload.directory || inputs.directory }}/${{ needs.plan.outputs.language }}
@@ -258,6 +266,16 @@ jobs:
           token: ''
       - uses: astral-sh/setup-uv@v7
         if: needs.plan.outputs.language == 'python'
+      - uses: actions/setup-java@v5
+        if: needs.plan.outputs.language == 'java'
+        with:
+          distribution: zulu
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v6
+        if: needs.plan.outputs.language == 'java'
+      - name: Install Rust
+        if: needs.plan.outputs.language == 'rust'
+        run: rustup toolchain install "${RUSTUP_TOOLCHAIN}" --profile minimal
       # The connector's Studio UI builds for every language, so Python candidates need Node too.
       - uses: actions/setup-node@v6
         with:
@@ -298,6 +316,43 @@ jobs:
           npm run build --prefix "${COMPONENT_PATH}"
           mkdir -p "${RUNNER_TEMP}/language-dist"
           npm pack "./${COMPONENT_PATH}" --pack-destination "${RUNNER_TEMP}/language-dist"
+      - name: Test and build Java candidate
+        if: needs.plan.outputs.language == 'java'
+        env:
+          RELEASE_PACKAGE: ${{ needs.plan.outputs.package }}
+        run: |
+          test -x "${COMPONENT_PATH}/gradlew" || { echo 'Java candidate Gradle wrapper is missing' >&2; exit 1; }
+          (cd "${COMPONENT_PATH}" && ./gradlew --no-daemon clean check)
+          python3 script/release/component_release.py stamp-package-candidate-version \
+            --component-path "${COMPONENT_PATH}" --language java --version "${CANDIDATE_VERSION}"
+          python3 script/release/component_release.py stamp-language-candidate-manifest \
+            --component-path "${COMPONENT_PATH}" --language java --version "${CANDIDATE_VERSION}"
+          artifact_id="${RELEASE_PACKAGE#*:}"
+          group_id="${RELEASE_PACKAGE%:*}"
+          version="${CANDIDATE_VERSION#v}"
+          maven_repository="${RUNNER_TEMP}/candidate-maven"
+          (cd "${COMPONENT_PATH}" && ./gradlew --no-daemon publishToMavenLocal "-Dmaven.repo.local=${maven_repository}")
+          publication="${maven_repository}/${group_id//.//}/${artifact_id}/${version}"
+          mkdir -p "${RUNNER_TEMP}/language-dist"
+          cp "${publication}/${artifact_id}-${version}.jar" \
+            "${publication}/${artifact_id}-${version}-sources.jar" "${RUNNER_TEMP}/language-dist/"
+          mkdir -p "${RUNNER_TEMP}/maven-metadata"
+          cp "${publication}/${artifact_id}-${version}.pom" \
+            "${publication}/${artifact_id}-${version}-javadoc.jar" "${RUNNER_TEMP}/maven-metadata/"
+      - name: Test and build Rust candidate
+        if: needs.plan.outputs.language == 'rust'
+        env:
+          RELEASE_PACKAGE: ${{ needs.plan.outputs.package }}
+        run: |
+          test -f "${COMPONENT_PATH}/Cargo.lock" || { echo 'Rust candidate lockfile is missing' >&2; exit 1; }
+          cargo test --locked --manifest-path "${COMPONENT_PATH}/Cargo.toml"
+          python3 script/release/component_release.py stamp-package-candidate-version \
+            --component-path "${COMPONENT_PATH}" --language rust --version "${CANDIDATE_VERSION}"
+          python3 script/release/component_release.py stamp-language-candidate-manifest \
+            --component-path "${COMPONENT_PATH}" --language rust --version "${CANDIDATE_VERSION}"
+          cargo package --locked --allow-dirty --manifest-path "${COMPONENT_PATH}/Cargo.toml"
+          mkdir -p "${RUNNER_TEMP}/language-dist"
+          cp "${COMPONENT_PATH}/target/package/${RELEASE_PACKAGE}-${CANDIDATE_VERSION#v}.crate" "${RUNNER_TEMP}/language-dist/"
       - name: Verify candidate package archives with main's tooling
         env:
           RELEASE_PACKAGE: ${{ needs.plan.outputs.package }}
@@ -306,15 +361,24 @@ jobs:
           git fetch --no-tags origin main:refs/remotes/origin/main
           git show origin/main:script/release/component_release.py > "${RUNNER_TEMP}/component_release.py"
           git show origin/main:script/release/github_release_inventory.py > "${RUNNER_TEMP}/github_release_inventory.py"
-          if [ "${RELEASE_LANGUAGE}" = python ]; then
-            assets=("${RUNNER_TEMP}"/language-dist/*.whl "${RUNNER_TEMP}"/language-dist/*.tar.gz)
-          else
-            assets=("${RUNNER_TEMP}"/language-dist/*.tgz)
-          fi
+          case "${RELEASE_LANGUAGE}" in
+            python) assets=("${RUNNER_TEMP}"/language-dist/*.whl "${RUNNER_TEMP}"/language-dist/*.tar.gz) ;;
+            typescript) assets=("${RUNNER_TEMP}"/language-dist/*.tgz) ;;
+            java) assets=("${RUNNER_TEMP}"/language-dist/*.jar) ;;
+            rust) assets=("${RUNNER_TEMP}"/language-dist/*.crate) ;;
+            *) echo "Unsupported candidate language: ${RELEASE_LANGUAGE}" >&2; exit 1 ;;
+          esac
           arguments=()
           for asset in "${assets[@]}"; do arguments+=(--asset "${asset}"); done
           python3 "${RUNNER_TEMP}/component_release.py" verify-language-artifacts \
             --language "${RELEASE_LANGUAGE}" --package "${RELEASE_PACKAGE}" --version "${CANDIDATE_VERSION}" "${arguments[@]}"
+      - uses: actions/upload-artifact@v4
+        if: needs.plan.outputs.language == 'java'
+        with:
+          name: candidate-maven-metadata
+          path: ${{ runner.temp }}/maven-metadata
+          if-no-files-found: error
+          retention-days: 1
       - name: Build and test the candidate's Connector Studio UI
         env:
           MANIFEST_PATH: ${{ needs.plan.outputs.manifest_path }}
@@ -349,7 +413,7 @@ jobs:
 
   publish-language:
     needs: [plan, verify-language]
-    if: needs.plan.outputs.language != ''
+    if: needs.plan.outputs.skipped != 'true' && needs.plan.outputs.language != ''
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -384,17 +448,24 @@ jobs:
           name: language-candidate
           path: ${{ runner.temp }}/language-dist
       - uses: actions/download-artifact@v4
+        if: needs.plan.outputs.language == 'java'
+        with:
+          name: candidate-maven-metadata
+          path: ${{ runner.temp }}/maven-metadata
+      - uses: actions/download-artifact@v4
         continue-on-error: true
         with:
           name: connector-ui
           path: ${{ runner.temp }}/ui
       - name: Verify package archives before publication
         run: |
-          if [ "${RELEASE_LANGUAGE}" = python ]; then
-            assets=("${RUNNER_TEMP}"/language-dist/*.whl "${RUNNER_TEMP}"/language-dist/*.tar.gz)
-          else
-            assets=("${RUNNER_TEMP}"/language-dist/*.tgz)
-          fi
+          case "${RELEASE_LANGUAGE}" in
+            python) assets=("${RUNNER_TEMP}"/language-dist/*.whl "${RUNNER_TEMP}"/language-dist/*.tar.gz) ;;
+            typescript) assets=("${RUNNER_TEMP}"/language-dist/*.tgz) ;;
+            java) assets=("${RUNNER_TEMP}"/language-dist/*.jar) ;;
+            rust) assets=("${RUNNER_TEMP}"/language-dist/*.crate) ;;
+            *) echo "Unsupported candidate language: ${RELEASE_LANGUAGE}" >&2; exit 1 ;;
+          esac
           arguments=()
           for asset in "${assets[@]}"; do arguments+=(--asset "${asset}"); done
           python3 script/release/component_release.py verify-language-artifacts \
@@ -438,6 +509,12 @@ jobs:
             --version "${CANDIDATE_VERSION}" --tag "${RELEASE_TAG}" --source-sha "${RELEASE_SOURCE_SHA}" \
             --output "${metadata}/connector-release.json" --digest-output "${metadata}/connector-release.json.sha256" \
             "${ui_arguments[@]}"
+          if [ "${RELEASE_LANGUAGE}" = java ]; then
+            python3 script/release/language_publish.py verify-maven-publication \
+              --package "${RELEASE_PACKAGE}" --version "${CANDIDATE_VERSION}" \
+              --maven-metadata "${RUNNER_TEMP}/maven-metadata" \
+              --component-path "${RUNNER_TEMP}/candidate/${MANIFEST_PATH%/*}/java"
+          fi
       - name: Publish Python pre-release
         if: steps.state.outputs.release_required == 'true' && needs.plan.outputs.language == 'python' && env.CANDIDATE_DRY_RUN != 'true'
         env:
@@ -460,6 +537,24 @@ jobs:
           tarball=("${RUNNER_TEMP}"/language-dist/*.tgz)
           python3 script/release/npm_publish.py publish --package "${RELEASE_PACKAGE}" \
             --version "${CANDIDATE_VERSION}" --tarball "${tarball[0]}" --dist-tag next
+      - name: Publish Maven Central pre-release
+        if: steps.state.outputs.release_required == 'true' && needs.plan.outputs.language == 'java' && env.CANDIDATE_DRY_RUN != 'true'
+        env:
+          MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+          MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+          GPG_SECRET_KEY: ${{ secrets.GPG_SECRET_KEY }}
+        run: |
+          python3 script/release/language_publish.py publish-language-candidate --language java \
+            --package "${RELEASE_PACKAGE}" --version "${CANDIDATE_VERSION}" --dist "${RUNNER_TEMP}/language-dist" \
+            --maven-metadata "${RUNNER_TEMP}/maven-metadata" \
+            --component-path "${RUNNER_TEMP}/candidate/${MANIFEST_PATH%/*}/java"
+      - name: Publish crates.io pre-release
+        if: steps.state.outputs.release_required == 'true' && needs.plan.outputs.language == 'rust' && env.CANDIDATE_DRY_RUN != 'true'
+        env:
+          CRATES_IO_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
+        run: |
+          python3 script/release/language_publish.py publish-language-candidate --language rust \
+            --package "${RELEASE_PACKAGE}" --version "${CANDIDATE_VERSION}" --dist "${RUNNER_TEMP}/language-dist"
       - name: Create or repair language pre-release
         if: steps.state.outputs.release_required == 'true' && env.CANDIDATE_DRY_RUN != 'true'
         run: |

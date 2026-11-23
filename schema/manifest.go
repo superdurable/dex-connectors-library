@@ -51,12 +51,71 @@ type Spec struct {
 	Operations    []Operation   `yaml:"operations" json:"operations"`
 }
 
-// Languages declares optional Python and TypeScript distributions with independent versions.
+// Languages declares optional Python, TypeScript, Java, and Rust distributions with independent versions.
 type Languages struct {
 	// Python declares a PyPI distribution.
 	Python *LanguagePackage `yaml:"python,omitempty" json:"python,omitempty"`
 	// TypeScript declares an npm distribution.
 	TypeScript *LanguagePackage `yaml:"typescript,omitempty" json:"typescript,omitempty"`
+	// Java declares a Maven Central artifact in the io.superdurable group.
+	Java *LanguagePackage `yaml:"java,omitempty" json:"java,omitempty"`
+	// Rust declares a crates.io crate.
+	Rust *LanguagePackage `yaml:"rust,omitempty" json:"rust,omitempty"`
+}
+
+// PackageLanguageNames returns every language that spec.languages may declare, in catalog display order.
+//
+// Go is absent because every connector implies its Go module. The result is a new slice on every call.
+func PackageLanguageNames() []string {
+	return []string{"python", "typescript", "java", "rust"}
+}
+
+// DeclarationOfLanguage returns the package declaration of one language from PackageLanguageNames.
+//
+// It returns nil when languages is nil, the language is not declared, or the name is not a package language.
+func (languages *Languages) DeclarationOfLanguage(name string) *LanguagePackage {
+	if languages == nil {
+		return nil
+	}
+	switch name {
+	case "python":
+		return languages.Python
+	case "typescript":
+		return languages.TypeScript
+	case "java":
+		return languages.Java
+	case "rust":
+		return languages.Rust
+	}
+	return nil
+}
+
+// ReplaceDeclarationOfLanguage stores declaration, which may be nil, as the package of one language.
+//
+// It panics for a name outside PackageLanguageNames, which is a programming error.
+func (languages *Languages) ReplaceDeclarationOfLanguage(name string, declaration *LanguagePackage) {
+	switch name {
+	case "python":
+		languages.Python = declaration
+	case "typescript":
+		languages.TypeScript = declaration
+	case "java":
+		languages.Java = declaration
+	case "rust":
+		languages.Rust = declaration
+	default:
+		panic("unsupported package language: " + name)
+	}
+}
+
+// HasAnyPackage reports whether languages declares at least one package language.
+func (languages *Languages) HasAnyPackage() bool {
+	for _, name := range PackageLanguageNames() {
+		if languages.DeclarationOfLanguage(name) != nil {
+			return true
+		}
+	}
+	return false
 }
 
 // LanguagePackage identifies one language distribution and its release version.
@@ -553,6 +612,8 @@ var (
 	versionPattern           = regexp.MustCompile(`^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$`)
 	pythonPackagePattern     = regexp.MustCompile(`^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$`)
 	typeScriptPackagePattern = regexp.MustCompile(`^@[a-z][a-z0-9-]*/[a-z][a-z0-9-]*$`)
+	javaPackagePattern       = regexp.MustCompile(`^io\.superdurable:[a-z][a-z0-9]*(?:-[a-z0-9]+)*$`)
+	rustPackagePattern       = regexp.MustCompile(`^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$`)
 	// httpHeaderTokenPattern is the RFC 7230 token grammar for header field names.
 	httpHeaderTokenPattern = regexp.MustCompile("^[!#$%&'*+.^_`|~0-9A-Za-z-]+$")
 	// studioCommandHeaderValuePattern is printable ASCII without surrounding spaces.
@@ -760,6 +821,31 @@ func (manifest Manifest) Validate() error {
 				problems = append(problems, "spec.languages.typescript.package must be a scoped npm package name")
 			}
 			problems = append(problems, validateLanguageCapabilities("typescript", language, manifest.Spec)...)
+		}
+		for _, language := range []struct {
+			name           string
+			declaration    *LanguagePackage
+			packagePattern *regexp.Regexp
+			packageFormat  string
+		}{
+			{name: "java", declaration: manifest.Spec.Languages.Java, packagePattern: javaPackagePattern,
+				packageFormat: "an io.superdurable:<artifactId> Maven coordinate"},
+			{name: "rust", declaration: manifest.Spec.Languages.Rust, packagePattern: rustPackagePattern,
+				packageFormat: "a lowercase kebab-case crates.io crate name"},
+		} {
+			if language.declaration == nil {
+				continue
+			}
+			if language.declaration.TimestampFormat != "" {
+				problems = append(problems, "spec.languages."+language.name+".timestampFormat is Python-only")
+			}
+			if !versionPattern.MatchString(language.declaration.Version) {
+				problems = append(problems, "spec.languages."+language.name+".version must be a stable semantic version with a v prefix")
+			}
+			if language.declaration.Package != "" && !language.packagePattern.MatchString(language.declaration.Package) {
+				problems = append(problems, "spec.languages."+language.name+".package must be "+language.packageFormat)
+			}
+			problems = append(problems, validateLanguageCapabilities(language.name, language.declaration, manifest.Spec)...)
 		}
 	}
 	if strings.TrimSpace(manifest.Spec.Provider) == "" {

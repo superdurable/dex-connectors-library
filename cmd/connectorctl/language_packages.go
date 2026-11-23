@@ -15,6 +15,8 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/BurntSushi/toml"
+
 	"github.com/superdurable/dex-connectors-library/schema"
 )
 
@@ -23,22 +25,18 @@ var errLanguagePackageFileMissing = errors.New("declared language package file i
 
 var pythonProjectField = regexp.MustCompile(`^\s*(name|version)\s*=\s*["']([^"']+)["']\s*(?:#.*)?$`)
 
+// javaPropertiesField reads one key=value line of gradle.properties; comments and other separators never match.
+var javaPropertiesField = regexp.MustCompile(`^\s*(group|artifactId|version)\s*=\s*(\S+)\s*$`)
+
 func languageCapabilitiesCommand(manifestPath, languageName string, output io.Writer) error {
 	manifest, err := load(manifestPath)
 	if err != nil {
 		return err
 	}
-	var language *schema.LanguagePackage
-	if manifest.Spec.Languages != nil {
-		switch languageName {
-		case "python":
-			language = manifest.Spec.Languages.Python
-		case "typescript":
-			language = manifest.Spec.Languages.TypeScript
-		default:
-			return fmt.Errorf("unsupported language: %s", languageName)
-		}
+	if !slices.Contains(schema.PackageLanguageNames(), languageName) {
+		return fmt.Errorf("unsupported language: %s", languageName)
 	}
+	language := manifest.Spec.Languages.DeclarationOfLanguage(languageName)
 	if language == nil {
 		return fmt.Errorf("%s does not declare spec.languages.%s", manifestPath, languageName)
 	}
@@ -49,7 +47,7 @@ func languageCapabilitiesCommand(manifestPath, languageName string, output io.Wr
 }
 
 func validateLanguagePackages(manifestPath string, manifest schema.Manifest) error {
-	if manifest.Spec.Languages == nil || (manifest.Spec.Languages.Python == nil && manifest.Spec.Languages.TypeScript == nil) {
+	if !manifest.Spec.Languages.HasAnyPackage() {
 		return nil
 	}
 	connectorRelativeDirectory, err := connectorDirectoryInCatalog(manifestPath)
@@ -108,6 +106,57 @@ func validateLanguagePackages(manifestPath string, manifest schema.Manifest) err
 			return fmt.Errorf(`%s exports must map "./dex-connector.json" to "./dex-connector.json"`, packagePath)
 		}
 	}
+	if java := manifest.Spec.Languages.Java; java != nil {
+		if err := validateJavaPackageProperties(connectorDirectory, languagePackageName(connectorRelativeDirectory, "java", java.Package), java.Version); err != nil {
+			return err
+		}
+	}
+	if rust := manifest.Spec.Languages.Rust; rust != nil {
+		if err := validateRustCargoPackage(connectorDirectory, languagePackageName(connectorRelativeDirectory, "rust", rust.Package), rust.Version); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// validateJavaPackageProperties requires java/gradle.properties to declare the manifest's Maven coordinate and version.
+func validateJavaPackageProperties(connectorDirectory, coordinate, version string) error {
+	propertiesPath := filepath.Join(connectorDirectory, "java", "gradle.properties")
+	contents, err := os.ReadFile(propertiesPath)
+	if err != nil {
+		return fmt.Errorf("spec.languages.java requires %s: %w", propertiesPath, languagePackageFileError(err))
+	}
+	properties := make(map[string]string)
+	for _, line := range strings.Split(string(contents), "\n") {
+		if fields := javaPropertiesField.FindStringSubmatch(line); fields != nil {
+			properties[fields[1]] = fields[2]
+		}
+	}
+	if properties["group"]+":"+properties["artifactId"] != coordinate || properties["version"] != strings.TrimPrefix(version, "v") {
+		return fmt.Errorf("%s group, artifactId, and version must match spec.languages.java (%s %s)", propertiesPath, coordinate, version)
+	}
+	return nil
+}
+
+// validateRustCargoPackage requires rust/Cargo.toml to declare the manifest's crate name and version.
+func validateRustCargoPackage(connectorDirectory, crateName, version string) error {
+	cargoPath := filepath.Join(connectorDirectory, "rust", "Cargo.toml")
+	contents, err := os.ReadFile(cargoPath)
+	if err != nil {
+		return fmt.Errorf("spec.languages.rust requires %s: %w", cargoPath, languagePackageFileError(err))
+	}
+	var declaration struct {
+		Package struct {
+			Name    string `toml:"name"`
+			Version string `toml:"version"`
+		} `toml:"package"`
+	}
+	if _, err := toml.Decode(string(contents), &declaration); err != nil {
+		return fmt.Errorf("parse %s: %w", cargoPath, err)
+	}
+	if declaration.Package.Name != crateName || declaration.Package.Version != strings.TrimPrefix(version, "v") {
+		return fmt.Errorf("%s [package] name and version must match spec.languages.rust (%s %s)", cargoPath, crateName, version)
+	}
 	return nil
 }
 
@@ -152,8 +201,13 @@ func languagePackageName(directory, language, override string) string {
 		return override
 	}
 	slug := strings.ReplaceAll(strings.TrimPrefix(directory, "connectors/"), "/", "-")
-	if language == "python" {
+	switch language {
+	case "python", "rust":
 		return "dex-connector-" + slug
+	case "typescript":
+		return "@superdurable/connector-" + slug
+	case "java":
+		return "io.superdurable:dex-connector-" + slug
 	}
-	return "@superdurable/connector-" + slug
+	panic("unsupported package language: " + language)
 }

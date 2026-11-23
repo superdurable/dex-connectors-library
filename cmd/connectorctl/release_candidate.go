@@ -27,15 +27,16 @@ var gitCommitPattern = regexp.MustCompile(`^[0-9a-f]{40}$`)
 // connectorReleaseCandidate is a validated request to publish one connector's release candidate from a commit that
 // is not on main.
 type connectorReleaseCandidate struct {
-	Directory    string
-	ManifestPath string
-	ModulePath   string
-	Version      string
-	Tag          string
-	SourceSHA    string
-	DisplayName  string
-	Language     string
-	Package      string
+	Directory                 string
+	ManifestPath              string
+	ModulePath                string
+	Version                   string
+	Tag                       string
+	SourceSHA                 string
+	DisplayName               string
+	Language                  string
+	Package                   string
+	IsPackageDirectoryMissing bool
 	// IsTagPublished reports that the tag already names the candidate commit, so publishing repeats safely.
 	IsTagPublished bool
 }
@@ -47,7 +48,8 @@ func releaseCandidateCommand(args []string) error {
 	directory := flags.String("directory", "", "registered connector directory of the candidate")
 	commit := flags.String("commit", "", "candidate commit SHA")
 	version := flags.String("version", "", "release candidate version, vX.Y.Z-rc.N")
-	language := flags.String("language", "", "python or typescript; empty selects Go")
+	language := flags.String("language", "", "python, typescript, java, or rust; empty selects Go")
+	skipMissingPackage := flags.Bool("skip-missing-package", false, "skip absent language package directories during automatic dispatch")
 	githubOutputPath := flags.String("github-output", "", "GitHub Actions output path")
 	if err := flags.Parse(args); err != nil {
 		return err
@@ -59,15 +61,22 @@ func releaseCandidateCommand(args []string) error {
 	if err != nil {
 		return err
 	}
+	if candidate.IsPackageDirectoryMissing {
+		if !*skipMissingPackage {
+			return fmt.Errorf("%s/%s package directory is missing", candidate.Directory, candidate.Language)
+		}
+		fmt.Fprintf(os.Stderr, "::notice::%s/%s is absent; skipping package candidate\n", candidate.Directory, candidate.Language)
+	}
 	for _, value := range []string{candidate.Directory, candidate.ManifestPath, candidate.ModulePath, candidate.Version,
 		candidate.Tag, candidate.SourceSHA, candidate.DisplayName, candidate.Language, candidate.Package} {
 		if strings.IndexFunc(value, unicode.IsControl) >= 0 {
 			return fmt.Errorf("release candidate output contains a control character")
 		}
 	}
-	outputs := fmt.Sprintf("directory=%s\nmanifest_path=%s\nmodule_path=%s\nversion=%s\ntag=%s\nsource_sha=%s\ndisplay_name=%s\ntag_published=%t\nlanguage=%s\npackage=%s\n",
+	outputs := fmt.Sprintf("directory=%s\nmanifest_path=%s\nmodule_path=%s\nversion=%s\ntag=%s\nsource_sha=%s\ndisplay_name=%s\ntag_published=%t\nlanguage=%s\npackage=%s\nskipped=%t\n",
 		candidate.Directory, candidate.ManifestPath, candidate.ModulePath, candidate.Version, candidate.Tag,
-		candidate.SourceSHA, candidate.DisplayName, candidate.IsTagPublished, candidate.Language, candidate.Package)
+		candidate.SourceSHA, candidate.DisplayName, candidate.IsTagPublished, candidate.Language, candidate.Package,
+		candidate.IsPackageDirectoryMissing)
 	if *githubOutputPath == "" {
 		_, err = fmt.Print(outputs)
 		return err
@@ -92,7 +101,7 @@ func planConnectorReleaseCandidate(catalogPath, candidateRoot, directory, commit
 }
 
 func planConnectorReleaseCandidateLanguage(catalogPath, candidateRoot, directory, commit, version, language string) (connectorReleaseCandidate, error) {
-	if language != "" && language != "python" && language != "typescript" {
+	if language != "" && !slices.Contains(schema.PackageLanguageNames(), language) {
 		return connectorReleaseCandidate{}, fmt.Errorf("unsupported candidate language: %s", language)
 	}
 	match := connectorReleaseCandidateVersionPattern.FindStringSubmatch(version)
@@ -121,7 +130,25 @@ func planConnectorReleaseCandidateLanguage(catalogPath, candidateRoot, directory
 	if err := validateReleaseCandidateChanges(repositoryRoot, directory, commit, !slices.Contains(mainSource.Directories, directory)); err != nil {
 		return connectorReleaseCandidate{}, err
 	}
-	entries, err := loadConnectorDirectoryEntries(filepath.Join(candidateRoot, "catalog.yaml"))
+	candidateCatalogPath := filepath.Join(candidateRoot, "catalog.yaml")
+	if language != "" {
+		componentDirectory := directory + "/" + language
+		hasDirectory, err := hasReleasePackageDirectory(candidateRoot, componentDirectory)
+		if err != nil {
+			return connectorReleaseCandidate{}, err
+		}
+		if !hasDirectory {
+			candidateCatalog, err := loadConnectorCatalogSource(candidateCatalogPath)
+			if err != nil {
+				return connectorReleaseCandidate{}, fmt.Errorf("candidate catalog: %w", err)
+			}
+			if !slices.Contains(candidateCatalog.Directories, directory) {
+				return connectorReleaseCandidate{}, fmt.Errorf("candidate does not register %s in catalog.yaml", directory)
+			}
+			return connectorReleaseCandidate{Directory: directory, Language: language, IsPackageDirectoryMissing: true}, nil
+		}
+	}
+	entries, err := loadConnectorDirectoryEntries(candidateCatalogPath)
 	if err != nil {
 		return connectorReleaseCandidate{}, fmt.Errorf("candidate catalog: %w", err)
 	}
@@ -142,12 +169,7 @@ func planConnectorReleaseCandidateLanguage(catalogPath, candidateRoot, directory
 		if entry.Manifest.Spec.Languages == nil {
 			return connectorReleaseCandidate{}, fmt.Errorf("%s does not declare %s", entry.ManifestPath, language)
 		}
-		var declaration *schema.LanguagePackage
-		if language == "python" {
-			declaration = entry.Manifest.Spec.Languages.Python
-		} else {
-			declaration = entry.Manifest.Spec.Languages.TypeScript
-		}
+		declaration := entry.Manifest.Spec.Languages.DeclarationOfLanguage(language)
 		if declaration == nil {
 			return connectorReleaseCandidate{}, fmt.Errorf("%s does not declare %s", entry.ManifestPath, language)
 		}
@@ -191,6 +213,20 @@ func planConnectorReleaseCandidateLanguage(catalogPath, candidateRoot, directory
 		SourceSHA: commit, DisplayName: entry.Manifest.Metadata.DisplayName, IsTagPublished: isTagPublished,
 		Language: language, Package: packageName,
 	}, nil
+}
+
+func hasReleasePackageDirectory(root, componentPath string) (bool, error) {
+	info, err := os.Lstat(filepath.Join(root, componentPath))
+	if errors.Is(err, os.ErrNotExist) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("inspect package directory %s: %w", componentPath, err)
+	}
+	if !info.IsDir() {
+		return false, fmt.Errorf("%s is not a package directory", componentPath)
+	}
+	return true, nil
 }
 
 // validateReleaseCandidateChanges requires every path the commit changes since it left main to belong to the

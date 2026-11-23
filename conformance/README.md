@@ -1,10 +1,10 @@
 # Cross-language connector wire fixtures
 
 Provider operation scenarios live in [connector conformance](connectors/README.md).
-Their shared Python and TypeScript runners are test-only files under `runners/`;
+Their shared Python, TypeScript, Java, and Rust runners are test-only files under `runners/`;
 connector releases do not package them.
 
-These JSON files are generated from sdkgo types and production storage writes. Python and TypeScript ports should decode and re-encode each fixture using **JSON value equality, not bytes**: key order, whitespace, and equivalent string escapes may differ. Field names, array order, nulls, and omissions must match. All credential-looking values are inert `REDACTED_*` placeholders.
+These JSON files are generated from sdkgo types and production storage writes. Ports should decode and re-encode each fixture using **JSON value equality**. Key order, whitespace, and equivalent string escapes may differ. Field names, array order, nulls, and omissions must match. All credential-looking values are inert `REDACTED_*` placeholders.
 
 Run `cd sdkgo && UPDATE_CONFORMANCE_FIXTURES=1 GOWORK=off go test ./... -run '^TestConformance' -count=1` to regenerate. `make test-common` checks committed fixtures for drift.
 
@@ -21,11 +21,11 @@ Run `cd sdkgo && UPDATE_CONFORMANCE_FIXTURES=1 GOWORK=off go test ./... -run '^T
 | `credential-broker.json` | `sdkgo/projectconfig/credential_broker.go:47` (status), `sdkgo/projectconfig/credential_broker.go:53` (request), `sdkgo/projectconfig/credential_broker.go:59` (response) |
 | `connectormock.json` | `sdkgo/types.go:113` (definitions), `sdkgo/connectormock/call.go:40` (recorded calls), `sdkgo/connectormock/report.go:18` (report location), `sdkgo/connectormock/report.go:30` (report row) |
 
-Each `checkpointScenarios` entry replays real Fences of one Step attempt in order: `previousHeartbeat` (absent when the previous attempt recorded none) is the raw value Dex returns, each call records its `decision` and `maximumPriorSends` and dispatches when `dispatch` is set and the decision permits it, and `heartbeats` lists every heartbeat value written. Python and TypeScript compare those values in compact JSON byte for byte. The checkpoint format is internal to the connector SDKs; hosts must not parse it.
+Each `checkpointScenarios` entry replays real Fences of one Step attempt in order. `previousHeartbeat` (absent when the previous attempt recorded none) is the raw value Dex returns, each call records its `decision` and `maximumPriorSends` and dispatches when `dispatch` is set and the decision permits it, and `heartbeats` lists every heartbeat value written. The SDK conformance tests compare those values in compact JSON byte for byte. The checkpoint format is internal to the connector SDKs; hosts must not parse it.
 
 `MutationAttempt` and `QueryAttempt` select a terminal branch or request a Dex retry; they are private in-memory decisions (`sdkgo/errors.go:149`, `sdkgo/errors.go:114`). Only their validated `QueryResult` and `MutationResult` envelopes cross the JSON boundary. A Retry is **never serialized** as a terminal result. It continues under the Step retry policy, and exhaustion fails the Flow. An `uncertain` result is reserved for a potentially accepted non-repeatable write that read-back cannot confirm.
 
-`retry-policy.json` contains the Dex Go SDK v1.26.0 `dex.RetryPolicy` JSON form: capitalized field names and integer nanosecond durations. In `connectormock.json`, `executeDurability: 2` is the Go SDK's `dex.StepDurabilityAsync` ordinal (`Default=0`, `Sync=1`, `Async=2`). These are **Go implementation JSON**, not a cross-language wire contract; Python and TypeScript should match behavior and time units through their own Dex SDKs. The `reportFile` value, by contrast, is the complete on-disk connector mock report shape, generated through two production appends. `recordedCall` and report row flags are part of the connector mock data contract.
+`retry-policy.json` contains the Dex Go SDK v1.26.0 `dex.RetryPolicy` JSON form with capitalized field names and integer nanosecond durations. In `connectormock.json`, `executeDurability: 2` is the Go SDK's `dex.StepDurabilityAsync` ordinal (`Default=0`, `Sync=1`, `Async=2`). Ports match behavior and time units through their own Dex SDKs. The `reportFile` value is the complete on-disk connector mock report shape, generated through two production appends. `recordedCall` and report row flags are part of the connector mock data contract.
 
 `project-storage.json` includes the documents written by production storage paths and their CAS metadata. The `Object` itself cannot be serialized because it may contain private contents (`sdkgo/projectconfig/storage.go:45`). The local store's `objectCAS.etag` is SHA-256 of the compact connection record bytes followed by `-<version>`; other `ObjectStore` implementations may use opaque ETags. All clients must pass the ETag they read as the exact CAS precondition.
 

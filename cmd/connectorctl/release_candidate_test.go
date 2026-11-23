@@ -39,6 +39,32 @@ func TestReleaseCandidateAcceptsAConnectorChangeAboveItsLatestRelease(t *testing
 	require.ErrorContains(t, err, "already names")
 }
 
+func TestReleaseCandidateOnlySkipsAbsentPackagesOnAutomaticDispatch(t *testing.T) {
+	repositoryRoot := releaseCandidateMainRepository(t)
+	commit, candidateRoot := releaseCandidateCommit(t, repositoryRoot, func(candidateRoot string) {
+		manifestPath := filepath.Join(candidateRoot, releaseCandidateChat, "connector.yaml")
+		replaceInFile(t, manifestPath, "spec:\n", "spec:\n  languages:\n"+
+			"    java: {version: v0.1.0, operations: [appendRows], triggers: []}\n"+
+			"    rust: {version: v0.1.0, operations: [appendRows], triggers: []}\n")
+	})
+	for _, language := range []string{"java", "rust"} {
+		t.Run(language, func(t *testing.T) {
+			outputPath := filepath.Join(t.TempDir(), "output")
+			arguments := []string{
+				"--catalog", filepath.Join(repositoryRoot, "catalog.yaml"), "--candidate-root", candidateRoot,
+				"--directory", releaseCandidateChat, "--commit", commit, "--version", "v0.1.0-rc.1",
+				"--language", language, "--github-output", outputPath,
+			}
+			require.ErrorContains(t, releaseCandidateCommand(arguments), language+" package directory is missing")
+			require.NoFileExists(t, outputPath)
+			require.NoError(t, releaseCandidateCommand(append(arguments, "--skip-missing-package")))
+			output, err := os.ReadFile(outputPath)
+			require.NoError(t, err)
+			require.Contains(t, string(output), "\nskipped=true\n")
+		})
+	}
+}
+
 func TestReleaseCandidateRejectsControlCharactersInGitHubOutput(t *testing.T) {
 	repositoryRoot := releaseCandidateMainRepository(t)
 	commit, candidateRoot := releaseCandidateCommit(t, repositoryRoot, func(candidateRoot string) {

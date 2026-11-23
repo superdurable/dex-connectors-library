@@ -168,6 +168,24 @@ test-typescript-connectors: download-root-go-modules
 		npm run build --prefix "$$module/typescript" || exit 1; \
 	done
 
+.PHONY: test-java-connectors test-rust-connectors
+
+test-java-connectors: download-root-go-modules
+	@directories="$$(GOWORK=off go run ./cmd/connectorctl test-matrix $(CONNECTOR_SELECTION_ARGUMENTS))" || exit 1; \
+	for module in $$directories; do \
+		if [ ! -f "$$module/java/gradle.properties" ]; then continue; fi; \
+		python3 script/release/component_release.py validate-language-package --component-path "$$module/java" --language java --allow-pending-go-release || exit 1; \
+		(cd "$$module/java" && ./gradlew --no-daemon check) || exit 1; \
+	done
+
+test-rust-connectors: download-root-go-modules
+	@directories="$$(GOWORK=off go run ./cmd/connectorctl test-matrix $(CONNECTOR_SELECTION_ARGUMENTS))" || exit 1; \
+	for module in $$directories; do \
+		if [ ! -f "$$module/rust/Cargo.toml" ]; then continue; fi; \
+		python3 script/release/component_release.py validate-language-package --component-path "$$module/rust" --language rust --allow-pending-go-release || exit 1; \
+		cargo test --locked --manifest-path "$$module/rust/Cargo.toml" || exit 1; \
+	done
+
 catalog-check:
 	GOWORK=off go run ./cmd/connectorctl catalog --check --catalog $(CONNECTOR_CATALOG)
 	GOWORK=off go run ./cmd/connectorctl release-matrix --catalog $(CONNECTOR_CATALOG)

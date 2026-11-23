@@ -60,6 +60,20 @@ func hasRepeatOnUnknownSendCaps(manifestPath string) (bool, error) {
 	return false, nil
 }
 
+func languageHasRepeatOnUnknownSendCaps(manifestPath, language string) (bool, error) {
+	switch language {
+	case "python":
+		return hasPythonRepeatOnUnknownSendCaps(manifestPath)
+	case "typescript":
+		return hasTypeScriptRepeatOnUnknownSendCaps(manifestPath)
+	case "java", "rust":
+		// Advertise send caps once a released SDK defines the factory option.
+		return false, nil
+	default:
+		return false, fmt.Errorf("unsupported package language: %s", language)
+	}
+}
+
 // hasPythonRepeatOnUnknownSendCaps requires the [project].dependencies of python/pyproject.toml to admit no
 // dex-connectors-sdk release before v0.10.0. Optional dependencies and dependency groups never count, and a
 // missing package, a marker, or any requirement form pythonConnectorSDKFloor does not recognize keeps the older output.

@@ -36,8 +36,8 @@ Every implementation plan includes Tests, Documentation, and UI/UX. Use
 ## Repository Boundaries
 
 - Keep the Go SDK in `sdkgo` and every connector's Go module in `connectors/<dir>/go/`.
-- Keep `connector.yaml`, `README.md`, company `logo.svg`, `ui/`, `python/`, and `typescript/` outside `go/`.
-- Keep Python SDK packages in `sdkpython/`, TypeScript SDK packages in `sdkts/`, and connector packages in their `python/` and `typescript/` directories.
+- Keep `connector.yaml`, `README.md`, company `logo.svg`, `ui/`, and the `python/`, `typescript/`, `java/`, and `rust/` packages outside `go/`.
+- Keep language SDKs in `sdkpython/`, `sdkts/`, `sdkjava/`, and `sdkrust/`, and connector packages in their `python/`, `typescript/`, `java/`, and `rust/` directories.
 - Group one company's connectors below one directory. The first directory under
   `connectors/` is the company, must match `metadata.company`, and must contain
   `logo.svg`.
@@ -216,12 +216,12 @@ Every implementation plan includes Tests, Documentation, and UI/UX. Use
   `metadata.version` is the release source of truth and is independent of
   other connectors and of the SDK version. Leaving it unchanged explicitly
   defers release.
-- `spec.languages.python.version` and `spec.languages.typescript.version` release their packages independently of Go and each other. Their package metadata must match the manifest.
-- A Python or TypeScript package lists exactly the operations and Triggers it implements in `spec.languages.<language>`; the catalog and site show per-capability language support.
-- Every Python and TypeScript connector package must replay Go-verified provider
+- `spec.languages.<language>.version` for `python`, `typescript`, `java`, and `rust` releases that package independently of Go and the others. Its metadata (`pyproject.toml`, `package.json`, `java/gradle.properties`, or `rust/Cargo.toml`) must match the manifest.
+- A language package lists exactly the operations and Triggers it implements in `spec.languages.<language>`; the catalog and site show per-capability language support.
+- Every Python, TypeScript, Java, and Rust connector package must replay Go-verified provider
   scenarios from `conformance/connectors/<directory>/scenarios.json`. Cover each
   Go-tested operation branch, Retry, uncertainty, request count, and provider
-  idempotency-key behavior. CI requires fixtures for every Python and TypeScript
+  idempotency-key behavior. CI requires fixtures for every language
   package on every event and scope, unless `conformance/exemptions.yaml` exempts
   its connector.
   Porters write scenario inputs, prior state, and provider responses; Go record
@@ -238,7 +238,7 @@ Every implementation plan includes Tests, Documentation, and UI/UX. Use
   `connectors/mysql`, `connectors/mongodb`, `connectors/microsoft/sql-server`, and
   `connectors/superdurable/email`: their native wire protocols cannot be recorded
   by the HTTP replay runner. Adding an exemption requires a tooling PR. For each
-  exempt Python and TypeScript package, replace replay with unit tests for every
+  exempt non-Go package, replace replay with unit tests for every
   Go-tested branch, retry, uncertain decision, and protocol-error classification,
   plus real protocol integration tests in CI service containers. Database ports
   use Go connector live-test scenarios and connection variables when available.
@@ -263,9 +263,16 @@ Every implementation plan includes Tests, Documentation, and UI/UX. Use
 - For the one-time Go module move, use exactly one minor bump after the latest
   reachable old-path Go release, including v1 connectors such as Slack. The new
   import path forces opt-in; old tags remain history and receive no new releases.
-- Python and TypeScript SDK tags use `sdkpython/vX.Y.Z` and `sdkts/vX.Y.Z`. Their connector tags append `/python/vX.Y.Z` and `/typescript/vX.Y.Z` to the connector directory.
+- Language SDK tags use `sdkpython/vX.Y.Z`, `sdkts/vX.Y.Z`, `sdkjava/vX.Y.Z`, and `sdkrust/vX.Y.Z`. Connector language tags append `/<language>/vX.Y.Z` to the connector directory.
+- Java packages publish to Maven Central as `io.superdurable:dex-connector-<slug>` and Rust packages to crates.io as `dex-connector-<slug>`; `<slug>` is the connector directory below `connectors/` with `/` replaced by `-`.
 - The Release workflow alone releases the Connectors MCP server: it tags `connectorsmcp/vX.Y.Z` on a release commit off `main` when the linked connector set or `connectorsmcp/` changes. `connectorsmcp/release.yaml` sets the series and lists withdrawn connectors.
-- Release each language SDK before connectors that require it. New npm packages use the CI token for first publish; existing packages use trusted publishing when configured.
+- Release each language SDK before connectors that require it. New npm packages
+  use the scoped CI token for first publish, and existing packages use trusted
+  publishing when configured. First PyPI uploads use the account-scoped
+  `PYPI_TOKEN`. The trusted publisher uploads Java packages through the Maven
+  Central Portal with `MAVEN_CENTRAL_USERNAME`, `MAVEN_CENTRAL_PASSWORD`, and
+  `GPG_SECRET_KEY` for signing. It publishes Rust crates to crates.io with
+  `CRATES_IO_TOKEN`.
 - Connector modules require an exact published Connector Go SDK release.
 - Dex Server is backward compatible with every earlier Dex SDK release. Pin no
   Dex Server, Dex Go SDK, or Dex CLI version; record minimums instead. A
@@ -312,13 +319,14 @@ Every implementation plan includes Tests, Documentation, and UI/UX. Use
   their GitHub releases because PyPI limits new-project creation rates. Each
   Release run starts at most `GO_RELEASE_LIMIT` (default 15) Go connector
   releases and defers the rest, with their language packages, to later runs.
-- Use `sdkgo:`, `sdkpython:`, `sdkts:`, `connector(<slug>):`,
-  `connectors(python):`, `connectors(typescript):`, `tooling:`, or `docs:` subjects.
+- Use `sdkgo:`, `sdkpython:`, `sdkts:`, `sdkjava:`, `sdkrust:`,
+  `connector(<slug>):`, `connectors(python):`, `connectors(typescript):`,
+  `connectors(java):`, `connectors(rust):`, `tooling:`, or `docs:` subjects.
 - Put the exact lowercase token `(breaking)` in the PR title or body and final
   commit message for every public breaking change. When only some language
   packages break, scope it as `(breaking: <language>[, <language>...])` with
-  `go`, `python`, or `typescript`; only the named packages then need a
-  breaking bump. Plain `(breaking)` applies to every package, and a change
+  `go`, `python`, `typescript`, `java`, or `rust`; only the named packages then
+  need a breaking bump. Plain `(breaking)` applies to every package, and a change
   that breaks connections uses it. Markers inside Markdown code are ignored;
   any other spelling outside code fails the release.
 - Fetch and branch from the latest `origin/main`. See

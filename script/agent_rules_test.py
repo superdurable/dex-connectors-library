@@ -67,7 +67,7 @@ class AgentRulesTest(unittest.TestCase):
         paths.extend((ROOT / ".cursor" / "rules").glob("*.mdc"))
         paths.extend((ROOT / ".codex" / "rules").glob("*.md"))
         forbidden = re.compile(
-            r"\b(?:Temporal|Cadence|Docusaurus|interpreter|Gin|Rust|Java|proto)\b"
+            r"\b(?:Temporal|Cadence|Docusaurus|interpreter|Gin|proto)\b"
             r"|server/\*\*",
             re.IGNORECASE,
         )
@@ -110,6 +110,8 @@ class AgentRulesTest(unittest.TestCase):
                 self.assertIn("v0.1.0", contents)
                 self.assertIn("connectors(python):", contents)
                 self.assertIn("connectors(typescript):", contents)
+                self.assertIn("connectors(java):", contents)
+                self.assertIn("connectors(rust):", contents)
                 self.assertIn("PyPI limits new-project creation rates", contents)
                 self.assertIn("confirms its Release run created every package's GitHub release", contents)
                 self.assertIn("Python first uploads to PyPI may lag behind their GitHub releases", contents)
@@ -339,7 +341,7 @@ class AgentRulesTest(unittest.TestCase):
     def test_scoped_breaking_marker_rule_is_mirrored(self) -> None:
         rule = ("Put the exact lowercase token `(breaking)` in the PR title or body and final commit message for "
                 "every public breaking change. When only some language packages break, scope it as "
-                "`(breaking: <language>[, <language>...])` with `go`, `python`, or `typescript`; only the named "
+                "`(breaking: <language>[, <language>...])` with `go`, `python`, `typescript`, `java`, or `rust`; only the named "
                 "packages then need a breaking bump. Plain `(breaking)` applies to every package, and a change "
                 "that breaks connections uses it. Markers inside Markdown code are ignored; any other spelling "
                 "outside code fails the release.")

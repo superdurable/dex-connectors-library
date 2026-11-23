@@ -40,7 +40,44 @@ MUTATION_SHARED_SELECTION_FILES = frozenset({
 OPERATION_DISCOVERY_SOURCE_DIRECTORIES = ("cmd/connectorctl", "internal", "schema")
 OPERATION_DISCOVERY_MODULE_FILES = frozenset({"go.mod", "go.sum"})
 SAFE_MUTATION_UNREACHABLE_BRANCHES = frozenset({"uncertain", "invalidResponse"})
+# The metadata file whose presence under <connector>/<language>/ makes a language package that must replay scenarios.
+LANGUAGE_PACKAGE_FILES = {"python": "pyproject.toml", "typescript": "package.json",
+                          "java": "gradle.properties", "rust": "Cargo.toml"}
+# The replay runner each language package must contain, as a glob relative to the package directory.
+LANGUAGE_CONFORMANCE_RUNNER_GLOBS = {"python": "tests/test_conformance.py", "typescript": "test/conformance.test.ts",
+                                     "java": "src/test/java/**/ConnectorConformanceTest.java",
+                                     "rust": "tests/conformance.rs"}
 _CLOCK_FORMAT = re.compile(r"^\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d{1,3})?Z$")
+
+
+def language_packages(connector: Path) -> list[tuple[str, Path]]:
+    """Return each language and package directory of a connector that has that language's package metadata file."""
+    return [(language, connector / language) for language, package_file in LANGUAGE_PACKAGE_FILES.items()
+            if (connector / language / package_file).is_file()]
+
+
+def has_language_conformance_runner(language: str, package: Path) -> bool:
+    return any(package.glob(LANGUAGE_CONFORMANCE_RUNNER_GLOBS[language]))
+
+
+def language_conformance_commands(language: str, package: Path) -> tuple[list[tuple[list[str], Path]], tuple[list[str], Path]]:
+    """Return the setup commands and the replay command, each with its working directory, of one language package.
+
+    Every replay command reads the fixture path from CONNECTOR_CONFORMANCE_FIXTURE when it is set, exits nonzero when
+    a scenario fails, and names the failing scenario in its output.
+    """
+    if language == "python":
+        return ([(["uv", "sync", "--locked", "--project", str(package)], ROOT)],
+                (["uv", "run", "--project", str(package), "pytest", str(package / "tests/test_conformance.py"), "-q"],
+                 ROOT))
+    if language == "typescript":
+        return ([(["npm", "ci", "--prefix", str(package)], ROOT), (["npm", "run", "build", "--prefix", str(package)], ROOT)],
+                ([str(package / "node_modules/.bin/vitest"), "run", "test/conformance.test.ts"], package))
+    if language == "java":
+        return ([], (["./gradlew", "--no-daemon", "--info", "test", "--rerun", "--tests", "*ConnectorConformanceTest"], package))
+    if language == "rust":
+        return ([], (["cargo", "test", "--locked", "--test", "conformance"], package))
+    raise ValueError(f"unsupported conformance language: {language}")
 
 
 def validate_scenario_fixed_clock(scenario: dict[str, object]) -> None:
@@ -271,14 +308,12 @@ def conformance_operations_output(connectorctl: Path, manifest: str) -> str:
 
 def run_connector(connector: Path, paths: list[str], exemptions: dict[str, str] | None = None,
                   log: TextIO | None = None) -> None:
-    """Require each language runner and execute Go, Python, and TypeScript replay.
+    """Require each language runner and execute Go, Python, TypeScript, Java, and Rust replay.
 
-    Every Python and TypeScript package needs scenarios unless conformance/exemptions.yaml exempts its connector.
-    Output goes to log, or standard output when log is None.
+    Every Python, TypeScript, Java, and Rust package needs scenarios unless conformance/exemptions.yaml exempts its
+    connector. Output goes to log, or standard output when log is None.
     """
     log = sys.stdout if log is None else log
-    python_package = connector / "python"
-    typescript_package = connector / "typescript"
     relative = connector.relative_to(ROOT / "connectors")
     exemption = (exemptions if exemptions is not None else conformance_exemptions()).get(
         str(connector.relative_to(ROOT)))
@@ -289,8 +324,8 @@ def run_connector(connector: Path, paths: list[str], exemptions: dict[str, str] 
     if not fixture.is_file():
         prefix = str(connector.relative_to(ROOT)) + "/"
         fixture_prefix = "conformance/connectors/" + str(relative) + "/"
-        has_language_package = (python_package / "pyproject.toml").is_file() or (typescript_package / "package.json").is_file()
-        if has_language_package or any(path.startswith(prefix + "python/") or path.startswith(prefix + "typescript/")
+        has_language_package = bool(language_packages(connector))
+        if has_language_package or any(path.startswith(tuple(prefix + language + "/" for language in LANGUAGE_PACKAGE_FILES))
                                        or path.startswith(fixture_prefix) for path in paths):
             raise ValueError(f"{connector.relative_to(ROOT)} has no conformance scenarios; add "
                              f"{fixture.relative_to(ROOT)} or exempt the connector in conformance/exemptions.yaml")
@@ -367,15 +402,10 @@ def run_connector(connector: Path, paths: list[str], exemptions: dict[str, str] 
                 and "uncertain" not in declaration.get("retiredBranches", [])
                 and operation not in observed_uncertainty):
             raise ValueError(f"{fixture.relative_to(ROOT)} lacks {operation} uncertainty coverage")
-    for language, package_file, runner_path in (
-        ("python", "pyproject.toml", "tests/test_conformance.py"),
-        ("typescript", "package.json", "test/conformance.test.ts"),
-    ):
-        language_package = connector / language
-        if not (language_package / package_file).is_file():
-            continue
-        if not (language_package / runner_path).is_file():
-            raise ValueError(f"{language_package.relative_to(ROOT)} has no conformance runner")
+    for language, language_package in language_packages(connector):
+        if not has_language_conformance_runner(language, language_package):
+            raise ValueError(f"{language_package.relative_to(ROOT)} has no conformance runner "
+                             f"{LANGUAGE_CONFORMANCE_RUNNER_GLOBS[language]}")
         capability_output = subprocess.check_output(
             ["go", "run", "./cmd/connectorctl", "language-capabilities",
              str(connector / "connector.yaml"), language],
@@ -396,16 +426,11 @@ def run_connector(connector: Path, paths: list[str], exemptions: dict[str, str] 
         raise ValueError(f"{connector.relative_to(ROOT)} has no Go reference test")
     run_logged_command(["go", "test", "./...", "-run", "^TestConnectorConformance$", "-count=1"],
                        connector / "go", log, env={**os.environ, "GOWORK": "off"})
-    if (python_package / "pyproject.toml").is_file():
-        runner = python_package / "tests/test_conformance.py"
-        run_logged_command(["uv", "sync", "--locked", "--project", str(python_package)], ROOT, log)
-        run_logged_command(["uv", "run", "--project", str(python_package), "pytest", str(runner)], ROOT, log)
-    if (typescript_package / "package.json").is_file():
-        runner = typescript_package / "test/conformance.test.ts"
-        run_logged_command(["npm", "ci", "--prefix", str(typescript_package)], ROOT, log)
-        run_logged_command(["npm", "run", "build", "--prefix", str(typescript_package)], ROOT, log)
-        run_logged_command([str(typescript_package / "node_modules/.bin/vitest"), "run", "test/conformance.test.ts"],
-                           typescript_package, log)
+    for language, language_package in language_packages(connector):
+        setup_commands, (replay_command, replay_directory) = language_conformance_commands(language, language_package)
+        for command, directory in setup_commands:
+            run_logged_command(command, directory, log)
+        run_logged_command(replay_command, replay_directory, log)
 
 
 def conformance_worker_count(requested_workers: int | None, connector_count: int) -> int:
@@ -528,17 +553,11 @@ def mutation_self_test_connector(connector: Path, connectorctl: Path, log: TextI
     declared_operations = json.loads(operation_output)
     commands = {"go": (["go", "test", ".", "-run", "^TestConnectorConformance$", "-count=1"],
                        connector / "go")}
-    python_package = connector / "python"
-    if (python_package / "pyproject.toml").is_file():
-        run_logged_command(["uv", "sync", "--locked", "--project", str(python_package)], ROOT, log)
-        commands["python"] = (["uv", "run", "--project", str(python_package), "pytest",
-                                str(python_package / "tests/test_conformance.py"), "-q"], ROOT)
-    typescript_package = connector / "typescript"
-    if (typescript_package / "package.json").is_file():
-        run_logged_command(["npm", "ci", "--prefix", str(typescript_package)], ROOT, log)
-        run_logged_command(["npm", "run", "build", "--prefix", str(typescript_package)], ROOT, log)
-        commands["typescript"] = ([str(typescript_package / "node_modules/.bin/vitest"), "run",
-                                    "test/conformance.test.ts"], typescript_package)
+    for language, language_package in language_packages(connector):
+        setup_commands, replay = language_conformance_commands(language, language_package)
+        for command, directory in setup_commands:
+            run_logged_command(command, directory, log)
+        commands[language] = replay
     implemented_operations = {
         language: set(json.loads(subprocess.check_output(
             [str(connectorctl), "language-capabilities", str(connector / "connector.yaml"), language],
