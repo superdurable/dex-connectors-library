@@ -16,8 +16,11 @@ include = ["src/**/*.rs", "Cargo.toml", "README.md", "LICENSE"]
 base64 = "0.22"
 dex-sdk = "1.45.7"
 hmac = "0.12"
+httpdate = "1"
+regex = { version = "1", default-features = false, features = ["std", "unicode-perl"] }
+ring = "0.17"
 serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+serde_json = { version = "1", features = ["raw_value"] }
 sha2 = "0.10"
 tracing = "0.1"
 ureq = { version = "2.12", default-features = false, features = ["tls", "json"] }
