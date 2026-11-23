@@ -1033,6 +1033,135 @@ fn mock_receipt(call: &Call<'_>) -> Receipt {
     }
 }
 
+/// In-memory stand-in for one Dex Step attempt, for conformance replay and unit tests.
+///
+/// It supplies the Flow ID, attempt number, and the previous attempt's heartbeat value that a
+/// real Step attempt reads from Dex, and records heartbeat writes in memory, so connector
+/// operations and [`crate::singledispatch::Fence`] run outside a Worker. Create one per
+/// replayed attempt; progress and text writes are no-ops.
+pub struct ReplayStepAttempt {
+    flow_id: String,
+    attempt: u32,
+    previous_heartbeat: Option<JsonValue>,
+    written_heartbeat: Mutex<Option<JsonValue>>,
+    checkpoint_markers:
+        Mutex<Option<BTreeMap<String, crate::singledispatch::markers::Marker>>>,
+    running_mutations: Mutex<BTreeSet<OperationRef>>,
+}
+
+impl ReplayStepAttempt {
+    /// Creates attempt `attempt` of a Step in `flow_id` whose previous attempt persisted
+    /// `previous_heartbeat`.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ValidationError`] for a blank Flow ID or a zero attempt.
+    pub fn new(
+        flow_id: impl Into<String>,
+        attempt: u32,
+        previous_heartbeat: Option<JsonValue>,
+    ) -> Result<Self, ValidationError> {
+        let flow_id = flow_id.into();
+        if flow_id.trim().is_empty() || attempt == 0 {
+            return Err(ValidationError::new(
+                "replay attempt requires a Flow ID and a positive attempt",
+            ));
+        }
+        Ok(Self {
+            flow_id,
+            attempt,
+            previous_heartbeat,
+            written_heartbeat: Mutex::new(None),
+            checkpoint_markers: Mutex::new(None),
+            running_mutations: Mutex::new(BTreeSet::new()),
+        })
+    }
+
+    /// Creates a Call bound to this attempt with a fixed Call ID and a send cap of 1.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ValidationError`] for an invalid Call ID or reference.
+    pub fn new_call(
+        &self,
+        call_id: CallId,
+        connection: ConnectionRef,
+        operation: OperationRef,
+    ) -> Result<Call<'_>, ValidationError> {
+        let mut call = Call::new(call_id, connection, operation)?;
+        call.step_attempt = Some(self);
+        Ok(call)
+    }
+
+    /// Returns the one-based attempt number.
+    pub fn attempt(&self) -> u32 {
+        self.attempt
+    }
+
+    /// Returns the last heartbeat value written during this attempt, or `None` when the
+    /// attempt wrote none.
+    pub fn written_heartbeat(&self) -> Option<JsonValue> {
+        self.written_heartbeat
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .clone()
+    }
+}
+
+impl crate::step_attempt::StepAttemptAccess for ReplayStepAttempt {
+    fn attempt_number(&self) -> u32 {
+        self.attempt
+    }
+
+    fn attempt_flow_id(&self) -> &str {
+        &self.flow_id
+    }
+
+    fn has_progress_stream(&self) -> bool {
+        false
+    }
+
+    fn has_text_stream(&self) -> bool {
+        false
+    }
+
+    fn report_progress(&self, _call_id: &CallId, _progress: crate::types::Progress) {}
+
+    fn write_text(&self, _value: &str) {}
+
+    fn begin_running_mutation(&self, operation: &OperationRef) -> bool {
+        self.running_mutations
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .insert(operation.clone())
+    }
+
+    fn end_running_mutation(&self, operation: &OperationRef) {
+        self.running_mutations
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .remove(operation);
+    }
+
+    fn checkpoint_markers(
+        &self,
+    ) -> &Mutex<Option<BTreeMap<String, crate::singledispatch::markers::Marker>>> {
+        &self.checkpoint_markers
+    }
+
+    fn last_heartbeat_value(&self) -> Option<JsonValue> {
+        self.previous_heartbeat.clone()
+    }
+
+    fn record_heartbeat_value(&self, value: JsonValue) -> Result<(), String> {
+        *self
+            .written_heartbeat
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner) = Some(value);
+        Ok(())
+    }
+}
+
 /// Fixture loading failure.
 #[derive(Debug)]
 pub enum FixtureError {
@@ -1390,6 +1519,46 @@ mod tests {
         let outside = mock.answer("flow-1", "call-2", &connection, &3, "", 3);
         assert_eq!(outside.branch_id(), DEFECT_BRANCH_ID);
         assert_eq!(mock.failures().len(), 2);
+    }
+
+    #[test]
+    fn mutation_mock_replays_keyed_outcome_inside_replay_attempt() {
+        let fixture = fixture();
+        let definition: MutationDefinition =
+            serde_json::from_value(fixture["mutationDefinition"].clone()).expect("decodes");
+        let mock = Mutation::<String, String>::new(definition.clone(), None).expect("valid");
+        mock.scripted()
+            .respond(vec![Case::branch("created", "object-42".to_string(), None)])
+            .expect("declared");
+        let attempt = ReplayStepAttempt::new("flow-42", 1, None).expect("valid attempt");
+        let call = attempt
+            .new_call(
+                CallId::new("5af8fafa-06ff-5b2d-bb13-04693809fabf"),
+                ConnectionRef::new("sample", "main"),
+                definition.operation.clone(),
+            )
+            .expect("valid call");
+        for _ in 0..2 {
+            let outcome = crate::run_mutation(&mock, &call, &"input".to_string());
+            let result = outcome.into_result().expect("terminal result");
+            assert_eq!(result.branch, "created");
+            assert_eq!(result.value.as_deref(), Some("object-42"));
+            assert_eq!(result.receipt.idempotency_key.as_str(), call.id.as_str());
+        }
+        let calls = mock.scripted().calls();
+        assert_eq!(calls[0].flow_id, "flow-42");
+        assert!(calls[1].is_replay);
+        let outside = Call::new(
+            CallId::new("5af8fafa-06ff-5b2d-bb13-04693809fabf"),
+            ConnectionRef::new("sample", "main"),
+            definition.operation.clone(),
+        )
+        .expect("valid call");
+        let defect = crate::run_mutation(&mock, &outside, &"input".to_string())
+            .into_result()
+            .expect("terminal result");
+        assert_eq!(defect.branch, DEFECT_BRANCH_ID);
+        assert_eq!(attempt.written_heartbeat(), None);
     }
 
     #[test]
