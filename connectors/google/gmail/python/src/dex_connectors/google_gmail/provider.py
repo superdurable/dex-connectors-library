@@ -8,13 +8,14 @@ import hashlib
 import json
 import math
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from email import policy
 from email.header import decode_header, make_header
 from email.parser import Parser
 from email.quoprimime import header_encode
-from urllib.parse import quote, urlencode
+from urllib.parse import quote, unquote_to_bytes, urlencode
 
 import httpx
 from dex_connectors.sdk import (
@@ -250,7 +251,89 @@ def validate_send_input(input_value: SendMessageInput, sender: str) -> list[str]
             raise ValueError("recipient email is duplicated")
         canonical_addresses.add(mailbox.address.lower())
         recipients.append(format_mail_address(mailbox))
+    validate_list_unsubscribe(input_value.list_unsubscribe, input_value.list_unsubscribe_one_click)
     return recipients
+
+
+_MAX_LIST_UNSUBSCRIBE_TARGETS = 2
+_MAX_LIST_UNSUBSCRIBE_TARGET_LENGTH = 512
+_HOST_CHARACTERS = re.compile(r"[A-Za-z0-9.-]+")
+_VISIBLE_ASCII = re.compile(r"[\x21-\x7e]+")
+
+
+def validate_list_unsubscribe(targets: Sequence[str], is_one_click: bool) -> None:
+    """Validate List-Unsubscribe targets with the Go connector's plain string rules.
+
+    A valid target can never add a header or a second list entry.
+
+    Raises:
+        ValueError: A target is invalid or duplicated, there are more than two, or one-click
+            lacks an https target.
+    """
+    if len(targets) > _MAX_LIST_UNSUBSCRIBE_TARGETS:
+        raise ValueError("list unsubscribe accepts at most two targets")
+    has_https = False
+    seen: set[str] = set()
+    for target in targets:
+        kind = _list_unsubscribe_target_kind(target)
+        if kind is None:
+            raise ValueError("list unsubscribe target must be an https: URL or a mailto: address")
+        if target in seen:
+            raise ValueError("list unsubscribe target is duplicated")
+        seen.add(target)
+        has_https = has_https or kind == "https"
+    if is_one_click and not has_https:
+        raise ValueError("one-click unsubscribe requires an https list unsubscribe target")
+
+
+def _list_unsubscribe_target_kind(target: str) -> str | None:
+    if not target or len(target) > _MAX_LIST_UNSUBSCRIBE_TARGET_LENGTH:
+        return None
+    if not _VISIBLE_ASCII.fullmatch(target) or any(character in target for character in '<>,"\\'):
+        return None
+    lower = target.lower()
+    if lower.startswith("https://"):
+        rest = target[len("https://"):]
+        end = re.search(r"[/?#]", rest)
+        authority = rest[: end.start()] if end else rest
+        host, has_port, port = authority.partition(":")
+        if not _HOST_CHARACTERS.fullmatch(host):
+            return None
+        if has_port and not re.fullmatch(r"[0-9]{1,5}", port):
+            return None
+        return "https"
+    if lower.startswith("mailto:"):
+        encoded = target[len("mailto:"):].split("?", 1)[0]
+        address = _unescape_path(encoded)
+        if address is None or not _VISIBLE_ASCII.fullmatch(address):
+            return None
+        if any(character in address for character in '<>",'):
+            return None
+        try:
+            mailbox = _parse_go_mailbox(address)
+        except ValueError:
+            return None
+        if mailbox.name or mailbox.address != address:
+            return None
+        return "mailto"
+    return None
+
+
+def _unescape_path(value: str) -> str | None:
+    """Go's url.PathUnescape: every % starts two hex digits."""
+    if re.search(r"%(?![0-9A-Fa-f]{2})", value):
+        return None
+    return unquote_to_bytes(value).decode("utf-8", errors="replace")
+
+
+def list_unsubscribe_headers(targets: Sequence[str], is_one_click: bool) -> list[str]:
+    """Return the List-Unsubscribe header lines for validated targets, empty without targets."""
+    if not targets:
+        return []
+    headers = ["List-Unsubscribe: " + ", ".join(f"<{target}>" for target in targets)]
+    if is_one_click:
+        headers.append("List-Unsubscribe-Post: List-Unsubscribe=One-Click")
+    return headers
 
 
 def rfc_message_id_address(call: Call, run_id: str | None, flow_started_at: datetime | None = None) -> str:
@@ -318,6 +401,7 @@ def _mime_message(
     flow_started_at: datetime | None,
     reply_headers: tuple[str, str] = ("", ""),
     *, message_id_address: str | None = None,
+    extra_headers: list[str] | None = None,
 ) -> bytes:
     address = message_id_address if message_id_address is not None else rfc_message_id_address(
         call, run_id, flow_started_at
@@ -332,7 +416,9 @@ def _mime_message(
     if reply_headers[0]:
         lines.append(f"In-Reply-To: {reply_headers[0]}")
         lines.append(f"References: {reply_headers[1]}")
-    lines.extend((f"X-Dex-Call-ID: {call.id}", "MIME-Version: 1.0"))
+    lines.append(f"X-Dex-Call-ID: {call.id}")
+    lines.extend(extra_headers or ())
+    lines.append("MIME-Version: 1.0")
     if not html_body:
         lines.extend(('Content-Type: text/plain; charset="UTF-8"', "Content-Transfer-Encoding: 8bit"))
         return ("\r\n".join(lines) + "\r\n\r\n" + _crlf(text_body)).encode()
@@ -365,6 +451,9 @@ def build_send_message(
         run_id,
         flow_started_at,
         message_id_address=message_id_address,
+        extra_headers=list_unsubscribe_headers(
+            input_value.list_unsubscribe, input_value.list_unsubscribe_one_click
+        ),
     )
     return json.dumps(
         {"raw": base64.urlsafe_b64encode(raw).rstrip(b"=").decode()}, separators=(",", ":")

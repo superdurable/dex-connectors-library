@@ -166,3 +166,39 @@ it('ignores a 503 error-body ID and confirms by Sent Mail after a real Dex retry
     await providerWorker.close();
   }
 }, 30_000);
+
+it('sends List-Unsubscribe and one-click headers through a real Dex Worker', async () => {
+  const connectionReference = { provider: 'google', name: ConnectionName };
+  const credentials = { accessToken: new SecretString('integration-test-token'), primaryEmail: 'owner@example.com' };
+  const postedMessages: string[] = [];
+  const transport = async (request: ProviderRequest): Promise<ProviderResponse> => {
+    const { raw } = JSON.parse(Buffer.from(request.body ?? []).toString('utf8')) as { raw: string };
+    postedMessages.push(Buffer.from(raw, 'base64url').toString('utf8'));
+    return { status: 200, headers: {}, body: Buffer.from(JSON.stringify({ id: 'newsletter-1', threadId: 'thread-1' })) };
+  };
+  const providerClient = new GmailClient({ endpoint: 'http://127.0.0.1:8080' },
+    new StaticCredentialProvider([[connectionReference, credentials]]), { transport });
+  const providerFlow = new GmailSendFlow(new GmailConnection(providerClient, connectionReference));
+  const providerRegistry = new Registry([providerFlow]);
+  const providerWorker = new Worker(providerRegistry, cache, { serverAddress: serviceAddress });
+  const providerDexClient = new Client(providerRegistry, cache, { serverAddress: serviceAddress });
+  try {
+    await providerWorker.start();
+    await providerWorker.waitPullRegistered({ timeoutMs: 15_000 });
+    const flowId = `gmail-list-unsubscribe-${randomUUID()}`;
+    await providerDexClient.startFlow(providerFlow, flowId, {
+      to: ['ada@example.com'], subject: 'Weekly update', textBody: 'Update',
+      listUnsubscribe: ['https://example.com/unsubscribe?token=t1', 'mailto:news@example.com?subject=unsubscribe'],
+      listUnsubscribeOneClick: true,
+    });
+    const result = await providerDexClient.waitForFlow(flowId, 20_000);
+    expect(result.status).toBe('completed');
+    expect(result.singleOutput()).toMatchObject({ branch: 'sent', value: { messageId: 'newsletter-1' } });
+    expect(postedMessages).toHaveLength(1);
+    expect(postedMessages[0]).toContain('\r\nList-Unsubscribe: <https://example.com/unsubscribe?token=t1>, <mailto:news@example.com?subject=unsubscribe>\r\n');
+    expect(postedMessages[0]).toContain('\r\nList-Unsubscribe-Post: List-Unsubscribe=One-Click\r\n');
+  } finally {
+    await providerDexClient.close();
+    await providerWorker.close();
+  }
+}, 30_000);

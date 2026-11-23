@@ -10,7 +10,7 @@ import { CheckpointError, InsufficientTimeError, newFence, type Fence } from '@s
 import { setTimeout as delay } from 'node:timers/promises';
 import { ReplyToMessageBranch, ReplyToMessageDefinition, SendMessageBranch, SendMessageDefinition } from './definitions.js';
 import { GmailCredentialError, GmailHTTPClient, gmailRequestID, gmailRetryAfterMs, statusFailureKind } from './http.js';
-import { buildMIMEMessage, buildReplyMIMEMessage, decodeGmailMessage, replyRecipient, rfcMessageIDAddress, validateSendInput } from './message.js';
+import { buildMIMEMessage, buildReplyMIMEMessage, decodeGmailMessage, listUnsubscribeHeaders, replyRecipient, rfcMessageIDAddress, validateSendInput } from './message.js';
 import { ReplyToMessageInputSchema, SendMessageInputSchema, type Credentials, type Message, type ReplyToMessageInput, type SendMessageInput, type SendMessageOutput } from './models.js';
 import { GmailProvider, parseSentResponse, type SentMessageIdentity } from './provider.js';
 import { SentMailReadBack } from './sent_mail_read_back.js';
@@ -145,7 +145,7 @@ export class GmailSender {
     }
     let raw: Uint8Array;
     try {
-      raw = buildMIMEMessage(call.id, call.idempotencyKey ?? call.id, messageIdAddress, credentials.primaryEmail, recipients, input.subject, input.textBody, input.htmlBody);
+      raw = buildMIMEMessage(call.id, call.idempotencyKey ?? call.id, messageIdAddress, credentials.primaryEmail, recipients, input.subject, input.textBody, input.htmlBody, undefined, listUnsubscribeHeaders(input.listUnsubscribe, input.listUnsubscribeOneClick));
     } catch { return defectBeforeAnySend(fence, 'sendMessage', 'VALIDATION', 'message could not be encoded', this.#receipt(call)); }
     if (raw.length > this.#http.settings().maxMessageBytes) return defectBeforeAnySend(fence, 'sendMessage', 'VALIDATION', 'message exceeds configured size limit', this.#receipt(call));
     return this.#sendAndConfirm(call, fence, budget, credentials, SendMessageOutcomes, { raw, recipients, requestedThreadId: '', messageIdAddress });

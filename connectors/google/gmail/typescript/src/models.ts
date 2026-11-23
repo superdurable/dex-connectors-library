@@ -13,6 +13,7 @@ export type {
 /** Public send input requires at least an array value before operation validation. */
 export const SendMessageInputSchema = z.strictObject({
   to: z.array(z.string()), subject: z.string(), textBody: z.string(), htmlBody: z.string().optional(),
+  listUnsubscribe: z.array(z.string()).optional(), listUnsubscribeOneClick: z.boolean().optional(),
 });
 /** Message input accepted by Gmail applications. */
 export type SendMessageInput = z.infer<typeof SendMessageInputSchema>;
