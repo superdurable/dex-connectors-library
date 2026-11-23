@@ -3,6 +3,8 @@
 
 package io.superdurable.dexconnectors.sdk.projectconfig;
 
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import io.superdurable.dexconnectors.sdk.PrivateValueRefusingSerializer;
 import java.util.Arrays;
 
 /**
@@ -11,6 +13,7 @@ import java.util.Arrays;
  * <p>The contents may hold credentials, so {@link #toString()} shows only the object identity and
  * the bytes are copied on access. Never serialize or log the contents.
  */
+@JsonSerialize(using = PrivateValueRefusingSerializer.class)
 public final class ProjectObject {
     private final String key;
     private final String version;
