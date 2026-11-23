@@ -1,0 +1,798 @@
+// Copyright (c) 2026 Super Durable
+// SPDX-License-Identifier: MIT
+
+//! Project snapshot, credential, local Dex Web, broker, and S3 conformance tests.
+
+use std::collections::HashMap;
+use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
+use std::time::{Duration, SystemTime};
+
+use dex_connectors_sdk::Rfc3339NanoTimestamp;
+use dex_connectors_sdk::projectconfig::{
+    ApplicationSecretRef, BrokerHttpClient, BrokerHttpResponse, BrokerReadError, Configuration,
+    ConfigurationStore, ConnectionConfiguration, ConnectionKey, ConnectionStore,
+    CredentialBrokerClient, CredentialBrokerConfiguration, CredentialMaterial, EnvironmentValue,
+    InMemoryObjectStore, JsonObject, ObjectStore, ProjectConfigError, ProjectConfigResult,
+    S3Client, S3Error, S3GetObjectOutput, S3ObjectStore, S3PutObjectInput, S3PutObjectOutput,
+    Scope, SharedConnection, SnapshotRef, decode_broker_response, digest_bytes,
+    go_canonical_json_bytes, load_dex_web_project, load_from_environment_values,
+    load_project_from_object_store, validate_secret_reference, wire,
+};
+use serde_json::{Value, json};
+
+fn conformance_dir() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("../conformance")
+}
+
+fn fixture(name: &str) -> Value {
+    let bytes = std::fs::read(conformance_dir().join(name)).expect("fixture is readable");
+    serde_json::from_slice(&bytes).expect("fixture is JSON")
+}
+
+fn text<'value>(value: &'value Value, name: &str) -> &'value str {
+    value[name].as_str().expect("fixture member is a string")
+}
+
+/// Compares JSON values with numbers compared numerically, as the fixtures require.
+fn assert_json_value_eq(actual: &Value, expected: &Value) {
+    fn normalize(value: &Value) -> Value {
+        match value {
+            Value::Number(number) => json!(number.as_f64()),
+            Value::Array(items) => Value::Array(items.iter().map(normalize).collect()),
+            Value::Object(object) => Value::Object(
+                object
+                    .iter()
+                    .map(|(key, value)| (key.clone(), normalize(value)))
+                    .collect(),
+            ),
+            other => other.clone(),
+        }
+    }
+    assert_eq!(normalize(actual), normalize(expected));
+}
+
+fn object(value: &Value) -> JsonObject {
+    value.as_object().expect("JSON object").clone()
+}
+
+fn in_memory() -> Arc<dyn ObjectStore> {
+    Arc::new(InMemoryObjectStore::new())
+}
+
+#[test]
+fn scope_snapshot_reference_conformance() {
+    let storage = fixture("project-storage.json");
+    let scope = Scope::from_wire(&storage["scope"]).expect("scope decodes");
+    assert_eq!(scope.prefix().expect("prefix"), "projects/sample-project/preview");
+    let snapshot = SnapshotRef::from_wire(&storage["snapshot"]).expect("snapshot decodes");
+    snapshot.validate(&scope).expect("snapshot is valid");
+    assert_json_value_eq(&snapshot.to_wire(), &storage["snapshot"]);
+}
+
+#[test]
+fn go_canonical_snapshot_and_credential_bytes() {
+    let fixture = fixture("project-storage.json");
+    let configuration =
+        Configuration::from_wire(&fixture["configurationSnapshotDocument"]).expect("decodes");
+    let objects = in_memory();
+    let configuration_store =
+        ConfigurationStore::new(objects.clone(), configuration.scope.clone()).expect("store");
+    let (_, written) = configuration_store
+        .write_configuration(0, &configuration)
+        .expect("writes");
+    assert_eq!(
+        String::from_utf8(written.contents.clone()).expect("UTF-8"),
+        text(&fixture, "configurationSnapshotCanonicalJSON")
+    );
+    assert_eq!(digest_bytes(&written.contents), fixture["snapshot"]["digest"]);
+    assert_json_value_eq(
+        &configuration_store.freeze_configuration(1).expect("freezes").to_wire(),
+        &fixture["snapshot"],
+    );
+    assert_eq!(
+        go_canonical_json_bytes(&SnapshotRef::from_wire(&fixture["snapshot"]).expect("ref").to_wire())
+            .expect("encodes"),
+        go_canonical_json_bytes(&fixture["snapshot"]).expect("encodes")
+    );
+    let key = ConnectionKey::new(
+        text(&fixture["connectionKey"], "connectorId"),
+        text(&fixture["connectionKey"], "connectionName"),
+    );
+    assert_eq!(
+        format!("{}/head", key.path(&configuration.scope).expect("path")),
+        text(&fixture, "connectionHeadKey")
+    );
+    let envelope_fixture = &fixture["credentialEnvelope"];
+    let expires_at =
+        Rfc3339NanoTimestamp::from_wire(text(envelope_fixture, "expiresAt")).expect("timestamp");
+    let connections = ConnectionStore::new(objects.clone(), configuration.scope.clone());
+    connections
+        .replace_credential(
+            &key,
+            0,
+            &CredentialMaterial {
+                credentials: object(&envelope_fixture["credentials"]),
+                expires_at: Some(expires_at.clone()),
+                auth_method: text(envelope_fixture, "authMethod").into(),
+            },
+        )
+        .expect("replaces");
+    let credential_key = text(&fixture, "credentialObjectKey");
+    let credential = objects.read_object(credential_key, "").expect("credential object");
+    assert_eq!(
+        String::from_utf8(credential.contents.clone()).expect("UTF-8"),
+        text(&fixture, "credentialEnvelopeCanonicalJSON")
+    );
+    assert_eq!(
+        &digest_bytes(&credential.contents)[7..],
+        text(&fixture["objectReference"], "digest")
+    );
+    assert_eq!(credential.key, text(&fixture["objectReference"], "key"));
+    let (loaded, _) = connections.read_credential_material(&key).expect("loads");
+    assert_eq!(
+        loaded.expires_at.expect("expiry").as_wire_str(),
+        text(envelope_fixture, "expiresAt")
+    );
+    let exchange = wire::credential_envelope(
+        &configuration.scope,
+        &key,
+        2,
+        &object(&envelope_fixture["credentials"]),
+        Some(&expires_at),
+        text(envelope_fixture, "authMethod"),
+        "attempt-7",
+    );
+    assert_eq!(
+        String::from_utf8(go_canonical_json_bytes(&exchange).expect("encodes")).expect("UTF-8"),
+        text(&fixture, "credentialExchangeEnvelopeCanonicalJSON")
+    );
+    let reversed = wire::credential_envelope(
+        &configuration.scope,
+        &key,
+        2,
+        &object(&json!({"refreshToken": "REDACTED_REFRESH_TOKEN", "accessToken": "REDACTED_ACCESS_TOKEN"})),
+        Some(&expires_at),
+        "oauth2",
+        "",
+    );
+    let reversed_bytes = String::from_utf8(go_canonical_json_bytes(&reversed).expect("encodes"))
+        .expect("UTF-8");
+    assert!(reversed_bytes.contains(r#""refreshToken":"REDACTED_REFRESH_TOKEN","accessToken""#));
+    let record_fixture = &fixture["connectionRecord"];
+    let record = wire::connection_record(
+        &configuration.scope,
+        &key,
+        record_fixture["revision"].as_u64().expect("revision"),
+        record_fixture["fence"].as_u64().expect("fence"),
+        text(record_fixture, "status"),
+        Some(&expires_at),
+        text(record_fixture, "authMethod"),
+        Some(&fixture["objectReference"]),
+        Some(&fixture["mutation"]),
+    )
+    .expect("record encodes");
+    let record_bytes = go_canonical_json_bytes(&record).expect("encodes");
+    assert_eq!(
+        String::from_utf8(record_bytes.clone()).expect("UTF-8"),
+        text(&fixture, "connectionRecordCanonicalJSON")
+    );
+    let cas = &fixture["objectCAS"];
+    assert_eq!(
+        format!("{}-{}", &digest_bytes(&record_bytes)[7..], text(cas, "version")),
+        text(cas, "etag")
+    );
+    assert_eq!(text(cas, "key"), text(&fixture, "connectionHeadKey"));
+    let cas_objects = InMemoryObjectStore::new();
+    let initial = cas_objects
+        .create_object(text(&fixture, "connectionHeadKey"), b"{}")
+        .expect("creates");
+    let observed = cas_objects
+        .compare_and_swap_object(text(&fixture, "connectionHeadKey"), &initial.etag, &record_bytes)
+        .expect("swaps");
+    assert_eq!(observed.etag, text(cas, "etag"));
+    let completed = &fixture["completedConnectionRecord"];
+    let completed_record = wire::connection_record(
+        &configuration.scope,
+        &key,
+        completed["revision"].as_u64().expect("revision"),
+        completed["fence"].as_u64().expect("fence"),
+        text(completed, "status"),
+        Some(&expires_at),
+        text(completed, "authMethod"),
+        Some(&completed["credential"]),
+        None,
+    )
+    .expect("record encodes");
+    assert_json_value_eq(&completed_record, completed);
+    assert_eq!(
+        text(&completed["credential"], "key"),
+        text(&fixture, "exchangeResultKey")
+    );
+    let secret = ApplicationSecretRef::from_wire(Some(&fixture["applicationSecret"])).expect("ref");
+    validate_secret_reference(&secret, &configuration.scope, "DEX_CREDENTIAL_BROKER_TOKEN")
+        .expect("valid secret reference");
+    assert_eq!(
+        go_canonical_json_bytes(&secret.to_wire()).expect("encodes"),
+        go_canonical_json_bytes(&fixture["applicationSecret"]).expect("encodes")
+    );
+    assert_eq!(
+        fixture["emptyTriggerInboxDocument"],
+        json!({"schemaVersion": "connectors.dex.dev/project-trigger-inbox/v1alpha1", "events": []})
+    );
+    let inbox_bytes = go_canonical_json_bytes(&fixture["triggerInboxDocument"]).expect("encodes");
+    let inbox: Value = serde_json::from_slice(&inbox_bytes).expect("JSON");
+    assert_eq!(inbox, fixture["triggerInboxDocument"]);
+    assert!(text(&fixture, "triggerInboxHeadKey").starts_with(&format!(
+        "{}/trigger-inboxes/sample/",
+        configuration.scope.prefix().expect("prefix")
+    )));
+}
+
+#[test]
+fn zero_offset_credential_write_uses_go_utc_bytes() {
+    let scope = Scope::new("project-1", "preview");
+    let objects = in_memory();
+    let store = ConnectionStore::new(objects.clone(), scope.clone());
+    for (name, offset) in [("positive", "+00:00"), ("negative", "-00:00")] {
+        let key = ConnectionKey::new("sample", name);
+        let supplied =
+            Rfc3339NanoTimestamp::from_wire(&format!("2026-10-29T12:30:45.120{offset}")).expect("time");
+        let expected = Rfc3339NanoTimestamp::from_wire("2026-10-29T12:30:45.12Z").expect("time");
+        let credentials = object(&json!({"token": "REDACTED"}));
+        store
+            .replace_credential(
+                &key,
+                0,
+                &CredentialMaterial {
+                    credentials: credentials.clone(),
+                    expires_at: Some(supplied),
+                    auth_method: "oauth2".into(),
+                },
+            )
+            .expect("replaces");
+        let envelope = go_canonical_json_bytes(&wire::credential_envelope(
+            &scope,
+            &key,
+            1,
+            &credentials,
+            Some(&expected),
+            "oauth2",
+            "",
+        ))
+        .expect("encodes");
+        let path = key.path(&scope).expect("path");
+        let credential_key = format!("{path}/credentials/{}", &digest_bytes(&envelope)[7..]);
+        assert_eq!(objects.read_object(&credential_key, "").expect("object").contents, envelope);
+        let head: Value =
+            serde_json::from_slice(&objects.read_object(&format!("{path}/head"), "").expect("head").contents)
+                .expect("JSON");
+        assert_eq!(head["expiresAt"], "2026-10-29T12:30:45.12Z");
+    }
+}
+
+#[test]
+fn snapshot_cas_and_exact_version() {
+    let scope = Scope::new("project-1", "preview");
+    let store = ConfigurationStore::new(in_memory(), scope.clone()).expect("store");
+    let document = Configuration::new(
+        scope,
+        1,
+        vec![ConnectionConfiguration::new("sample", "main", "module", "sample", JsonObject::new())],
+    );
+    let (first, _) = store.write_configuration(0, &document).expect("writes");
+    let frozen = store.freeze_configuration(first.revision).expect("freezes");
+    let (second, _) = store.write_configuration(1, &document).expect("writes");
+    assert_eq!(second.revision, 2);
+    assert_eq!(store.read_snapshot(&frozen).expect("reads").revision, 1);
+    assert!(matches!(
+        store.write_configuration(1, &document),
+        Err(ProjectConfigError::ObjectConflict(_))
+    ));
+    let wrong = SnapshotRef::new(
+        frozen.key.clone(),
+        frozen.version.clone(),
+        format!("sha256:{}", "0".repeat(64)),
+    );
+    assert!(matches!(store.read_snapshot(&wrong), Err(ProjectConfigError::Invalid(_))));
+}
+
+#[test]
+fn connection_private_material_and_revision() {
+    let objects = in_memory();
+    let scope = Scope::new("project-1", "live");
+    let store = ConnectionStore::new(objects, scope.clone());
+    let key = ConnectionKey::new("sample", "main / west");
+    let material = |api_key: &str| CredentialMaterial {
+        credentials: object(&json!({"apiKey": api_key})),
+        expires_at: None,
+        auth_method: "apiKey".into(),
+    };
+    let first = store.replace_credential(&key, 0, &material("inert")).expect("first");
+    assert_eq!(first.revision, 1);
+    let (loaded, safe) = store.read_credential_material(&key).expect("reads");
+    assert_eq!(loaded.credentials, object(&json!({"apiKey": "inert"})));
+    assert!(!format!("{loaded:?}{safe:?}").contains("inert"));
+    assert!(matches!(
+        store.replace_credential(&key, 0, &loaded),
+        Err(ProjectConfigError::ObjectConflict(_))
+    ));
+    let second = store.replace_credential(&key, 1, &material("new")).expect("second");
+    assert_eq!(second.fence, 2);
+    assert!(key.path(&scope).expect("path").ends_with("/bWFpbiAvIHdlc3Q"));
+}
+
+#[test]
+fn connection_rejects_foreign_private_reference() {
+    let objects = in_memory();
+    let scope = Scope::new("project-1", "preview");
+    let store = ConnectionStore::new(objects.clone(), scope.clone());
+    let key = ConnectionKey::new("sample", "main");
+    store
+        .replace_credential(
+            &key,
+            0,
+            &CredentialMaterial {
+                credentials: object(&json!({"apiKey": "inert"})),
+                expires_at: None,
+                auth_method: "apiKey".into(),
+            },
+        )
+        .expect("replaces");
+    let head_key = format!("{}/head", key.path(&scope).expect("path"));
+    let head = objects.read_object(&head_key, "").expect("head");
+    let mut record: Value = serde_json::from_slice(&head.contents).expect("JSON");
+    record["credential"]["key"] =
+        json!("projects/other/preview/connections/sample/foreign/credentials/secret");
+    objects
+        .compare_and_swap_object(&head_key, &head.etag, &serde_json::to_vec(&record).expect("JSON"))
+        .expect("tampers");
+    assert!(matches!(
+        store.read_credential_material(&key),
+        Err(ProjectConfigError::Invalid(_))
+    ));
+}
+
+#[cfg(unix)]
+fn set_mode(path: &Path, mode: u32) {
+    use std::os::unix::fs::PermissionsExt;
+    std::fs::set_permissions(path, std::fs::Permissions::from_mode(mode)).expect("chmod");
+}
+
+#[cfg(unix)]
+#[test]
+fn local_connections_file_schema_and_permissions() {
+    let directory = tempfile::tempdir().expect("temporary directory");
+    let target = directory.path().join("connections.json");
+    std::fs::copy(conformance_dir().join("connections.json"), &target).expect("copies");
+    set_mode(&target, 0o600);
+    let project = load_dex_web_project(&target).expect("loads");
+    let source = fixture("connections.json");
+    let source_connections = source["connections"].as_array().expect("array");
+    assert_eq!(project.configuration().connections.len(), source_connections.len());
+    let mut loaded_names: Vec<&str> = project
+        .configuration()
+        .connections
+        .iter()
+        .map(|entry| entry.connection_name.as_str())
+        .collect();
+    let mut source_names: Vec<&str> = source_connections
+        .iter()
+        .map(|entry| text(entry, "connectionName"))
+        .collect();
+    loaded_names.sort_unstable();
+    source_names.sort_unstable();
+    assert_eq!(loaded_names, source_names);
+    assert!(project.configuration().trigger_bindings.is_empty());
+    assert!(source_connections.last().expect("entry")["authMethodIds"].is_null());
+    let resolve = |name: &str| -> String {
+        let material = project
+            .resolve_credential(&ConnectionKey::new("sample", name), "")
+            .unwrap_or_else(|error| panic!("{name} resolves: {error}"));
+        material["apiKey"].as_str().expect("apiKey").to_string()
+    };
+    assert_eq!(resolve("élément <&> 😀"), "REDACTED_UNICODE_KEY");
+    assert_eq!(resolve("api"), "REDACTED_API_KEY");
+    let mut updated: Value = serde_json::from_slice(&std::fs::read(&target).expect("reads")).expect("JSON");
+    updated["connections"][0]["credentials"]["apiKey"] = json!("REDACTED_NEW_KEY");
+    std::fs::write(&target, serde_json::to_vec(&updated).expect("JSON")).expect("writes");
+    set_mode(&target, 0o600);
+    assert_eq!(resolve("api"), "REDACTED_NEW_KEY");
+    set_mode(&target, 0o644);
+    assert!(load_dex_web_project(&target).is_err());
+}
+
+#[cfg(unix)]
+#[test]
+fn local_sidecar_and_hosted_selector_conflicts() {
+    let directory = tempfile::tempdir().expect("temporary directory");
+    let path = directory.path().join("connections.json");
+    std::fs::write(
+        &path,
+        br#"{"schemaVersion":"connectors.dex.dev/local-connections/v1alpha1","connections":[],"triggerBindings":[]}"#,
+    )
+    .expect("writes");
+    set_mode(&path, 0o600);
+    let sidecar = directory.path().join("use-configurations.json");
+    std::fs::write(
+        &sidecar,
+        br#"{"schemaVersion":"connectors.dex.dev/local-use-configurations/v1alpha1","operationConfigurations":[]}"#,
+    )
+    .expect("writes");
+    set_mode(&sidecar, 0o644);
+    assert!(load_dex_web_project(&path).is_err());
+    let conflicting = HashMap::from([
+        ("DEX_CONNECTOR_CONFIG_FILE".to_string(), path.display().to_string()),
+        ("DEX_PROJECT_ID".to_string(), "other".to_string()),
+    ]);
+    assert!(matches!(
+        load_from_environment_values(&conflicting, None),
+        Err(ProjectConfigError::Invalid(_))
+    ));
+    set_mode(&sidecar, 0o600);
+    assert!(load_dex_web_project(&path).expect("loads").configuration().connections.is_empty());
+}
+
+#[test]
+fn pinned_application_secret_and_reserved_names() {
+    let scope = Scope::new("project-1", "preview");
+    let objects = in_memory();
+    let store = ConfigurationStore::new(objects.clone(), scope.clone()).expect("store");
+    let secret_value = "inert<&>\u{2028}\u{2029}secret";
+    let reference = store
+        .create_application_secret("WEBHOOK_SECRET", secret_value)
+        .expect("creates");
+    let mut document = Configuration::new(scope.clone(), 1, Vec::new());
+    document
+        .environment
+        .insert("WEBHOOK_SECRET".into(), EnvironmentValue::SecretRef(reference.clone()));
+    let (written, _) = store.write_configuration(0, &document).expect("writes");
+    let snapshot = store.freeze_configuration(written.revision).expect("freezes");
+    let project =
+        load_project_from_object_store(objects.clone(), scope.clone(), snapshot, None, None).expect("loads");
+    assert_eq!(
+        project.resolve_application_environment().expect("resolves"),
+        HashMap::from([("WEBHOOK_SECRET".to_string(), secret_value.to_string())])
+    );
+    let private = objects.read_object(&reference.key, &reference.version).expect("reads");
+    assert!(
+        String::from_utf8(private.contents.clone())
+            .expect("UTF-8")
+            .contains("\\u003c\\u0026\\u003e\\u2028\\u2029"),
+            "secret object lacks Go escapes for {:?}",
+            r"  "
+    );
+    assert_eq!(digest_bytes(&private.contents), reference.digest);
+    assert!(store.create_application_secret("DEX_CONFIG_KEY", "bad").is_err());
+    assert!(store.read_secret_value(&reference, "OTHER_SECRET").is_err());
+    let mut foreign = Configuration::new(scope, 1, Vec::new());
+    foreign.environment.insert(
+        "WEBHOOK_SECRET".into(),
+        EnvironmentValue::SecretRef(ApplicationSecretRef::new(
+            reference.key.replace("project-1", "other"),
+            reference.version.clone(),
+            reference.digest.clone(),
+        )),
+    );
+    assert!(foreign.validate().is_err());
+}
+
+#[test]
+fn configuration_rejects_duplicate_operation_and_public_http_broker() {
+    let scope = Scope::new("project-1", "preview");
+    let entry = ConnectionConfiguration::new("sample", "main", "module", "sample", JsonObject::new());
+    let operation = object(&json!({
+        "connectorId": "sample", "connectionName": "main", "operationId": "getItem",
+        "flowType": "ExampleFlow", "stepType": "GetItem", "configuration": {},
+    }));
+    let mut duplicated = Configuration::new(scope.clone(), 1, vec![entry.clone()]);
+    duplicated.operation_configurations = vec![operation.clone(), operation];
+    assert!(duplicated.validate().is_err());
+    let token = ApplicationSecretRef::new(
+        format!(
+            "{}/app-secrets/DEX_CREDENTIAL_BROKER_TOKEN/{}",
+            scope.prefix().expect("prefix"),
+            "0".repeat(32)
+        ),
+        "version-1",
+        format!("sha256:{}", "0".repeat(64)),
+    );
+    let mut public_broker = Configuration::new(scope, 1, vec![entry]);
+    public_broker.credential_broker = Some(CredentialBrokerConfiguration {
+        endpoint: "http://public.example/read".into(),
+        token_secret_ref: token,
+    });
+    assert!(public_broker.validate().is_err());
+}
+
+type BrokerHandler = dyn Fn(&str, &str, &Value) -> BrokerHttpResponse + Send + Sync;
+
+struct FakeBrokerHttp {
+    requests: Mutex<Vec<Value>>,
+    handler: Box<BrokerHandler>,
+}
+
+impl FakeBrokerHttp {
+    fn new(handler: impl Fn(&str, &str, &Value) -> BrokerHttpResponse + Send + Sync + 'static) -> Arc<Self> {
+        Arc::new(Self {
+            requests: Mutex::new(Vec::new()),
+            handler: Box::new(handler),
+        })
+    }
+
+    fn requests(&self) -> Vec<Value> {
+        self.requests.lock().expect("lock").clone()
+    }
+}
+
+impl BrokerHttpClient for FakeBrokerHttp {
+    fn post_json(
+        &self,
+        url: &str,
+        token: &str,
+        body: &[u8],
+        _timeout: Duration,
+    ) -> ProjectConfigResult<BrokerHttpResponse> {
+        let request: Value = serde_json::from_slice(body).expect("request JSON");
+        self.requests.lock().expect("lock").push(request.clone());
+        Ok((self.handler)(url, token, &request))
+    }
+}
+
+fn ok_json(value: &Value) -> BrokerHttpResponse {
+    BrokerHttpResponse {
+        status: 200,
+        body: serde_json::to_vec(value).expect("JSON"),
+    }
+}
+
+fn status(code: u16) -> BrokerHttpResponse {
+    BrokerHttpResponse {
+        status: code,
+        body: Vec::new(),
+    }
+}
+
+fn token_reference(version: &str) -> ApplicationSecretRef {
+    ApplicationSecretRef::new("token", version, format!("sha256:{}", "0".repeat(64)))
+}
+
+fn broker_with(http: Arc<dyn BrokerHttpClient>) -> CredentialBrokerClient {
+    CredentialBrokerClient::new(
+        &CredentialBrokerConfiguration {
+            endpoint: "https://broker.example/read".into(),
+            token_secret_ref: token_reference("old"),
+        },
+        Arc::new(|reference: &ApplicationSecretRef| {
+            Ok(if reference.version == "new" { "new" } else { "old" }.to_string())
+        }),
+        Arc::new(|| Ok(token_reference("new"))),
+        http,
+    )
+    .expect("broker")
+}
+
+#[test]
+fn broker_wire_renewal_and_revision() {
+    let fixture = fixture("credential-broker.json");
+    let ready = fixture["ready"].clone();
+    let http = FakeBrokerHttp::new(move |_, token, _| {
+        if token == "old" {
+            return status(401);
+        }
+        let mut answer = ready.clone();
+        let later = Rfc3339NanoTimestamp::from_system_time_utc(SystemTime::now() + Duration::from_secs(3600));
+        answer["expiresAt"] = json!(later.as_wire_str());
+        ok_json(&answer)
+    });
+    let broker = Arc::new(broker_with(http.clone()));
+    let shared = SharedConnection::new("shared-7", broker.clone()).expect("shared");
+    assert_eq!(
+        shared.resolve("call-1").expect("resolves")["accessToken"],
+        "REDACTED_ACCESS_TOKEN"
+    );
+    assert_eq!(broker.read("shared-7", 3).expect("reads").revision, 4);
+    assert!(matches!(
+        shared.resolve_after_rejection("call-1"),
+        Err(BrokerReadError::Project(ProjectConfigError::RejectedCredentialNotRefreshed(_)))
+    ));
+    let requests = http.requests();
+    assert_eq!(requests[0], fixture["firstRequest"]);
+    assert!(requests.contains(&fixture["refreshRequest"]));
+    assert_eq!(
+        requests.last().expect("request"),
+        &json!({"sharedConnectionId": "shared-7", "rejectedRevision": 4})
+    );
+    let decoded = decode_broker_response(&ok_json(&fixture["ready"])).expect("decodes");
+    assert!(decoded.expires_at.expect("expiry").as_wire_str().ends_with("+08:00"));
+    assert!(matches!(
+        decode_broker_response(&ok_json(&fixture["reauthorizationRequired"])),
+        Err(BrokerReadError::ReauthorizationRequired)
+    ));
+    assert!(matches!(
+        decode_broker_response(&ok_json(&fixture["connectionNotSelected"])),
+        Err(BrokerReadError::Project(ProjectConfigError::ConnectionNotSelected))
+    ));
+    assert_eq!(
+        fixture["refreshRequest"],
+        json!({"sharedConnectionId": "shared-7", "rejectedRevision": 3})
+    );
+}
+
+#[test]
+fn broker_status_classification_and_invalid_answers() {
+    let cases: Vec<(BrokerHttpResponse, fn(&ProjectConfigError) -> bool)> = vec![
+        (status(503), |error| matches!(error, ProjectConfigError::BrokerUnavailable(_))),
+        (status(400), |error| matches!(error, ProjectConfigError::BrokerRejected(_))),
+        (
+            ok_json(&json!({"status": "READY", "credential": {}, "revision": 0})),
+            |error| matches!(error, ProjectConfigError::BrokerRejected(_)),
+        ),
+        (
+            ok_json(&json!({"status": "UNKNOWN", "secret": "inert"})),
+            |error| matches!(error, ProjectConfigError::BrokerRejected(_)),
+        ),
+        (
+            BrokerHttpResponse {
+                status: 200,
+                body: vec![b'x'; (1 << 20) + 1],
+            },
+            |error| matches!(error, ProjectConfigError::BrokerRejected(_)),
+        ),
+        (status(401), |error| matches!(error, ProjectConfigError::BrokerRejected(_))),
+    ];
+    for (response, is_expected) in cases {
+        let http = FakeBrokerHttp::new(move |_, _, _| response.clone());
+        let broker = CredentialBrokerClient::new(
+            &CredentialBrokerConfiguration {
+                endpoint: "https://broker.example/read".into(),
+                token_secret_ref: token_reference("v1"),
+            },
+            Arc::new(|_: &ApplicationSecretRef| Ok("inert".to_string())),
+            Arc::new(|| Ok(token_reference("v1"))),
+            http,
+        )
+        .expect("broker");
+        match broker.read("shared-7", 0) {
+            Err(BrokerReadError::Project(error)) => assert!(is_expected(&error), "{error:?}"),
+            other => panic!("unexpected broker outcome: {:?}", other.map(|_| ())),
+        }
+    }
+}
+
+#[derive(Default)]
+struct FakeS3 {
+    versioning: Mutex<String>,
+    snapshot: Mutex<Option<S3GetObjectOutput>>,
+    put_inputs: Mutex<Vec<S3PutObjectInput>>,
+    put_result: Mutex<Option<Result<S3PutObjectOutput, S3Error>>>,
+}
+
+impl S3Client for FakeS3 {
+    fn get_bucket_versioning(&self, _bucket: &str) -> Result<String, S3Error> {
+        Ok(self.versioning.lock().expect("lock").clone())
+    }
+
+    fn get_object(
+        &self,
+        _bucket: &str,
+        _key: &str,
+        _version_id: &str,
+        _maximum_bytes: usize,
+    ) -> Result<S3GetObjectOutput, S3Error> {
+        self.snapshot
+            .lock()
+            .expect("lock")
+            .clone()
+            .ok_or(S3Error { http_status: Some(404) })
+    }
+
+    fn put_object(&self, input: S3PutObjectInput) -> Result<S3PutObjectOutput, S3Error> {
+        self.put_inputs.lock().expect("lock").push(input);
+        self.put_result
+            .lock()
+            .expect("lock")
+            .clone()
+            .unwrap_or_else(|| Ok(S3PutObjectOutput::default()))
+    }
+}
+
+fn string_map(value: &Value) -> HashMap<String, String> {
+    value
+        .as_object()
+        .expect("object")
+        .iter()
+        .map(|(key, value)| (key.clone(), value.as_str().expect("string").to_string()))
+        .collect()
+}
+
+#[test]
+fn go_project_environment_selectors() {
+    let environment = fixture("project-environment.json");
+    let storage = fixture("project-storage.json");
+    assert_eq!(environment["credentialBrokerSecretName"], "DEX_CREDENTIAL_BROKER_TOKEN");
+    let hosted = string_map(&environment["hosted"]);
+    let fake = Arc::new(FakeS3::default());
+    *fake.versioning.lock().expect("lock") = "Enabled".into();
+    *fake.snapshot.lock().expect("lock") = Some(S3GetObjectOutput {
+        version_id: text(&storage["snapshot"], "version").into(),
+        etag: "\"fixture-etag\"".into(),
+        server_side_encryption: "aws:kms".into(),
+        sse_kms_key_id: hosted["DEX_PROJECT_STORAGE_KMS_KEY_ARN"].clone(),
+        body: text(&storage, "configurationSnapshotCanonicalJSON").as_bytes().to_vec(),
+    });
+    let project = load_from_environment_values(&hosted, Some(fake.clone())).expect("loads hosted");
+    assert_json_value_eq(
+        &project.configuration().to_wire().expect("encodes"),
+        &storage["configurationSnapshotDocument"],
+    );
+    let mut mixed = hosted.clone();
+    mixed.extend(string_map(&environment["localDexWeb"]));
+    assert!(matches!(
+        load_from_environment_values(&mixed, None),
+        Err(ProjectConfigError::Invalid(_))
+    ));
+    let mut local = hosted.clone();
+    local.extend(string_map(&environment["localObjectStoreOverrides"]));
+    let local_project = load_from_environment_values(&local, Some(fake.clone())).expect("loads local");
+    assert_eq!(local_project.configuration().scope, project.configuration().scope);
+    let mut public = hosted;
+    public.insert("DEX_PROJECT_ALLOW_LOCAL_STORAGE".into(), "true".into());
+    public.insert("DEX_PROJECT_STORAGE_ENDPOINT".into(), "https://public.example".into());
+    assert!(matches!(
+        load_from_environment_values(&public, Some(fake)),
+        Err(ProjectConfigError::Invalid(_))
+    ));
+}
+
+const KMS_KEY: &str = "arn:aws:kms:us-west-2:123456789012:key/example-key";
+
+#[test]
+fn s3_store_conditional_arguments_and_versioning() {
+    let fake = Arc::new(FakeS3::default());
+    *fake.versioning.lock().expect("lock") = "Enabled".into();
+    *fake.put_result.lock().expect("lock") = Some(Ok(S3PutObjectOutput {
+        version_id: "v1".into(),
+        etag: "\"etag\"".into(),
+    }));
+    let store = S3ObjectStore::create(fake.clone(), "bucket", "", KMS_KEY, false).expect("store");
+    store
+        .create_object("projects/p1/live/configuration/head", b"{}")
+        .expect("creates");
+    store
+        .compare_and_swap_object("projects/p1/live/configuration/head", "\"etag\"", br#"{"x":1}"#)
+        .expect("swaps");
+    let inputs = fake.put_inputs.lock().expect("lock").clone();
+    assert_eq!(inputs[0].if_none_match, "*");
+    assert_eq!(inputs[0].sse_kms_key_id, KMS_KEY);
+    assert_eq!(inputs[1].if_match, "\"etag\"");
+}
+
+#[test]
+fn s3_store_failure_classification_and_exact_read() {
+    let fake = Arc::new(FakeS3::default());
+    *fake.versioning.lock().expect("lock") = "Suspended".into();
+    assert!(S3ObjectStore::create(fake.clone(), "bucket", "", "", true).is_err());
+    *fake.versioning.lock().expect("lock") = "Enabled".into();
+    let store = S3ObjectStore::create(fake.clone(), "bucket", "", KMS_KEY, false).expect("store");
+    assert!(matches!(
+        store.create_object("projects/p1/live/head", b"{}"),
+        Err(ProjectConfigError::OutcomeUnknown(_))
+    ));
+    *fake.put_result.lock().expect("lock") = Some(Err(S3Error { http_status: Some(412) }));
+    assert!(matches!(
+        store.create_object("projects/p1/live/head", b"{}"),
+        Err(ProjectConfigError::ObjectConflict(_))
+    ));
+    *fake.snapshot.lock().expect("lock") = Some(S3GetObjectOutput {
+        version_id: "v1".into(),
+        etag: "\"etag\"".into(),
+        server_side_encryption: "AES256".into(),
+        sse_kms_key_id: String::new(),
+        body: b"{}".to_vec(),
+    });
+    assert!(matches!(
+        store.read_object("projects/p1/live/head", "v1"),
+        Err(ProjectConfigError::Invalid(_))
+    ));
+}
