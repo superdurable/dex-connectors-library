@@ -1,0 +1,47 @@
+[package]
+name = "dex-connectors-sdk"
+version = "0.1.0"
+description = "Rust core for Dex-native provider connectors"
+edition = "2024"
+rust-version = "1.97"
+license = "MIT"
+repository = "https://github.com/superdurable/dex-connectors-library"
+homepage = "https://connectors.superdurable.io"
+readme = "README.md"
+keywords = ["dex", "connector", "workflow", "durable"]
+categories = ["api-bindings"]
+include = ["src/**/*.rs", "Cargo.toml", "README.md", "LICENSE"]
+
+[dependencies]
+base64 = "0.22"
+dex-sdk = "1.45.7"
+hmac = "0.12"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+tracing = "0.1"
+ureq = { version = "2.12", default-features = false, features = ["tls", "json"] }
+uuid = { version = "1", features = ["v5"] }
+
+[dev-dependencies]
+tempfile = "3"
+
+[lints.rust]
+unsafe_code = "forbid"
+unreachable_pub = "warn"
+unused_must_use = "deny"
+missing_docs = "warn"
+
+[lints.clippy]
+unwrap_used = "warn"
+todo = "warn"
+unimplemented = "warn"
+dbg_macro = "warn"
+let_underscore_must_use = "warn"
+let_underscore_future = "warn"
+unused_result_ok = "warn"
+allow_attributes = "warn"
+allow_attributes_without_reason = "warn"
+print_stdout = "warn"
+print_stderr = "warn"
+match_wildcard_for_single_variants = "warn"
