@@ -270,16 +270,29 @@ mod tests {
         assert_eq!(valid.signed_at, Some(signed_at));
         let cases = [
             (headers("", &signature), RelaySignatureRefusal::Missing),
-            (headers("18e8", &signature), RelaySignatureRefusal::Malformed),
-            (headers("1800000000", "v2=00"), RelaySignatureRefusal::Malformed),
-            (headers("1799999000", &signature), RelaySignatureRefusal::Stale),
+            (
+                headers("18e8", &signature),
+                RelaySignatureRefusal::Malformed,
+            ),
+            (
+                headers("1800000000", "v2=00"),
+                RelaySignatureRefusal::Malformed,
+            ),
+            (
+                headers("1799999000", &signature),
+                RelaySignatureRefusal::Stale,
+            ),
         ];
         for (request_headers, refusal) in cases {
             let result = verify_relay_signature("token", &request_headers, b"body", signed_at);
             assert_eq!(result.refusal, Some(refusal));
         }
-        let mismatch =
-            verify_relay_signature("other", &headers("1800000000", &signature), b"body", signed_at);
+        let mismatch = verify_relay_signature(
+            "other",
+            &headers("1800000000", &signature),
+            b"body",
+            signed_at,
+        );
         assert_eq!(mismatch.refusal, Some(RelaySignatureRefusal::Mismatch));
     }
 }

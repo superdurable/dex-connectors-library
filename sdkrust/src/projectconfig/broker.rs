@@ -87,7 +87,8 @@ impl BrokerHttpClient for UreqBrokerHttpClient {
         body: &[u8],
         timeout: Duration,
     ) -> ProjectConfigResult<BrokerHttpResponse> {
-        let unavailable = || ProjectConfigError::BrokerUnavailable("credential broker is unavailable".into());
+        let unavailable =
+            || ProjectConfigError::BrokerUnavailable("credential broker is unavailable".into());
         let response = match self
             .agent
             .post(url)
@@ -243,7 +244,10 @@ impl CredentialBrokerClient {
             "sharedConnectionId".into(),
             Value::String(shared_connection_id.into()),
         );
-        request.insert("connectionName".into(), Value::String(connection_name.into()));
+        request.insert(
+            "connectionName".into(),
+            Value::String(connection_name.into()),
+        );
         let request = Value::Object(request);
         if go_canonical_json_bytes(&request)?.len() > MAXIMUM_RELAYED_TRIGGER_REGISTRATION_BYTES {
             return Err(ProjectConfigError::invalid(
@@ -284,7 +288,9 @@ impl CredentialBrokerClient {
         let parsed = parse_relay_signature(headers, received_at)
             .map_err(|_| ProjectConfigError::RelaySignatureInvalid)?;
         let unavailable = || {
-            ProjectConfigError::BrokerUnavailable("credential broker scope token is unavailable".into())
+            ProjectConfigError::BrokerUnavailable(
+                "credential broker scope token is unavailable".into(),
+            )
         };
         let token = self.cached_or_read_token().map_err(|_| unavailable())?;
         if matches_relay_signature(&parsed, &token, body) {
@@ -343,7 +349,10 @@ impl CredentialBrokerClient {
         }
         let endpoint = parse_url(&self.endpoint)
             .ok_or_else(|| ProjectConfigError::invalid("credential broker endpoint is invalid"))?;
-        Ok(format!("{}://{}{path}", endpoint.scheme, endpoint.authority))
+        Ok(format!(
+            "{}://{}{path}",
+            endpoint.scheme, endpoint.authority
+        ))
     }
 
     fn exchange(&self, target_url: &str, body: &Value) -> ProjectConfigResult<BrokerHttpResponse> {
@@ -363,7 +372,12 @@ impl CredentialBrokerClient {
         self.post(target_url, &renewed, &encoded)
     }
 
-    fn post(&self, target_url: &str, token: &str, body: &[u8]) -> ProjectConfigResult<BrokerHttpResponse> {
+    fn post(
+        &self,
+        target_url: &str,
+        token: &str,
+        body: &[u8],
+    ) -> ProjectConfigResult<BrokerHttpResponse> {
         let response = self
             .http
             .post_json(target_url, token, body, BROKER_EXCHANGE_TIMEOUT)?;
@@ -472,7 +486,9 @@ pub fn decode_broker_response(
         )
         .into());
     }
-    let rejected = |message: &str| BrokerReadError::Project(ProjectConfigError::BrokerRejected(message.into()));
+    let rejected = |message: &str| {
+        BrokerReadError::Project(ProjectConfigError::BrokerRejected(message.into()))
+    };
     let answer: Value = serde_json::from_slice(&response.body)
         .map_err(|_| rejected("credential broker answer is invalid"))?;
     let answer = require_object(Some(&answer), "broker answer")
@@ -547,7 +563,9 @@ impl SharedConnection {
         broker: Arc<CredentialBrokerClient>,
     ) -> ProjectConfigResult<Self> {
         if shared_connection_id.is_empty() {
-            return Err(ProjectConfigError::invalid("shared connection ID is required"));
+            return Err(ProjectConfigError::invalid(
+                "shared connection ID is required",
+            ));
         }
         Ok(Self {
             shared_connection_id: shared_connection_id.into(),
@@ -576,7 +594,8 @@ impl SharedConnection {
             let mut state = lock(&self.state);
             let now = now_unix_nanoseconds();
             if let Some(current) = state.credential.clone() {
-                let is_usable_before_backoff = !is_expired(&current, now) && now < state.next_read_after;
+                let is_usable_before_backoff =
+                    !is_expired(&current, now) && now < state.next_read_after;
                 if is_usable_before_backoff || !is_stale(&current, now) {
                     record_issued(&mut state, call_id, current.revision, now);
                     return Ok(current.credential);
@@ -600,7 +619,10 @@ impl SharedConnection {
                 }
                 Err(BrokerReadError::Project(ProjectConfigError::BrokerUnavailable(message))) => {
                     lock(&self.state).next_read_after = now + 10 * 1_000_000_000;
-                    if current.as_ref().is_none_or(|credential| is_expired(credential, now)) {
+                    if current
+                        .as_ref()
+                        .is_none_or(|credential| is_expired(credential, now))
+                    {
                         return Err(ProjectConfigError::BrokerUnavailable(message).into());
                     }
                 }
@@ -635,7 +657,12 @@ impl SharedConnection {
                 .issued_by_call
                 .get(call_id)
                 .map(|(revision, _)| *revision)
-                .or_else(|| state.credential.as_ref().map(|credential| credential.revision))
+                .or_else(|| {
+                    state
+                        .credential
+                        .as_ref()
+                        .map(|credential| credential.revision)
+                })
                 .unwrap_or(0);
             (state.credential.clone(), rejected)
         };
@@ -673,7 +700,9 @@ fn record_issued(state: &mut SharedConnectionState, call_id: &str, revision: u64
         .insert(call_id.to_string(), (revision, now));
     if state.issued_by_call.len() > ISSUED_CALL_LIMIT {
         let cutoff = now - 10 * NANOSECONDS_PER_MINUTE;
-        state.issued_by_call.retain(|_, (_, issued)| *issued > cutoff);
+        state
+            .issued_by_call
+            .retain(|_, (_, issued)| *issued > cutoff);
         if state.issued_by_call.len() > ISSUED_CALL_LIMIT
             && let Some(oldest) = state
                 .issued_by_call
@@ -695,7 +724,10 @@ fn is_expired(credential: &BrokerCredential, now: i128) -> bool {
 
 fn is_stale(credential: &BrokerCredential, now: i128) -> bool {
     let read_at = credential.read_at.unix_nanoseconds();
-    let Some(expires_at) = credential.expires_at.as_ref().map(Rfc3339NanoTimestamp::unix_nanoseconds)
+    let Some(expires_at) = credential
+        .expires_at
+        .as_ref()
+        .map(Rfc3339NanoTimestamp::unix_nanoseconds)
     else {
         return now - read_at >= 15 * NANOSECONDS_PER_MINUTE;
     };

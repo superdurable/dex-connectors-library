@@ -41,7 +41,8 @@ const RESERVED_ENVIRONMENT_NAMES: [&str; 12] = [
     "ALL_PROXY",
     "NO_PROXY",
 ];
-const RESERVED_ENVIRONMENT_PREFIXES: [&str; 6] = ["SUPERVERSE_", "DEX_", "AWS_", "LD_", "GO", "GIT_"];
+const RESERVED_ENVIRONMENT_PREFIXES: [&str; 6] =
+    ["SUPERVERSE_", "DEX_", "AWS_", "LD_", "GO", "GIT_"];
 
 /// Returns `sha256:` followed by the lowercase hex SHA-256 of `contents`.
 pub fn digest_bytes(contents: &[u8]) -> String {
@@ -82,7 +83,9 @@ pub(crate) fn require_fields(
     label: &str,
 ) -> ProjectConfigResult<()> {
     if record.keys().any(|key| !allowed.contains(&key.as_str())) {
-        return Err(ProjectConfigError::invalid(format!("{label} has unknown fields")));
+        return Err(ProjectConfigError::invalid(format!(
+            "{label} has unknown fields"
+        )));
     }
     Ok(())
 }
@@ -158,7 +161,9 @@ pub fn is_application_environment_name(name: &str) -> bool {
 /// Returns [`ProjectConfigError::Invalid`] for a NUL or oversized value.
 pub fn validate_environment_value(value: &str) -> ProjectConfigResult<()> {
     if value.contains('\0') || value.len() > 32768 {
-        return Err(ProjectConfigError::invalid("invalid application environment value"));
+        return Err(ProjectConfigError::invalid(
+            "invalid application environment value",
+        ));
     }
     Ok(())
 }
@@ -238,8 +243,11 @@ pub(crate) fn is_private_ip(address: IpAddr) -> bool {
 ///
 /// Returns [`ProjectConfigError::Invalid`] for an invalid or public HTTP endpoint.
 pub fn validate_broker_endpoint(value: &str) -> ProjectConfigResult<()> {
-    let invalid =
-        || ProjectConfigError::invalid("credential broker endpoint must be an absolute HTTP or HTTPS URL");
+    let invalid = || {
+        ProjectConfigError::invalid(
+            "credential broker endpoint must be an absolute HTTP or HTTPS URL",
+        )
+    };
     let parsed = parse_url(value).ok_or_else(invalid)?;
     if value.len() > 2048
         || !matches!(parsed.scheme, "http" | "https")
@@ -291,7 +299,9 @@ impl Scope {
     /// Returns [`ProjectConfigError::Invalid`] for an invalid project ID or kind.
     pub fn prefix(&self) -> ProjectConfigResult<String> {
         if !is_scope_id(&self.project_id) || !matches!(self.kind.as_str(), "live" | "preview") {
-            return Err(ProjectConfigError::invalid("invalid project configuration scope"));
+            return Err(ProjectConfigError::invalid(
+                "invalid project configuration scope",
+            ));
         }
         Ok(format!("projects/{}/{}", self.project_id, self.kind))
     }
@@ -312,7 +322,10 @@ impl Scope {
     pub fn from_wire(value: &Value) -> ProjectConfigResult<Self> {
         let record = require_object(Some(value), "scope")?;
         require_fields(record, &["projectId", "kind"], "scope")?;
-        let scope = Scope::new(string_member(record, "projectId"), string_member(record, "kind"));
+        let scope = Scope::new(
+            string_member(record, "projectId"),
+            string_member(record, "kind"),
+        );
         scope.prefix()?;
         Ok(scope)
     }
@@ -382,7 +395,11 @@ impl SnapshotRef {
     /// Returns [`ProjectConfigError::Invalid`] for unknown fields or a non-object.
     pub fn from_wire(value: &Value) -> ProjectConfigResult<Self> {
         let record = require_object(Some(value), "snapshot")?;
-        require_fields(record, &["key", "version", "digest", "mediaType"], "snapshot")?;
+        require_fields(
+            record,
+            &["key", "version", "digest", "mediaType"],
+            "snapshot",
+        )?;
         Ok(Self {
             key: string_member(record, "key"),
             version: string_member(record, "version"),
@@ -433,14 +450,20 @@ impl ApplicationSecretRef {
     /// Returns [`ProjectConfigError::Invalid`] for unknown fields, no version, or a bad digest.
     pub fn from_wire(value: Option<&Value>) -> ProjectConfigResult<Self> {
         let record = require_object(value, "application secret reference")?;
-        require_fields(record, &["key", "version", "digest"], "application secret reference")?;
+        require_fields(
+            record,
+            &["key", "version", "digest"],
+            "application secret reference",
+        )?;
         let reference = Self {
             key: string_member(record, "key"),
             version: string_member(record, "version"),
             digest: string_member(record, "digest"),
         };
         if reference.version.is_empty() || !is_sha256_digest(&reference.digest) {
-            return Err(ProjectConfigError::invalid("invalid application secret reference"));
+            return Err(ProjectConfigError::invalid(
+                "invalid application secret reference",
+            ));
         }
         Ok(reference)
     }
@@ -482,9 +505,9 @@ impl EnvironmentValue {
                 return Ok(EnvironmentValue::Value(text.clone()));
             }
             if let Some(reference) = record.get("secretRef") {
-                return Ok(EnvironmentValue::SecretRef(ApplicationSecretRef::from_wire(
-                    Some(reference),
-                )?));
+                return Ok(EnvironmentValue::SecretRef(
+                    ApplicationSecretRef::from_wire(Some(reference))?,
+                ));
             }
         }
         Err(ProjectConfigError::invalid("invalid environment selection"))
@@ -533,12 +556,21 @@ impl ConnectionConfiguration {
     /// Encodes the entry with omitted optional members.
     pub fn to_wire(&self) -> Value {
         let mut object = JsonObject::new();
-        object.insert("connectorId".into(), Value::String(self.connector_id.clone()));
-        object.insert("connectionName".into(), Value::String(self.connection_name.clone()));
+        object.insert(
+            "connectorId".into(),
+            Value::String(self.connector_id.clone()),
+        );
+        object.insert(
+            "connectionName".into(),
+            Value::String(self.connection_name.clone()),
+        );
         object.insert("modulePath".into(), Value::String(self.module_path.clone()));
         object.insert("provider".into(), Value::String(self.provider.clone()));
         if !self.auth_method_id.is_empty() {
-            object.insert("authMethodId".into(), Value::String(self.auth_method_id.clone()));
+            object.insert(
+                "authMethodId".into(),
+                Value::String(self.auth_method_id.clone()),
+            );
         }
         if !self.shared_connection_id.is_empty() {
             object.insert(
@@ -546,7 +578,10 @@ impl ConnectionConfiguration {
                 Value::String(self.shared_connection_id.clone()),
             );
         }
-        object.insert("configuration".into(), Value::Object(self.configuration.clone()));
+        object.insert(
+            "configuration".into(),
+            Value::Object(self.configuration.clone()),
+        );
         Value::Object(object)
     }
 
@@ -662,10 +697,14 @@ impl Configuration {
         if self.schema_version != CONFIGURATION_SCHEMA_VERSION
             && self.schema_version != PREVIOUS_CONFIGURATION_SCHEMA_VERSION
         {
-            return Err(ProjectConfigError::invalid("unsupported configuration schema"));
+            return Err(ProjectConfigError::invalid(
+                "unsupported configuration schema",
+            ));
         }
         if self.revision < 1 {
-            return Err(ProjectConfigError::invalid("configuration revision is required"));
+            return Err(ProjectConfigError::invalid(
+                "configuration revision is required",
+            ));
         }
         if self.connections.len() > 1000
             || self.trigger_bindings.len() > 10000
@@ -757,7 +796,9 @@ impl Configuration {
         }
         for (name, entry) in &self.environment {
             if !is_application_environment_name(name) {
-                return Err(ProjectConfigError::invalid("invalid application environment name"));
+                return Err(ProjectConfigError::invalid(
+                    "invalid application environment name",
+                ));
             }
             match entry {
                 EnvironmentValue::Value(value) => validate_environment_value(value)?,
@@ -785,16 +826,30 @@ impl Configuration {
     pub fn to_wire(&self) -> ProjectConfigResult<Value> {
         self.validate()?;
         let mut object = JsonObject::new();
-        object.insert("schemaVersion".into(), Value::String(self.schema_version.clone()));
+        object.insert(
+            "schemaVersion".into(),
+            Value::String(self.schema_version.clone()),
+        );
         object.insert("scope".into(), self.scope.to_wire());
         object.insert("revision".into(), Value::from(self.revision));
         object.insert(
             "connections".into(),
-            Value::Array(self.connections.iter().map(ConnectionConfiguration::to_wire).collect()),
+            Value::Array(
+                self.connections
+                    .iter()
+                    .map(ConnectionConfiguration::to_wire)
+                    .collect(),
+            ),
         );
         object.insert(
             "triggerBindings".into(),
-            Value::Array(self.trigger_bindings.iter().cloned().map(Value::Object).collect()),
+            Value::Array(
+                self.trigger_bindings
+                    .iter()
+                    .cloned()
+                    .map(Value::Object)
+                    .collect(),
+            ),
         );
         object.insert(
             "operationConfigurations".into(),
@@ -855,7 +910,10 @@ impl Configuration {
             .and_then(Value::as_array)
             .ok_or_else(arrays_required)?;
         let empty = Value::Object(JsonObject::new());
-        let environment = require_object(Some(record.get("environment").unwrap_or(&empty)), "environment")?;
+        let environment = require_object(
+            Some(record.get("environment").unwrap_or(&empty)),
+            "environment",
+        )?;
         let revision = match record.get("revision") {
             None => 0,
             Some(revision) => revision

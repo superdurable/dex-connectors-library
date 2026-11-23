@@ -95,11 +95,16 @@ pub(crate) fn decode_local_credentials(
         let expires_at = match record.get("credentialExpiresAt") {
             None | Some(Value::Null) => None,
             Some(Value::String(text)) if text.is_empty() => None,
-            Some(Value::String(text)) => Some(
-                Rfc3339NanoTimestamp::from_wire(text)
-                    .map_err(|_| ProjectConfigError::invalid("local credential expiry is invalid"))?,
-            ),
-            Some(_) => return Err(ProjectConfigError::invalid("local credential expiry is invalid")),
+            Some(Value::String(text)) => {
+                Some(Rfc3339NanoTimestamp::from_wire(text).map_err(|_| {
+                    ProjectConfigError::invalid("local credential expiry is invalid")
+                })?)
+            }
+            Some(_) => {
+                return Err(ProjectConfigError::invalid(
+                    "local credential expiry is invalid",
+                ));
+            }
         };
         credentials.insert(
             key,
@@ -145,10 +150,9 @@ fn to_utc(value: &Rfc3339NanoTimestamp) -> Rfc3339NanoTimestamp {
 
 /// Identifies local material independently of member order and spacing.
 fn credential_digest(material: &CredentialMaterial) -> String {
-    let canonical = go_canonical_json_bytes(&sorted_json(&Value::Object(
-        material.credentials.clone(),
-    )))
-    .unwrap_or_default();
+    let canonical =
+        go_canonical_json_bytes(&sorted_json(&Value::Object(material.credentials.clone())))
+            .unwrap_or_default();
     let mut hasher = Sha256::new();
     hasher.update(&canonical);
     if let Some(expires_at) = &material.expires_at {
@@ -216,7 +220,8 @@ impl DexWebObjectStore {
                 Err(ProjectConfigError::ObjectNotFound) => 0,
                 Err(error) => return Err(error),
             };
-            self.connections.replace_credential(&key, revision, &material)?;
+            self.connections
+                .replace_credential(&key, revision, &material)?;
             lock(&self.imported).insert(key, digest);
         }
         Ok(())
@@ -271,13 +276,19 @@ impl DexWebObjectStore {
                     && record.get("connectionName").and_then(Value::as_str)
                         == Some(key.connection_name.as_str())
             })
-            .ok_or_else(|| ProjectConfigError::invalid("the connection is no longer in the file"))?;
+            .ok_or_else(|| {
+                ProjectConfigError::invalid("the connection is no longer in the file")
+            })?;
         let prior = require_object(record.get("credentials"), "credentials")?.clone();
         let prior_expiry = match record.get("credentialExpiresAt") {
             None | Some(Value::Null) => None,
             Some(Value::String(text)) if text.is_empty() => None,
             Some(Value::String(text)) => Some(Rfc3339NanoTimestamp::from_wire(text)?),
-            Some(_) => return Err(ProjectConfigError::invalid("local credential expiry is invalid")),
+            Some(_) => {
+                return Err(ProjectConfigError::invalid(
+                    "local credential expiry is invalid",
+                ));
+            }
         };
         let prior_digest = credential_digest(&CredentialMaterial {
             credentials: prior,
@@ -285,9 +296,14 @@ impl DexWebObjectStore {
             auth_method: material.auth_method.clone(),
         });
         if Some(prior_digest) != imported_digest {
-            return Err(ProjectConfigError::invalid("the file holds a newer credential"));
+            return Err(ProjectConfigError::invalid(
+                "the file holds a newer credential",
+            ));
         }
-        record.insert("credentials".into(), Value::Object(material.credentials.clone()));
+        record.insert(
+            "credentials".into(),
+            Value::Object(material.credentials.clone()),
+        );
         match &material.expires_at {
             None => {
                 record.remove("credentialExpiresAt");
@@ -333,14 +349,20 @@ impl ObjectStore for DexWebObjectStore {
         contents: &[u8],
     ) -> ProjectConfigResult<ProjectObject> {
         if is_trigger_inbox_key(key) {
-            return self.inboxes.compare_and_swap_object(key, expected_etag, contents);
+            return self
+                .inboxes
+                .compare_and_swap_object(key, expected_etag, contents);
         }
         if !is_connection_head(key) {
-            return self.memory.compare_and_swap_object(key, expected_etag, contents);
+            return self
+                .memory
+                .compare_and_swap_object(key, expected_etag, contents);
         }
         let _sync = lock(&self.sync_lock);
         self.sync()?;
-        let result = self.memory.compare_and_swap_object(key, expected_etag, contents)?;
+        let result = self
+            .memory
+            .compare_and_swap_object(key, expected_etag, contents)?;
         self.write_back(&result);
         Ok(result)
     }
@@ -410,8 +432,12 @@ impl LocalFileObjectStore {
             .collect();
         paths.sort();
         for path in paths {
-            let name = path.file_name().map(|name| name.to_string_lossy().into_owned());
-            let is_object_file = path.extension().is_some_and(|extension| extension == "json")
+            let name = path
+                .file_name()
+                .map(|name| name.to_string_lossy().into_owned());
+            let is_object_file = path
+                .extension()
+                .is_some_and(|extension| extension == "json")
                 && name.is_some_and(|name| !name.starts_with('.'));
             if !is_object_file {
                 continue;
@@ -464,7 +490,10 @@ impl LocalFileObjectStore {
         contents: &[u8],
     ) -> ProjectConfigResult<ProjectObject> {
         let mut objects = lock(&self.objects);
-        let current = objects.get(key).cloned().ok_or(ProjectConfigError::ObjectNotFound)?;
+        let current = objects
+            .get(key)
+            .cloned()
+            .ok_or(ProjectConfigError::ObjectNotFound)?;
         if expected_etag.is_empty() || current.etag != expected_etag {
             return Err(ProjectConfigError::ObjectConflict(
                 "project object compare-and-swap conflict".into(),
@@ -514,8 +543,11 @@ impl LocalFileObjectStore {
     }
 
     fn file(&self, item: &ProjectObject) -> PathBuf {
-        self.directory
-            .join(format!("{}-{}.json", sha256_hex(item.key.as_bytes()), item.version))
+        self.directory.join(format!(
+            "{}-{}.json",
+            sha256_hex(item.key.as_bytes()),
+            item.version
+        ))
     }
 
     fn remove_file(&self, item: &ProjectObject) {
@@ -531,8 +563,16 @@ fn decode_local_object(contents: &[u8]) -> ProjectConfigResult<ProjectObject> {
     let document: Value = serde_json::from_slice(contents).map_err(|_| invalid())?;
     let record = document.as_object().ok_or_else(invalid)?;
     let text = |name: &str| record.get(name).and_then(Value::as_str).ok_or_else(invalid);
-    let (key, version, etag, encoded) = (text("key")?, text("version")?, text("etag")?, text("contents")?);
-    let is_version = version.bytes().next().is_some_and(|first| (b'1'..=b'9').contains(&first))
+    let (key, version, etag, encoded) = (
+        text("key")?,
+        text("version")?,
+        text("etag")?,
+        text("contents")?,
+    );
+    let is_version = version
+        .bytes()
+        .next()
+        .is_some_and(|first| (b'1'..=b'9').contains(&first))
         && version.bytes().all(|byte| byte.is_ascii_digit());
     if key.is_empty() || etag.is_empty() || !is_version {
         return Err(invalid());

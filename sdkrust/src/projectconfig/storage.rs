@@ -396,12 +396,15 @@ impl S3ObjectStore {
             input.server_side_encryption = "aws:kms".into();
             input.sse_kms_key_id = self.kms_key_arn.clone();
         }
-        let output = self.client.put_object(input).map_err(|error| match error.http_status {
-            Some(409 | 412) => {
-                ProjectConfigError::ObjectConflict("project object conditional write conflict".into())
-            }
-            _ => ProjectConfigError::OutcomeUnknown("project write outcome is unknown".into()),
-        })?;
+        let output = self
+            .client
+            .put_object(input)
+            .map_err(|error| match error.http_status {
+                Some(409 | 412) => ProjectConfigError::ObjectConflict(
+                    "project object conditional write conflict".into(),
+                ),
+                _ => ProjectConfigError::OutcomeUnknown("project write outcome is unknown".into()),
+            })?;
         if output.version_id.is_empty() || output.version_id == "null" || output.etag.is_empty() {
             return Err(ProjectConfigError::OutcomeUnknown(
                 "project write has no exact version identity".into(),
@@ -538,7 +541,9 @@ impl ConfigurationStore {
             Err(ProjectConfigError::ObjectNotFound) if expected_revision == 0 => None,
             Err(error) => return Err(error),
         };
-        let previous_revision = previous.as_ref().map_or(0, |(document, _)| document.revision);
+        let previous_revision = previous
+            .as_ref()
+            .map_or(0, |(document, _)| document.revision);
         if previous_revision != expected_revision {
             return Err(ProjectConfigError::ObjectConflict(
                 "configuration revision conflict".into(),
@@ -605,7 +610,9 @@ impl ConfigurationStore {
     /// Returns [`ProjectConfigError::Invalid`] for a mismatched reference or digest.
     pub fn read_snapshot(&self, reference: &SnapshotRef) -> ProjectConfigResult<Configuration> {
         reference.validate(&self.scope)?;
-        let item = self.objects.read_object(&reference.key, &reference.version)?;
+        let item = self
+            .objects
+            .read_object(&reference.key, &reference.version)?;
         if digest_bytes(&item.contents) != reference.digest {
             return Err(ProjectConfigError::invalid(
                 "configuration snapshot digest differs",
@@ -625,7 +632,9 @@ impl ConfigurationStore {
         value: &str,
     ) -> ProjectConfigResult<ApplicationSecretRef> {
         if !is_application_environment_name(name) {
-            return Err(ProjectConfigError::invalid("invalid application secret name"));
+            return Err(ProjectConfigError::invalid(
+                "invalid application secret name",
+            ));
         }
         validate_environment_value(value)?;
         self.create_secret(name, value)
@@ -641,7 +650,9 @@ impl ConfigurationStore {
         token: &str,
     ) -> ProjectConfigResult<ApplicationSecretRef> {
         if token.is_empty() {
-            return Err(ProjectConfigError::invalid("credential broker token is required"));
+            return Err(ProjectConfigError::invalid(
+                "credential broker token is required",
+            ));
         }
         validate_environment_value(token)?;
         self.create_secret(CREDENTIAL_BROKER_TOKEN_SECRET_NAME, token)
@@ -658,9 +669,13 @@ impl ConfigurationStore {
         name: &str,
     ) -> ProjectConfigResult<String> {
         validate_secret_reference(reference, &self.scope, name)?;
-        let item = self.objects.read_object(&reference.key, &reference.version)?;
+        let item = self
+            .objects
+            .read_object(&reference.key, &reference.version)?;
         if item.version != reference.version || digest_bytes(&item.contents) != reference.digest {
-            return Err(ProjectConfigError::invalid("application secret integrity differs"));
+            return Err(ProjectConfigError::invalid(
+                "application secret integrity differs",
+            ));
         }
         let document: Value = serde_json::from_slice(&item.contents)
             .map_err(|_| ProjectConfigError::invalid("application secret must be a JSON object"))?;
