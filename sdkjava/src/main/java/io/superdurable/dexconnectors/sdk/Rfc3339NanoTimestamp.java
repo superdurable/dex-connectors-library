@@ -9,6 +9,7 @@ import java.time.DateTimeException;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -67,7 +68,8 @@ public final class Rfc3339NanoTimestamp {
                 && (Integer.parseInt(offset.substring(1, 3)) > 24 || Integer.parseInt(offset.substring(4, 6)) > 60)) {
             throw new IllegalArgumentException("timestamp has an invalid timezone offset");
         }
-        final String canonicalFraction = trimTrailingZeroes(fraction);
+        // Go reads any number of fractional digits and keeps nanoseconds, truncating the rest.
+        final String canonicalFraction = trimTrailingZeroes(fraction.length() > 9 ? fraction.substring(0, 9) : fraction);
         final String canonicalOffset = "+00:00".equals(offset) || "-00:00".equals(offset) ? "Z" : offset;
         return new Rfc3339NanoTimestamp(year + "-" + match.group(2) + "-" + match.group(3) + "T"
                 + twoDigits(hour) + ":" + match.group(5) + ":" + match.group(6)
@@ -89,9 +91,9 @@ public final class Rfc3339NanoTimestamp {
         if (year < 0 || year > 9999) {
             throw new IllegalArgumentException("timestamp year must be within 0000..9999");
         }
-        builder.append(String.format("%04d-%02d-%02dT%02d:%02d:%02d", year, value.getMonthValue(),
+        builder.append(String.format(Locale.ROOT, "%04d-%02d-%02dT%02d:%02d:%02d", year, value.getMonthValue(),
                 value.getDayOfMonth(), value.getHour(), value.getMinute(), value.getSecond()));
-        final String fraction = trimTrailingZeroes(String.format("%09d", value.getNano()));
+        final String fraction = trimTrailingZeroes(String.format(Locale.ROOT, "%09d", value.getNano()));
         if (!fraction.isEmpty()) {
             builder.append('.').append(fraction);
         }

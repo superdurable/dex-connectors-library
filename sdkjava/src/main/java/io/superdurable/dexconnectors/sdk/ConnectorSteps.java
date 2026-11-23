@@ -9,6 +9,7 @@ import io.superdurable.dex.StepDecision;
 import io.superdurable.dex.exceptions.RetryAfterException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -22,7 +23,25 @@ public final class ConnectorSteps {
     private static final StepAttemptValues<Map<OperationRef, Integer>> CALL_OCCURRENCES =
             new StepAttemptValues<>(context -> new HashMap<OperationRef, Integer>());
 
+    private static final StepAttemptValues<Instant> ATTEMPT_OBSERVED_AT =
+            new StepAttemptValues<>(context -> Instant.now());
+
     private ConnectorSteps() {
+    }
+
+    /**
+     * Returns when the SDK first observed the current Step attempt.
+     *
+     * <p>The Dex Java Context has no attempt deadline (superdurable/dex#2175), so the
+     * single-dispatch Fence budgets from this instant plus the Execute timeout. Step factories and
+     * {@link Call#forStep} record it at the start of Execute; a Context seen first later records
+     * that later instant.
+     *
+     * @param context the Dex Step Context
+     * @return the first observation of this attempt
+     */
+    public static Instant attemptObservedAt(final Context context) {
+        return ATTEMPT_OBSERVED_AT.valueFor(context);
     }
 
     /**
@@ -43,6 +62,7 @@ public final class ConnectorSteps {
             throw new IllegalArgumentException("connector operations require a Dex Flow and Step execution");
         }
         operation.validate();
+        attemptObservedAt(context);
         final Map<OperationRef, Integer> counts = CALL_OCCURRENCES.valueFor(context);
         final int occurrence;
         synchronized (counts) {

@@ -15,6 +15,7 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Locale;
 import java.util.Map;
 
@@ -113,7 +114,7 @@ public final class ProviderHttpClient implements ProviderHttpTransport {
             throw new IllegalArgumentException("HttpURLConnection cannot send PATCH requests");
         }
         DispatchObservation.clearResponseStatus();
-        final Duration timeout = request.getTimeout() == null ? requestTimeout : request.getTimeout();
+        final Duration timeout = boundByWriteDeadline(request.getTimeout() == null ? requestTimeout : request.getTimeout());
         if (addressPolicy != AddressPolicy.UNRESTRICTED) {
             final String host = uri.getHost().startsWith("[") && uri.getHost().endsWith("]")
                     ? uri.getHost().substring(1, uri.getHost().length() - 1) : uri.getHost();
@@ -145,6 +146,8 @@ public final class ProviderHttpClient implements ProviderHttpTransport {
             connection.setDoOutput(true);
             connection.setFixedLengthStreamingMode(body.length);
         }
+        // A Fence closes the connection at its write deadline, so blocked I/O cannot send late.
+        DispatchObservation.registerCancellation(connection::disconnect);
         try {
             connection.connect();
         } catch (IOException error) {
@@ -153,6 +156,8 @@ public final class ProviderHttpClient implements ProviderHttpTransport {
         }
         final int statusCode;
         try {
+            final Duration remaining = boundByWriteDeadline(timeout);
+            connection.setReadTimeout(timeoutMillis(remaining));
             if (body != null) {
                 try (OutputStream output = connection.getOutputStream()) {
                     output.write(body);
@@ -176,6 +181,23 @@ public final class ProviderHttpClient implements ProviderHttpTransport {
             stream = connection.getErrorStream();
         }
         return new ProviderHttpResponse(statusCode, headers, stream, connection::disconnect);
+    }
+
+    /**
+     * Bounds a timeout by the remaining time of the enclosing Fence write window.
+     *
+     * @throws ProviderTransportException as provably not sent once the window has passed
+     */
+    private static Duration boundByWriteDeadline(final Duration timeout) throws ProviderTransportException {
+        final Instant writeDeadline = DispatchObservation.currentWriteDeadline();
+        if (writeDeadline == null) {
+            return timeout;
+        }
+        final Duration remaining = Duration.between(Instant.now(), writeDeadline);
+        if (remaining.isZero() || remaining.isNegative()) {
+            throw new ProviderTransportException(true, null, null);
+        }
+        return remaining.compareTo(timeout) < 0 ? remaining : timeout;
     }
 
     private static int timeoutMillis(final Duration timeout) {

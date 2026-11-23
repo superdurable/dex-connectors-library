@@ -160,11 +160,11 @@ public final class ConnectorMockReport {
                 case '&':
                 case ' ':
                 case ' ':
-                    builder.append(String.format("\\u%04x", (int) character));
+                    builder.append(String.format(java.util.Locale.ROOT, "\\u%04x", (int) character));
                     break;
                 default:
                     if (character < 0x20) {
-                        builder.append(String.format("\\u%04x", (int) character));
+                        builder.append(String.format(java.util.Locale.ROOT, "\\u%04x", (int) character));
                     } else {
                         builder.append(character);
                     }

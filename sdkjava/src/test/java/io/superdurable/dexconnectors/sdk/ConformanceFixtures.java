@@ -114,6 +114,8 @@ public final class ConformanceFixtures {
                             case "recordHeartbeat":
                                 heartbeats.add(MAPPER.writeValueAsString(arguments[0]));
                                 return null;
+                            case "isCancellationRequested":
+                                return false;
                             case "hashCode":
                                 return System.identityHashCode(proxy);
                             case "equals":

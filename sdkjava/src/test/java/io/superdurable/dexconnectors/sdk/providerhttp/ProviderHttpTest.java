@@ -184,6 +184,9 @@ class ProviderHttpTest {
                 "{\"value\":1.50,\"power\":1e3}".getBytes(StandardCharsets.UTF_8), Arrays.asList("/value", "/power")));
         final Instant now = Instant.parse("2026-10-29T12:00:00Z");
         assertEquals(Duration.ofHours(1), ProviderHttp.parseRetryAfter("99999", now));
+        assertEquals(Duration.ZERO, ProviderHttp.parseRetryAfter("0", now));
+        assertEquals(Duration.ofSeconds(1), ProviderHttp.parseRetryAfter("0000001", now));
+        assertEquals(Duration.ofHours(1), ProviderHttp.parseRetryAfter("99999999999999999999999", now));
         assertEquals(Duration.ZERO, ProviderHttp.parseRetryAfter("bad", now));
         assertEquals(Duration.ZERO, ProviderHttp.parseRetryAfter("-1", now));
         assertEquals(Duration.ZERO, ProviderHttp.parseRetryAfter("1.5", now));

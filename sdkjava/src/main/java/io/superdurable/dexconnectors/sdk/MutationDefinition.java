@@ -63,12 +63,20 @@ public final class MutationDefinition {
      * @param branches the declared routes, or {@code null} for none
      * @param stepDefaults the Execute defaults
      */
-    @JsonCreator
     public MutationDefinition(
+            final OperationRef operation, final List<BranchDefinition> branches, final StepDefaults stepDefaults) {
+        this(operation, branches, stepDefaults, null, 0);
+    }
+
+    // The Go wire shape has no tier; Java writes it only when declared, so a Java round trip keeps the cap.
+    @JsonCreator
+    static MutationDefinition fromWire(
             @JsonProperty(value = "operation", required = true) final OperationRef operation,
             @JsonProperty(value = "branches", required = true) final List<BranchDefinition> branches,
-            @JsonProperty(value = "stepDefaults", required = true) final StepDefaults stepDefaults) {
-        this(operation, branches, stepDefaults, null, 0);
+            @JsonProperty(value = "stepDefaults", required = true) final StepDefaults stepDefaults,
+            @JsonProperty("repeatOnUnknown") final RepeatOnUnknown repeatOnUnknown,
+            @JsonProperty("maxSends") final int maxSends) {
+        return new MutationDefinition(operation, branches, stepDefaults, repeatOnUnknown, maxSends);
     }
 
     /**
@@ -129,6 +137,8 @@ public final class MutationDefinition {
      *
      * @return the tier, or {@code null} when the definition predates it
      */
+    @JsonProperty("repeatOnUnknown")
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     public RepeatOnUnknown getRepeatOnUnknown() {
         return repeatOnUnknown;
     }
@@ -138,6 +148,8 @@ public final class MutationDefinition {
      *
      * @return 2..10 for a limited tier, otherwise 0
      */
+    @JsonProperty("maxSends")
+    @JsonInclude(JsonInclude.Include.NON_DEFAULT)
     public int getMaxSends() {
         return maxSends;
     }

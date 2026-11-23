@@ -194,7 +194,15 @@ public final class Marker {
         return toJson().toString();
     }
 
+    // Go decodes a heartbeat generically, so any number that is exactly an int32 is accepted.
     private static boolean isPlainInt(final JsonNode value) {
-        return value != null && value.isIntegralNumber() && value.canConvertToInt();
+        if (value == null || !value.isNumber()) {
+            return false;
+        }
+        if (value.isIntegralNumber()) {
+            return value.canConvertToInt();
+        }
+        final double number = value.doubleValue();
+        return number == Math.rint(number) && number >= Integer.MIN_VALUE && number <= Integer.MAX_VALUE;
     }
 }

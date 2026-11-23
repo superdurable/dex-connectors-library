@@ -145,6 +145,14 @@ class CoreConformanceTest {
         final MutationDefinition mutation = MAPPER.treeToValue(mock.get("mutationDefinition"), MutationDefinition.class);
         mutation.validate();
         assertEncodes(mock.get("mutationDefinition"), mutation);
+        for (RepeatOnUnknown tier : RepeatOnUnknown.values()) {
+            final MutationDefinition declared = new MutationDefinition(mutation.getOperation(), mutation.getBranches(),
+                    mutation.getStepDefaults(), tier, tier == RepeatOnUnknown.LIMITED ? 4 : 0);
+            final MutationDefinition decoded = MAPPER.readValue(MAPPER.writeValueAsString(declared),
+                    MutationDefinition.class);
+            assertEquals(declared, decoded);
+            assertEquals(tier.getWireValue(), MAPPER.valueToTree(declared).get("repeatOnUnknown").textValue());
+        }
         final QueryDefinition empty = MAPPER.treeToValue(mock.get("emptyBranches"), QueryDefinition.class);
         assertEquals(0, empty.getBranches().size());
         assertEncodes(mock.get("emptyBranches"), empty);
@@ -164,6 +172,22 @@ class CoreConformanceTest {
         assertEquals("0001-01-01T00:00:00Z", Rfc3339NanoTimestamp.ZERO.toWire());
         assertEquals("2026-10-29T12:30:45.123456789Z",
                 Rfc3339NanoTimestamp.fromInstant(java.time.Instant.parse("2026-10-29T12:30:45.123456789Z")).toWire());
+        assertEquals("2026-10-29T12:30:45.123456789Z",
+                Rfc3339NanoTimestamp.fromWire("2026-10-29T12:30:45.1234567891Z").toWire());
+        assertEquals("2026-10-29T12:30:45.1Z", Rfc3339NanoTimestamp.fromWire("2026-10-29T12:30:45.1000000009Z").toWire());
+        assertEquals("2026-10-29T12:30:45.123456789Z",
+                Rfc3339NanoTimestamp.fromWire("2026-10-29T12:30:45.1234567891Z").toOffsetDateTime()
+                        .format(java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME));
+        final java.util.Locale previous = java.util.Locale.getDefault();
+        try {
+            java.util.Locale.setDefault(java.util.Locale.forLanguageTag("ar-EG"));
+            final Rfc3339NanoTimestamp arabicLocale =
+                    Rfc3339NanoTimestamp.fromInstant(java.time.Instant.parse("2026-10-29T12:30:45.5Z"));
+            assertEquals("2026-10-29T12:30:45.5Z", arabicLocale.toWire());
+            assertEquals(arabicLocale, Rfc3339NanoTimestamp.fromWire(arabicLocale.toWire()));
+        } finally {
+            java.util.Locale.setDefault(previous);
+        }
         assertThrows(IllegalArgumentException.class, () -> Rfc3339NanoTimestamp.fromWire("2026-02-30T00:00:00Z"));
         assertThrows(IllegalArgumentException.class, () -> Rfc3339NanoTimestamp.fromWire("2026-10-29 12:30:45Z"));
     }

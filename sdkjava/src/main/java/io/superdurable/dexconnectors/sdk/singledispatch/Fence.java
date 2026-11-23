@@ -6,6 +6,7 @@ package io.superdurable.dexconnectors.sdk.singledispatch;
 import com.fasterxml.jackson.databind.JsonNode;
 import io.superdurable.dex.Context;
 import io.superdurable.dexconnectors.sdk.Call;
+import io.superdurable.dexconnectors.sdk.ConnectorSteps;
 import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
@@ -26,8 +27,13 @@ import java.util.concurrent.TimeoutException;
  * twice.
  *
  * <p>The send runs on a dedicated thread so that Dex heartbeats, which must come from the handler
- * thread, continue while it waits; it must not use the Dex Context. A send still running at the
- * write deadline is interrupted and {@link WriteWindowTimeoutException} is thrown.
+ * thread, continue while it waits; it must not use the Dex Context. The write window is a share of
+ * the Execute time left since the SDK first observed the attempt. A send that starts after the
+ * window or after Dex cancels the attempt is refused. A send still running at the write deadline
+ * is interrupted, I/O registered through {@link DispatchObservation#registerCancellation} is closed,
+ * and {@link WriteWindowTimeoutException} is thrown; the SDK provider HTTP client also bounds its
+ * connect and read timeouts by the window. {@link #recordCanResend()} and
+ * {@link #recordProviderId(String)} require that the send returned.
  *
  * <p>{@code maxSends} caps the possibly effective sends of one Call ID across all attempts. The
  * default 1 never resends after a possible send. A value from 2 to 10 enables bounded resend: a
@@ -101,8 +107,15 @@ public final class Fence {
         this.context = call.getContext();
         this.maxSends = maxSends;
         this.checkpoint = StepCheckpoint.forContext(context);
-        final long budgetNanos = executeTimeout.toNanos();
-        this.writeDeadline = Instant.now().plusNanos((long) (budgetNanos * writeWindowFraction));
+        // Without a Dex attempt deadline (superdurable/dex#2175), subtract the attempt time already used.
+        final Instant startedAt = Instant.now();
+        final Duration used = Duration.between(ConnectorSteps.attemptObservedAt(context), startedAt);
+        Duration budget = executeTimeout.minus(used.isNegative() ? Duration.ZERO : used);
+        if (budget.isNegative()) {
+            budget = Duration.ZERO;
+        }
+        final long budgetNanos = budget.toNanos();
+        this.writeDeadline = startedAt.plusNanos((long) (budgetNanos * writeWindowFraction));
         this.minimumRequestTime = Duration.ofNanos(budgetNanos / 10);
     }
 
@@ -201,8 +214,22 @@ public final class Fence {
                 }
                 throw new CheckpointException(error);
             }
+            // The claim heartbeat may have taken the rest of the window; never start a late or cancelled send.
+            if (!Instant.now().isBefore(writeDeadline) || context.isCancellationRequested()) {
+                hasPreSendRetry = true;
+                RuntimeException notSentFailure = null;
+                if (shouldRecordNotSent) {
+                    try {
+                        record(notSentMarker());
+                    } catch (RuntimeException error) {
+                        notSentFailure = error;
+                    }
+                }
+                throw new InsufficientAttemptTimeException(
+                        "single-dispatch write window ended before the send started", notSentFailure);
+            }
         }
-        final DispatchObservation observation = new DispatchObservation();
+        final DispatchObservation observation = new DispatchObservation(writeDeadline);
         final ExecutorService executor = Executors.newSingleThreadExecutor(runnable -> {
             final Thread thread = new Thread(runnable, "dex-connector-fenced-send");
             thread.setDaemon(true);
@@ -223,9 +250,6 @@ public final class Fence {
             return awaitSend(future, claim, observation);
         } finally {
             executor.shutdownNow();
-            synchronized (this) {
-                hasSendFinished = true;
-            }
         }
     }
 
@@ -286,17 +310,24 @@ public final class Fence {
         while (true) {
             final long remainingNanos = Duration.between(Instant.now(), writeDeadline).toNanos();
             if (remainingNanos <= 0) {
+                // Close the provider I/O; the send may still have reached the provider, so no canResend.
+                observation.cancel();
                 future.cancel(true);
                 throw new WriteWindowTimeoutException(observation.statusCode());
             }
             try {
-                return future.get(Math.min(remainingNanos, HEARTBEAT_INTERVAL.toNanos()), TimeUnit.NANOSECONDS);
+                final T result = future.get(Math.min(remainingNanos, HEARTBEAT_INTERVAL.toNanos()), TimeUnit.NANOSECONDS);
+                markSendFinished();
+                return result;
             } catch (TimeoutException waiting) {
                 repeatClaim(claim);
             } catch (InterruptedException error) {
+                observation.cancel();
                 future.cancel(true);
                 throw error;
             } catch (ExecutionException error) {
+                // The send thread returned with a failure, so it has stopped.
+                markSendFinished();
                 final Throwable cause = error.getCause();
                 if (cause instanceof IOException) {
                     throw (IOException) cause;
@@ -313,6 +344,10 @@ public final class Fence {
                 throw new IOException(cause);
             }
         }
+    }
+
+    private synchronized void markSendFinished() {
+        hasSendFinished = true;
     }
 
     private synchronized void repeatClaim(final Marker claim) {

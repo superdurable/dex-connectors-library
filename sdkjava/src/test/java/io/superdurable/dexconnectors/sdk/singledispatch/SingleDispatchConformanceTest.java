@@ -42,7 +42,17 @@ class SingleDispatchConformanceTest {
         assertThrows(IllegalArgumentException.class, () -> Marker.fromJson(MAPPER.readTree(
                 "{\"callId\":\"5af8fafa-06ff-5b2d-bb13-04693809fabf\",\"attempt\":true,\"state\":\"claimed\"}")));
         assertThrows(IllegalArgumentException.class, () -> Marker.fromJson(MAPPER.readTree(
-                "{\"callId\":\"5af8fafa-06ff-5b2d-bb13-04693809fabf\",\"attempt\":1.0,\"state\":\"claimed\"}")));
+                "{\"callId\":\"5af8fafa-06ff-5b2d-bb13-04693809fabf\",\"attempt\":1.5,\"state\":\"claimed\"}")));
+        assertThrows(IllegalArgumentException.class, () -> Marker.fromJson(MAPPER.readTree(
+                "{\"callId\":\"5af8fafa-06ff-5b2d-bb13-04693809fabf\",\"attempt\":4294967297,\"state\":\"claimed\"}")));
+        final Marker mathematicalIntegers = Marker.fromJson(MAPPER.readTree(
+                "{\"callId\":\"5af8fafa-06ff-5b2d-bb13-04693809fabf\",\"attempt\":1.0,\"state\":\"notSent\","
+                        + "\"sendCount\":0.0}"));
+        assertEquals(1, mathematicalIntegers.getAttempt());
+        assertEquals(0, mathematicalIntegers.getSendCount());
+        assertEquals(DecisionKind.SEND_ALLOWED, DispatchDecision.decideDispatch(mathematicalIntegers.getCallId(), 2,
+                MAPPER.readTree("{\"callId\":\"5af8fafa-06ff-5b2d-bb13-04693809fabf\",\"attempt\":1.0,"
+                        + "\"state\":\"notSent\",\"sendCount\":0.0}"), 1).getKind());
     }
 
     @Test

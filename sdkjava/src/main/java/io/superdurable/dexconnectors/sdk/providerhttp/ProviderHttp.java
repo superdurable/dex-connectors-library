@@ -162,11 +162,12 @@ public final class ProviderHttp {
     public static Duration parseRetryAfter(final String value, final Instant now) {
         final String trimmed = value == null ? "" : value.trim();
         if (!trimmed.isEmpty() && isAsciiDigits(trimmed)) {
-            if (trimmed.length() > 6) {
+            // Compare by value, so leading zeros and overflow both reach the cap only when the value does.
+            final java.math.BigInteger seconds = new java.math.BigInteger(trimmed);
+            if (seconds.compareTo(java.math.BigInteger.valueOf(MAX_RETRY_AFTER_DELAY.getSeconds())) > 0) {
                 return MAX_RETRY_AFTER_DELAY;
             }
-            final Duration delay = Duration.ofSeconds(Long.parseLong(trimmed));
-            return delay.compareTo(MAX_RETRY_AFTER_DELAY) > 0 ? MAX_RETRY_AFTER_DELAY : delay;
+            return Duration.ofSeconds(seconds.longValue());
         }
         final Instant retryAt = parseHttpDate(trimmed);
         if (retryAt == null) {

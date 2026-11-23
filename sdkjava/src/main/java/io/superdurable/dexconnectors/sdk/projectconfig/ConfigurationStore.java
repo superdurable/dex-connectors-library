@@ -213,7 +213,7 @@ public final class ConfigurationStore {
         RANDOM.nextBytes(identifier);
         final StringBuilder hex = new StringBuilder();
         for (byte part : identifier) {
-            hex.append(String.format("%02x", part & 0xff));
+            hex.append(String.format(java.util.Locale.ROOT, "%02x", part & 0xff));
         }
         final String secretKey = scope.prefix() + "/app-secrets/" + name + "/" + hex;
         final ObjectNode document = GoCompatibleJson.newObject();

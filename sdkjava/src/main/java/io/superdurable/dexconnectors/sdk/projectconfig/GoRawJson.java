@@ -103,7 +103,7 @@ final class GoRawJson {
                 continue;
             }
             if (value == '<' || value == '>' || value == '&') {
-                final byte[] escape = String.format("\\u00%x", value).getBytes(StandardCharsets.US_ASCII);
+                final byte[] escape = String.format(java.util.Locale.ROOT, "\\u00%x", value).getBytes(StandardCharsets.US_ASCII);
                 output.write(escape, 0, escape.length);
                 index++;
                 continue;

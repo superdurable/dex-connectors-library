@@ -240,7 +240,7 @@ public final class JwtBearerAssertion {
                     break;
                 default:
                     if (character < 0x20 || character > 0x7e) {
-                        json.append(String.format("\\u%04x", (int) character));
+                        json.append(String.format(java.util.Locale.ROOT, "\\u%04x", (int) character));
                     } else {
                         json.append(character);
                     }
