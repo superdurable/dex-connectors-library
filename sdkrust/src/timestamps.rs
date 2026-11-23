@@ -143,7 +143,7 @@ impl GoTimeParts {
     fn parse(value: &str) -> Result<Self, ValidationError> {
         let invalid = || ValidationError::new("timestamp must be a Go RFC 3339 time");
         let bytes = value.as_bytes();
-        if bytes.len() < 20 || !value.is_ascii() {
+        if bytes.len() < 19 || !value.is_ascii() {
             return Err(invalid());
         }
         let digits = |range: std::ops::Range<usize>| -> Result<u32, ValidationError> {
@@ -220,11 +220,7 @@ impl GoTimeParts {
                 "timestamp has an invalid clock time",
             ));
         }
-        if fraction.len() > 9 && fraction[9..].bytes().any(|digit| digit != b'0') {
-            return Err(ValidationError::new(
-                "timestamp has more than nanosecond precision",
-            ));
-        }
+        // Go truncates digits beyond nanoseconds, so they are accepted and dropped.
         Ok(Self {
             year,
             month,
@@ -239,14 +235,14 @@ impl GoTimeParts {
     }
 
     fn canonical(&self) -> String {
-        let fraction = self.fraction.trim_end_matches('0');
+        let fraction = self.fraction[..self.fraction.len().min(9)].trim_end_matches('0');
         let mut wire = format!(
             "{:04}-{:02}-{:02}T{:02}:{:02}:{:02}",
             self.year, self.month, self.day, self.hour, self.minute, self.second
         );
         if !fraction.is_empty() {
             wire.push('.');
-            wire.push_str(&fraction[..fraction.len().min(9)]);
+            wire.push_str(fraction);
         }
         wire.push_str(&self.offset_text);
         wire

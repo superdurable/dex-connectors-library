@@ -9,7 +9,7 @@ use std::sync::{Mutex, MutexGuard, PoisonError};
 use dex_sdk::{BufferedTextStream, Context, HandlerResult, Stream};
 
 use crate::errors::ValidationError;
-use crate::singledispatch::markers::Marker;
+use crate::singledispatch::markers::{CheckpointHeartbeat, Marker};
 use crate::types::{Call, CallId, ConnectionRef, OperationRef, Progress, ProgressUpdate};
 
 /// One Dex Step attempt's connector state: Call occurrences, running Mutations, the
@@ -201,7 +201,7 @@ pub(crate) trait StepAttemptAccess: Sync {
     fn checkpoint_markers(&self) -> &Mutex<Option<BTreeMap<String, Marker>>>;
     /// Returns the previous attempt's heartbeat value, or `None` when absent or undecodable.
     fn last_heartbeat_value(&self) -> Option<serde_json::Value>;
-    fn record_heartbeat_value(&self, value: serde_json::Value) -> Result<(), String>;
+    fn record_heartbeat_value(&self, value: CheckpointHeartbeat) -> Result<(), String>;
 }
 
 impl StepAttemptAccess for StepAttempt<'_> {
@@ -244,7 +244,7 @@ impl StepAttemptAccess for StepAttempt<'_> {
             .flatten()
     }
 
-    fn record_heartbeat_value(&self, value: serde_json::Value) -> Result<(), String> {
+    fn record_heartbeat_value(&self, value: CheckpointHeartbeat) -> Result<(), String> {
         lock(&self.context)
             .record_heartbeat_value(value)
             .map_err(|error| error.to_string())

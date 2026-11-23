@@ -369,11 +369,9 @@ impl<'call> Fence<'call> {
             None => self.previous_attempt_markers(),
         };
         markers.insert(marker.call_id.as_str().to_string(), marker.clone());
-        let heartbeat = match serde_json::to_value(checkpoint_heartbeat(&markers)) {
-            Ok(heartbeat) => heartbeat,
-            Err(error) => return Err(error.to_string()),
-        };
-        let result = self.step_attempt.record_heartbeat_value(heartbeat);
+        let result = self
+            .step_attempt
+            .record_heartbeat_value(checkpoint_heartbeat(&markers));
         if result.is_ok() || should_retain_on_failure {
             *current = Some(markers);
         } else if current.is_none() {

@@ -305,36 +305,36 @@ fn marker_from_entry(entry: &JsonValue) -> Option<Marker> {
 }
 
 /// One checkpoint entry with its exact send count, zero included, in Go's field order.
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct CheckpointEntry<'marker> {
-    call_id: &'marker CallId,
+pub(crate) struct CheckpointEntry {
+    call_id: CallId,
     attempt: u32,
     state: State,
-    #[serde(skip_serializing_if = "str::is_empty")]
-    provider_id: &'marker str,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    provider_id: String,
     send_count: u32,
 }
 
 /// Whole-heartbeat checkpoint; map keys sort as Go encodes them.
-#[derive(Clone, Debug, Serialize)]
-pub(crate) struct CheckpointHeartbeat<'marker> {
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub(crate) struct CheckpointHeartbeat {
     #[serde(rename = "singleDispatchMarkers")]
-    single_dispatch_markers: BTreeMap<&'marker str, CheckpointEntry<'marker>>,
+    single_dispatch_markers: BTreeMap<String, CheckpointEntry>,
 }
 
-pub(crate) fn checkpoint_heartbeat(markers: &BTreeMap<String, Marker>) -> CheckpointHeartbeat<'_> {
+pub(crate) fn checkpoint_heartbeat(markers: &BTreeMap<String, Marker>) -> CheckpointHeartbeat {
     CheckpointHeartbeat {
         single_dispatch_markers: markers
             .iter()
             .map(|(call_id, marker)| {
                 (
-                    call_id.as_str(),
+                    call_id.clone(),
                     CheckpointEntry {
-                        call_id: &marker.call_id,
+                        call_id: marker.call_id.clone(),
                         attempt: marker.attempt,
                         state: marker.state,
-                        provider_id: &marker.provider_id,
+                        provider_id: marker.provider_id.clone(),
                         send_count: marker.send_count,
                     },
                 )
