@@ -587,8 +587,13 @@ impl<Credential: Send + Sync> CredentialProvider<Credential>
                     if is_pending_authorization {
                         return Err(credential_error(ProjectConfigError::ExchangePending));
                     }
+                    // An I/O failure returns to the caller, whose retry policy backs off.
                     match self.recover_exchange(&record, local_file) {
-                        Ok(()) | Err(ProjectConfigError::ObjectConflict(_)) => continue,
+                        Ok(()) => continue,
+                        Err(ProjectConfigError::ObjectConflict(_)) => {
+                            std::thread::sleep(RECOVERY_POLL_INTERVAL);
+                            continue;
+                        }
                         Err(error) => return Err(credential_error(error)),
                     }
                 }

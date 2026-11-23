@@ -175,10 +175,39 @@ fn has_owner_only_mode(_metadata: &fs::Metadata) -> bool {
 struct LocalConnectionsListing {
     /// Material of every connection listed exactly once.
     credentials: HashMap<ConnectionKey, CredentialMaterial>,
+    /// `authorizationId` of every connection listed exactly once; `""` when absent, as in Go.
+    authorization_ids: HashMap<ConnectionKey, String>,
     listing_counts: HashMap<ConnectionKey, usize>,
 }
 
+/// Identity of one imported credential: its material and the authorization that produced it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct ImportedCredential {
+    digest: String,
+    authorization_id: String,
+}
+
+impl ImportedCredential {
+    fn new(material: &CredentialMaterial, authorization_id: &str) -> Self {
+        Self {
+            digest: credential_digest(material),
+            authorization_id: authorization_id.to_string(),
+        }
+    }
+}
+
 impl LocalConnectionsListing {
+    /// Returns the file identity of `key`'s credential when it is listed exactly once.
+    fn imported_credential(&self, key: &ConnectionKey) -> Option<ImportedCredential> {
+        self.credentials
+            .get(key)
+            .map(|material| ImportedCredential::new(material, &self.authorization_id(key)))
+    }
+
+    fn authorization_id(&self, key: &ConnectionKey) -> String {
+        self.authorization_ids.get(key).cloned().unwrap_or_default()
+    }
+
     /// Returns the connection whose head is `head_key`, or an error unless listed exactly once.
     fn require_only_listing_of_head(
         &self,
@@ -222,11 +251,18 @@ fn decode_local_credentials(
 ) -> ProjectConfigResult<LocalConnectionsListing> {
     let local_scope = Scope::new("local", "preview");
     let mut credentials = HashMap::new();
+    let mut authorization_ids = HashMap::new();
     let mut listing_counts: HashMap<ConnectionKey, usize> = HashMap::new();
     for record in file.connections() {
         let key = record_key(record)?;
         key.path(&local_scope)?;
         *listing_counts.entry(key.clone()).or_default() += 1;
+        let authorization_id = match raw_member_value(record, "authorizationId")? {
+            Some(Value::String(text)) => text,
+            None | Some(Value::Null) => String::new(),
+            Some(other) => other.to_string(),
+        };
+        authorization_ids.insert(key.clone(), authorization_id);
         let material = require_object(
             raw_member_value(record, "credentials")?.as_ref(),
             "credentials",
@@ -266,8 +302,10 @@ fn decode_local_credentials(
         );
     }
     credentials.retain(|key, _| listing_counts.get(key) == Some(&1));
+    authorization_ids.retain(|key, _| listing_counts.get(key) == Some(&1));
     Ok(LocalConnectionsListing {
         credentials,
+        authorization_ids,
         listing_counts,
     })
 }
@@ -333,10 +371,13 @@ pub struct DexWebObjectStore {
     connections: ConnectionStore,
     refresh_lock: FileRefreshLock,
     sync_lock: Mutex<()>,
-    imported: Mutex<HashMap<ConnectionKey, String>>,
+    imported: Mutex<HashMap<ConnectionKey, ImportedCredential>>,
     /// Runs once inside the next pre-rename check, so tests interleave another writer.
     #[cfg(test)]
     before_rename_check: Mutex<Option<Box<dyn FnOnce() + Send>>>,
+    /// Number of upcoming pre-rename reads that fail with this I/O error kind.
+    #[cfg(test)]
+    final_read_failures: Mutex<Option<(usize, std::io::ErrorKind)>>,
 }
 
 impl DexWebObjectStore {
@@ -361,6 +402,8 @@ impl DexWebObjectStore {
             imported: Mutex::new(HashMap::new()),
             #[cfg(test)]
             before_rename_check: Mutex::new(None),
+            #[cfg(test)]
+            final_read_failures: Mutex::new(None),
         };
         {
             let _sync = lock(&store.sync_lock);
@@ -371,13 +414,17 @@ impl DexWebObjectStore {
 
     /// Adopts credentials Dex Web saved since the last call and returns the listing read.
     /// The caller holds `sync_lock`.
+    ///
+    /// Forgetting a deleted connection makes its recreation re-import, which bumps the fence
+    /// and so supersedes any admission and held exchange result of the deleted one.
     fn sync(&self) -> ProjectConfigResult<LocalConnectionsListing> {
         let contents = read_private_bytes(&self.path)?;
         let listing =
             decode_local_credentials(&DexWebConnectionsFile::decode(&self.path, &contents)?)?;
+        lock(&self.imported).retain(|key, _| listing.listing_counts.contains_key(key));
         for (key, material) in &listing.credentials {
-            let digest = credential_digest(material);
-            if lock(&self.imported).get(key) == Some(&digest) {
+            let identity = ImportedCredential::new(material, &listing.authorization_id(key));
+            if lock(&self.imported).get(key) == Some(&identity) {
                 continue;
             }
             let revision = match self.connections.read_connection(key) {
@@ -387,7 +434,7 @@ impl DexWebObjectStore {
             };
             self.connections
                 .replace_credential(key, revision, material)?;
-            lock(&self.imported).insert(key.clone(), digest);
+            lock(&self.imported).insert(key.clone(), identity);
         }
         Ok(listing)
     }
@@ -413,8 +460,8 @@ impl DexWebObjectStore {
         let listing =
             decode_local_credentials(&DexWebConnectionsFile::decode(&self.path, &contents)?)?;
         listing.require_only_listing(key)?;
-        let file_digest = listing.credentials.get(key).map(credential_digest);
-        if file_digest.is_none() || file_digest != lock(&self.imported).get(key).cloned() {
+        let file_identity = listing.imported_credential(key);
+        if file_identity.is_none() || file_identity != lock(&self.imported).get(key).cloned() {
             return Ok(false);
         }
         // A writer that skips the lock could replace the file after this read; keep its write.
@@ -424,14 +471,15 @@ impl DexWebObjectStore {
 
     /// Writes a READY head's credential to the file first; an error means do not publish.
     ///
-    /// Returns the written digest, or `None` when nothing needs writing. Unlike Go, which logs
-    /// an I/O failure and publishes anyway, an I/O failure is an error, so memory never runs
-    /// ahead of the file that other processes and a restart read.
+    /// Returns the written identity, or `None` when nothing needs writing. Unlike Go, which
+    /// logs an I/O failure and publishes anyway, an I/O failure is an error, so memory never
+    /// runs ahead of the file that other processes and a restart read.
     fn write_back_before_publish(
         &self,
         key: &ConnectionKey,
+        authorization_id: &str,
         head_contents: &[u8],
-    ) -> ProjectConfigResult<Option<String>> {
+    ) -> ProjectConfigResult<Option<ImportedCredential>> {
         let material = match self.connections.decode_record(key, head_contents) {
             Ok(record) if record.status == "READY" && record.credential.is_some() => {
                 match self.connections.read_material(key, &record) {
@@ -448,12 +496,12 @@ impl DexWebObjectStore {
                 return Ok(None);
             }
         };
-        let digest = credential_digest(&material);
-        if lock(&self.imported).get(key) == Some(&digest) {
+        let identity = ImportedCredential::new(&material, authorization_id);
+        if lock(&self.imported).get(key) == Some(&identity) {
             return Ok(None);
         }
         match self.replace_in_file(key, &material) {
-            Ok(()) => Ok(Some(digest)),
+            Ok(written) => Ok(Some(written)),
             Err(ProjectConfigError::Io(message)) => {
                 tracing::error!(
                     reason = %message,
@@ -467,45 +515,80 @@ impl DexWebObjectStore {
         }
     }
 
-    /// Replaces `key`'s credential, building and checking the new file from one read.
+    /// Replaces `key`'s credential, building and checking the new file from one read, and
+    /// returns the written identity.
     ///
-    /// Deleted or duplicated: `ConnectionNotInFile`; newer credential or changed file: `ObjectConflict`.
+    /// Deleted or duplicated: `ConnectionNotInFile`; newer credential or authorization, or
+    /// changed file: `ObjectConflict`.
     fn replace_in_file(
         &self,
         key: &ConnectionKey,
         material: &CredentialMaterial,
-    ) -> ProjectConfigResult<()> {
+    ) -> ProjectConfigResult<ImportedCredential> {
         let contents = read_private_bytes(&self.path)?;
         let file = DexWebConnectionsFile::decode(&self.path, &contents)?;
         let listing = decode_local_credentials(&file)?;
         listing.require_only_listing(key)?;
-        let file_digest = listing.credentials.get(key).map(credential_digest);
-        if file_digest != lock(&self.imported).get(key).cloned() {
+        if listing.imported_credential(key) != lock(&self.imported).get(key).cloned() {
             return Err(ProjectConfigError::ObjectConflict(
                 "connections.json holds a newer credential".into(),
             ));
         }
         let updated = file.encode_with_credential(key, material)?;
-        self.write_if_file_unchanged(&contents, &updated)
+        self.write_if_file_unchanged(&contents, &updated)?;
+        Ok(ImportedCredential::new(
+            material,
+            &listing.authorization_id(key),
+        ))
     }
 
     /// Replaces the file with `updated` only while it still holds exactly `read`.
     ///
-    /// A lock-skipping writer can still land between check and rename.
+    /// A changed or deleted file is `ObjectConflict`; a failed read is a retryable `Io`. A
+    /// lock-skipping writer can still land between check and rename.
     fn write_if_file_unchanged(&self, read: &[u8], updated: &[u8]) -> ProjectConfigResult<()> {
         write_private_file_checked(&self.path, updated, || {
             #[cfg(test)]
             if let Some(hook) = lock(&self.before_rename_check).take() {
                 hook();
             }
-            match read_private_bytes(&self.path) {
-                Ok(current) if current == read => Ok(()),
-                _ => Err(ProjectConfigError::ObjectConflict(
+            let changed = || {
+                ProjectConfigError::ObjectConflict(
                     "connections.json changed before the credential write-back".into(),
-                )),
+                )
+            };
+            match self.read_before_rename() {
+                Ok(current) if current == read => Ok(()),
+                Err(ProjectConfigError::Io(message)) if !is_missing(&self.path) => {
+                    Err(ProjectConfigError::Io(format!(
+                        "connections.json cannot be verified before the credential write-back: {message}"
+                    )))
+                }
+                _ => Err(changed()),
             }
         })
     }
+
+    fn read_before_rename(&self) -> ProjectConfigResult<Vec<u8>> {
+        #[cfg(test)]
+        {
+            let mut failures = lock(&self.final_read_failures);
+            if let Some((remaining, kind)) = failures.as_mut()
+                && *remaining > 0
+            {
+                *remaining -= 1;
+                return Err(ProjectConfigError::Io(
+                    std::io::Error::from(*kind).to_string(),
+                ));
+            }
+        }
+        read_private_bytes(&self.path)
+    }
+}
+
+/// Reports whether `path` is confirmed absent, rather than unreadable.
+fn is_missing(path: &Path) -> bool {
+    fs::symlink_metadata(path).is_err_and(|error| error.kind() == std::io::ErrorKind::NotFound)
 }
 
 impl ObjectStore for DexWebObjectStore {
@@ -552,9 +635,8 @@ impl ObjectStore for DexWebObjectStore {
         // The memory swap repeats this check; a write it would reject must not reach the file.
         validate_local_object_write(key, contents)?;
         let _sync = lock(&self.sync_lock);
-        let connection_key = self
-            .sync()?
-            .require_only_listing_of_head(self.connections.scope(), key)?;
+        let listing = self.sync()?;
+        let connection_key = listing.require_only_listing_of_head(self.connections.scope(), key)?;
         // Every head write holds `sync_lock`, so this check stays true until the swap below.
         let current = self.memory.read_object(key, "")?;
         if expected_etag.is_empty() || current.etag != expected_etag {
@@ -562,12 +644,16 @@ impl ObjectStore for DexWebObjectStore {
                 "project object compare-and-swap conflict".into(),
             ));
         }
-        let written_digest = self.write_back_before_publish(&connection_key, contents)?;
+        let written_identity = self.write_back_before_publish(
+            &connection_key,
+            &listing.authorization_id(&connection_key),
+            contents,
+        )?;
         let result = self
             .memory
             .compare_and_swap_object(key, expected_etag, contents)?;
-        if let Some(digest) = written_digest {
-            lock(&self.imported).insert(connection_key, digest);
+        if let Some(identity) = written_identity {
+            lock(&self.imported).insert(connection_key, identity);
         }
         Ok(result)
     }
@@ -1034,6 +1120,115 @@ mod tests {
         assert_eq!(material.credentials["access"], "new");
         let written = String::from_utf8(fs::read(&fixture.path).expect("reads")).expect("UTF-8");
         assert!(written.contains("\"access\": \"new\""), "{written}");
+    }
+
+    #[test]
+    fn failed_final_read_is_retryable_io_and_keeps_the_file_and_head() {
+        let fixture = open(CONNECTIONS);
+        let head_before = fixture
+            .store
+            .memory
+            .read_object(&fixture.head_key, "")
+            .expect("head");
+        *lock(&fixture.store.final_read_failures) = Some((1, std::io::ErrorKind::Other));
+        let error = refresh_with(&fixture, || {}).expect_err("unverified");
+        assert!(matches!(error, ProjectConfigError::Io(_)), "{error:?}");
+        assert!(error.is_retryable());
+        assert_eq!(
+            fs::read(&fixture.path).expect("reads"),
+            CONNECTIONS.as_bytes()
+        );
+        let head_after = fixture
+            .store
+            .memory
+            .read_object(&fixture.head_key, "")
+            .expect("head");
+        assert_eq!(head_after.contents, head_before.contents);
+        refresh_with(&fixture, || {}).expect("a retry writes back");
+        let written = String::from_utf8(fs::read(&fixture.path).expect("reads")).expect("UTF-8");
+        assert!(written.contains("\"access\": \"new\""), "{written}");
+    }
+
+    /// Refreshes the `old` access token once, failing the publish's final read meanwhile.
+    struct FinalReadFailingDriver {
+        store: Arc<DexWebObjectStore>,
+        exchanges: std::sync::atomic::AtomicUsize,
+    }
+
+    impl crate::CredentialRefreshDriver<JsonObject> for FinalReadFailingDriver {
+        fn is_refresh_required(
+            &self,
+            state: &crate::CredentialRefreshState<'_, JsonObject>,
+        ) -> bool {
+            state.credentials["access"] == "old"
+        }
+
+        fn refresh(
+            &self,
+            _state: &crate::CredentialRefreshState<'_, JsonObject>,
+        ) -> Result<crate::CredentialRefreshResult<JsonObject>, crate::CredentialError> {
+            self.exchanges
+                .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            // Runs after the write-back precheck, so only the publish's reads fail.
+            *lock(&self.store.final_read_failures) = Some((usize::MAX, std::io::ErrorKind::Other));
+            Ok(crate::CredentialRefreshResult {
+                credentials: refreshed_material().credentials,
+                expires_at: Rfc3339NanoTimestamp::from_system_time_utc(
+                    std::time::SystemTime::now() + std::time::Duration::from_secs(3600),
+                ),
+            })
+        }
+    }
+
+    #[test]
+    fn failed_final_read_returns_io_and_recovery_publishes_once_it_clears() {
+        let fixture = open(CONNECTIONS);
+        let identity: super::super::provider::CredentialDecoder<JsonObject> =
+            Arc::new(|members: &JsonObject| Ok(members.clone()));
+        let provider = super::super::provider::RefreshingProjectCredentialProvider::new(
+            fixture.connections.clone(),
+            main_key(),
+            identity,
+            Arc::new(|credential: &JsonObject| Ok(credential.clone())),
+            None,
+        )
+        .expect("provider");
+        let call = crate::Call::new(
+            crate::CallId::new("5af8fafa-06ff-5b2d-bb13-04693809fabf"),
+            crate::ConnectionRef::new("sample", "main"),
+            crate::OperationRef::new("sample", "createItem"),
+        )
+        .expect("call");
+        let driver = FinalReadFailingDriver {
+            store: fixture.store.clone(),
+            exchanges: std::sync::atomic::AtomicUsize::new(0),
+        };
+        let io_error = |error: &crate::CredentialError| {
+            matches!(
+                error.downcast_ref::<ProjectConfigError>(),
+                Some(ProjectConfigError::Io(_))
+            )
+        };
+        let error = crate::resolve_credential(&provider, &call, &driver).expect_err("unverified");
+        assert!(io_error(&error), "{error:?}");
+        // The recovery branch returns the persisting failure instead of looping.
+        let error =
+            crate::resolve_credential(&provider, &call, &driver).expect_err("still failing");
+        assert!(io_error(&error), "{error:?}");
+        assert_eq!(
+            fs::read(&fixture.path).expect("reads"),
+            CONNECTIONS.as_bytes()
+        );
+        *lock(&fixture.store.final_read_failures) = None;
+        let credential = crate::resolve_credential(&provider, &call, &driver)
+            .expect("publishes the held result");
+        assert_eq!(credential["access"], "new");
+        assert_eq!(
+            driver.exchanges.load(std::sync::atomic::Ordering::SeqCst),
+            1
+        );
+        let written = String::from_utf8(fs::read(&fixture.path).expect("reads")).expect("UTF-8");
+        assert!(written.contains("\"refresh\": \"r1\""), "{written}");
     }
 
     #[test]

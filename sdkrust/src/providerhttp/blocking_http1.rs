@@ -456,13 +456,41 @@ impl ResolverPool {
         // A full queue fails at once instead of letting abandoned lookups accumulate.
         self.task_sender.try_send(task).ok()?;
         // Measured after startup and enqueueing, so neither extends the deadline.
-        let remaining = deadline.saturating_duration_since(Instant::now());
-        let answer = answer_receiver.recv_timeout(remaining).ok()?;
+        let answer = loop {
+            let now = Instant::now();
+            if now >= deadline {
+                return None;
+            }
+            // A queued lookup re-checks capacity when a busy worker may have leaked.
+            let wake_at = self
+                .next_replacement_check_at(now)
+                .map_or(deadline, |check_at| check_at.min(deadline));
+            match answer_receiver.recv_timeout(wake_at.saturating_duration_since(now)) {
+                Ok(answer) => break answer,
+                Err(mpsc::RecvTimeoutError::Timeout) if Instant::now() < deadline => {
+                    self.start_missing_workers();
+                }
+                Err(_) => return None,
+            }
+        };
         if Instant::now() >= deadline {
             return None;
         }
         let answer = answer.ok()?;
         (!answer.is_empty()).then_some(answer)
+    }
+
+    /// Next time a busy worker crosses the leak threshold, else one threshold from `now`.
+    fn next_replacement_check_at(&self, now: Instant) -> Option<Instant> {
+        let leak_threshold = self.limits.leak_threshold;
+        let state = self.state.lock().unwrap_or_else(PoisonError::into_inner);
+        state
+            .lookup_started_at
+            .values()
+            .filter_map(|started_at| started_at.checked_add(leak_threshold))
+            .filter(|leaked_at| *leaked_at > now)
+            .min()
+            .or_else(|| now.checked_add(leak_threshold))
     }
 
     /// Starts workers until enough are available, never exceeding the thread cap.
@@ -1259,6 +1287,55 @@ mod tests {
                 .most_thread_count,
             MAXIMUM_THREAD_COUNT
         );
+    }
+
+    #[test]
+    fn queued_lookup_gets_a_replacement_without_another_call() {
+        const WORKER_COUNT: usize = 4;
+        const MAXIMUM_THREAD_COUNT: usize = 6;
+        let leak_threshold = Duration::from_secs(2);
+        let resolver = new_hanging_resolver();
+        let release_guard = ReleaseOnDrop(Arc::clone(&resolver));
+        let pool = ResolverPool::new(
+            Arc::clone(&resolver) as Arc<dyn HostResolver>,
+            ResolverPoolLimits {
+                worker_count: WORKER_COUNT,
+                queue_capacity: 64,
+                leak_threshold,
+                maximum_thread_count: MAXIMUM_THREAD_COUNT,
+            },
+        );
+        let pool_state = pool.state();
+        for _ in 0..WORKER_COUNT {
+            let deadline = Instant::now() + Duration::from_millis(100);
+            assert!(
+                pool.resolve_before("hanging.example", 443, deadline)
+                    .is_none()
+            );
+        }
+        wait_until("every worker to hang", || {
+            resolver.active_lookup_count.load(Ordering::SeqCst) == WORKER_COUNT
+        });
+        assert_eq!(thread_count_of(&pool_state), WORKER_COUNT);
+        // Queued before any worker leaks; no later call arrives to trigger a replacement.
+        let started = Instant::now();
+        let deadline = started + Duration::from_secs(5);
+        assert!(
+            pool.resolve_before(FAST_HOST, 443, deadline).is_some(),
+            "the queued lookup must get a replacement worker"
+        );
+        assert!(Instant::now() < deadline);
+        {
+            let state = pool_state.lock().unwrap_or_else(PoisonError::into_inner);
+            assert!(state.thread_count <= MAXIMUM_THREAD_COUNT);
+            assert!(state.most_thread_count <= MAXIMUM_THREAD_COUNT);
+            assert!(state.most_thread_count > WORKER_COUNT);
+        }
+        drop(release_guard);
+        drop(pool);
+        wait_until("resolver workers to exit", || {
+            thread_count_of(&pool_state) == 0
+        });
     }
 
     #[test]

@@ -1160,8 +1160,13 @@ fn raw_settings_give_exact_typed_access_or_a_clear_range_error() {
 fn raw_settings_reject_numbers_an_f64_would_distort() {
     for (text, expected) in [
         (r#"{"tiny":1e-400}"#, "rounds to zero"),
-        (r#"{"big":9007199254740993.0}"#, "cannot represent exactly"),
         (r#"{"big":1e23}"#, "cannot represent exactly"),
+        (r#"{"big":-1e23}"#, "cannot represent exactly"),
+        // 2^70 is an exact f64 that serializes as 1.1805916207174113e21, a different value.
+        (
+            r#"{"big":1180591620717411303424.0}"#,
+            "cannot represent exactly",
+        ),
         (r#"{"nested":{"tiny":-0.5e-330}}"#, "rounds to zero"),
     ] {
         let settings = RawJsonObject::from_json_text(text).expect("keeps the exact text");
@@ -1178,9 +1183,27 @@ fn raw_settings_reject_numbers_an_f64_would_distort() {
     let object = ordinary.to_json_object().expect("fits");
     assert_eq!(object["ratio"], json!(0.1));
     assert_eq!(object["limit"], json!(1.5));
-    assert_eq!(object["scaled"], json!(2500.0));
-    assert_eq!(object["exact"], json!(9_007_199_254_740_992.0));
+    assert_eq!(object["scaled"], json!(2500));
+    assert_eq!(object["exact"], json!(9_007_199_254_740_992_u64));
     assert_eq!(object["power"], json!(1e22));
+    assert!(object["zero"].as_f64().is_some_and(f64::is_sign_negative));
+
+    // Integral values within 64 bits are parsed as integers, never through a rounding f64.
+    let integral = RawJsonObject::from_json_text(
+        r#"{"a":1000000000000000128.0,"b":1000000000000000128e0,"c":9007199254740993.0,"d":-9223372036854775808.0e0,"e":18446744073709551615E0}"#,
+    )
+    .expect("keeps");
+    let object = integral.to_json_object().expect("exact integers");
+    assert_eq!(object["a"], json!(1_000_000_000_000_000_128_u64));
+    assert_eq!(object["b"], json!(1_000_000_000_000_000_128_u64));
+    assert_eq!(object["c"], json!(9_007_199_254_740_993_u64));
+    assert_eq!(object["d"], json!(i64::MIN));
+    assert_eq!(object["e"], json!(u64::MAX));
+    let serialized = serde_json::to_string(&object).expect("encodes");
+    assert!(
+        serialized.contains("1000000000000000128") && !serialized.contains("e+18"),
+        "{serialized}"
+    );
 
     let mut connection = ConnectionConfiguration::new(
         "sample",
@@ -1194,6 +1217,13 @@ fn raw_settings_reject_numbers_an_f64_would_distort() {
         .to_wire()
         .expect_err("to_wire keeps the rejection");
     assert!(error.to_string().contains("rounds to zero"), "{error}");
+    connection.configuration =
+        RawJsonObject::from_json_text(r#"{"big":1000000000000000128e0}"#).expect("keeps");
+    let wire = connection.to_wire().expect("exact integer");
+    assert_eq!(
+        wire["configuration"]["big"],
+        json!(1_000_000_000_000_000_128_u64)
+    );
 }
 
 #[cfg(unix)]

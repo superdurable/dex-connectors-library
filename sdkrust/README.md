@@ -306,13 +306,16 @@ The `configuration` field of a connection, a Trigger binding, or an operation ho
 such as `1e400` or `12345678901234567890123` survive a rewrite byte for byte.
 - `decode::<T>()` gives exact typed access.
 - `to_json_object()` and the `to_wire()` methods convert numbers as follows:
-  - Integers within the i64 and u64 ranges are kept exactly.
+  - A number whose exact value is an integer within the i64 or u64 range stays exactly that
+    integer, however it is written (`2.5E+3`, `9007199254740993.0`,
+    `1000000000000000128e0`).
+  - A larger integral value is accepted only when both the f64 and its serialized text equal it
+    exactly: `1e22` is accepted, `1e23` is not.
   - A fractional number becomes a nearby f64, at most one unit in the last place from the
     nearest.
-  - These return `ProjectConfigError::Invalid` rather than a changed value: an integer beyond
-    those ranges, a number beyond the finite f64 range, a nonzero number that would become zero
-    (`1e-400`), and an integral value that f64 cannot hold exactly (`9007199254740993.0`,
-    `1e23`).
+  - These return `ProjectConfigError::Invalid` rather than a changed value: a number beyond the
+    finite f64 range, a nonzero number that would become zero (`1e-400`), and a larger integral
+    value that an f64 or its serialized text would change (`1e23`).
 
 Provider HTTP requests stop at a deadline. The client caps that deadline at 24 hours from the
 send. `projectconfig::trigger_inbox` holds the durable

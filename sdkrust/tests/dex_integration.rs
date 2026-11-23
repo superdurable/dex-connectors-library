@@ -20,7 +20,8 @@ use dex_connectors_sdk::dex_sdk::{
     WorkerOptions,
 };
 use dex_connectors_sdk::providerhttp::{
-    AddressPolicy, ProviderHttpClient, ProviderHttpRequest, read_bounded_body,
+    AddressPolicy, ProviderHttpClient, ProviderHttpError, ProviderHttpRequest,
+    ProviderTransportError, parse_retry_after, read_bounded_body,
 };
 use dex_connectors_sdk::singledispatch::Fence;
 use dex_connectors_sdk::{
@@ -157,18 +158,36 @@ impl Query for GetItem {
         let request = ProviderHttpRequest::new("GET", format!("{}/items/{input}", self.endpoint));
         let unreachable =
             || QueryAttempt::retry(failure(FailureKind::Transport, "provider unreachable"), 0.0);
-        let Ok(mut response) = self.http.send_traced(&request) else {
-            return unreachable();
+        // A misframed response still carries its status, so classify by status first.
+        let (status, retry_after, mut response) = match self.http.send_traced(&request) {
+            Ok(response) => (
+                response.status(),
+                response.headers().get("Retry-After").map(str::to_string),
+                Some(response),
+            ),
+            Err(ProviderHttpError::Transport(ProviderTransportError {
+                status: Some(status),
+                headers,
+                ..
+            })) => (
+                status,
+                headers.and_then(|headers| headers.get("Retry-After").map(str::to_string)),
+                None,
+            ),
+            Err(_) => return unreachable(),
         };
-        match response.status() {
-            200..=299 => match read_bounded_body(&mut response, 1 << 20) {
-                Ok(body) => QueryAttempt::branch(
+        match status {
+            200..=299 => match response
+                .as_mut()
+                .map(|body| read_bounded_body(body, 1 << 20))
+            {
+                Some(Ok(body)) => QueryAttempt::branch(
                     "found",
                     String::from_utf8_lossy(&body).into_owned(),
                     Receipt::default(),
                     None,
                 ),
-                Err(_) => unreachable(),
+                _ => unreachable(),
             },
             404 => QueryAttempt::branch(
                 "missing",
@@ -176,10 +195,16 @@ impl Query for GetItem {
                 Receipt::default(),
                 Some(failure(FailureKind::NotFound, "item was not found")),
             ),
-            _ => QueryAttempt::retry(
-                failure(FailureKind::Availability, "provider unavailable"),
-                1.0,
-            ),
+            _ => {
+                let delay = retry_after
+                    .map(|value| parse_retry_after(&value, SystemTime::now()))
+                    .filter(|seconds| *seconds > 0.0)
+                    .unwrap_or(1.0);
+                QueryAttempt::retry(
+                    failure(FailureKind::Availability, "provider unavailable"),
+                    delay,
+                )
+            }
         }
     }
 }

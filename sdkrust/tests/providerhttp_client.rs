@@ -227,6 +227,29 @@ fn invalid_framing_fails_the_send_with_status_and_retry_after() {
     assert_eq!(error.retry_after(), None);
 }
 
+#[test]
+fn invalid_framing_debug_omits_header_values() {
+    let port = serve(1, |mut stream| {
+        let _head = read_request_head(&mut stream);
+        stream
+            .write_all(
+                b"HTTP/1.1 503 Service Unavailable\r\nSet-Cookie: session=INERT_SECRET\r\nRetry-After: 9\r\nContent-Length: 2\r\nContent-Length: 3\r\n\r\nno",
+            )
+            .expect("write response");
+    });
+    let request = ProviderHttpRequest::new("GET", format!("http://127.0.0.1:{port}/cookie"));
+    let result = client(AddressPolicy::Unrestricted).send_traced(&request);
+    let rendered = format!("{result:?}");
+    assert!(!rendered.contains("INERT_SECRET"), "{rendered}");
+    assert!(!rendered.contains("session="), "{rendered}");
+    assert!(rendered.contains("503"), "{rendered}");
+    let Err(ProviderHttpError::Transport(error)) = result else {
+        panic!("conflicting Content-Length must fail the send");
+    };
+    assert_eq!(error.status, Some(503));
+    assert_eq!(error.retry_after(), Some("9"));
+}
+
 /// Fake transport that records the absolute deadline it receives.
 struct DeadlineRecordingTransport {
     received_deadline: Mutex<Option<Instant>>,

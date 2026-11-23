@@ -51,9 +51,22 @@ pub const MAX_ERROR_BODY_BYTES: usize = 64 << 10;
 pub const MAX_RETRY_AFTER_DELAY_SECONDS: u64 = 3600;
 
 /// Case-insensitive response header list in received order.
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+///
+/// `Debug` renders header names only; read values through [`ResponseHeaders::get`].
+#[derive(Clone, Default, Eq, PartialEq)]
 pub struct ResponseHeaders {
     entries: Vec<(String, String)>,
+}
+
+impl fmt::Debug for ResponseHeaders {
+    // Values may carry cookies or tokens, so only names are rendered.
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let names: Vec<&str> = self.entries.iter().map(|(name, _)| name.as_str()).collect();
+        formatter
+            .debug_struct("ResponseHeaders")
+            .field("names", &names)
+            .finish_non_exhaustive()
+    }
 }
 
 impl ResponseHeaders {

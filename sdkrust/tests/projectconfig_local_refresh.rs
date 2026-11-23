@@ -355,6 +355,94 @@ fn late_write_back_failure_holds_the_exchange_result_and_a_retry_persists_it() {
     assert_eq!(material.credentials["refresh"], "refresh-1");
 }
 
+/// Writes `connections.json` listing the sample connection once under `authorization_id`.
+fn write_authorized_connection(path: &Path, expires_at: &str, authorization_id: Option<&str>) {
+    let mut connection = json!({
+        "connectorId": "sample", "connectionName": "main", "modulePath": "example",
+        "provider": "sample", "configuration": {},
+        "credentials": {"access": "old", "refresh": "refresh-0"},
+        "credentialExpiresAt": expires_at,
+    });
+    if let Some(authorization_id) = authorization_id {
+        connection["authorizationId"] = json!(authorization_id);
+    }
+    let document = json!({
+        "schemaVersion": "connectors.dex.dev/local-connections/v1alpha1",
+        "connections": [connection],
+        "triggerBindings": [],
+    });
+    write_private(path, &serde_json::to_vec(&document).expect("JSON"));
+}
+
+/// A held exchange result of a deleted authorization must never reach its recreation.
+fn assert_recreated_connection_never_receives_the_held_result(is_deletion_observed: bool) {
+    let directory = tempfile::tempdir().expect("temporary directory");
+    let path = connections_path(&directory);
+    let expires_at = in_one_hour();
+    write_authorized_connection(&path, expires_at.as_wire_str(), Some("authorization-1"));
+    let (_, connections) = open_connections(&path);
+    let provider = provider(connections);
+    let rotating = RotatingProvider::new("refresh-0");
+    let read_only_directory = directory.path().to_path_buf();
+    let driver = RotatingDriver {
+        before_exchange: Some(Box::new(move || {
+            std::fs::set_permissions(&read_only_directory, std::fs::Permissions::from_mode(0o500))
+                .expect("makes the directory read-only");
+        })),
+        ..RotatingDriver::new(rotating.clone())
+    };
+    let outcome = resolve_credential(&provider, &call(), &driver);
+    std::fs::set_permissions(directory.path(), std::fs::Permissions::from_mode(0o700))
+        .expect("restores the directory");
+    let error = outcome.expect_err("write-back fails");
+    assert!(
+        matches!(project_error(&error), ProjectConfigError::Io(_)),
+        "{error:?}"
+    );
+    assert_eq!(rotating.exchanges.load(Ordering::SeqCst), 1);
+
+    if is_deletion_observed {
+        write_connections(&path, &[]);
+        let error = provider.resolve(&call()).expect_err("deleted");
+        assert!(matches!(
+            project_error(&error),
+            ProjectConfigError::ConnectionNotInFile(_)
+        ));
+    }
+    write_authorized_connection(&path, expires_at.as_wire_str(), Some("authorization-2"));
+
+    // The recreated record holds the old token, so a fresh exchange is the only valid path;
+    // the rotating provider then reports reuse instead of minting a token.
+    let error = resolve_credential(&provider, &call(), &RotatingDriver::new(rotating.clone()))
+        .expect_err("refresh-0 was already rotated");
+    assert!(
+        matches!(project_error(&error), ProjectConfigError::RefreshFailed(_)),
+        "{error:?}"
+    );
+    assert_eq!(rotating.exchanges.load(Ordering::SeqCst), 2);
+    assert_eq!(rotating.reused_tokens.load(Ordering::SeqCst), 1);
+    assert_eq!(
+        file_credential(&path),
+        json!({"access": "old", "refresh": "refresh-0"})
+    );
+    let written: Value =
+        serde_json::from_slice(&std::fs::read(&path).expect("reads")).expect("JSON");
+    assert_eq!(
+        written["connections"][0]["authorizationId"],
+        "authorization-2"
+    );
+}
+
+#[test]
+fn connection_recreated_after_observed_deletion_never_receives_the_held_result() {
+    assert_recreated_connection_never_receives_the_held_result(true);
+}
+
+#[test]
+fn connection_reauthorized_in_place_never_receives_the_held_result() {
+    assert_recreated_connection_never_receives_the_held_result(false);
+}
+
 /// Delegates to a Dex Web store but pads every connection head swap past the object limit.
 struct PaddingHeadStore {
     inner: Arc<DexWebObjectStore>,
