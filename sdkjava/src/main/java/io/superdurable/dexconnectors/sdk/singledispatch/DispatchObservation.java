@@ -17,6 +17,7 @@ import java.util.List;
  */
 public final class DispatchObservation {
     private static final ThreadLocal<DispatchObservation> CURRENT = new ThreadLocal<>();
+    private static final java.time.Duration ABORT_ACTION_WAIT = java.time.Duration.ofMillis(100);
 
     private final Instant writeDeadline;
     private final List<Runnable> cancellations = new ArrayList<>();
@@ -66,8 +67,9 @@ public final class DispatchObservation {
     /**
      * Registers an action that aborts in-flight I/O, such as closing a connection.
      *
-     * <p>The Fence runs it when the write deadline passes or Dex cancels the attempt. When the
-     * dispatch is already cancelled, the action runs immediately.
+     * <p>The Fence runs it on a separate daemon thread when the write deadline passes or Dex
+     * cancels the attempt, and waits for it only briefly; the action must not reopen I/O. When the
+     * dispatch is already cancelled, the action runs immediately on the calling thread.
      *
      * @param cancel the abort action
      */
@@ -123,6 +125,13 @@ public final class DispatchObservation {
         CURRENT.remove();
     }
 
+    /**
+     * Marks the dispatch cancelled at once and runs the abort actions on a daemon thread.
+     *
+     * <p>The flag is set before returning, so {@link #isActive()} refuses new I/O immediately. The
+     * handler waits for the actions at most 100 milliseconds, so a blocking action never
+     * delays the Fence's own cancellation and stop timing beyond that bound.
+     */
     void cancel() {
         final List<Runnable> actions;
         synchronized (this) {
@@ -130,12 +139,24 @@ public final class DispatchObservation {
             actions = new ArrayList<>(cancellations);
             cancellations.clear();
         }
-        for (Runnable action : actions) {
-            try {
-                action.run();
-            } catch (RuntimeException ignored) {
-                // Closing an already failed connection has nothing further to abort.
+        if (actions.isEmpty()) {
+            return;
+        }
+        final Thread aborter = new Thread(() -> {
+            for (Runnable action : actions) {
+                try {
+                    action.run();
+                } catch (RuntimeException ignored) {
+                    // Closing an already failed connection has nothing further to abort.
+                }
             }
+        }, "dex-connector-dispatch-abort");
+        aborter.setDaemon(true);
+        aborter.start();
+        try {
+            aborter.join(ABORT_ACTION_WAIT.toMillis());
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
         }
     }
 
