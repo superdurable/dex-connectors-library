@@ -85,12 +85,19 @@ impl<Credential> ProjectCredentialProvider<Credential> {
                 "connector call differs from configured project connection",
             )));
         }
-        call.operation.validate().map_err(|error| Box::new(error) as CredentialError)
+        call.operation
+            .validate()
+            .map_err(|error| Box::new(error) as CredentialError)
     }
 
-    fn decode_material(&self, material: &CredentialMaterial) -> Result<Credential, CredentialError> {
+    fn decode_material(
+        &self,
+        material: &CredentialMaterial,
+    ) -> Result<Credential, CredentialError> {
         (self.decode)(&material.credentials).map_err(|_| {
-            credential_error(ProjectConfigError::invalid("project credential decoding failed"))
+            credential_error(ProjectConfigError::invalid(
+                "project credential decoding failed",
+            ))
         })
     }
 
@@ -115,7 +122,9 @@ impl<Credential> ProjectCredentialProvider<Credential> {
     }
 }
 
-impl<Credential: Send + Sync> CredentialProvider<Credential> for ProjectCredentialProvider<Credential> {
+impl<Credential: Send + Sync> CredentialProvider<Credential>
+    for ProjectCredentialProvider<Credential>
+{
     fn resolve(&self, call: &Call<'_>) -> Result<Credential, CredentialError> {
         self.validate_call(call)?;
         if let Some(shared) = &self.shared {
@@ -237,14 +246,16 @@ impl<Credential> RefreshingProjectCredentialProvider<Credential> {
                 return Err(error);
             }
             Err(_) => {
-                self.finish_exchange(admission, "READY").map_err(credential_error)?;
+                self.finish_exchange(admission, "READY")
+                    .map_err(credential_error)?;
                 return Err(credential_error(ProjectConfigError::RefreshFailed(
                     "project credential refresh failed; current authorization is kept".into(),
                 )));
             }
         };
         if result.expires_at.unix_nanoseconds() <= now().unix_nanoseconds() {
-            self.finish_exchange(admission, "READY").map_err(credential_error)?;
+            self.finish_exchange(admission, "READY")
+                .map_err(credential_error)?;
             return Err(credential_error(ProjectConfigError::RefreshFailed(
                 "refreshed credential has no future expiry".into(),
             )));
@@ -252,7 +263,8 @@ impl<Credential> RefreshingProjectCredentialProvider<Credential> {
         let encoded = match (self.encode)(&result.credentials) {
             Ok(encoded) if !encoded.is_empty() => encoded,
             _ => {
-                self.finish_exchange(admission, "READY").map_err(credential_error)?;
+                self.finish_exchange(admission, "READY")
+                    .map_err(credential_error)?;
                 return Err(credential_error(ProjectConfigError::RefreshFailed(
                     "refreshed credential encoding failed".into(),
                 )));
@@ -263,15 +275,15 @@ impl<Credential> RefreshingProjectCredentialProvider<Credential> {
             expires_at: Some(result.expires_at),
             auth_method: prior.auth_method.clone(),
         };
-        self.commit_refresh(admission, &material).map_err(credential_error)?;
+        self.commit_refresh(admission, &material)
+            .map_err(credential_error)?;
         Ok(result.credentials)
     }
 
     fn recover_or_wait(&self, record: &ConnectionRecord) -> ProjectConfigResult<()> {
-        let mutation = record
-            .mutation
-            .as_ref()
-            .ok_or_else(|| ProjectConfigError::invalid("credential exchange admission is absent"))?;
+        let mutation = record.mutation.as_ref().ok_or_else(|| {
+            ProjectConfigError::invalid("credential exchange admission is absent")
+        })?;
         let admission = Admission {
             kind: record.status.clone(),
             attempt_id: mutation.id.clone(),
@@ -279,7 +291,11 @@ impl<Credential> RefreshingProjectCredentialProvider<Credential> {
             deadline: mutation.deadline.clone(),
             result_key: mutation.result_key.clone(),
         };
-        match self.store().objects().read_object(&admission.result_key, "") {
+        match self
+            .store()
+            .objects()
+            .read_object(&admission.result_key, "")
+        {
             Ok(result) => self.publish_result(&admission, &result),
             Err(ProjectConfigError::ObjectNotFound) => {
                 if now().unix_nanoseconds() < admission.deadline.unix_nanoseconds() {
@@ -321,7 +337,11 @@ impl<Credential> RefreshingProjectCredentialProvider<Credential> {
         self.publish_result(admission, &result)
     }
 
-    fn publish_result(&self, admission: &Admission, result: &ProjectObject) -> ProjectConfigResult<()> {
+    fn publish_result(
+        &self,
+        admission: &Admission,
+        result: &ProjectObject,
+    ) -> ProjectConfigResult<()> {
         let (record, _) = self.store().read_record(self.key())?;
         let is_published = |record: &ConnectionRecord| {
             record.status == "READY"
@@ -341,7 +361,8 @@ impl<Credential> RefreshingProjectCredentialProvider<Credential> {
             || envelope.get("scope") != Some(&self.store().scope().to_wire())
             || envelope.get("connection") != Some(&self.key().to_wire())
             || envelope.get("fence").and_then(Value::as_u64) != Some(admission.fence)
-            || envelope.get("attemptId").and_then(Value::as_str) != Some(admission.attempt_id.as_str())
+            || envelope.get("attemptId").and_then(Value::as_str)
+                != Some(admission.attempt_id.as_str())
         {
             return Err(ProjectConfigError::invalid(
                 "credential exchange result identity is invalid",
@@ -440,7 +461,10 @@ impl<Credential: Send + Sync> CredentialProvider<Credential>
             return self.base.resolve_shared(shared, call, false);
         }
         loop {
-            let (record, _) = self.store().read_record(self.key()).map_err(credential_error)?;
+            let (record, _) = self
+                .store()
+                .read_record(self.key())
+                .map_err(credential_error)?;
             match record.status.as_str() {
                 "REVOKED" | "REAUTHORIZATION_REQUIRED" => {
                     return Err(Box::new(ReauthorizationRequiredError::new(None)));
@@ -476,10 +500,9 @@ impl<Credential: Send + Sync> CredentialProvider<Credential>
                 expires_at: material.expires_at.clone(),
                 now: decided_at.clone(),
             };
-            let is_unexpired = material
-                .expires_at
-                .as_ref()
-                .is_none_or(|expires_at| expires_at.unix_nanoseconds() > decided_at.unix_nanoseconds());
+            let is_unexpired = material.expires_at.as_ref().is_none_or(|expires_at| {
+                expires_at.unix_nanoseconds() > decided_at.unix_nanoseconds()
+            });
             if is_unexpired && !driver.is_refresh_required(&state) {
                 return Ok(credentials);
             }
@@ -526,10 +549,9 @@ impl<Credential: Send + Sync> CredentialProvider<Credential>
 fn require_admission(record: &ConnectionRecord, admission: &Admission) -> ProjectConfigResult<()> {
     let is_current = record.status == admission.kind
         && record.fence == admission.fence
-        && record
-            .mutation
-            .as_ref()
-            .is_some_and(|mutation| mutation.id == admission.attempt_id && mutation.kind == admission.kind);
+        && record.mutation.as_ref().is_some_and(|mutation| {
+            mutation.id == admission.attempt_id && mutation.kind == admission.kind
+        });
     if !is_current {
         return Err(ProjectConfigError::ObjectConflict(
             "credential exchange admission was superseded".into(),
@@ -540,6 +562,7 @@ fn require_admission(record: &ConnectionRecord, admission: &Admission) -> Projec
 
 fn timestamp_after(start: &Rfc3339NanoTimestamp, duration: Duration) -> Rfc3339NanoTimestamp {
     let start_nanoseconds = start.unix_nanoseconds();
-    let magnitude = Duration::from_nanos(u64::try_from(start_nanoseconds.max(0)).unwrap_or(u64::MAX));
+    let magnitude =
+        Duration::from_nanos(u64::try_from(start_nanoseconds.max(0)).unwrap_or(u64::MAX));
     Rfc3339NanoTimestamp::from_system_time_utc(SystemTime::UNIX_EPOCH + magnitude + duration)
 }

@@ -56,8 +56,14 @@ impl ConnectionKey {
     /// Encodes the stable connection key.
     pub fn to_wire(&self) -> Value {
         let mut object = JsonObject::new();
-        object.insert("connectorId".into(), Value::String(self.connector_id.clone()));
-        object.insert("connectionName".into(), Value::String(self.connection_name.clone()));
+        object.insert(
+            "connectorId".into(),
+            Value::String(self.connector_id.clone()),
+        );
+        object.insert(
+            "connectionName".into(),
+            Value::String(self.connection_name.clone()),
+        );
         Value::Object(object)
     }
 
@@ -73,7 +79,9 @@ impl ConnectionKey {
             || self.connection_name.chars().count() > 256
             || self.connection_name.contains(['\0', '\r', '\n'])
         {
-            return Err(ProjectConfigError::invalid("invalid project connection key"));
+            return Err(ProjectConfigError::invalid(
+                "invalid project connection key",
+            ));
         }
         let encoded = base64::engine::general_purpose::URL_SAFE_NO_PAD
             .encode(self.connection_name.as_bytes());
@@ -132,7 +140,10 @@ pub(crate) fn credential_envelope_wire(
     attempt_id: &str,
 ) -> Value {
     let mut object = JsonObject::new();
-    object.insert("schemaVersion".into(), Value::String(CONNECTION_SCHEMA_VERSION.into()));
+    object.insert(
+        "schemaVersion".into(),
+        Value::String(CONNECTION_SCHEMA_VERSION.into()),
+    );
     object.insert("scope".into(), scope.to_wire());
     object.insert("connection".into(), key.to_wire());
     object.insert("fence".into(), Value::from(fence));
@@ -168,7 +179,9 @@ impl CredentialReference {
         let record = require_object(value, "credential reference")?;
         let text = |name: &str| match record.get(name) {
             Some(Value::String(text)) => Ok(text.clone()),
-            _ => Err(ProjectConfigError::invalid("project credential reference is invalid")),
+            _ => Err(ProjectConfigError::invalid(
+                "project credential reference is invalid",
+            )),
         };
         Ok(Self {
             key: text("key")?,
@@ -194,7 +207,10 @@ impl CredentialMutation {
     fn to_wire(&self) -> Value {
         let mut object = JsonObject::new();
         object.insert("kind".into(), Value::String(self.kind.clone()));
-        object.insert("invocationId".into(), Value::String(self.invocation_id.clone()));
+        object.insert(
+            "invocationId".into(),
+            Value::String(self.invocation_id.clone()),
+        );
         object.insert("id".into(), Value::String(self.id.clone()));
         object.insert("fence".into(), Value::from(self.fence));
         object.insert("baseRevision".into(), Value::from(self.base_revision));
@@ -221,7 +237,10 @@ pub(crate) fn connection_record_wire(
     mutation: Option<&CredentialMutation>,
 ) -> Value {
     let mut object = JsonObject::new();
-    object.insert("schemaVersion".into(), Value::String(CONNECTION_SCHEMA_VERSION.into()));
+    object.insert(
+        "schemaVersion".into(),
+        Value::String(CONNECTION_SCHEMA_VERSION.into()),
+    );
     object.insert("connection".into(), key.to_wire());
     object.insert("scope".into(), scope.to_wire());
     object.insert("revision".into(), Value::from(revision));
@@ -332,7 +351,9 @@ impl ConnectionStore {
         let (record, _) = self.read_record(key)?;
         let connection = self.connection(key, &record);
         if connection.status != "READY" {
-            return Err(ProjectConfigError::invalid("project credential is unavailable"));
+            return Err(ProjectConfigError::invalid(
+                "project credential is unavailable",
+            ));
         }
         let material = self.read_material(key, &record)?;
         Ok((material, connection))
@@ -347,12 +368,17 @@ impl ConnectionStore {
             .credential
             .as_ref()
             .ok_or_else(|| ProjectConfigError::invalid("project credential reference is absent"))?;
-        let item = self.objects.read_object(&reference.key, &reference.version)?;
+        let item = self
+            .objects
+            .read_object(&reference.key, &reference.version)?;
         if digest_bytes(&item.contents)[7..] != reference.digest {
-            return Err(ProjectConfigError::invalid("project credential integrity differs"));
+            return Err(ProjectConfigError::invalid(
+                "project credential integrity differs",
+            ));
         }
-        let envelope: Value = serde_json::from_slice(&item.contents)
-            .map_err(|_| ProjectConfigError::invalid("credential envelope must be a JSON object"))?;
+        let envelope: Value = serde_json::from_slice(&item.contents).map_err(|_| {
+            ProjectConfigError::invalid("credential envelope must be a JSON object")
+        })?;
         let envelope = require_object(Some(&envelope), "credential envelope")?;
         if envelope.get("schemaVersion") != Some(&Value::String(CONNECTION_SCHEMA_VERSION.into()))
             || envelope.get("scope") != Some(&self.scope.to_wire())
@@ -360,7 +386,9 @@ impl ConnectionStore {
             || envelope.get("authMethod") != record.document.get("authMethod")
             || envelope.get("expiresAt") != record.document.get("expiresAt")
         {
-            return Err(ProjectConfigError::invalid("project credential identity differs"));
+            return Err(ProjectConfigError::invalid(
+                "project credential identity differs",
+            ));
         }
         Ok(CredentialMaterial {
             credentials: require_object(envelope.get("credentials"), "credentials")?.clone(),
@@ -408,7 +436,11 @@ impl ConnectionStore {
         let contents = go_canonical_json_bytes(&envelope)?;
         let digest = digest_bytes(&contents)[7..].to_string();
         let immutable_key = format!("{path}/credentials/{digest}");
-        let candidate = self.create_or_match(&immutable_key, &contents, "immutable credential content differs")?;
+        let candidate = self.create_or_match(
+            &immutable_key,
+            &contents,
+            "immutable credential content differs",
+        )?;
         let reference = CredentialReference {
             key: immutable_key,
             version: candidate.version,
@@ -429,9 +461,10 @@ impl ConnectionStore {
         let head_key = format!("{path}/head");
         let written = match &head {
             None => self.objects.create_object(&head_key, &head_contents),
-            Some(head) => self
-                .objects
-                .compare_and_swap_object(&head_key, &head.etag, &head_contents),
+            Some(head) => {
+                self.objects
+                    .compare_and_swap_object(&head_key, &head.etag, &head_contents)
+            }
         };
         match written {
             Ok(_) => {}
@@ -517,7 +550,9 @@ impl ConnectionStore {
         let reference_value = document.get("credential").filter(|value| !value.is_null());
         let mutation_value = document.get("mutation").filter(|value| !value.is_null());
         if matches!(status.as_str(), "READY" | "REFRESHING") && reference_value.is_none() {
-            return Err(ProjectConfigError::invalid("project credential reference is absent"));
+            return Err(ProjectConfigError::invalid(
+                "project credential reference is absent",
+            ));
         }
         if status == "REVOKED" && (reference_value.is_some() || mutation_value.is_some()) {
             return Err(ProjectConfigError::invalid(
@@ -540,7 +575,13 @@ impl ConnectionStore {
             }
         };
         let mutation = if matches!(status.as_str(), "REFRESHING" | "AUTHORIZING") {
-            Some(Self::parse_mutation(mutation_value, &status, revision, fence, &path)?)
+            Some(Self::parse_mutation(
+                mutation_value,
+                &status,
+                revision,
+                fence,
+                &path,
+            )?)
         } else if mutation_value.is_some() {
             return Err(ProjectConfigError::invalid(
                 "inactive credential exchange admission is invalid",
@@ -575,7 +616,12 @@ impl ConnectionStore {
         let absent = || ProjectConfigError::invalid("credential exchange admission is absent");
         let invalid = || ProjectConfigError::invalid("credential exchange admission is invalid");
         let mutation = value.and_then(Value::as_object).ok_or_else(absent)?;
-        let text = |name: &str| mutation.get(name).and_then(Value::as_str).unwrap_or_default();
+        let text = |name: &str| {
+            mutation
+                .get(name)
+                .and_then(Value::as_str)
+                .unwrap_or_default()
+        };
         let attempt_id = text("id");
         let is_attempt_id = (1..=128).contains(&attempt_id.len())
             && attempt_id
@@ -635,7 +681,15 @@ pub mod wire {
         auth_method: &str,
         attempt_id: &str,
     ) -> Value {
-        credential_envelope_wire(scope, key, fence, credentials, expires_at, auth_method, attempt_id)
+        credential_envelope_wire(
+            scope,
+            key,
+            fence,
+            credentials,
+            expires_at,
+            auth_method,
+            attempt_id,
+        )
     }
 
     /// Encodes a connection head from wire `credential` and `mutation` objects.
@@ -670,13 +724,14 @@ pub mod wire {
                         .get(name)
                         .and_then(Value::as_str)
                         .map(str::to_string)
-                        .ok_or_else(|| ProjectConfigError::invalid("credential mutation is invalid"))
+                        .ok_or_else(|| {
+                            ProjectConfigError::invalid("credential mutation is invalid")
+                        })
                 };
                 let number = |name: &str| {
-                    record
-                        .get(name)
-                        .and_then(Value::as_u64)
-                        .ok_or_else(|| ProjectConfigError::invalid("credential mutation is invalid"))
+                    record.get(name).and_then(Value::as_u64).ok_or_else(|| {
+                        ProjectConfigError::invalid("credential mutation is invalid")
+                    })
                 };
                 Some(CredentialMutation {
                     kind: text("kind")?,

@@ -77,8 +77,9 @@ impl fmt::Display for ProjectConfigError {
             ProjectConfigError::ConnectionNotSelected => {
                 formatter.write_str("project connection is not selected by this scope")
             }
-            ProjectConfigError::RelayedTriggerNotRelayed => formatter
-                .write_str("the credential broker does not relay this connection's events"),
+            ProjectConfigError::RelayedTriggerNotRelayed => {
+                formatter.write_str("the credential broker does not relay this connection's events")
+            }
             ProjectConfigError::RelaySignatureInvalid => {
                 formatter.write_str("relayed request signature is missing, invalid or stale")
             }

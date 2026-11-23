@@ -63,8 +63,7 @@ pub use broker::{
     decode_broker_response,
 };
 pub use connections::{
-    CONNECTION_SCHEMA_VERSION, Connection, ConnectionKey, ConnectionStore, CredentialMaterial,
-    wire,
+    CONNECTION_SCHEMA_VERSION, Connection, ConnectionKey, ConnectionStore, CredentialMaterial, wire,
 };
 pub use dexweb_store::DexWebObjectStore;
 pub use errors::{ProjectConfigError, ProjectConfigResult};
@@ -132,7 +131,10 @@ impl LoadedProject {
     }
 
     /// Returns the connection entry whose settings the application decodes once.
-    pub fn connection_configuration(&self, key: &ConnectionKey) -> Option<&ConnectionConfiguration> {
+    pub fn connection_configuration(
+        &self,
+        key: &ConnectionKey,
+    ) -> Option<&ConnectionConfiguration> {
         self.configuration.connections.iter().find(|entry| {
             entry.connector_id == key.connector_id && entry.connection_name == key.connection_name
         })
@@ -227,7 +229,11 @@ impl LoadedProject {
                 key.connector_id, key.connection_name
             ))
         })?;
-        broker.register_relayed_trigger(shared_connection_id, &key.connection_name, registration_path)
+        broker.register_relayed_trigger(
+            shared_connection_id,
+            &key.connection_name,
+            registration_path,
+        )
     }
 
     /// Checks that the host signed a relayed request with this scope's token.
@@ -302,7 +308,10 @@ pub fn load_project_from_object_store(
             if !entry.shared_connection_id.is_empty() {
                 shared_connections.insert(
                     ConnectionKey::new(entry.connector_id.clone(), entry.connection_name.clone()),
-                    Arc::new(SharedConnection::new(&entry.shared_connection_id, client.clone())?),
+                    Arc::new(SharedConnection::new(
+                        &entry.shared_connection_id,
+                        client.clone(),
+                    )?),
                 );
             }
         }
@@ -353,7 +362,9 @@ pub fn load_dex_web_project(path: &Path) -> ProjectConfigResult<LoadedProject> {
     let uses = if uses_path.exists() {
         let uses = read_private_file(&uses_path)?;
         if uses.get("schemaVersion")
-            != Some(&Value::String(LOCAL_USE_CONFIGURATIONS_SCHEMA_VERSION.into()))
+            != Some(&Value::String(
+                LOCAL_USE_CONFIGURATIONS_SCHEMA_VERSION.into(),
+            ))
         {
             return Err(ProjectConfigError::invalid(
                 "unsupported connector use configuration schema version",
@@ -481,7 +492,9 @@ pub fn load_from_environment_values(
     }
     let bucket = value("DEX_PROJECT_STORAGE_BUCKET");
     if bucket.is_empty() {
-        return Err(ProjectConfigError::invalid("project storage bucket is required"));
+        return Err(ProjectConfigError::invalid(
+            "project storage bucket is required",
+        ));
     }
     let s3_client = s3_client.ok_or_else(|| {
         ProjectConfigError::invalid(
