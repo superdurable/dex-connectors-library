@@ -108,6 +108,16 @@ pub struct CredentialRefreshResult<Credential> {
     pub expires_at: Rfc3339NanoTimestamp,
 }
 
+impl<Credential> fmt::Debug for CredentialRefreshResult<Credential> {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("CredentialRefreshResult")
+            .field("credentials", &"[REDACTED]")
+            .field("expires_at", &self.expires_at)
+            .finish()
+    }
+}
+
 /// Connector-specific refresh decision and provider exchange without storage.
 pub trait CredentialRefreshDriver<Credential>: Send + Sync {
     /// Decides deterministically whether this credential needs refresh.
