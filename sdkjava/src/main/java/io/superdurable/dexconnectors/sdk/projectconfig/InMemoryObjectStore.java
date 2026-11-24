@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Deterministic versioned object store for local Dex Web projects and tests.
+ * Deterministic versioned in-memory object store for tests and single-process applications.
  *
  * <p>Versions count from 1 per key, and each ETag is the lowercase hexadecimal SHA-256 of the
  * contents followed by {@code -<version>}, as the Go local store writes it. Thread-safe.

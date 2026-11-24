@@ -3,39 +3,30 @@
 
 package io.superdurable.dexconnectors.sdk.projectconfig;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.LinkOption;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
 import java.util.Map;
-import java.util.Set;
 
 /**
- * Loads a project from Dex Web's local files or the hosted {@code DEX_PROJECT_*} contract.
+ * Loads a project from the hosted {@code DEX_PROJECT_*} contract.
+ *
+ * <p>Local Dex Web files are not supported in this release.
  *
  * <pre>{@code
- * LoadedProject project = ProjectConfigurationLoader.loadFromEnvironment(System.getenv(), null);
+ * LoadedProject project = ProjectConfigurationLoader.loadFromEnvironment(System.getenv(), s3Client);
  * RefreshingProjectCredentialProvider<SlackCredentials> provider = new RefreshingProjectCredentialProvider<>(
  *         project.getConnections(), new ConnectionKey("slack", "main"),
  *         SlackCredentials::fromJson, SlackCredentials::toJson);
  * }</pre>
  */
 public final class ProjectConfigurationLoader {
-    /** Environment variable that selects Dex Web's {@code connections.json}. */
+    /** Environment variable that selects Dex Web's {@code connections.json}, unsupported in this release. */
     public static final String LOCAL_CONNECTIONS_FILE_ENVIRONMENT = "DEX_CONNECTOR_CONFIG_FILE";
 
-    private static final Set<String> LOCAL_CONNECTION_FIELDS = new HashSet<>(Arrays.asList("connectorId",
-            "connectionName", "modulePath", "provider", "configuration", "authMethodId", "sharedConnectionId"));
-    private static final String[] HOSTED_SELECTORS = {
-        "DEX_PROJECT_ID", "DEX_PROJECT_SCOPE", "DEX_PROJECT_CONFIG_KEY", "DEX_PROJECT_STORAGE_BUCKET"};
+    private static final String LOCAL_DEX_WEB_UNSUPPORTED = "Java SDK 0.1.0 supports hosted project configuration "
+            + "(broker credentials, S3 object store supplied by the application) and static credentials only; "
+            + "local Dex Web files are not supported yet";
 
     private ProjectConfigurationLoader() {
     }
@@ -95,96 +86,26 @@ public final class ProjectConfigurationLoader {
     }
 
     /**
-     * Loads Dex Web's owner-only {@code connections.json} and its {@code use-configurations.json}
-     * sidecar.
+     * Loads the trusted hosted {@code DEX_PROJECT_*} contract.
      *
-     * <p>Refreshed credentials are written back to {@code connections.json}; Trigger inboxes are
-     * kept in a private directory beside it.
-     *
-     * <p>Java coordinates credential refresh and inbox writes with JDK file locks, which are
-     * {@code fcntl} locks. On Linux they do not exclude the {@code flock} locks of the Go, Rust, and
-     * Python SDKs, so a local Dex Web workspace must be used by one language only there: never share
-     * one {@code connections.json} between Java and processes of another language on Linux, or a
-     * rotated refresh token can be spent twice.
-     *
-     * @param path the {@code connections.json} path
-     * @return the loaded project in the {@code local/preview} scope
-     * @throws IOException if a file cannot be read
-     * @throws IllegalArgumentException if a file is not owner-only or has an unsupported schema
-     */
-    public static LoadedProject loadDexWebProject(final Path path) throws IOException {
-        final Path connectionsPath = path.toAbsolutePath();
-        final ObjectNode source = DexWebFiles.readPrivateFile(connectionsPath);
-        if (!Configuration.LOCAL_CONNECTIONS_SCHEMA_VERSION.equals(ProjectConfigurationRules.text(source, "schemaVersion"))) {
-            throw new IllegalArgumentException("unsupported connector configuration schema version");
-        }
-        final Path usesPath = connectionsPath.resolveSibling("use-configurations.json");
-        final ObjectNode uses = Files.exists(usesPath, LinkOption.NOFOLLOW_LINKS)
-                ? DexWebFiles.readPrivateFile(usesPath) : GoCompatibleJson.newObject();
-        if (uses.size() > 0 && !Configuration.LOCAL_USE_CONFIGURATIONS_SCHEMA_VERSION.equals(
-                ProjectConfigurationRules.text(uses, "schemaVersion"))) {
-            throw new IllegalArgumentException("unsupported connector use configuration schema version");
-        }
-        final JsonNode rawConnections = source.get("connections");
-        if (rawConnections == null || !rawConnections.isArray()) {
-            throw new IllegalArgumentException("connections.json requires connections");
-        }
-        final Scope scope = new Scope("local", "preview");
-        final Configuration.Builder document = Configuration.newBuilder(scope, 1);
-        int index = 0;
-        for (JsonNode raw : rawConnections) {
-            final ObjectNode record = GoCompatibleJson.requireObject(raw, "connection " + index++);
-            final ObjectNode selected = GoCompatibleJson.newObject();
-            final Iterator<Map.Entry<String, JsonNode>> fields = record.fields();
-            while (fields.hasNext()) {
-                final Map.Entry<String, JsonNode> field = fields.next();
-                if (LOCAL_CONNECTION_FIELDS.contains(field.getKey())) {
-                    selected.set(field.getKey(), field.getValue());
-                }
-            }
-            final ConnectionConfiguration entry = ConnectionConfiguration.fromJson(selected);
-            if (entry.getConnectorId().isEmpty() || entry.getConnectionName().isEmpty()
-                    || entry.getModulePath().isEmpty() || entry.getProvider().isEmpty()) {
-                throw new IllegalArgumentException("local connection identity is incomplete");
-            }
-            document.addConnection(entry);
-        }
-        addObjects(source.get("triggerBindings"), "trigger binding", document, true);
-        addObjects(uses.get("operationConfigurations"), "operation configuration", document, false);
-        final InMemoryObjectStore store = new InMemoryObjectStore();
-        final ConfigurationStore configurations = new ConfigurationStore(store, scope);
-        final ConfigurationStore.VersionedConfiguration written = configurations.writeConfiguration(0, document.build());
-        final SnapshotRef reference = configurations.freezeConfiguration(written.getConfiguration().getRevision());
-        final DexWebObjectStore localObjects = new DexWebObjectStore(connectionsPath, scope);
-        localObjects.initialize();
-        return loadProjectFromObjectStore(store, scope, reference, null, new ConnectionStore(localObjects, scope));
-    }
-
-    /**
-     * Loads Dex Web local files or the trusted hosted {@code DEX_PROJECT_*} contract.
-     *
-     * <p>{@value #LOCAL_CONNECTIONS_FILE_ENVIRONMENT} selects Dex Web and must not be combined with
-     * hosted selectors. Hosted projects read versioned S3 through the application's client
-     * adapter; {@code DEX_PROJECT_ALLOW_LOCAL_STORAGE=true} with a loopback or private
-     * {@code DEX_PROJECT_STORAGE_ENDPOINT} allows an unencrypted local fixture store.
+     * <p>Hosted projects read versioned S3 through the application's client adapter;
+     * {@code DEX_PROJECT_ALLOW_LOCAL_STORAGE=true} with a loopback or private
+     * {@code DEX_PROJECT_STORAGE_ENDPOINT} allows an unencrypted local fixture store. Local Dex Web
+     * files, selected by {@value #LOCAL_CONNECTIONS_FILE_ENVIRONMENT}, are not supported yet in
+     * this release and fail fast.
      *
      * @param environment the environment variables, such as {@code System.getenv()}
-     * @param s3Client the S3 client adapter for a hosted project, or {@code null} for Dex Web only
+     * @param s3Client the S3 client adapter for the hosted project
      * @return the loaded project
      * @throws IOException if storage fails
      * @throws IllegalArgumentException if the selectors are invalid or conflict
+     * @throws UnsupportedOperationException if local Dex Web files are selected
      */
     public static LoadedProject loadFromEnvironment(final Map<String, String> environment, final S3ObjectClient s3Client)
             throws IOException {
         final Map<String, String> values = environment == null ? Collections.<String, String>emptyMap() : environment;
-        final String localPath = value(values, LOCAL_CONNECTIONS_FILE_ENVIRONMENT);
-        if (!localPath.isEmpty()) {
-            for (String selector : HOSTED_SELECTORS) {
-                if (!value(values, selector).isEmpty()) {
-                    throw new IllegalArgumentException("local and hosted project configuration selectors conflict");
-                }
-            }
-            return loadDexWebProject(Paths.get(localPath));
+        if (!value(values, LOCAL_CONNECTIONS_FILE_ENVIRONMENT).isEmpty()) {
+            throw new UnsupportedOperationException(LOCAL_DEX_WEB_UNSUPPORTED);
         }
         final Scope scope = new Scope(value(values, "DEX_PROJECT_ID"), value(values, "DEX_PROJECT_SCOPE"));
         scope.prefix();
@@ -213,25 +134,6 @@ public final class ProjectConfigurationLoader {
         final SnapshotRef reference = new SnapshotRef(value(values, "DEX_PROJECT_CONFIG_KEY"),
                 value(values, "DEX_PROJECT_CONFIG_VERSION"), value(values, "DEX_PROJECT_CONFIG_DIGEST"));
         return loadProjectFromObjectStore(objects, scope, reference, null);
-    }
-
-    private static void addObjects(
-            final JsonNode array, final String label, final Configuration.Builder document,
-            final boolean isTriggerBinding) {
-        if (array == null || array.isNull()) {
-            return;
-        }
-        if (!array.isArray()) {
-            throw new IllegalArgumentException(label + " list must be an array");
-        }
-        for (JsonNode item : array) {
-            final ObjectNode object = GoCompatibleJson.requireObject(item, label);
-            if (isTriggerBinding) {
-                document.addTriggerBinding(object);
-            } else {
-                document.addOperationConfiguration(object);
-            }
-        }
     }
 
     private static String value(final Map<String, String> values, final String name) {

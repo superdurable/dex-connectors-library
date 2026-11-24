@@ -165,43 +165,6 @@ class ProjectCredentialProviderTest {
     }
 
     @Test
-    void writesLocalRefreshBackAndRestartReadsIt() throws Exception {
-        final Path path = temporaryDirectory.resolve("connections.json");
-        writeLocalConnections(path, "old", Instant.now().minusSeconds(60));
-        final LoadedProject project = ProjectConfigurationLoader.loadDexWebProject(path);
-        final RecordingDriver driver = new RecordingDriver();
-        driver.release.countDown();
-        assertEquals("new", Credentials.resolveCredential(provider(project.getConnections()), CALL, driver)
-                .get("access").textValue());
-        final JsonNode file = MAPPER.readTree(path.toFile());
-        assertEquals(credential("new"), file.get("connections").get(0).get("credentials"));
-        assertEquals("rw-------", java.nio.file.attribute.PosixFilePermissions.toString(
-                Files.getPosixFilePermissions(path)));
-        final LoadedProject restarted = ProjectConfigurationLoader.loadDexWebProject(path);
-        assertEquals("new", restarted.getConnections().readCredentialMaterial(KEY).getMaterial().getCredentials()
-                .get("access").textValue());
-    }
-
-    @Test
-    void newerDexWebAuthorizationWinsOverRefresh() throws Exception {
-        final Path path = temporaryDirectory.resolve("connections.json");
-        writeLocalConnections(path, "old", Instant.now().minusSeconds(60));
-        final LoadedProject project = ProjectConfigurationLoader.loadDexWebProject(path);
-        final RecordingDriver driver = new RecordingDriver();
-        final RefreshingProjectCredentialProvider<ObjectNode> provider = provider(project.getConnections());
-        final Future<ObjectNode> pending = executor.submit(() -> Credentials.resolveCredential(provider, CALL, driver));
-        assertTrue(driver.started.await(2, TimeUnit.SECONDS));
-        writeLocalConnections(path, "dex-web-new", Instant.now().plusSeconds(3600));
-        driver.release.countDown();
-        final Exception error = assertThrows(Exception.class, () -> pending.get(3, TimeUnit.SECONDS));
-        assertTrue(error.getCause() instanceof ObjectConflictException, () -> String.valueOf(error.getCause()));
-        assertEquals("dex-web-new", MAPPER.readTree(path.toFile()).get("connections").get(0).get("credentials")
-                .get("access").textValue());
-        assertEquals("dex-web-new", project.getConnections().readCredentialMaterial(KEY).getMaterial().getCredentials()
-                .get("access").textValue());
-    }
-
-    @Test
     void routesSharedConnectionsThroughBrokerWithoutRefreshDriver() throws Exception {
         final List<JsonNode> requests = new ArrayList<>();
         final BrokerHttpTransport transport = (url, token, body, maximum) -> {
@@ -290,19 +253,6 @@ class ProjectCredentialProviderTest {
         store.getObjects().createObject(path + "/head", GoCompatibleJson.encode(ConnectionDocuments.connectionRecord(
                 store.getScope(), KEY, 1, 1, "AUTHORIZING", null, "oauth2", null, mutation)));
         return resultKey;
-    }
-
-    private void writeLocalConnections(final Path path, final String access, final Instant expiresAt) throws IOException {
-        final ObjectNode document = GoCompatibleJson.newObject();
-        document.put("schemaVersion", "connectors.dex.dev/local-connections/v1alpha1");
-        final ObjectNode connection = document.putArray("connections").addObject();
-        connection.put("connectorId", "sample").put("connectionName", "main").put("modulePath", "example")
-                .put("provider", "sample").putObject("configuration");
-        connection.set("credentials", credential(access));
-        connection.put("credentialExpiresAt", Rfc3339NanoTimestamp.fromInstant(expiresAt).toWire());
-        document.putArray("triggerBindings");
-        Files.write(path, MAPPER.writeValueAsBytes(document));
-        ProjectConfigConformanceTest.ownerOnly(path);
     }
 
     private static RefreshingProjectCredentialProvider<ObjectNode> provider(final ConnectionStore store) {

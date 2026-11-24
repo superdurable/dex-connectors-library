@@ -136,8 +136,7 @@ public final class LoadedProject {
     /**
      * Binds one Trigger binding's or feed's durable poll cursor in this project's storage.
      *
-     * <p>Dex Web projects keep the cursor in process memory, as Go does, so a local restart
-     * reseeds; hosted projects keep it in project storage.
+     * <p>Hosted projects keep the cursor in project storage.
      *
      * @param identity the cursor identity
      * @return the store, bound without I/O

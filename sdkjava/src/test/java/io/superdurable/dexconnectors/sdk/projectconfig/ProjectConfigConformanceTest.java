@@ -235,60 +235,15 @@ class ProjectConfigConformanceTest {
     }
 
     @Test
-    void loadsDexWebConnectionsFixtureAndRejectsLooseMode() throws Exception {
-        final Path source = Paths.get(System.getProperty("conformance.directory", "../conformance"), "connections.json");
-        final Path target = temporaryDirectory.resolve("connections.json");
-        Files.write(target, Files.readAllBytes(source));
-        ownerOnly(target);
-        final LoadedProject project = ProjectConfigurationLoader.loadDexWebProject(target);
-        final JsonNode document = MAPPER.readTree(source.toFile());
-        assertEquals(5, document.get("connections").size());
-        assertEquals(document.get("connections").size(), project.getConfiguration().getConnections().size());
-        final Set<String> names = new HashSet<>();
-        for (ConnectionConfiguration entry : project.getConfiguration().getConnections()) {
-            names.add(entry.getConnectionName());
-        }
-        final Set<String> expectedNames = new HashSet<>();
-        final List<JsonNode> authMethodIds = new ArrayList<>();
-        for (JsonNode entry : document.get("connections")) {
-            expectedNames.add(entry.get("connectionName").textValue());
-            authMethodIds.add(entry.get("authMethodIds"));
-        }
-        assertEquals(expectedNames, names);
-        assertEquals(Arrays.asList(MAPPER.readTree("[\"apiKey\"]"), MAPPER.readTree("[\"oauth2\",\"apiKey\"]"),
-                MAPPER.readTree("[\"multipleSecrets\"]"), MAPPER.readTree("[]"), MAPPER.readTree("null")), authMethodIds);
-        assertEquals(0, project.getConfiguration().getTriggerBindings().size());
-        assertEquals("REDACTED_UNICODE_KEY", project.resolveCredential(
-                new ConnectionKey("sample", "élément <&> 😀"), "").get("apiKey").textValue());
-        assertEquals("REDACTED_API_KEY",
-                project.resolveCredential(new ConnectionKey("sample", "api"), "").get("apiKey").textValue());
-        final ObjectNode updated = (ObjectNode) MAPPER.readTree(target.toFile());
-        ((ObjectNode) updated.get("connections").get(0).get("credentials")).put("apiKey", "REDACTED_NEW_KEY");
-        Files.write(target, MAPPER.writeValueAsBytes(updated));
-        ownerOnly(target);
-        assertEquals("REDACTED_NEW_KEY",
-                project.resolveCredential(new ConnectionKey("sample", "api"), "").get("apiKey").textValue());
-        Files.setPosixFilePermissions(target, PosixFilePermissions.fromString("rw-r--r--"));
-        assertThrows(IllegalArgumentException.class, () -> ProjectConfigurationLoader.loadDexWebProject(target));
-    }
-
-    @Test
-    void rejectsLooseSidecarAndMixedSelectors() throws Exception {
-        final Path path = temporaryDirectory.resolve("connections.json");
-        Files.write(path, ("{\"schemaVersion\":\"connectors.dex.dev/local-connections/v1alpha1\","
-                + "\"connections\":[],\"triggerBindings\":[]}").getBytes(StandardCharsets.UTF_8));
-        ownerOnly(path);
-        final Path sidecar = temporaryDirectory.resolve("use-configurations.json");
-        Files.write(sidecar, ("{\"schemaVersion\":\"connectors.dex.dev/local-use-configurations/v1alpha1\","
-                + "\"operationConfigurations\":[]}").getBytes(StandardCharsets.UTF_8));
-        Files.setPosixFilePermissions(sidecar, PosixFilePermissions.fromString("rw-r--r--"));
-        assertThrows(IllegalArgumentException.class, () -> ProjectConfigurationLoader.loadDexWebProject(path));
-        final Map<String, String> mixed = new HashMap<>();
-        mixed.put("DEX_CONNECTOR_CONFIG_FILE", path.toString());
-        mixed.put("DEX_PROJECT_ID", "other");
-        assertThrows(IllegalArgumentException.class, () -> ProjectConfigurationLoader.loadFromEnvironment(mixed, null));
-        ownerOnly(sidecar);
-        assertEquals(0, ProjectConfigurationLoader.loadDexWebProject(path).getConfiguration().getConnections().size());
+    void localDexWebFilesFailFastInThisRelease() {
+        final Map<String, String> local = new HashMap<>();
+        local.put(ProjectConfigurationLoader.LOCAL_CONNECTIONS_FILE_ENVIRONMENT,
+                temporaryDirectory.resolve("connections.json").toString());
+        final UnsupportedOperationException error = assertThrows(UnsupportedOperationException.class,
+                () -> ProjectConfigurationLoader.loadFromEnvironment(local, null));
+        assertEquals("Java SDK 0.1.0 supports hosted project configuration (broker credentials, S3 object store "
+                + "supplied by the application) and static credentials only; local Dex Web files are not supported yet",
+                error.getMessage());
     }
 
     @Test
@@ -444,7 +399,8 @@ class ProjectConfigConformanceTest {
         assertEquals("example-bucket:fixtures/projects/sample-project/preview/configuration/head@1", readKeys.get(0));
         final Map<String, String> mixed = new HashMap<>(hosted);
         mixed.putAll(strings(environment.get("localDexWeb")));
-        assertThrows(IllegalArgumentException.class, () -> ProjectConfigurationLoader.loadFromEnvironment(mixed, fixtureS3));
+        assertThrows(UnsupportedOperationException.class,
+                () -> ProjectConfigurationLoader.loadFromEnvironment(mixed, fixtureS3));
         final Map<String, String> local = new HashMap<>(hosted);
         local.putAll(strings(environment.get("localObjectStoreOverrides")));
         assertEquals(project.getConfiguration().getScope(),

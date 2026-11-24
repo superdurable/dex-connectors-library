@@ -34,9 +34,8 @@ import java.util.function.Function;
  * {@code REAUTHORIZATION_REQUIRED} instead of resubmitting that token. The same holds for any
  * driver failure that does not prove the request never left the process (an address refusal or a
  * {@code ProviderTransportException} that is provably not sent restores {@code READY}), and for an
- * expired refresh admission without a result. Dex Web stores record this in a marker beside
- * {@code connections.json}, so other stores on the file and restarted processes honor it until
- * Dex Web saves a new authorization.
+ * expired refresh admission without a result. The state lives in the shared object store head,
+ * so every replica and restarted process honors it until a new authorization replaces it.
  *
  * <pre>{@code
  * RefreshingProjectCredentialProvider<GmailCredentials> provider = new RefreshingProjectCredentialProvider<>(
@@ -125,8 +124,6 @@ public final class RefreshingProjectCredentialProvider<C> extends ProjectCredent
         if (shared != null) {
             return decodeSharedMaterial(shared.resolve(call.getId().value()));
         }
-        final DexWebObjectStore refreshLocker = store.getObjects() instanceof DexWebObjectStore
-                ? (DexWebObjectStore) store.getObjects() : null;
         while (true) {
             final ObjectNode record = store.readRecord(key).record;
             final String status = ProjectConfigurationRules.text(record, "status");
@@ -141,22 +138,7 @@ public final class RefreshingProjectCredentialProvider<C> extends ProjectCredent
                     }
                 }
                 try {
-                    if (refreshLocker == null) {
-                        recoverOrWait(record);
-                    } else {
-                        // Publishing a recovered credential writes the file, so it holds the refresh lock.
-                        final DexWebRefreshLock.Held held = refreshLocker.lockCredentialRefresh();
-                        try {
-                            // The lock holder may have finished; dispatch on the state reread under the lock.
-                            final ObjectNode reread = store.readRecord(key).record;
-                            final String rereadStatus = ProjectConfigurationRules.text(reread, "status");
-                            if ("AUTHORIZING".equals(rereadStatus) || "REFRESHING".equals(rereadStatus)) {
-                                recoverOrWait(reread);
-                            }
-                        } finally {
-                            held.close();
-                        }
-                    }
+                    recoverOrWait(record);
                 } catch (ObjectConflictException conflict) {
                     // Another replica moved the head first; read it again.
                 }
@@ -172,13 +154,6 @@ public final class RefreshingProjectCredentialProvider<C> extends ProjectCredent
             final CredentialRefreshDriver.State<C> state = new CredentialRefreshDriver.State<>(credentials, expiresAt, now);
             if ((expiresAt == null || expiresAt.isAfter(now)) && !driver.isRefreshRequired(state)) {
                 return credentials;
-            }
-            if (refreshLocker != null) {
-                final C refreshed = refreshWhileLocked(refreshLocker, driver);
-                if (refreshed != null) {
-                    return refreshed;
-                }
-                continue;
             }
             final Admission admission;
             try {
@@ -217,65 +192,6 @@ public final class RefreshingProjectCredentialProvider<C> extends ProjectCredent
             throw new RejectedCredentialNotRefreshedException("authentication rejection does not prove credential expiry");
         }
         return resolveWithRefresh(call, driver);
-    }
-
-    /**
-     * Rereads the record under the Dex Web refresh lock, adopting another process's write-back
-     * instead of refreshing again, and proves the write-back before any provider request.
-     *
-     * @return the usable credential, or {@code null} to read the record again
-     */
-    private C refreshWhileLocked(final DexWebObjectStore refreshLocker, final CredentialRefreshDriver<C> driver)
-            throws IOException, InterruptedException {
-        final DexWebRefreshLock.Held held = refreshLocker.lockCredentialRefresh();
-        try {
-            final ObjectNode record = store.readRecord(key).record;
-            if (!"READY".equals(ProjectConfigurationRules.text(record, "status"))) {
-                return null;
-            }
-            final CredentialMaterial material = store.readMaterial(key, record);
-            final C credentials = decodeMaterial(material);
-            final Instant now = Instant.now();
-            final Instant expiresAt = material.getExpiresAtInstant();
-            final CredentialRefreshDriver.State<C> state = new CredentialRefreshDriver.State<>(credentials, expiresAt, now);
-            if ((expiresAt == null || expiresAt.isAfter(now)) && !driver.isRefreshRequired(state)) {
-                return credentials;
-            }
-            // Another store or an earlier process may have rotated this token with an unknown outcome.
-            if (refreshLocker.isCredentialQuarantined(key, material)) {
-                throw new ReauthorizationRequiredException();
-            }
-            // A rotated refresh token that cannot be written back would strand every other process.
-            try {
-                refreshLocker.verifyCredentialWriteBack(key);
-            } catch (FileChangedSinceReadException changed) {
-                return null;
-            } catch (ConnectionRemovedFromFileException removed) {
-                throw removed;
-            } catch (IOException | RuntimeException error) {
-                throw new RefreshFailedException("project credential refresh failed: the credential cannot be written back");
-            }
-            // Persisted before any provider request: a process that exits mid-exchange leaves it in place.
-            try {
-                refreshLocker.recordExchangeAdmission(key, material);
-            } catch (IOException | RuntimeException error) {
-                throw new RefreshFailedException("project credential refresh failed: the exchange cannot be recorded");
-            }
-            final Admission admission;
-            try {
-                admission = admitRefresh(record, now);
-            } catch (ObjectConflictException conflict) {
-                refreshLocker.clearExchangeAdmission(key);
-                return null;
-            } catch (IOException | RuntimeException error) {
-                // The admission failed before the driver ran, so nothing was exchanged.
-                refreshLocker.clearExchangeAdmission(key);
-                throw error;
-            }
-            return refreshAdmitted(admission, material, state, driver);
-        } finally {
-            held.close();
-        }
     }
 
     Admission admitRefresh(final ObjectNode record, final Instant now) throws IOException {
@@ -333,7 +249,6 @@ public final class RefreshingProjectCredentialProvider<C> extends ProjectCredent
                     throw new ReauthorizationRequiredException();
                 }
                 finishExchange(admission, "READY");
-                clearExchangeAdmission();
                 if (error instanceof AddressRefusalException) {
                     // An address refusal is a configuration fact the caller must see unchanged, as in Python.
                     throw (AddressRefusalException) error;
@@ -357,8 +272,6 @@ public final class RefreshingProjectCredentialProvider<C> extends ProjectCredent
             // A driver that finished during the grace window is a confirmed rotation and is stored now.
             commitRefresh(admission, new CredentialMaterial(encoded,
                     Rfc3339NanoTimestamp.fromInstant(result.getExpiresAt()), prior.getAuthMethod()));
-            // Only a confirmed write-back retires the admission of the exchanged credential.
-            clearExchangeAdmission();
             return result.getCredentials();
         } finally {
             if (wasInterrupted) {
@@ -369,17 +282,10 @@ public final class RefreshingProjectCredentialProvider<C> extends ProjectCredent
 
     /**
      * Keeps the connection from exchanging the current refresh token again: the shared head becomes
-     * {@code REAUTHORIZATION_REQUIRED}, and a Dex Web store keeps the exchange admission it recorded
-     * before sending, which every store and restarted process on the file honors.
+     * {@code REAUTHORIZATION_REQUIRED}, which every replica reads.
      */
     private void markOutcomeUnknown(final Admission admission) throws IOException {
         finishExchange(admission, "REAUTHORIZATION_REQUIRED");
-    }
-
-    private void clearExchangeAdmission() throws IOException {
-        if (store.getObjects() instanceof DexWebObjectStore) {
-            ((DexWebObjectStore) store.getObjects()).clearExchangeAdmission(key);
-        }
     }
 
     /** Reports whether a driver failure proves no request reached the token endpoint. */

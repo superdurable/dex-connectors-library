@@ -84,22 +84,12 @@ class PrivateValueSafetyTest {
     }
 
     @Test
-    void credentialFileParseErrorsCarryNoCauseOrContents() throws Exception {
-        final Path directory = Files.createTempDirectory("sdkjava-private-parse");
-        final Path file = directory.resolve("connections.json");
-        Files.write(file, ("{\"connections\":[{\"credentials\":{\"refresh_token\":" + TOKEN + "}}]}")
-                .getBytes(StandardCharsets.UTF_8));
-        Files.setPosixFilePermissions(file, PosixFilePermissions.fromString("rw-------"));
-        final IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
-                () -> DexWebFiles.readPrivateFile(file));
-        assertNull(error.getCause());
-        assertChainHasNoSecret(error);
+    void credentialParseErrorsCarryNoCauseOrContents() {
         final IllegalArgumentException parseError = assertThrows(IllegalArgumentException.class,
                 () -> GoCompatibleJson.parse(("{\"access_token\":" + TOKEN).getBytes(StandardCharsets.UTF_8)));
         assertNull(parseError.getCause());
+        assertChainHasNoSecret(parseError);
         assertEquals("project document is invalid JSON", parseError.getMessage());
-        Files.delete(file);
-        Files.delete(directory);
     }
 
     @Test

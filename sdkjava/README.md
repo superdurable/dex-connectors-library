@@ -36,7 +36,7 @@ hand-written connector Step.
 | `io.superdurable.dexconnectors.sdk` | Identities (`CallId`, `ConnectionRef`, `OperationRef`), definitions, `Query`/`Mutation`, attempts and results, `QueryStep`/`MutationStep`, credentials, progress |
 | `...sdk.singledispatch` | `Fence`, `DispatchDecision`, `Marker`: bounded single dispatch of non-idempotent writes through Dex heartbeats |
 | `...sdk.connectormock` | Scripted operation mocks and the call report |
-| `...sdk.projectconfig` | Dex Web and project connection storage, credential broker, project credential provider |
+| `...sdk.projectconfig` | Hosted project connection storage, credential broker, project credential provider |
 | `...sdk.oauthtoken`, `...sdk.providerhttp` | Manifest-driven OAuth refresh and provider HTTP |
 | `...sdk.trigger`, `...sdk.webhooktrigger`, `...sdk.relaysignature` | Trigger definitions, delivery to Dex Flows, webhook endpoints, relay signatures |
 | `...sdk.projectconfig` Trigger inbox | `TriggerInbox`, `DurableTriggerTarget`, `TriggerEventCodec`: acknowledged events kept in project storage, byte-compatible with Go |
@@ -61,23 +61,14 @@ does not work around them:
   the attempt (`ConnectorSteps.attemptObservedAt`). Time Dex spent before the
   handler started is not counted.
 
-Local Dex Web mode (`ProjectConfigurationLoader.loadDexWebProject`) has two
-deployment limits:
-
-- One language per workspace on Linux. Java locks `connections.json.lock`
-  with `fcntl`, while Go uses `flock`; on Linux the two do not exclude each
-  other, so a Java process and a Go, Rust, or Python process must not refresh
-  credentials from the same `connections.json`. On macOS they exclude each
-  other.
-- Local state directories are for one application. The local Trigger inbox
-  and poll cursor files are read and compare-and-swapped under a directory
-  lock, so several Java stores on one directory do not lose events, but Go
-  limits its local store to one process and the Linux lock limit above
-  applies to mixed languages. A refresh driver that ignores interruption after
-  its timeout keeps the refresh lock for at most ten more seconds.
-
-Connector ports such as Gmail and Slack inherit these limits: their local mode
-is single-language per workspace.
+First-version limit: local Dex Web files are not supported. Version 0.1.0
+supports hosted project configuration (`ProjectConfigurationLoader` with
+broker credentials and an S3 object store supplied by the application through
+`S3ObjectClient`) and static credentials (`Credentials.staticProvider`) only.
+Selecting local Dex Web files with `DEX_CONNECTOR_CONFIG_FILE` fails fast with
+`UnsupportedOperationException`. Connector ports such as Gmail and Slack
+inherit this limit. Local Dex Web support, with cross-language file locking, is
+planned for a later release.
 
 ## Operations
 
