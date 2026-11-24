@@ -1,0 +1,56 @@
+[package]
+name = "dex-connectors-sdk"
+version = "0.1.0"
+description = "Rust core for Dex-native provider connectors"
+edition = "2024"
+rust-version = "1.97"
+license = "MIT"
+repository = "https://github.com/superdurable/dex-connectors-library"
+homepage = "https://connectors.superdurable.io"
+readme = "README.md"
+keywords = ["dex", "connector", "workflow", "durable"]
+categories = ["api-bindings"]
+include = ["src/**/*.rs", "Cargo.toml", "README.md", "LICENSE"]
+
+[dependencies]
+base64 = "0.22"
+dex-sdk = "1.45.7"
+hmac = "0.12"
+httpdate = "1"
+regex = { version = "1", default-features = false, features = ["std", "unicode-perl"] }
+ring = "0.17"
+rustix = { version = "1", default-features = false, features = ["std", "fs", "process"] }
+# No `logging` feature: the provider transport must not emit TLS or request logs.
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
+serde = { version = "1", features = ["derive"] }
+# preserve_order keeps provider credential and configuration member order, as Go RawMessage does.
+serde_json = { version = "1", features = ["preserve_order", "raw_value"] }
+sha2 = "0.10"
+tracing = "0.1"
+uuid = { version = "1", features = ["v4", "v5"] }
+webpki-roots = "1"
+
+[dev-dependencies]
+log = { version = "0.4", features = ["std"] }
+tempfile = "3"
+tokio = { version = "1", features = ["rt", "time"] }
+
+[lints.rust]
+unsafe_code = "forbid"
+unreachable_pub = "warn"
+unused_must_use = "deny"
+missing_docs = "warn"
+
+[lints.clippy]
+unwrap_used = "warn"
+todo = "warn"
+unimplemented = "warn"
+dbg_macro = "warn"
+let_underscore_must_use = "warn"
+let_underscore_future = "warn"
+unused_result_ok = "warn"
+allow_attributes = "warn"
+allow_attributes_without_reason = "warn"
+print_stdout = "warn"
+print_stderr = "warn"
+match_wildcard_for_single_variants = "warn"

@@ -19,3 +19,6 @@ coverage/
 go.work
 go.work.sum
 .idea/
+/sdkrust/target/
+/conformance/runners/rust/target/
+/connectors/**/rust/target/
