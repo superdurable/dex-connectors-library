@@ -3,7 +3,7 @@
 
 # [Dex Connectors](https://connectors.superdurable.io/)
 
-**Open-source connectors for [Dex](https://github.com/superdurable/dex) applications.** Add a connector to a Flow to call a provider's API as typed Steps, or start Flows and call Flow RPCs from its events; Dex handles retries, idempotency, and recovery. Applications can use released connectors from Go, Python, and TypeScript.
+**Open-source connectors for [Dex](https://github.com/superdurable/dex) applications.** Add a connector to a Flow to call a provider's API as typed Steps, or start Flows and call Flow RPCs from its events. Dex handles retries, idempotency, and recovery. The connector directory tracks package availability for Go, Python, TypeScript, Java, and Rust.
 
 [Browse connectors](https://connectors.superdurable.io/) · [Connector concepts](https://docs.superdurable.io/concepts/connector/) · [Build with AI](https://docs.superdurable.io/build-with-ai/dex-developer-skill/) · [Dex docs](https://docs.superdurable.io/)
 

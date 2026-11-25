@@ -52,6 +52,8 @@ type languageConnectorTestLanguage struct {
 var languageConnectorTestLanguages = []languageConnectorTestLanguage{
 	{name: "python", packageFile: "python/pyproject.toml", packagesPerShard: 240},
 	{name: "typescript", packageFile: "typescript/package.json", packagesPerShard: 60},
+	{name: "java", packageFile: "java/gradle.properties", packagesPerShard: 20},
+	{name: "rust", packageFile: "rust/Cargo.toml", packagesPerShard: 20},
 }
 
 type ciJobSelection struct {

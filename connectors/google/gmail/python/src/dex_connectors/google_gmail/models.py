@@ -106,6 +106,14 @@ class SendMessageInput:
     text_body: str = field(metadata={"dex_json_name": "textBody"})
     # Optional HTML alternative body.
     html_body: str = field(default="", metadata={"dex_json_name": "htmlBody", "dex_json_omit_default": True})
+    # Optional List-Unsubscribe targets: one or two https: URLs or mailto: addresses.
+    list_unsubscribe: tuple[str, ...] = field(
+        default=(), metadata={"dex_json_name": "listUnsubscribe", "dex_json_omit_default": True}
+    )
+    # Adds RFC 8058 List-Unsubscribe-Post one-click unsubscribe; requires an https: target.
+    list_unsubscribe_one_click: bool = field(
+        default=False, metadata={"dex_json_name": "listUnsubscribeOneClick", "dex_json_omit_default": True}
+    )
 
 
 @dataclass(frozen=True, slots=True)

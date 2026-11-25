@@ -492,7 +492,11 @@ class QueueOnlyJobsTest(unittest.TestCase):
     def test_package_tests_and_conformance_replay_run_in_parallel_jobs(self) -> None:
         # Package tests took about 61 minutes (run 43271436573) and every-fixture replay about 39
         # (run 43339498254); in one job they would approach the 120-minute merge queue timeout.
-        self.assertEqual({"make test-${{ matrix.language }}-connectors": ""}, self.step_conditions("language-connectors"))
+        rust_toolchain = 'rustup toolchain install "${RUSTUP_TOOLCHAIN}" --profile minimal && rustup default "${RUSTUP_TOOLCHAIN}"'
+        self.assertEqual({
+            rust_toolchain: "matrix.language == 'rust'",
+            "make test-${{ matrix.language }}-connectors": "",
+        }, self.step_conditions("language-connectors"))
         for job_name in ("language-connectors", "connector-conformance"):
             header = workflow_job(self.workflow, job_name).split("\n    steps:\n", 1)[0]
             self.assertIn("\n    needs: [connector-plan, local-verification]\n"
@@ -502,7 +506,10 @@ class QueueOnlyJobsTest(unittest.TestCase):
 
     def test_every_event_replays_the_selected_connectors_and_only_pull_requests_and_canaries_mutate(self) -> None:
         conditions = self.step_conditions("connector-conformance")
-        self.assertEqual({"make test-connector-conformance", "python3 script/connector_conformance.py --mutation-self-test"}, set(conditions))
+        rust_toolchain = 'rustup toolchain install "${RUSTUP_TOOLCHAIN}" --profile minimal && rustup default "${RUSTUP_TOOLCHAIN}"'
+        self.assertEqual({rust_toolchain, "make test-connector-conformance",
+                          "python3 script/connector_conformance.py --mutation-self-test"}, set(conditions))
+        self.assertEqual("", conditions[rust_toolchain], "Rust packages replay on every event")
         self.assertEqual("", conditions["make test-connector-conformance"], "the queue replays every selected fixture")
         mutation = conditions["python3 script/connector_conformance.py --mutation-self-test"]
         for event_name, runs in (("pull_request", True), ("merge_group", False), ("push", False), ("schedule", True),

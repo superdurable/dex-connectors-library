@@ -79,6 +79,13 @@ class SendMessageInput:
     text_body: str = _dataclass_field(default='', metadata={'dex_json_name': 'textBody'})
     # HTMLBody is the optional HTML message body.
     html_body: str = _dataclass_field(default='', metadata={'dex_json_name': 'htmlBody', 'dex_json_omit_default': True})
+    # ListUnsubscribe optionally lists one or two unsubscribe targets for the RFC 2369 List-Unsubscribe header,
+    # each an absolute https: URL or a mailto: URI of at most 512 characters, without spaces, angle brackets,
+    # commas or line breaks.
+    list_unsubscribe: tuple[str, ...] = _dataclass_field(default=(), metadata={'dex_json_name': 'listUnsubscribe', 'dex_json_omit_default': True})
+    # ListUnsubscribeOneClick adds the RFC 8058 header List-Unsubscribe-Post: List-Unsubscribe=One-Click, so mail
+    # clients can unsubscribe with one POST; it requires an https: target in ListUnsubscribe.
+    list_unsubscribe_one_click: bool = _dataclass_field(default=False, metadata={'dex_json_name': 'listUnsubscribeOneClick', 'dex_json_omit_default': True})
 
     def __post_init__(self) -> None:
         object.__setattr__(self, 'to', _replace_nil_slices(self.to, 1))

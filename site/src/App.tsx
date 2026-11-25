@@ -15,6 +15,7 @@ import { WhatIsDexConnectors } from "./WhatIsDexConnectors";
 import {
   allCategories,
   catalogDocumentUrl,
+  catalogLanguages,
   catalogTotals,
   capabilityMatchesLanguage,
   categoryConnectorCounts,
@@ -24,14 +25,18 @@ import {
   connectorMatchesCategory,
   connectorMatchesQuery,
   connectorMatchesLanguage,
+  javaInstall,
   languageConnectorCounts,
   pythonInstall,
   readCatalogDocument,
+  rustInstall,
   selectedCategoryID,
   type CatalogCapability,
   type CatalogCategory,
   type CatalogConnector,
   type CatalogDocument,
+  type CatalogLanguage,
+  type JavaInstall,
   type PythonInstall,
 } from "./catalogModel.mjs";
 
@@ -39,17 +44,19 @@ const logoOrigin = import.meta.env.DEV ? "local" : "published";
 const connectorLibraryRepositoryApiUrl = "https://api.github.com/repos/superdurable/dex-connectors-library";
 const connectorLibraryStarCountCacheKey = "superdurable-dex-connectors-library-star-count";
 
-type LanguageFilter = "all" | "go" | "python" | "typescript";
+type LanguageFilter = "all" | CatalogLanguage;
 
 const languageFilterLabels: Record<LanguageFilter, string> = {
   all: "All",
   go: "Go",
   python: "Python",
   typescript: "TypeScript",
+  java: "Java",
+  rust: "Rust",
 };
 
-function formatLanguageVersion(language: string, version: string): string {
-  return `${language === "typescript" ? "TypeScript" : language === "python" ? "Python" : "Go"} ${version}`;
+function formatLanguageVersion(language: CatalogLanguage, version: string): string {
+  return `${languageFilterLabels[language]} ${version}`;
 }
 
 /** Inline style that hands a category's accent hue to its chip, card, or navigation icon. */
@@ -342,7 +349,7 @@ function LanguageFilterControl({ language, languageCounts, onLanguageChange }: {
     <fieldset className="language-filter" ref={fieldsetRef}>
       <legend className="visually-hidden">Language</legend>
       <span className="segment-indicator" aria-hidden="true" style={indicatorStyle} />
-      {(["all", "go", "python", "typescript"] as const).map((option) => (
+      {(["all", ...catalogLanguages] as const).map((option) => (
         <label key={option} className={language === option ? "selected" : ""} data-selected={language === option}>
           <input type="radio" name="language" value={option} checked={language === option}
             onChange={() => onLanguageChange(option)} />
@@ -475,10 +482,10 @@ function ConnectorPage({ catalog }: { catalog: LoadState<CatalogDocument> }) {
         <dl className="detail-facts">
           <div>
             <dt>Releases</dt>
-            {Object.entries(connector.languages).map(([language, version]) => (
+            {connectorLanguageNames(connector.languages).map((language) => (
               <dd key={language}>
-                <LanguageIcons languages={[language as "go" | "python" | "typescript"]} versions={connector.languages} />
-                {formatLanguageVersion(language, version)}
+                <LanguageIcons languages={[language]} versions={connector.languages} />
+                {formatLanguageVersion(language, connector.languages[language] ?? "")}
               </dd>
             ))}
           </div>
@@ -500,6 +507,8 @@ function ConnectorPage({ catalog }: { catalog: LoadState<CatalogDocument> }) {
           </h3>
           <InstallCommand command={goInstallCommand} label="Go install command" />
           <PythonInstallCommand install={pythonInstall(connector)} />
+          <JavaInstallCommands install={javaInstall(connector)} />
+          <RustInstallCommand command={rustInstall(connector)} />
         </section>
         <CapabilityList title="UI units" icon="layout" capabilities={connector.uiUnits} versions={connector.languages} showLanguages={false} />
         <CapabilityList title="Triggers" icon="bolt" capabilities={connector.triggers} versions={connector.languages} />
@@ -575,6 +584,22 @@ function PythonInstallCommand({ install }: { install: PythonInstall | null }) {
   );
 }
 
+function JavaInstallCommands({ install }: { install: JavaInstall | null }) {
+  if (!install) {
+    return null;
+  }
+  return (
+    <>
+      <InstallCommand command={install.gradle} label="Gradle dependency" />
+      <InstallCommand command={install.maven} label="Maven dependency" />
+    </>
+  );
+}
+
+function RustInstallCommand({ command }: { command: string | null }) {
+  return command ? <InstallCommand command={command} label="cargo add command" /> : null;
+}
+
 const capabilityKindIcons: Record<string, IconName> = {
   "ui-unit": "layout",
   trigger: "bolt",
@@ -618,8 +643,8 @@ function CapabilityList({ title, icon, capabilities, versions, showLanguages = t
   );
 }
 
-function connectorLanguageNames(versions: CatalogConnector["languages"]): Array<"go" | "python" | "typescript"> {
-  return (["go", "python", "typescript"] as const).filter((language) => Boolean(versions[language]));
+function connectorLanguageNames(versions: CatalogConnector["languages"]): CatalogLanguage[] {
+  return catalogLanguages.filter((language) => Boolean(versions[language]));
 }
 
 function capabilityKindLabel(kind: string): string {

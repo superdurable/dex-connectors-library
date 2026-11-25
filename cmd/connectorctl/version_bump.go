@@ -24,13 +24,13 @@ import (
 	"github.com/superdurable/dex-connectors-library/schema"
 )
 
-const bumpUsage = "usage: connectorctl bump <connector directory> [--go patch|minor|major] [--python patch|minor|major] [--typescript patch|minor|major]"
+const bumpUsage = "usage: connectorctl bump <connector directory> [--go patch|minor|major] [--python patch|minor|major] [--typescript patch|minor|major] [--java patch|minor|major] [--rust patch|minor|major]"
 
 // readmeVersionSuffix captures a prerelease or build suffix, and otherwise ends the version at a word boundary.
 const readmeVersionSuffix = `((?:[-+][0-9A-Za-z.-]*[0-9A-Za-z])?)\b`
 
 // connectorPackageLanguages lists the packages of a connector in the order bump plans and reports them.
-var connectorPackageLanguages = []string{"go", "python", "typescript"}
+var connectorPackageLanguages = append([]string{"go"}, schema.PackageLanguageNames()...)
 
 var (
 	uvLockPackageName    = regexp.MustCompile(`^name = "([^"]+)"$`)
@@ -38,6 +38,8 @@ var (
 	// uvLockRootPackageSource matches the source of the project that uv.lock locks, not of a dependency.
 	uvLockRootPackageSource = regexp.MustCompile(`^source = \{ (?:editable|virtual) = "\." \}$`)
 	pythonNameSeparators    = regexp.MustCompile(`[-_.]+`)
+	// cargoPackageVersionField matches a literal version, not version.workspace = true.
+	cargoPackageVersionField = regexp.MustCompile(`^\s*version\s*=\s*"([^"]+)"\s*(?:#.*)?$`)
 )
 
 // connectorVersionBump plans and writes one connector's next release versions.
@@ -72,6 +74,13 @@ type uvLockPackageBlock struct {
 	name         string
 	versionLine  int
 	isRootSource bool
+}
+
+// cargoLockPackageBlock is one [[package]] entry of Cargo.lock; only the locked crate itself lacks a source.
+type cargoLockPackageBlock struct {
+	name        string
+	versionLine int
+	hasSource   bool
 }
 
 // pendingFileEdits accumulates file contents in memory so a failed bump writes nothing.
@@ -162,7 +171,7 @@ func parseBumpArguments(args []string) (string, map[string]string, error) {
 		levels[language] = level
 	}
 	if len(levels) == 0 {
-		return "", nil, fmt.Errorf("bump requires at least one of --go, --python, or --typescript\n%s", bumpUsage)
+		return "", nil, fmt.Errorf("bump requires at least one of --go, --python, --typescript, --java, or --rust\n%s", bumpUsage)
 	}
 	return connectorPath, levels, nil
 }
@@ -305,7 +314,8 @@ func (bump *connectorVersionBump) validateProposedFiles(edits *pendingFileEdits)
 		return err
 	}
 	scratchConnector := filepath.Join(scratchRoot, filepath.FromSlash(bump.directory))
-	for _, relative := range []string{"connector.yaml", filepath.Join("python", "pyproject.toml"), filepath.Join("typescript", "package.json")} {
+	for _, relative := range []string{"connector.yaml", filepath.Join("python", "pyproject.toml"), filepath.Join("typescript", "package.json"),
+		filepath.Join("java", "gradle.properties"), filepath.Join("rust", "Cargo.toml")} {
 		contents, err := edits.contents(filepath.Join(bump.connectorPath, relative))
 		if err != nil {
 			return err
@@ -422,16 +432,7 @@ func (bump *connectorVersionBump) requirePackage(language string) error {
 }
 
 func (bump *connectorVersionBump) languageDeclaration(language string) *schema.LanguagePackage {
-	if bump.manifest.Spec.Languages == nil {
-		return nil
-	}
-	switch language {
-	case "python":
-		return bump.manifest.Spec.Languages.Python
-	case "typescript":
-		return bump.manifest.Spec.Languages.TypeScript
-	}
-	return nil
+	return bump.manifest.Spec.Languages.DeclarationOfLanguage(language)
 }
 
 // updatedFiles computes the new contents of every version file in memory.
@@ -468,6 +469,22 @@ func (bump *connectorVersionBump) updatedFiles(targets []packageVersionTarget) (
 
 func (bump *connectorVersionBump) editLanguagePackageFiles(edits *pendingFileEdits, language, version string) error {
 	packageDirectory := filepath.Join(bump.connectorPath, language)
+	switch language {
+	case "java":
+		return edits.edit(filepath.Join(packageDirectory, "gradle.properties"), func(contents []byte) ([]byte, error) {
+			return replaceGradlePropertiesVersion(contents, version)
+		})
+	case "rust":
+		crateName := languagePackageName(bump.directory, "rust", bump.languageDeclaration("rust").Package)
+		if err := edits.edit(filepath.Join(packageDirectory, "Cargo.toml"), func(contents []byte) ([]byte, error) {
+			return replaceCargoPackageVersion(contents, version)
+		}); err != nil {
+			return err
+		}
+		return edits.edit(filepath.Join(packageDirectory, "Cargo.lock"), func(contents []byte) ([]byte, error) {
+			return replaceCargoLockRootPackageVersion(contents, crateName, version)
+		})
+	}
 	if language == "python" {
 		packageName := languagePackageName(bump.directory, "python", bump.languageDeclaration("python").Package)
 		if err := edits.edit(filepath.Join(packageDirectory, "pyproject.toml"), func(contents []byte) ([]byte, error) {
@@ -492,7 +509,7 @@ func (bump *connectorVersionBump) editLanguagePackageFiles(edits *pendingFileEdi
 // editREADMEPins rewrites every README pin of a bumped package, keyed by language, to its new version.
 func (bump *connectorVersionBump) editREADMEPins(edits *pendingFileEdits, versions map[string]string) error {
 	packageNames := make(map[string]string)
-	for _, language := range []string{"python", "typescript"} {
+	for _, language := range schema.PackageLanguageNames() {
 		if declaration := bump.languageDeclaration(language); declaration != nil {
 			packageNames[language] = languagePackageName(bump.directory, language, declaration.Package)
 		}
@@ -531,7 +548,7 @@ func (bump *connectorVersionBump) replaceREADMEPins(path string, contents []byte
 
 // regenerateLanguageManifests runs the dex-connector.json generator on the bumped manifest, which embeds the versions.
 func (bump *connectorVersionBump) regenerateLanguageManifests(edits *pendingFileEdits) error {
-	if bump.manifest.Spec.Languages == nil || (bump.manifest.Spec.Languages.Python == nil && bump.manifest.Spec.Languages.TypeScript == nil) {
+	if !bump.manifest.Spec.Languages.HasAnyPackage() {
 		return nil
 	}
 	manifestContents, err := edits.contents(bump.manifestPath)
@@ -757,6 +774,94 @@ func replacePyprojectVersion(contents []byte, version string) ([]byte, error) {
 	return []byte(strings.Join(lines, "")), nil
 }
 
+// replaceGradlePropertiesVersion edits the one version=X.Y.Z line of a Java package's gradle.properties.
+func replaceGradlePropertiesVersion(contents []byte, version string) ([]byte, error) {
+	lines := strings.SplitAfter(string(contents), "\n")
+	replacements := 0
+	for index, line := range lines {
+		body := strings.TrimSuffix(line, "\n")
+		field := javaPropertiesField.FindStringSubmatchIndex(body)
+		if field == nil || body[field[2]:field[3]] != "version" {
+			continue
+		}
+		lines[index] = body[:field[4]] + version + body[field[5]:] + line[len(body):]
+		replacements++
+	}
+	if replacements != 1 {
+		return nil, fmt.Errorf("gradle.properties must declare one version, found %d", replacements)
+	}
+	return []byte(strings.Join(lines, "")), nil
+}
+
+// replaceCargoPackageVersion edits the version of a Rust package's [package] table, never a dependency version.
+func replaceCargoPackageVersion(contents []byte, version string) ([]byte, error) {
+	lines := strings.SplitAfter(string(contents), "\n")
+	isInPackage := false
+	replacements := 0
+	for index, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "[") {
+			isInPackage = trimmed == "[package]"
+		}
+		if !isInPackage {
+			continue
+		}
+		body := strings.TrimSuffix(line, "\n")
+		field := cargoPackageVersionField.FindStringSubmatchIndex(body)
+		if field == nil {
+			continue
+		}
+		lines[index] = body[:field[2]] + version + body[field[3]:] + line[len(body):]
+		replacements++
+	}
+	if replacements != 1 {
+		return nil, fmt.Errorf("[package] must declare one literal version, found %d", replacements)
+	}
+	return []byte(strings.Join(lines, "")), nil
+}
+
+// replaceCargoLockRootPackageVersion edits the locked version of the crate itself, which has no registry source.
+func replaceCargoLockRootPackageVersion(contents []byte, crateName, version string) ([]byte, error) {
+	lines := strings.SplitAfter(string(contents), "\n")
+	var blocks []cargoLockPackageBlock
+	var current *cargoLockPackageBlock
+	for index, line := range lines {
+		body := strings.TrimSuffix(line, "\n")
+		if strings.HasPrefix(body, "[") {
+			current = nil
+			if body == "[[package]]" {
+				blocks = append(blocks, cargoLockPackageBlock{versionLine: -1})
+				current = &blocks[len(blocks)-1]
+			}
+			continue
+		}
+		if current == nil {
+			continue
+		}
+		if name := uvLockPackageName.FindStringSubmatch(body); name != nil {
+			current.name = name[1]
+		} else if uvLockPackageVersion.MatchString(body) {
+			current.versionLine = index
+		} else if strings.HasPrefix(body, "source = ") {
+			current.hasSource = true
+		}
+	}
+	var rootBlocks []cargoLockPackageBlock
+	for _, block := range blocks {
+		if !block.hasSource && block.name == crateName {
+			rootBlocks = append(rootBlocks, block)
+		}
+	}
+	if len(rootBlocks) != 1 || rootBlocks[0].versionLine < 0 {
+		return nil, fmt.Errorf("the lock file must lock root crate %s once without a source and with a version, found %d", crateName, len(rootBlocks))
+	}
+	index := rootBlocks[0].versionLine
+	body := strings.TrimSuffix(lines[index], "\n")
+	field := uvLockPackageVersion.FindStringSubmatchIndex(body)
+	lines[index] = body[:field[2]] + version + body[field[3]:] + lines[index][len(body):]
+	return []byte(strings.Join(lines, "")), nil
+}
+
 // replaceUVLockPackageVersion edits the version of the editable or virtual root package, never a dependency.
 func replaceUVLockPackageVersion(contents []byte, packageName, version string) ([]byte, error) {
 	lines := strings.SplitAfter(string(contents), "\n")
@@ -922,6 +1027,10 @@ func findREADMEVersionPins(path string, contents []byte, directory string, neste
 		patterns = []*regexp.Regexp{regexp.MustCompile(`(?:^|[^A-Za-z0-9._/-])` + regexp.QuoteMeta(packageName) + `==` + packageVersion)}
 	case "typescript":
 		patterns = []*regexp.Regexp{regexp.MustCompile(`(?:^|[^A-Za-z0-9._/@-])` + regexp.QuoteMeta(packageName) + `@` + packageVersion)}
+	case "java":
+		patterns = []*regexp.Regexp{regexp.MustCompile(`(?:^|[^A-Za-z0-9._/:-])` + regexp.QuoteMeta(packageName) + `:` + packageVersion)}
+	case "rust":
+		patterns = []*regexp.Regexp{regexp.MustCompile(`(?:^|[^A-Za-z0-9._/-])` + regexp.QuoteMeta(packageName) + ` = "=?` + packageVersion)}
 	}
 	var pins []readmeVersionPin
 	for patternIndex, pattern := range patterns {

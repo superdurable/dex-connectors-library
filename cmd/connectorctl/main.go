@@ -84,7 +84,7 @@ func run(args []string) error {
 		return catalogCommand(args[1:])
 	case "language-capabilities":
 		if len(args) != 3 {
-			return errors.New("usage: connectorctl language-capabilities <manifest> <python|typescript>")
+			return errors.New("usage: connectorctl language-capabilities <manifest> <python|typescript|java|rust>")
 		}
 		return languageCapabilitiesCommand(args[1], args[2], os.Stdout)
 	case "conformance-operations":
@@ -119,9 +119,10 @@ func run(args []string) error {
 
 type connectorReleaseArtifact struct {
 	ConnectorID string `json:"connectorId"`
-	// Language is python or typescript for a language package release and absent for a Go release.
+	// Language is python, typescript, java, or rust for a language package release and absent for a Go release.
 	Language string `json:"language,omitempty"`
-	// Package is the PyPI or npm package name of a language release and absent for a Go release.
+	// Package is the PyPI, npm, Maven Central, or crates.io package name of a language release and absent for a
+	// Go release. A Maven Central package is its groupId:artifactId coordinate.
 	Package  string          `json:"package,omitempty"`
 	Manifest schema.Manifest `json:"manifest"`
 	// ModulePath is the Go module path of a Go release and absent for a language release.
@@ -157,8 +158,8 @@ func releaseArtifact(args []string) error {
 	flags := flag.NewFlagSet("release-artifact", flag.ContinueOnError)
 	manifestPath := flags.String("manifest", "", "connector manifest path")
 	modulePath := flags.String("module-path", "", "connector Go module path of a Go release")
-	language := flags.String("language", "", "python or typescript for a language package release; omit for Go")
-	packageName := flags.String("package", "", "expected PyPI or npm package name of a language release")
+	language := flags.String("language", "", "python, typescript, java, or rust for a language package release; omit for Go")
+	packageName := flags.String("package", "", "expected PyPI, npm, Maven Central, or crates.io package name of a language release")
 	version := flags.String("version", "", "release version")
 	tag := flags.String("tag", "", "full component tag")
 	sourceSHA := flags.String("source-sha", "", "source commit SHA")
@@ -172,7 +173,7 @@ func releaseArtifact(args []string) error {
 	isLanguageRelease := *language != ""
 	if flags.NArg() != 0 || *manifestPath == "" || *version == "" || *tag == "" || *sourceSHA == "" || *output == "" || *digestOutput == "" ||
 		isLanguageRelease == (*modulePath != "") || (!isLanguageRelease && *packageName != "") {
-		return errors.New("usage: connectorctl release-artifact --manifest PATH (--module-path PATH | --language python|typescript [--package NAME]) --version VERSION --tag TAG --source-sha SHA --output PATH --digest-output PATH")
+		return errors.New("usage: connectorctl release-artifact --manifest PATH (--module-path PATH | --language python|typescript|java|rust [--package NAME]) --version VERSION --tag TAG --source-sha SHA --output PATH --digest-output PATH")
 	}
 	manifestBytes, err := os.ReadFile(*manifestPath)
 	if err != nil {
@@ -277,16 +278,10 @@ func rejectReleaseSource(err error) error {
 // its package name. The version is the declared language version or a release candidate of it, and the tag is
 // <connector directory>/<language>/<version>, so the metadata describes only the release it is attached to.
 func languageReleaseIdentity(manifestPath string, manifest schema.Manifest, language, version, tag, expectedPackage string) (string, error) {
-	if language != "python" && language != "typescript" {
-		return "", fmt.Errorf("release language must be python or typescript, not %q", language)
+	if !slices.Contains(schema.PackageLanguageNames(), language) {
+		return "", fmt.Errorf("release language must be python, typescript, java, or rust, not %q", language)
 	}
-	var declaration *schema.LanguagePackage
-	if manifest.Spec.Languages != nil {
-		declaration = manifest.Spec.Languages.Python
-		if language == "typescript" {
-			declaration = manifest.Spec.Languages.TypeScript
-		}
-	}
+	declaration := manifest.Spec.Languages.DeclarationOfLanguage(language)
 	if declaration == nil {
 		return "", fmt.Errorf("manifest does not declare spec.languages.%s", language)
 	}

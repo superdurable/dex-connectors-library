@@ -284,7 +284,73 @@ export function validateSendInput(input: SendMessageInput, sender: string): stri
     seen.add(canonical);
     recipients.push(formatMailbox(parsed));
   }
+  validateListUnsubscribe(input.listUnsubscribe ?? [], input.listUnsubscribeOneClick ?? false);
   return recipients;
+}
+
+const maxListUnsubscribeTargets = 2;
+const maxListUnsubscribeTargetLength = 512;
+const hostCharacters = /^[A-Za-z0-9.-]+$/;
+const visibleASCII = /^[\x21-\x7e]+$/;
+
+/**
+ * Validate List-Unsubscribe targets with the Go connector's plain string rules, so a target can never add a header
+ * or a second list entry.
+ *
+ * @throws TypeError when a target is invalid or duplicated, or one-click lacks an https target.
+ */
+export function validateListUnsubscribe(targets: readonly string[], isOneClick: boolean): void {
+  if (targets.length > maxListUnsubscribeTargets) throw new TypeError('list unsubscribe accepts at most two targets');
+  let hasHTTPS = false;
+  const seen = new Set<string>();
+  for (const target of targets) {
+    const kind = listUnsubscribeTargetKind(target);
+    if (kind === undefined) throw new TypeError('list unsubscribe target must be an https: URL or a mailto: address');
+    if (seen.has(target)) throw new TypeError('list unsubscribe target is duplicated');
+    seen.add(target);
+    hasHTTPS ||= kind === 'https';
+  }
+  if (isOneClick && !hasHTTPS) throw new TypeError('one-click unsubscribe requires an https list unsubscribe target');
+}
+
+function listUnsubscribeTargetKind(target: string): 'https' | 'mailto' | undefined {
+  if (target === '' || target.length > maxListUnsubscribeTargetLength) return undefined;
+  if (!visibleASCII.test(target) || /[<>,"\\]/.test(target)) return undefined;
+  const lower = target.toLowerCase();
+  if (lower.startsWith('https://')) {
+    const rest = target.slice('https://'.length);
+    const end = rest.search(/[/?#]/);
+    const authority = end >= 0 ? rest.slice(0, end) : rest;
+    const colon = authority.indexOf(':');
+    const host = colon >= 0 ? authority.slice(0, colon) : authority;
+    if (!hostCharacters.test(host)) return undefined;
+    if (colon >= 0 && !/^[0-9]{1,5}$/.test(authority.slice(colon + 1))) return undefined;
+    return 'https';
+  }
+  if (lower.startsWith('mailto:')) {
+    const encoded = target.slice('mailto:'.length).split('?')[0]!;
+    const address = unescapePath(encoded);
+    if (address === undefined || !visibleASCII.test(address) || /[<>",]/.test(address)) return undefined;
+    const parsed = parseMailbox(address);
+    if (!parsed || parsed.display !== '' || parsed.address !== address) return undefined;
+    return 'mailto';
+  }
+  return undefined;
+}
+
+/** Go's url.PathUnescape: every % starts two hex digits, decoded as UTF-8 bytes. */
+function unescapePath(value: string): string | undefined {
+  if (/%(?![0-9A-Fa-f]{2})/.test(value)) return undefined;
+  const bytes = Buffer.from(value.replace(/%([0-9A-Fa-f]{2})/g, (_match, hex: string) => String.fromCharCode(Number.parseInt(hex, 16))), 'latin1');
+  return bytes.toString('utf8');
+}
+
+/** The List-Unsubscribe header lines for validated targets, empty without targets. */
+export function listUnsubscribeHeaders(targets: readonly string[] | undefined, isOneClick: boolean | undefined): string[] {
+  if (!targets?.length) return [];
+  const headers = [`List-Unsubscribe: ${targets.map((target) => `<${target}>`).join(', ')}`];
+  if (isOneClick) headers.push('List-Unsubscribe-Post: List-Unsubscribe=One-Click');
+  return headers;
 }
 
 /**
@@ -306,14 +372,14 @@ export function rfcMessageIDAddress(idempotencyKey: string, runId: string, flowS
 }
 
 /** Build the exact raw RFC 5322 request body shared by sends and replies. */
-export function buildMIMEMessage(callId: string, idempotencyKey: string, messageIdAddress: string, sender: string, recipients: string[], subject: string, textBody: string, htmlBody = '', replyHeaders?: { inReplyTo: string; references: string }): Uint8Array {
-  if (/[\r\n]/.test(sender + subject + messageIdAddress + recipients.join('') + (replyHeaders?.inReplyTo ?? '') + (replyHeaders?.references ?? ''))) throw new TypeError('MIME header contains a newline');
+export function buildMIMEMessage(callId: string, idempotencyKey: string, messageIdAddress: string, sender: string, recipients: string[], subject: string, textBody: string, htmlBody = '', replyHeaders?: { inReplyTo: string; references: string }, extraHeaders: readonly string[] = []): Uint8Array {
+  if (/[\r\n]/.test(sender + subject + messageIdAddress + recipients.join('') + (replyHeaders?.inReplyTo ?? '') + (replyHeaders?.references ?? '') + extraHeaders.join(''))) throw new TypeError('MIME header contains a newline');
   const headers = [
     `From: ${sender}`, `To: ${recipients.join(', ')}`, `Subject: ${encodeSubject(subject)}`,
     `Message-ID: <${messageIdAddress}>`, `${DexMessageIDHeader}: <${messageIdAddress}>`,
   ];
   if (replyHeaders) headers.push(`In-Reply-To: ${replyHeaders.inReplyTo}`, `References: ${replyHeaders.references}`);
-  headers.push(`X-Dex-Call-ID: ${callId}`, 'MIME-Version: 1.0');
+  headers.push(`X-Dex-Call-ID: ${callId}`, ...extraHeaders, 'MIME-Version: 1.0');
   if (!htmlBody) {
     headers.push('Content-Type: text/plain; charset="UTF-8"', 'Content-Transfer-Encoding: 8bit');
     return Buffer.from(`${headers.join('\r\n')}\r\n\r\n${toCRLF(textBody)}`, 'utf8');

@@ -83,6 +83,13 @@ type SendMessageInput struct {
 	TextBody string `json:"textBody"`
 	// HTMLBody is the optional HTML message body.
 	HTMLBody string `json:"htmlBody,omitempty"`
+	// ListUnsubscribe optionally lists one or two unsubscribe targets for the RFC 2369 List-Unsubscribe header,
+	// each an absolute https: URL or a mailto: URI of at most 512 characters, without spaces, angle brackets,
+	// commas or line breaks.
+	ListUnsubscribe []string `json:"listUnsubscribe,omitempty"`
+	// ListUnsubscribeOneClick adds the RFC 8058 header List-Unsubscribe-Post: List-Unsubscribe=One-Click, so mail
+	// clients can unsubscribe with one POST; it requires an https: target in ListUnsubscribe.
+	ListUnsubscribeOneClick bool `json:"listUnsubscribeOneClick,omitempty"`
 }
 
 // SendMessageOutput contains the provider response fields for send message.
@@ -735,7 +742,89 @@ func validateSendInput(input SendMessageInput, sender string) ([]string, *sdkgo.
 		seen[canonical] = true
 		recipients[index] = formatMailbox(address)
 	}
+	if failure := validateListUnsubscribe(input.ListUnsubscribe, input.ListUnsubscribeOneClick); failure != nil {
+		return nil, failure
+	}
 	return recipients, nil
+}
+
+const (
+	maxListUnsubscribeTargets      = 2
+	maxListUnsubscribeTargetLength = 512
+)
+
+// validateListUnsubscribe uses plain string rules, not a URL parser, so every language port accepts the same targets.
+func validateListUnsubscribe(targets []string, isOneClick bool) *sdkgo.Failure {
+	if len(targets) > maxListUnsubscribeTargets {
+		return gmailFailurePointer(sdkgo.FailureValidation, "list unsubscribe accepts at most two targets")
+	}
+	hasHTTPS := false
+	seen := map[string]bool{}
+	for _, target := range targets {
+		isHTTPS, ok := listUnsubscribeTargetKind(target)
+		if !ok {
+			return gmailFailurePointer(sdkgo.FailureValidation, "list unsubscribe target must be an https: URL or a mailto: address")
+		}
+		if seen[target] {
+			return gmailFailurePointer(sdkgo.FailureValidation, "list unsubscribe target is duplicated")
+		}
+		seen[target] = true
+		hasHTTPS = hasHTTPS || isHTTPS
+	}
+	if isOneClick && !hasHTTPS {
+		return gmailFailurePointer(sdkgo.FailureValidation, "one-click unsubscribe requires an https list unsubscribe target")
+	}
+	return nil
+}
+
+// isVisibleASCII reports whether value has only printable ASCII characters other than space.
+func isVisibleASCII(value string) bool {
+	for index := 0; index < len(value); index++ {
+		if value[index] < 0x21 || value[index] > 0x7e {
+			return false
+		}
+	}
+	return true
+}
+
+// listUnsubscribeTargetKind reports whether target is a valid https: target (true) or mailto: target (false).
+func listUnsubscribeTargetKind(target string) (isHTTPS bool, ok bool) {
+	if target == "" || len(target) > maxListUnsubscribeTargetLength {
+		return false, false
+	}
+	if !isVisibleASCII(target) || strings.ContainsAny(target, `<>,"\`) {
+		return false, false
+	}
+	lower := strings.ToLower(target)
+	switch {
+	case strings.HasPrefix(lower, "https://"):
+		rest := target[len("https://"):]
+		authority := rest
+		if end := strings.IndexAny(rest, "/?#"); end >= 0 {
+			authority = rest[:end]
+		}
+		host, port, hasPort := strings.Cut(authority, ":")
+		if host == "" || strings.Trim(host, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-") != "" {
+			return false, false
+		}
+		if hasPort && (port == "" || len(port) > 5 || strings.Trim(port, "0123456789") != "") {
+			return false, false
+		}
+		return true, true
+	case strings.HasPrefix(lower, "mailto:"):
+		encoded, _, _ := strings.Cut(target[len("mailto:"):], "?")
+		address, err := url.PathUnescape(encoded)
+		if err != nil || address == "" || !isVisibleASCII(address) || strings.ContainsAny(address, "<>\",") {
+			return false, false
+		}
+		parsed, err := parseMailbox(address)
+		if err != nil || parsed.Name != "" || parsed.Address != address {
+			return false, false
+		}
+		return false, true
+	default:
+		return false, false
+	}
 }
 
 func parseMailbox(value string) (*mail.Address, error) {
@@ -766,6 +855,16 @@ func buildMIMEMessage(call sdkgo.Call, sender string, recipients []string, input
 	mustWriteMIMEHeader(&message, "Message-ID", "<"+rfcMessageIDAddress(call)+">")
 	mustWriteMIMEHeader(&message, dexMessageIDHeader, "<"+rfcMessageIDAddress(call)+">")
 	mustWriteMIMEHeader(&message, "X-Dex-Call-ID", string(call.ID))
+	if len(input.ListUnsubscribe) > 0 {
+		targets := make([]string, len(input.ListUnsubscribe))
+		for index, target := range input.ListUnsubscribe {
+			targets[index] = "<" + target + ">"
+		}
+		mustWriteMIMEHeader(&message, "List-Unsubscribe", strings.Join(targets, ", "))
+		if input.ListUnsubscribeOneClick {
+			mustWriteMIMEHeader(&message, "List-Unsubscribe-Post", "List-Unsubscribe=One-Click")
+		}
+	}
 	mustWriteMIMEHeader(&message, "MIME-Version", "1.0")
 	if input.HTMLBody == "" {
 		mustWriteMIMEHeader(&message, "Content-Type", `text/plain; charset="UTF-8"`)

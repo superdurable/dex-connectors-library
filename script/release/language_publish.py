@@ -1,24 +1,31 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
 
-"""Select language releases, ship Python first releases on GitHub, and upload them to PyPI later."""
+"""Select language releases and publish registry packages."""
 
 from __future__ import annotations
 
 import argparse
+import base64
 import hashlib
+import http.client
 import json
 import os
 import posixpath
 import re
+import secrets
+import struct
 import subprocess
 import sys
+import tarfile
 import tempfile
 import time
 import tomllib
 import urllib.error
 import urllib.parse
 import urllib.request
+import xml.etree.ElementTree as ET
+import zipfile
 from pathlib import Path
 
 if __package__:
@@ -53,11 +60,13 @@ CONNECTOR_RELEASE_CHECK_LIMIT = 100
 RELEASE_SOURCE_REJECTED_EXIT_CODE = 3
 # It exits with this code when the manifest declares Studio UI and no UI artifact was passed.
 UI_ARTIFACT_REQUIRED_EXIT_CODE = 4
-# It exits with this code when a declared language's pyproject.toml or package.json does not exist.
+# It exits with this code when a declared language's package metadata is absent.
 LANGUAGE_PACKAGE_FILE_MISSING_EXIT_CODE = 5
 CONNECTOR_LANGUAGE_TAG_PATTERN = re.compile(
-    r"(?P<directory>.+)/(?P<language>python|typescript)/(?P<version>v(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*))")
-LANGUAGE_PACKAGE_FILES = {"python": "python/pyproject.toml", "typescript": "typescript/package.json"}
+    r"(?P<directory>.+)/(?P<language>python|typescript|java|rust)/"
+    r"(?P<version>v(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*))")
+LANGUAGE_PACKAGE_FILES = {"python": "python/pyproject.toml", "typescript": "typescript/package.json",
+                          "java": "java/gradle.properties", "rust": "rust/Cargo.toml"}
 
 
 def has_registry_project(language: str, package: str) -> bool:
@@ -65,9 +74,242 @@ def has_registry_project(language: str, package: str) -> bool:
         url = f"https://pypi.org/pypi/{urllib.parse.quote(package)}/json"
     elif language == "typescript":
         url = f"https://registry.npmjs.org/{urllib.parse.quote(package, safe='')}"
+    elif language == "java":
+        group_id, separator, artifact_id = package.partition(":")
+        if separator != ":" or not group_id or not artifact_id:
+            raise ValueError(f"Java package must be a groupId:artifactId coordinate, not {package}")
+        url = (f"https://repo1.maven.org/maven2/{urllib.parse.quote(group_id.replace('.', '/'))}/"
+               f"{urllib.parse.quote(artifact_id, safe='')}/maven-metadata.xml")
+    elif language == "rust":
+        url = f"https://crates.io/api/v1/crates/{urllib.parse.quote(package, safe='')}"
     else:
         raise ValueError(f"unsupported language: {language}")
     return has_registry_url(url, f"{language} project {package}")
+
+
+def has_registry_version(language: str, package: str, version: str) -> bool:
+    """Report whether Maven Central or crates.io already serves one Java or Rust package version.
+
+    Neither registry accepts a version twice, so a rerun after a successful upload skips the upload.
+    """
+    plain_version = version.removeprefix("v")
+    if language == "java":
+        group_id, separator, artifact_id = package.partition(":")
+        if separator != ":" or not group_id or not artifact_id:
+            raise ValueError(f"Java package must be a groupId:artifactId coordinate, not {package}")
+        url = (f"https://repo1.maven.org/maven2/{urllib.parse.quote(group_id.replace('.', '/'))}/"
+               f"{urllib.parse.quote(artifact_id, safe='')}/{urllib.parse.quote(plain_version, safe='')}/"
+               f"{urllib.parse.quote(artifact_id, safe='')}-{urllib.parse.quote(plain_version, safe='')}.pom")
+    elif language == "rust":
+        url = (f"https://crates.io/api/v1/crates/{urllib.parse.quote(package, safe='')}/"
+               f"{urllib.parse.quote(plain_version, safe='')}")
+    else:
+        raise ValueError(f"registry version lookup supports Java and Rust, not {language}")
+    return has_registry_url(url, f"{language} package {package} {plain_version}")
+
+
+def publish_registry_package(language: str, package: str, version: str, dist: Path,
+                             maven_metadata: Path | None, component_path: Path | None,
+                             wait_for_registry: bool) -> None:
+    """Publish the verified archives without building them again."""
+    if __package__:
+        from .component_release import expected_language_artifact_names, verify_language_artifacts
+    else:
+        from component_release import expected_language_artifact_names, verify_language_artifacts
+
+    assets = [dist / name for name in expected_language_artifact_names(language, package, version)]
+    verify_language_artifacts(language, package, version, assets)
+    plain_version = version.removeprefix("v")
+    if language == "java":
+        if maven_metadata is None or component_path is None:
+            raise ValueError("Java publication requires a package directory, POM, and Javadoc JAR")
+        assets = [*assets, *verify_maven_publication(package, plain_version, maven_metadata, component_path)]
+    if has_registry_version(language, package, version):
+        print(f"::notice::{package} {version} is already published; skipping the upload.")
+        return
+    if language == "java":
+        publish_maven_package(package, plain_version, assets)
+    else:
+        publish_crate_package(assets[0], package, plain_version)
+    if not wait_for_registry:
+        return
+    deadline = time.monotonic() + 300
+    while not has_registry_version(language, package, version):
+        if time.monotonic() >= deadline:
+            raise RuntimeError(f"{package} {version} did not become available in the registry")
+        time.sleep(5)
+
+
+def verify_maven_publication(package: str, version: str, metadata: Path, component_path: Path) -> list[Path]:
+    if __package__:
+        from .component_release import JAVA_GROUP_ID, JAVA_SDK_ARTIFACT_ID, java_package_properties
+    else:
+        from component_release import JAVA_GROUP_ID, JAVA_SDK_ARTIFACT_ID, java_package_properties
+
+    group, artifact = package.split(":")
+    pom = metadata / f"{artifact}-{version}.pom"
+    javadoc = metadata / f"{artifact}-{version}-javadoc.jar"
+    if any(path.is_symlink() or not path.is_file() for path in (pom, javadoc)):
+        raise ValueError("Maven publication requires a regular POM and Javadoc JAR")
+    if not zipfile.is_zipfile(javadoc):
+        raise ValueError("Maven Javadoc archive is invalid")
+    namespace = {"": "http://maven.apache.org/POM/4.0.0"}
+    try:
+        project = ET.parse(pom).getroot()
+    except ET.ParseError as error:
+        raise ValueError("Maven POM XML is invalid") from error
+    identity = tuple(project.findtext(key, namespaces=namespace) for key in ("groupId", "artifactId", "version"))
+    if project.tag != f"{{{namespace['']}}}project" or identity != (group, artifact, version):
+        raise ValueError("Maven POM identity does not match the release")
+
+    sdk_version = java_package_properties(component_path).get("dexConnectorsSdkVersion", "")
+    sdk_coordinates = (JAVA_GROUP_ID, JAVA_SDK_ARTIFACT_ID)
+    dependencies = set()
+    for dependency in project.findall("dependencies/dependency", namespace):
+        coordinates = tuple(dependency.findtext(key, "", namespace) for key in ("groupId", "artifactId"))
+        requirement = dependency.findtext("version", "", namespace)
+        scope = dependency.findtext("scope", "compile", namespace)
+        if (not all(re.fullmatch(r"[a-zA-Z0-9_.-]+", coordinate) for coordinate in coordinates)
+                or not requirement.strip() or "${" in requirement or scope == "system"
+                or dependency.find("systemPath", namespace) is not None):
+            raise ValueError(f"Maven POM dependency {':'.join(coordinates)} must use published coordinates and a version")
+        if coordinates == sdk_coordinates:
+            if (coordinates in dependencies or not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", sdk_version)
+                    or requirement != sdk_version or scope not in {"compile", "runtime"}):
+                raise ValueError("Maven POM Connector SDK dependency must match dexConnectorsSdkVersion")
+        dependencies.add(coordinates)
+    if sdk_coordinates not in dependencies:
+        raise ValueError("Maven POM is missing the Connector SDK dependency")
+
+    repository = "github.com/superdurable/dex-connectors-library"
+    scm_url = project.findtext("scm/url", "", namespace).rstrip("/").removesuffix(".git")
+    connections = {f"scm:git:https://{repository}", f"scm:git:ssh://git@{repository}",
+                   f"scm:git:git@{repository.replace('/', ':', 1)}"}
+    if scm_url != f"https://{repository}" or any(
+            project.findtext(f"scm/{field}", "", namespace).removesuffix(".git") not in connections
+            for field in ("connection", "developerConnection")):
+        raise ValueError("Maven POM SCM must identify the Dex Connectors Library repository")
+    return [pom, javadoc]
+
+
+def publish_maven_package(package: str, version: str, assets: list[Path]) -> None:
+    group, artifact = package.split(":")
+    with tempfile.TemporaryDirectory() as temporary_directory:
+        bundle = maven_publication_bundle(Path(temporary_directory), group, artifact, version, assets)
+    username = require_registry_secret("MAVEN_CENTRAL_USERNAME")
+    password = require_registry_secret("MAVEN_CENTRAL_PASSWORD")
+    token = base64.b64encode(f"{username}:{password}".encode()).decode()
+    boundary = secrets.token_hex(16)
+    body = (f"--{boundary}\r\nContent-Disposition: form-data; name=\"bundle\"; filename=\"publication.zip\"\r\n"
+            "Content-Type: application/octet-stream\r\n\r\n").encode() + bundle + f"\r\n--{boundary}--\r\n".encode()
+    deployment_id = registry_publish_request(
+        "central.sonatype.com", "POST", "/api/v1/publisher/upload?publishingType=AUTOMATIC",
+        f"Bearer {token}", f"multipart/form-data; boundary={boundary}", body).decode().strip()
+    if not re.fullmatch(r"[0-9a-f-]{36}", deployment_id):
+        raise RuntimeError("Maven Central returned an invalid deployment ID")
+    print(f"Maven Central deployment: {deployment_id}")
+
+
+def maven_publication_bundle(directory: Path, group: str, artifact: str, version: str, assets: list[Path]) -> bytes:
+    signing_key = require_registry_secret("GPG_SECRET_KEY")
+    gpg = ["gpg", "--batch", "--homedir", str(directory)]
+    subprocess.run([*gpg, "--import"], input=signing_key.encode(), check=True)
+    repository_path = f"{group.replace('.', '/')}/{artifact}/{version}"
+    bundle = directory / "publication.zip"
+    with zipfile.ZipFile(bundle, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        for asset in assets:
+            data = asset.read_bytes()
+            signature = subprocess.run([*gpg, "--armor", "--detach-sign", "--output", "-"],
+                                       input=data, stdout=subprocess.PIPE, check=True).stdout
+            entry = f"{repository_path}/{asset.name}"
+            archive.writestr(entry, data)
+            archive.writestr(entry + ".asc", signature)
+            for algorithm in ("md5", "sha1"):
+                archive.writestr(f"{entry}.{algorithm}", hashlib.new(algorithm, data, usedforsecurity=False).hexdigest())
+    return bundle.read_bytes()
+
+
+def publish_crate_package(asset: Path, package: str, version: str) -> None:
+    metadata = json.dumps(crate_publish_metadata(asset, package, version)).encode()
+    crate = asset.read_bytes()
+    body = struct.pack("<I", len(metadata)) + metadata + struct.pack("<I", len(crate)) + crate
+    response = registry_publish_request("crates.io", "PUT", "/api/v1/crates/new",
+                                        require_registry_secret("CRATES_IO_TOKEN"), "application/octet-stream", body)
+    if json.loads(response).get("errors"):
+        raise RuntimeError("crates.io rejected the package metadata")
+
+
+def crate_publish_metadata(asset: Path, package: str, version: str) -> dict[str, object]:
+    archive_root = f"{package}-{version}"
+    with tarfile.open(asset, "r:gz") as archive:
+        cargo_toml = archive.extractfile(f"{archive_root}/Cargo.toml")
+        if cargo_toml is None:
+            raise ValueError("crate does not contain Cargo.toml")
+        manifest = tomllib.loads(cargo_toml.read().decode())
+        package_metadata = manifest["package"]
+        readme_file = package_metadata.get("readme")
+        readme = None
+        if isinstance(readme_file, str):
+            readme_member = archive.extractfile(f"{archive_root}/{readme_file}")
+            if readme_member is None:
+                raise ValueError("crate does not contain its declared README")
+            readme = readme_member.read().decode()
+    metadata = {key: package_metadata.get(key.replace("_", "-"))
+                for key in ("description", "documentation", "homepage", "license", "license_file",
+                            "repository", "links", "rust_version")}
+    metadata.update({key: package_metadata.get(key, []) for key in ("authors", "keywords", "categories")})
+    dependencies = cargo_publish_dependencies(manifest, None)
+    for target, target_manifest in manifest.get("target", {}).items():
+        dependencies.extend(cargo_publish_dependencies(target_manifest, target))
+    features = manifest.get("features", {})
+    for feature, members in features.items():
+        if any(member.startswith("dep:") for member in members):
+            raise ValueError(f"crate feature {feature} uses unsupported dep: syntax in registry publication")
+    metadata.update(name=package, vers=version, deps=dependencies, features=features,
+                    badges=manifest.get("badges", {}), readme=readme,
+                    readme_file=readme_file if isinstance(readme_file, str) else None)
+    return metadata
+
+
+def cargo_publish_dependencies(manifest: dict, target: str | None) -> list[dict[str, object]]:
+    dependencies = []
+    for kind, table in (("normal", "dependencies"), ("dev", "dev-dependencies"), ("build", "build-dependencies")):
+        for alias, requirement in manifest.get(table, {}).items():
+            if isinstance(requirement, str):
+                requirement = {"version": requirement}
+            version = requirement.get("version")
+            if not isinstance(version, str) or not version.strip():
+                raise ValueError(f"crate dependency {alias} must declare a version")
+            if any(key in requirement for key in ("path", "git", "registry", "registry-index")):
+                raise ValueError(f"crate dependency {alias} must use crates.io")
+            dependencies.append({
+                "name": requirement.get("package", alias), "version_req": version,
+                "features": requirement.get("features", []), "optional": requirement.get("optional", False),
+                "default_features": requirement.get("default-features", True), "target": target, "kind": kind,
+                "registry": None, "explicit_name_in_toml": alias if "package" in requirement else None,
+            })
+    return dependencies
+
+
+def require_registry_secret(name: str) -> str:
+    value = os.environ.get(name)
+    if not value:
+        raise ValueError(f"{name} is missing")
+    return value
+
+
+def registry_publish_request(host: str, method: str, path: str, authorization: str, content_type: str,
+                             body: bytes) -> bytes:
+    connection = http.client.HTTPSConnection(host, timeout=60)
+    try:
+        connection.request(method, path, body, headers={"Authorization": authorization, "Content-Type": content_type,
+                                                        "User-Agent": "dex-connector-release/1", "Accept": "application/json"})
+        response = connection.getresponse()
+        if not 200 <= response.status < 300:
+            raise RuntimeError(f"{host} rejected the upload: HTTP {response.status}")
+        return response.read()
+    finally:
+        connection.close()
 
 
 def has_registry_url(url: str, description: str, *, sleep=time.sleep) -> bool:
@@ -875,6 +1117,24 @@ def main() -> int:
     pypi_tags_parser.add_argument("--matrix-output", type=Path, required=True)
     pypi_tags_parser.add_argument("--completed-language-tags", type=Path, required=True)
     pypi_tags_parser.add_argument("--output", type=Path, required=True)
+    registry_version_parser = commands.add_parser("registry-version-state")
+    registry_version_parser.add_argument("--language", choices=("java", "rust"), required=True)
+    registry_version_parser.add_argument("--package", required=True)
+    registry_version_parser.add_argument("--version", required=True)
+    registry_version_parser.add_argument("--github-output", type=Path, required=True)
+    for name in ("publish-registry-package", "publish-language-candidate"):
+        registry_publish_parser = commands.add_parser(name)
+        registry_publish_parser.add_argument("--language", choices=("java", "rust"), required=True)
+        registry_publish_parser.add_argument("--package", required=True)
+        registry_publish_parser.add_argument("--version", required=True)
+        registry_publish_parser.add_argument("--dist", type=Path, required=True)
+        registry_publish_parser.add_argument("--maven-metadata", type=Path)
+        registry_publish_parser.add_argument("--component-path", type=Path)
+    verify_maven_parser = commands.add_parser("verify-maven-publication")
+    verify_maven_parser.add_argument("--package", required=True)
+    verify_maven_parser.add_argument("--version", required=True)
+    verify_maven_parser.add_argument("--maven-metadata", type=Path, required=True)
+    verify_maven_parser.add_argument("--component-path", type=Path, required=True)
     limit_parser = commands.add_parser("check-project-limit")
     limit_parser.add_argument("--repository", required=True)
     limit_parser.add_argument("--run-id", required=True)
@@ -957,6 +1217,17 @@ def main() -> int:
                   f"{len(selection['first'])} first publishes, {len(selection['github_first'])} GitHub-first "
                   f"Python releases, {len(selection['pypi_pending'])} pending PyPI uploads, "
                   f"{len(selection['deferred'])} deferred")
+        elif args.command == "registry-version-state":
+            is_published = has_registry_version(args.language, args.package, args.version)
+            with args.github_output.open("a", encoding="utf-8") as output:
+                output.write(f"published={'true' if is_published else 'false'}\n")
+            print(f"{args.package} {args.version} {'is already' if is_published else 'is not yet'} "
+                  f"published for {args.language}")
+        elif args.command in {"publish-registry-package", "publish-language-candidate"}:
+            publish_registry_package(args.language, args.package, args.version, args.dist, args.maven_metadata,
+                                     args.component_path, wait_for_registry=args.command == "publish-language-candidate")
+        elif args.command == "verify-maven-publication":
+            verify_maven_publication(args.package, args.version.removeprefix("v"), args.maven_metadata, args.component_path)
         elif args.command == "select-pending-pypi":
             if args.first_publish_limit < 0:
                 raise ValueError("PyPI first publish limit must not be negative")
@@ -1057,8 +1328,8 @@ def main() -> int:
                 output.write(f"published_count={len(summary['published'])}\n")
             write_step_summary(Path(os.environ["GITHUB_STEP_SUMMARY"]), summary)
             print(json.dumps(summary))
-    except (OSError, ValueError, RuntimeError, KeyError, json.JSONDecodeError,
-            subprocess.CalledProcessError) as error:
+    except (OSError, ValueError, RuntimeError, KeyError, json.JSONDecodeError, ET.ParseError,
+            http.client.HTTPException, subprocess.CalledProcessError) as error:
         print(error, file=sys.stderr)
         return 1
     return 0

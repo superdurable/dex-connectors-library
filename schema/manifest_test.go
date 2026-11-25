@@ -549,6 +549,58 @@ func TestLanguageManifestVersionAndPackageValidation(t *testing.T) {
 	}
 }
 
+func TestJavaAndRustLanguageManifestValidation(t *testing.T) {
+	fixture, err := os.ReadFile("testdata/google-oauth.yaml")
+	require.NoError(t, err)
+	for _, testCase := range []struct {
+		name          string
+		languageBlock string
+		problem       string
+	}{
+		{name: "valid independent versions", languageBlock: "  languages:\n    java: {version: v0.1.0, package: 'io.superdurable:dex-connector-google-sheets', operations: [appendRows], triggers: []}\n    rust: {version: v0.3.0, package: dex-connector-google-sheets, operations: [appendRows], triggers: []}\n"},
+		{name: "derived package names", languageBlock: "  languages:\n    java: {version: v0.1.0, operations: [appendRows], triggers: []}\n    rust: {version: v0.3.0, operations: [appendRows], triggers: []}\n"},
+		{name: "invalid Java version", languageBlock: "  languages:\n    java: {version: 0.1.0, operations: [], triggers: []}\n", problem: "spec.languages.java.version"},
+		{name: "invalid Rust version", languageBlock: "  languages:\n    rust: {version: v0.1.0-rc.1, operations: [], triggers: []}\n", problem: "spec.languages.rust.version"},
+		{name: "Java package outside the io.superdurable group", languageBlock: "  languages:\n    java: {version: v0.1.0, package: 'com.example:dex-connector-google-sheets', operations: [], triggers: []}\n", problem: "spec.languages.java.package"},
+		{name: "invalid crate name", languageBlock: "  languages:\n    rust: {version: v0.1.0, package: Dex_Connector, operations: [], triggers: []}\n", problem: "spec.languages.rust.package"},
+		{name: "Java timestamp format", languageBlock: "  languages:\n    java: {version: v0.1.0, timestampFormat: rfc3339Nano, operations: [], triggers: []}\n", problem: "spec.languages.java.timestampFormat is Python-only"},
+		{name: "Rust timestamp format", languageBlock: "  languages:\n    rust: {version: v0.1.0, timestampFormat: rfc3339Nano, operations: [], triggers: []}\n", problem: "spec.languages.rust.timestampFormat is Python-only"},
+		{name: "missing Java lists", languageBlock: "  languages:\n    java: {version: v0.1.0}\n", problem: "spec.languages.java.operations is required"},
+		{name: "unknown Rust operation", languageBlock: "  languages:\n    rust: {version: v0.1.0, operations: [missing], triggers: []}\n", problem: "spec.languages.rust.operations names unknown missing"},
+		{name: "unknown Java Trigger", languageBlock: "  languages:\n    java: {version: v0.1.0, operations: [], triggers: [missing]}\n", problem: "spec.languages.java.triggers names unknown missing"},
+		{name: "duplicate Rust Trigger", languageBlock: "  languages:\n    rust: {version: v0.1.0, operations: [], triggers: [messageReceived, messageReceived]}\n", problem: "spec.languages.rust.triggers has duplicate name messageReceived"},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			contents := strings.Replace(string(fixture), "spec:\n", "spec:\n"+testCase.languageBlock, 1)
+			manifest, err := schema.Decode(strings.NewReader(contents))
+			if testCase.problem != "" {
+				require.ErrorContains(t, err, testCase.problem)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, "v0.1.0", manifest.Spec.Languages.DeclarationOfLanguage("java").Version)
+			require.Equal(t, "v0.3.0", manifest.Spec.Languages.DeclarationOfLanguage("rust").Version)
+			require.True(t, manifest.Spec.Languages.HasAnyPackage())
+		})
+	}
+}
+
+func TestLanguageDeclarationAccessors(t *testing.T) {
+	var absent *schema.Languages
+	require.Nil(t, absent.DeclarationOfLanguage("java"))
+	require.False(t, absent.HasAnyPackage())
+	require.Equal(t, []string{"python", "typescript", "java", "rust"}, schema.PackageLanguageNames())
+	languages := &schema.Languages{}
+	require.False(t, languages.HasAnyPackage())
+	for _, name := range schema.PackageLanguageNames() {
+		declaration := &schema.LanguagePackage{Version: "v0.1.0"}
+		languages.ReplaceDeclarationOfLanguage(name, declaration)
+		require.Same(t, declaration, languages.DeclarationOfLanguage(name))
+	}
+	require.Nil(t, languages.DeclarationOfLanguage("go"))
+	require.Panics(t, func() { languages.ReplaceDeclarationOfLanguage("go", nil) })
+}
+
 func TestLanguageCapabilityJSONSchemaRequiresListsWithoutDuplicates(t *testing.T) {
 	contents, err := os.ReadFile("connector-manifest.schema.json")
 	require.NoError(t, err)
@@ -589,6 +641,24 @@ func TestLanguageCapabilityJSONSchemaRequiresListsWithoutDuplicates(t *testing.T
 	require.NoError(t, err)
 	require.NoError(t, typeScriptLanguage.Validate(map[string]any{"version": "v0.1.0", "operations": []any{}, "triggers": []any{"messageReceived"}}))
 	require.ErrorContains(t, typeScriptLanguage.Validate(map[string]any{"version": "v0.1.0", "operations": []any{}, "triggers": []any{"messageReceived", "messageReceived"}}), "triggers")
+
+	for _, testCase := range []struct {
+		definitionName string
+		validPackage   string
+		invalidPackage string
+	}{
+		{definitionName: "javaLanguage", validPackage: "io.superdurable:dex-connector-slack", invalidPackage: "dex-connector-slack"},
+		{definitionName: "rustLanguage", validPackage: "dex-connector-slack", invalidPackage: "dex_connector_slack"},
+	} {
+		resource := "https://connectors.dex.dev/" + testCase.definitionName + ".schema.json"
+		require.NoError(t, compiler.AddResource(resource, definition.(map[string]any)["$defs"].(map[string]any)[testCase.definitionName]))
+		compiledLanguage, err := compiler.Compile(resource)
+		require.NoError(t, err)
+		require.NoError(t, compiledLanguage.Validate(map[string]any{"version": "v0.1.0", "package": testCase.validPackage, "operations": []any{}, "triggers": []any{"messageReceived"}}))
+		require.ErrorContains(t, compiledLanguage.Validate(map[string]any{"version": "v0.1.0", "package": testCase.invalidPackage, "operations": []any{}, "triggers": []any{}}), "package")
+		require.ErrorContains(t, compiledLanguage.Validate(map[string]any{"version": "v0.1.0", "operations": []any{}, "triggers": []any{"messageReceived", "messageReceived"}}), "triggers")
+		require.ErrorContains(t, compiledLanguage.Validate(map[string]any{"version": "v0.1.0", "timestampFormat": "rfc3339Nano", "operations": []any{}, "triggers": []any{}}), "timestampFormat")
+	}
 }
 
 func TestExecutionRetryPolicyValidation(t *testing.T) {

@@ -10,8 +10,8 @@ alwaysApply: true
   may bootstrap the repository but does not own implementation, acceptance,
   or release rules.
 - Keep `sdkgo` and each connector's `go/` subdirectory in separate Go modules.
-- Keep connector manifests, READMEs, company logos, UI, Python, and TypeScript packages outside `go/`.
-- Keep Python SDK packages in `sdkpython/`, TypeScript SDK packages in `sdkts/`, and connector packages in their `python/` and `typescript/` directories.
+- Keep connector manifests, READMEs, company logos, UI, and the `python/`, `typescript/`, `java/`, and `rust/` packages outside `go/`.
+- Keep language SDKs in `sdkpython/`, `sdkts/`, `sdkjava/`, and `sdkrust/`, and connector packages in their `python/`, `typescript/`, `java/`, and `rust/` directories.
 - The first connector directory is its company, matches `metadata.company`, and
   contains `logo.svg`.
 - `connector.yaml` owns generated Config, Credentials, definitions, factories,

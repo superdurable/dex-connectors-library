@@ -8,11 +8,15 @@ import hashlib
 import json
 import os
 import re
+import struct
 import subprocess
+import tarfile
 import tempfile
 import textwrap
 import unittest
 import urllib.error
+import zipfile
+from io import BytesIO
 from pathlib import Path
 from unittest.mock import patch
 
@@ -621,6 +625,37 @@ class ReleaseMutationTests(unittest.TestCase):
 
 
 class RegistryLookupTests(unittest.TestCase):
+    def test_java_and_rust_projects_resolve_on_maven_central_and_crates_io(self) -> None:
+        with patch.object(language_publish, "has_registry_url", return_value=True) as lookup:
+            self.assertTrue(language_publish.has_registry_project("java", "io.superdurable:dex-connector-slack"))
+            self.assertTrue(language_publish.has_registry_project("rust", "dex-connector-slack"))
+        self.assertEqual([
+            "https://repo1.maven.org/maven2/io/superdurable/dex-connector-slack/maven-metadata.xml",
+            "https://crates.io/api/v1/crates/dex-connector-slack",
+        ], [call.args[0] for call in lookup.call_args_list])
+        with self.assertRaisesRegex(ValueError, "groupId:artifactId"):
+            language_publish.has_registry_project("java", "dex-connector-slack")
+        with patch.object(language_publish, "has_registry_url", return_value=False) as lookup:
+            self.assertFalse(language_publish.has_registry_version("java", "io.superdurable:dex-connector-slack", "v0.1.0"))
+            self.assertFalse(language_publish.has_registry_version("rust", "dex-connector-slack", "v0.1.0-rc.1"))
+        self.assertEqual([
+            "https://repo1.maven.org/maven2/io/superdurable/dex-connector-slack/0.1.0/dex-connector-slack-0.1.0.pom",
+            "https://crates.io/api/v1/crates/dex-connector-slack/0.1.0-rc.1",
+        ], [call.args[0] for call in lookup.call_args_list])
+        with self.assertRaisesRegex(ValueError, "supports Java and Rust"):
+            language_publish.has_registry_version("python", "dex-connector-slack", "v0.1.0")
+
+    def test_java_and_rust_first_releases_publish_without_a_github_first_release(self) -> None:
+        selection = select([item("slack", "java"), item("gmail", "rust")], 0,
+                           project_exists=lambda _language, _package: False,
+                           pypi_release_exists=lambda _package, _version: False)
+        self.assertEqual(["slack", "gmail"], names(selection["first"]))
+        self.assertEqual([], selection["github_first"])
+        self.assertEqual(("connectors/slack", "java", "v0.1.0"),
+                         language_publish.split_connector_language_tag("connectors/slack/java/v0.1.0"))
+        self.assertEqual(("connectors/google/gmail", "rust", "v0.2.0"),
+                         language_publish.split_connector_language_tag("connectors/google/gmail/rust/v0.2.0"))
+
     def test_retries_a_registry_5xx_before_treating_404_as_absent(self) -> None:
         responses = [urllib.error.HTTPError("https://pypi.org", 503, "busy", {}, None),
                      urllib.error.HTTPError("https://pypi.org", 404, "missing", {}, None)]
@@ -699,6 +734,138 @@ class RegistryLookupTests(unittest.TestCase):
         self.assertTrue(language_publish.has_run_project_limit_artifact(
             "superdurable/dex-connectors-library", "42", fetch=fetch))
         self.assertEqual("https://api.github.com/next", attempts[1])
+
+
+class PublishCandidateTests(unittest.TestCase):
+    def test_uploads_the_packaged_crate_with_its_registry_metadata(self) -> None:
+        package = "dex-connector-chat"
+        version = "0.1.0-rc.1"
+        manifest = b"""[package]
+name = "dex-connector-chat"
+version = "0.1.0-rc.1"
+readme = "README.md"
+license = "MIT"
+
+[dependencies]
+dex-connectors-sdk = "=0.1.0"
+
+[target.'cfg(unix)'.dev-dependencies]
+renamed = { package = "original", version = "1.2", default-features = false }
+"""
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            asset = Path(temporary_directory) / f"{package}-{version}.crate"
+            with tarfile.open(asset, "w:gz") as archive:
+                for file_name, contents in (("Cargo.toml", manifest), ("README.md", b"# Chat")):
+                    entry = tarfile.TarInfo(f"{package}-{version}/{file_name}")
+                    entry.size = len(contents)
+                    archive.addfile(entry, BytesIO(contents))
+            with patch.dict(os.environ, {"CRATES_IO_TOKEN": "test-token"}), \
+                    patch.object(language_publish, "registry_publish_request", return_value=b"{}") as upload:
+                language_publish.publish_crate_package(asset, package, version)
+            host, method, path, authorization, content_type, upload_body = upload.call_args.args
+            self.assertEqual((host, method, path, authorization, content_type),
+                             ("crates.io", "PUT", "/api/v1/crates/new", "test-token", "application/octet-stream"))
+            metadata_length = struct.unpack_from("<I", upload_body)[0]
+            metadata = json.loads(upload_body[4:4 + metadata_length])
+            crate_length = struct.unpack_from("<I", upload_body, 4 + metadata_length)[0]
+            self.assertEqual(crate_length, asset.stat().st_size)
+            self.assertEqual(upload_body[8 + metadata_length:], asset.read_bytes())
+            self.assertEqual((metadata["name"], metadata["vers"], metadata["readme"]), (package, version, "# Chat"))
+            self.assertEqual(metadata["deps"][0]["version_req"], "=0.1.0")
+            self.assertEqual(metadata["deps"][1], {
+                "name": "original", "version_req": "1.2", "features": [], "optional": False,
+                "default_features": False, "target": "cfg(unix)", "kind": "dev",
+                "registry": None, "explicit_name_in_toml": "renamed",
+            })
+
+    def test_crate_publication_explains_unsupported_dependencies_and_features(self) -> None:
+        package, version = "dex-connector-chat", "0.1.0"
+        for manifest_tail, error in (
+            ('[dependencies]\nhelper = { path = "../helper" }', "dependency helper must declare a version"),
+            ('[dependencies]\nhelper = { version = "1", optional = true }\n[features]\nextra = ["dep:helper"]',
+             "feature extra uses unsupported dep: syntax"),
+        ):
+            with self.subTest(error=error), tempfile.TemporaryDirectory() as temporary_directory:
+                asset = Path(temporary_directory) / f"{package}-{version}.crate"
+                contents = (f'[package]\nname = "{package}"\nversion = "{version}"\n' + manifest_tail).encode()
+                with tarfile.open(asset, "w:gz") as archive:
+                    entry = tarfile.TarInfo(f"{package}-{version}/Cargo.toml")
+                    entry.size = len(contents)
+                    archive.addfile(entry, BytesIO(contents))
+                with self.assertRaisesRegex(ValueError, error):
+                    language_publish.crate_publish_metadata(asset, package, version)
+
+    def test_maven_checks_pom_identity_dependencies_and_scm(self) -> None:
+        package = "io.superdurable:dex-connector-chat"
+        version = "0.1.0-rc.1"
+        repository = "https://github.com/superdurable/dex-connectors-library"
+        valid_pom = f"""<project xmlns="http://maven.apache.org/POM/4.0.0">
+          <modelVersion>4.0.0</modelVersion>
+          <groupId>io.superdurable</groupId><artifactId>dex-connector-chat</artifactId><version>{version}</version>
+          <dependencies><dependency>
+            <groupId>io.superdurable</groupId><artifactId>dex-connectors-sdk</artifactId><version>0.1.0</version>
+            <scope>runtime</scope>
+          </dependency></dependencies>
+          <scm><url>{repository}</url><connection>scm:git:{repository}.git</connection>
+            <developerConnection>scm:git:ssh://git@github.com/superdurable/dex-connectors-library.git</developerConnection>
+          </scm>
+        </project>"""
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            metadata = Path(temporary_directory)
+            pom = metadata / f"dex-connector-chat-{version}.pom"
+            javadoc = metadata / f"dex-connector-chat-{version}-javadoc.jar"
+            with zipfile.ZipFile(javadoc, "w") as archive:
+                archive.writestr("index.html", "Javadoc")
+            (metadata / "gradle.properties").write_text("dexConnectorsSdkVersion=0.1.0\n")
+            pom.write_text(valid_pom)
+            self.assertEqual(language_publish.verify_maven_publication(package, version, metadata, metadata),
+                             [pom, javadoc])
+            for source, replacement, error in (
+                ("<artifactId>dex-connector-chat", "<artifactId>other", "POM identity"),
+                ("<version>0.1.0</version>", "<version>0.2.0</version>", "match dexConnectorsSdkVersion"),
+                ("<artifactId>dex-connectors-sdk", "<artifactId>other-sdk", "missing the Connector SDK"),
+                ("<scope>runtime", "<scope>system", "published coordinates"),
+                (f"<url>{repository}", "<url>https://github.com/other/repository", "POM SCM"),
+                (f"scm:git:{repository}", "scm:git:https://github.com/other/repository", "POM SCM"),
+            ):
+                with self.subTest(error=error, replacement=replacement):
+                    pom.write_text(valid_pom.replace(source, replacement, 1))
+                    with self.assertRaisesRegex(ValueError, error):
+                        language_publish.verify_maven_publication(package, version, metadata, metadata)
+
+    def test_stable_maven_upload_passes_all_verified_artifacts_to_the_signer(self) -> None:
+        package, version = "io.superdurable:dex-connector-chat", "0.1.0"
+        dist, metadata, component = Path("/dist"), Path("/metadata"), Path("/component")
+        jars = [dist / f"dex-connector-chat-{version}{suffix}.jar" for suffix in ("-sources", "")]
+        maven_files = [metadata / f"dex-connector-chat-{version}{suffix}" for suffix in (".pom", "-javadoc.jar")]
+        with patch("script.release.component_release.verify_language_artifacts") as verify, \
+                patch.object(language_publish, "verify_maven_publication", return_value=maven_files) as verify_maven, \
+                patch.object(language_publish, "has_registry_version", return_value=False) as state, \
+                patch.object(language_publish, "publish_maven_package") as upload:
+            language_publish.publish_registry_package("java", package, "v" + version, dist, metadata, component, False)
+        verify.assert_called_once_with("java", package, "v" + version, jars)
+        verify_maven.assert_called_once_with(package, version, metadata, component)
+        state.assert_called_once()
+        upload.assert_called_once_with(package, version, [*jars, *maven_files])
+
+    def test_candidate_upload_jobs_use_only_trusted_publisher(self) -> None:
+        path = Path(__file__).resolve().parents[2] / ".github/workflows/release-candidate.yml"
+        _, publication = path.read_text().split("\n  publish-language:\n")
+        self.assertIn("publish-language-candidate --language java", publication)
+        self.assertIn("publish-language-candidate --language rust", publication)
+        self.assertNotIn("./gradlew", publication)
+        self.assertNotIn("cargo publish", publication)
+
+    def test_stable_upload_jobs_use_only_trusted_publisher(self) -> None:
+        path = Path(__file__).resolve().parents[2] / ".github/workflows/release-connector.yml"
+        build, publication = path.read_text().split("\n  publish-language:\n")
+        self.assertIn("publish-registry-package --language java", publication)
+        self.assertIn("publish-registry-package --language rust", publication)
+        self.assertIn("verify-maven-publication", build)
+        self.assertNotIn("./gradlew", publication)
+        self.assertNotIn("cargo publish", publication)
+        for secret in ("MAVEN_CENTRAL_USERNAME", "MAVEN_CENTRAL_PASSWORD", "GPG_SECRET_KEY", "CRATES_IO_TOKEN"):
+            self.assertNotIn(f"secrets.{secret}", build)
 
 
 class PublishPypiTests(unittest.TestCase):

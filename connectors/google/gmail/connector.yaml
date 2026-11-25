@@ -6,16 +6,16 @@ metadata:
   description: Start and update Dex Flows from received Gmail messages, search messages and threads, inspect labels, and send or reply to email.
   company: Google
   categories: [communication]
-  version: v0.29.2
+  version: v0.30.0
 spec:
   provider: google
   languages:
     python:
-      version: v0.5.2
+      version: v0.6.0
       operations: [getMessage, sendMessage, replyToMessage]
       triggers: [messageReceived, replyReceived]
     typescript:
-      version: v0.5.2
+      version: v0.6.0
       operations: [getMessage, sendMessage, replyToMessage]
       triggers: [messageReceived, replyReceived]
   codegen:

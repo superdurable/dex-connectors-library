@@ -83,17 +83,19 @@ func generatedLanguageManifestFiles(manifestPath string, manifest schema.Manifes
 	}
 	for _, language := range []struct {
 		name               string
+		ecosystem          string
 		packageDeclaration *schema.LanguagePackage
-		hasSendCaps        func(manifestPath string) (bool, error)
 	}{
-		{name: "python", packageDeclaration: manifest.Spec.Languages.Python, hasSendCaps: hasPythonRepeatOnUnknownSendCaps},
-		{name: "typescript", packageDeclaration: manifest.Spec.Languages.TypeScript, hasSendCaps: hasTypeScriptRepeatOnUnknownSendCaps},
+		{name: "python", ecosystem: "pypi", packageDeclaration: manifest.Spec.Languages.Python},
+		{name: "typescript", ecosystem: "npm", packageDeclaration: manifest.Spec.Languages.TypeScript},
+		{name: "java", ecosystem: "maven", packageDeclaration: manifest.Spec.Languages.Java},
+		{name: "rust", ecosystem: "cargo", packageDeclaration: manifest.Spec.Languages.Rust},
 	} {
 		if language.packageDeclaration == nil {
 			continue
 		}
 		// Each package advertises the tier only when its own SDK requirement carries it, whatever Go requires.
-		hasSendCaps, err := language.hasSendCaps(manifestPath)
+		hasSendCaps, err := languageHasRepeatOnUnknownSendCaps(manifestPath, language.name)
 		if err != nil {
 			return nil, err
 		}
@@ -101,7 +103,7 @@ func generatedLanguageManifestFiles(manifestPath string, manifest schema.Manifes
 			ConnectorID: manifest.Metadata.Name,
 			ReleaseTag:  connectorReleaseTag(connectorDirectory, manifest.Metadata.Version),
 			Package: dexConnectorPackageIdentity{
-				Ecosystem: map[string]string{"python": "pypi", "typescript": "npm"}[language.name],
+				Ecosystem: language.ecosystem,
 				Name:      languagePackageName(connectorDirectory, language.name, language.packageDeclaration.Package),
 				Version:   strings.TrimPrefix(language.packageDeclaration.Version, "v"),
 			},
@@ -116,7 +118,7 @@ func generatedLanguageManifestFiles(manifestPath string, manifest schema.Manifes
 				continue
 			}
 			fields := dexConnectorFields{ConnectionName: "connectionName", ResultAttribute: "resultAttribute"}
-			if language.name == "python" {
+			if language.name == "python" || language.name == "rust" {
 				fields.StepType = "step_type"
 				fields.Annotations = "annotations"
 				fields.ConnectionName = "connection_name"
@@ -136,7 +138,7 @@ func generatedLanguageManifestFiles(manifestPath string, manifest schema.Manifes
 				factory.InputType = operation.InputType
 				factory.Agent = dexConnectorOperationAgent(operation, hasSendCaps)
 			}
-			if language.name == "python" {
+			if language.name == "python" || language.name == "rust" {
 				factory.Name = pythonStepFactoryName(operation.Name)
 			} else {
 				factory.Name = "new" + operation.GoName + "Step"
@@ -147,7 +149,7 @@ func generatedLanguageManifestFiles(manifestPath string, manifest schema.Manifes
 			}
 			for _, branch := range operation.Branches {
 				field := branch.ID
-				if language.name == "python" {
+				if language.name == "python" || language.name == "rust" {
 					field = lowerCamelToSnake(branch.ID)
 				}
 				if mappedFields[field] {
@@ -164,16 +166,19 @@ func generatedLanguageManifestFiles(manifestPath string, manifest schema.Manifes
 			return nil, fmt.Errorf("encode %s connector package manifest: %w", language.name, err)
 		}
 		path := filepath.Join(filepath.Dir(manifestPath), language.name)
-		if language.name == "python" {
+		switch language.name {
+		case "python":
 			importPackage := pythonImportPackageName(connectorDirectory)
 			path = filepath.Join(path, "src", "dex_connectors", importPackage)
+		case "java":
+			path = javaConnectorManifestDirectory(filepath.Dir(manifestPath), connectorDirectory)
 		}
 		files[filepath.Join(path, "dex-connector.json")] = contents
 	}
 	return files, nil
 }
 
-// Python and TypeScript share one graph, so both packages publish the same schema for an operation.
+// Language packages share one graph and publish the same schema for an operation.
 // It returns nil for a fixture without authored Go models; the catalog test requires every schema.
 func languageOperationInputModels(manifest schema.Manifest, goPackage *connectorGoPackage) (*gomodel.Graph, error) {
 	hasAuthoredGoTypes, err := hasAuthoredGoSource(goPackage.goDirectory)
@@ -189,7 +194,8 @@ func languageSelectedOperations(manifest schema.Manifest) map[string]bool {
 	if manifest.Spec.Languages == nil {
 		return selectedOperations
 	}
-	for _, language := range []*schema.LanguagePackage{manifest.Spec.Languages.Python, manifest.Spec.Languages.TypeScript} {
+	for _, languageName := range schema.PackageLanguageNames() {
+		language := manifest.Spec.Languages.DeclarationOfLanguage(languageName)
 		if language == nil {
 			continue
 		}
@@ -268,7 +274,21 @@ func staleLanguageManifestFiles(manifestPath string, generated map[string][]byte
 	if err != nil {
 		return nil, fmt.Errorf("find Python connector package manifests: %w", err)
 	}
-	paths := append(pythonFiles, filepath.Join(connectorDirectory, "typescript", "dex-connector.json"))
+	paths := append(pythonFiles, filepath.Join(connectorDirectory, "typescript", "dex-connector.json"),
+		filepath.Join(connectorDirectory, "rust", "dex-connector.json"))
+	javaResources := filepath.Join(connectorDirectory, "java", "src", "main", "resources", "META-INF", "dex-connectors")
+	err = filepath.WalkDir(javaResources, func(path string, entry os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if entry.Name() == "dex-connector.json" && !entry.IsDir() {
+			paths = append(paths, path)
+		}
+		return nil
+	})
+	if err != nil && !os.IsNotExist(err) {
+		return nil, fmt.Errorf("find Java connector package manifests: %w", err)
+	}
 	stale := make([]string, 0)
 	for _, path := range paths {
 		if _, isGenerated := generated[path]; isGenerated {
@@ -281,6 +301,11 @@ func staleLanguageManifestFiles(manifestPath string, generated map[string][]byte
 		}
 	}
 	return stale, nil
+}
+
+func javaConnectorManifestDirectory(connectorPath, catalogDirectory string) string {
+	return filepath.Join(connectorPath, "java", "src", "main", "resources", "META-INF", "dex-connectors",
+		filepath.FromSlash(strings.TrimPrefix(catalogDirectory, "connectors/")))
 }
 
 // pythonStepFactoryName is the Python Step factory of an operation; Go agent tool names share its snake case.
@@ -322,7 +347,7 @@ func triggerBindingFactories(manifest schema.Manifest, languageName string, decl
 			Name: "define" + trigger.GoName + "TriggerBinding", Kind: "trigger", TriggerName: trigger.Name,
 			Fields: dexConnectorFields{ConnectionName: "connectionName", BindingName: "bindingName", ConfigurationUI: "configurationUI"},
 		}
-		if languageName == "python" {
+		if languageName == "python" || languageName == "rust" {
 			factory.Name = pythonTriggerBindingFactoryName(trigger.Name)
 			factory.Fields = dexConnectorFields{ConnectionName: "connection_name", BindingName: "binding_name", ConfigurationUI: "configuration_ui"}
 		}

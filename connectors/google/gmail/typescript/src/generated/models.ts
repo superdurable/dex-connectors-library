@@ -231,6 +231,13 @@ export interface SendMessageInput {
   "textBody": string;
   /** HTMLBody is the optional HTML message body. */
   "htmlBody"?: string | undefined;
+  /** ListUnsubscribe optionally lists one or two unsubscribe targets for the RFC 2369 List-Unsubscribe header,
+   * each an absolute https: URL or a mailto: URI of at most 512 characters, without spaces, angle brackets,
+   * commas or line breaks. */
+  "listUnsubscribe"?: Array<string> | undefined;
+  /** ListUnsubscribeOneClick adds the RFC 8058 header List-Unsubscribe-Post: List-Unsubscribe=One-Click, so mail
+   * clients can unsubscribe with one POST; it requires an https: target in ListUnsubscribe. */
+  "listUnsubscribeOneClick"?: boolean | undefined;
 }
 /** SendMessageOutput contains the provider response fields for send message. */
 export interface SendMessageOutput {
@@ -283,6 +290,8 @@ export const SendMessageInputSchema = z.strictObject({
   "subject": z.string(),
   "textBody": z.string(),
   "htmlBody": z.string().optional(),
+  "listUnsubscribe": z.array(z.string()).optional(),
+  "listUnsubscribeOneClick": z.boolean().optional(),
 }) satisfies z.ZodType<SendMessageInput>;
 
 /** Runtime validator for SendMessageOutput. */

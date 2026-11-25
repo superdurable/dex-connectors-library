@@ -21,3 +21,6 @@ go.work.sum
 .idea/
 /sdkjava/build/
 /sdkjava/.gradle/
+/sdkrust/target/
+/conformance/runners/rust/target/
+/connectors/**/rust/target/

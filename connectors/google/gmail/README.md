@@ -1,10 +1,10 @@
 # Gmail Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/google/gmail/go@v0.29.2`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/google/gmail/go@v0.30.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/google/gmail`.
 
-## TypeScript (v0.5.2)
+## TypeScript (v0.6.0)
 
 Install `@superdurable/connector-google-gmail` with `@superdurable/dex`. The [TypeScript README](typescript/README.md) covers OAuth and Workspace connection setup, the `gmail-inbox` static connection name, the runnable Worker and Client examples, and real Dex tests. The TypeScript package implements `getMessage`, `sendMessage`, and `replyToMessage`, and from 0.3.0 the `messageReceived` and `replyReceived` Triggers at parity with Go: one ordered poller per connection, durable project inboxes, and roots delivered before replies. The [thread reply example](typescript/examples/thread-reply/README.md) mirrors the Go `thread-reply` example. Its manifest-derived npm marker lets Dex CLI render the examples as strict TypeScript FDG 2.0 graphs.
 
@@ -275,6 +275,18 @@ Sends and replies are confirmed as follows:
   reply its `recipients` can be empty because the source was never read. After
   a `notSent` or `canResend` checkpoint, a miss permits another POST and a
   failed search returns Retry.
+- From Go v0.30.0, Python v0.6.0, and TypeScript v0.6.0, `sendMessage` takes
+  optional `listUnsubscribe` targets, one or two `https:` URLs or `mailto:`
+  addresses, written as the RFC 2369 `List-Unsubscribe` header, and
+  `listUnsubscribeOneClick`, which adds the RFC 8058
+  `List-Unsubscribe-Post: List-Unsubscribe=One-Click` header and needs an
+  `https:` target. A target must be visible ASCII of at most 512 characters
+  without spaces, angle brackets, commas, quotes, or backslashes; an `https:`
+  target needs a host of letters, digits, dots, and hyphens, with an optional
+  numeric port; a `mailto:` target needs one bare address, percent-encoded or
+  not. Any other target selects `defect` before a send, so a target can never
+  add a header or another list entry. Bulk senders need both headers for
+  Gmail and Yahoo sender requirements.
 - `sendMessage` and `replyToMessage` declare `repeatOnUnknown: limited` with
   `maxSends: 3`. After a prior `claimed` dispatch whose outcome stayed unknown,
   a Sent Mail miss or failed search resends with the same `Message-ID` while
