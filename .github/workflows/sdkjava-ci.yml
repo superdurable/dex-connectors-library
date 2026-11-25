@@ -1,0 +1,84 @@
+name: Java SDK CI
+
+on:
+  pull_request:
+    paths:
+      - 'sdkjava/**'
+      - 'conformance/*.json'
+      - 'sdkpython/tests/fixtures/**'
+      - 'connectors/google/gmail/python/tests/refresh_agreement_cases.json'
+      - 'connectors/slack/python/tests/refresh_agreement_cases.json'
+      - 'script/dex_compatibility.py'
+      - '.github/workflows/sdkjava-ci.yml'
+  merge_group:
+  push:
+    branches: [main]
+    paths:
+      - 'sdkjava/**'
+      - 'conformance/*.json'
+      - 'sdkpython/tests/fixtures/**'
+      - 'connectors/google/gmail/python/tests/refresh_agreement_cases.json'
+      - 'connectors/slack/python/tests/refresh_agreement_cases.json'
+      - 'script/dex_compatibility.py'
+      - '.github/workflows/sdkjava-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sdkjava-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sdkjava:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: sdkjava
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v5
+        with:
+          distribution: zulu
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Test and check Javadoc
+        run: ./gradlew test javadoc --no-daemon
+
+  sdkjava-dex:
+    name: sdkjava real Dex Flows
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v5
+        with:
+          distribution: zulu
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Install Dex CLI (independently resolves the latest stable release)
+        run: python3 script/dex_compatibility.py install-dexcli --output .bin/dexcli
+      - name: Run the Java SDK against real Dex Flows
+        run: |
+          mkdir -p "${RUNNER_TEMP}/sdkjava-dex/logs"
+          .bin/dexcli dev -dex-port 19881 -web-port 19882 -open=false -durability process-crash-safe \
+            -zd-data-dir "${RUNNER_TEMP}/sdkjava-dex/zd" \
+            -server-log-folder "${RUNNER_TEMP}/sdkjava-dex/logs" > "${RUNNER_TEMP}/sdkjava-dex/server.log" 2>&1 &
+          dex_pid=$!
+          trap 'kill "$dex_pid" 2>/dev/null || true; wait "$dex_pid" 2>/dev/null || true' EXIT
+          for _ in $(seq 1 120); do
+            if (echo > /dev/tcp/127.0.0.1/19881) 2>/dev/null; then
+              cd sdkjava && DEX_SERVER_ADDRESS=127.0.0.1:19881 ./gradlew dexDevTest --no-daemon
+              exit
+            fi
+            if ! kill -0 "$dex_pid" 2>/dev/null; then break; fi
+            sleep 0.25
+          done
+          cat "${RUNNER_TEMP}/sdkjava-dex/server.log"
+          exit 1
