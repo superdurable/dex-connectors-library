@@ -1,4 +1,94 @@
 {
+  "getItem": {
+    "branches": [
+      {
+        "description": "The public item was read.",
+        "id": "found",
+        "optional": false
+      },
+      {
+        "description": "The item is missing, deleted, or dead.",
+        "id": "notFound",
+        "optional": true
+      },
+      {
+        "description": "Hacker News rejected the request.",
+        "id": "providerRejected",
+        "optional": true
+      },
+      {
+        "description": "Hacker News returned malformed or oversized data.",
+        "id": "invalidResponse",
+        "optional": true
+      },
+      {
+        "description": "Local input or connection configuration is invalid.",
+        "id": "defect",
+        "optional": true
+      }
+    ],
+    "operation": {
+      "connectorId": "hacker-news-daily",
+      "operationId": "getItem"
+    },
+    "stepDefaults": {
+      "executeDurability": 2,
+      "executeMethodTimeout": 30000000000,
+      "executeRetry": {
+        "BackoffCoefficient": 2,
+        "InitialInterval": 1000000000,
+        "MaximumAttempts": 0,
+        "MaximumInterval": 30000000000,
+        "TotalDuration": 3900000000000
+      },
+      "heartbeatTimeout": 0
+    }
+  },
+  "getUser": {
+    "branches": [
+      {
+        "description": "The public user was read.",
+        "id": "found",
+        "optional": false
+      },
+      {
+        "description": "The user has no public profile.",
+        "id": "notFound",
+        "optional": true
+      },
+      {
+        "description": "Hacker News rejected the request.",
+        "id": "providerRejected",
+        "optional": true
+      },
+      {
+        "description": "Hacker News returned malformed or oversized user data.",
+        "id": "invalidResponse",
+        "optional": true
+      },
+      {
+        "description": "The username or connection configuration is invalid.",
+        "id": "defect",
+        "optional": true
+      }
+    ],
+    "operation": {
+      "connectorId": "hacker-news-daily",
+      "operationId": "getUser"
+    },
+    "stepDefaults": {
+      "executeDurability": 2,
+      "executeMethodTimeout": 30000000000,
+      "executeRetry": {
+        "BackoffCoefficient": 2,
+        "InitialInterval": 1000000000,
+        "MaximumAttempts": 0,
+        "MaximumInterval": 300000000000,
+        "TotalDuration": 3600000000000
+      },
+      "heartbeatTimeout": 0
+    }
+  },
   "listStoryIDs": {
     "branches": [
       {

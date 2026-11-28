@@ -6,15 +6,11 @@ package io.superdurable.dexconnectors.hackernews;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.superdurable.dexconnectors.sdk.*;
 import io.superdurable.dexconnectors.sdk.providerhttp.*;
 import java.io.IOException;
-import java.io.InputStream;
 import java.time.Clock;
-import java.time.Duration;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoField;
@@ -22,13 +18,10 @@ import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
 import java.util.function.Function;
 
 /** Hacker News feed snapshots and their operation-specific Dex Query Step. */
 public final class StoryFeed {
-    private static final ObjectMapper JSON = new ObjectMapper().enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS);
-    private static final QueryDefinition DEFINITION = loadDefinition();
     private static final DateTimeFormatter UTC_TIME = new DateTimeFormatterBuilder()
             .appendPattern("uuuu-MM-dd'T'HH:mm:ss").appendFraction(ChronoField.NANO_OF_SECOND, 0, 9, true)
             .appendLiteral('Z').toFormatter().withZone(ZoneOffset.UTC);
@@ -84,50 +77,23 @@ public final class StoryFeed {
     }
 
     /** Read a bounded Firebase feed on each Execute attempt. */
-    public static final class ListStoryIDsOperation implements Query<ListStoryIDsInput, StoryIDs> {
-        private final String baseUrl;
-        private final ProviderHttpTransport transport;
-        private final int maxResponseBytes;
-        private final Clock clock;
-
+    public static final class ListStoryIDsOperation extends FirebaseQuery<ListStoryIDsInput, StoryIDs> {
         /** Use the public Firebase endpoint and the manifest timeout and size limit. */
-        public ListStoryIDsOperation() {
-            this("https://hacker-news.firebaseio.com/v0", new ProviderHttpClient(Duration.ofSeconds(15), AddressPolicy.PUBLIC_HTTPS),
-                    1 << 20, Clock.systemUTC());
-        }
+        public ListStoryIDsOperation() { super("listStoryIDs", new StoryIDs(Collections.emptyList(), false, "0001-01-01T00:00:00Z")); }
 
         /** Bind a Firebase v0 base URL, configured transport, positive byte limit and observation clock. */
         public ListStoryIDsOperation(String baseUrl, ProviderHttpTransport transport, int maxResponseBytes, Clock clock) {
-            this.baseUrl = ProviderHttp.validateBaseUrl(baseUrl);
-            this.transport = Objects.requireNonNull(transport);
-            this.clock = Objects.requireNonNull(clock);
-            if (maxResponseBytes < 1) throw new IllegalArgumentException("response byte limit must be positive");
-            this.maxResponseBytes = maxResponseBytes;
+            super("listStoryIDs", new StoryIDs(Collections.emptyList(), false, "0001-01-01T00:00:00Z"), baseUrl, transport, maxResponseBytes, clock);
         }
-
-        @Override public QueryDefinition definition() { return DEFINITION; }
 
         @Override public QueryAttempt<StoryIDs> invoke(Call call, ListStoryIDsInput input) throws InterruptedException {
             String feed = input.feed.isEmpty() ? "top" : input.feed;
             long limit = input.limit == 0 ? 50 : input.limit;
             if (!feed.matches("top|best|new|ask|show")) return failed("defect", FailureKind.VALIDATION, "feed must be top, best, new, ask, or show");
             if (limit < 1 || limit > 500) return failed("defect", FailureKind.VALIDATION, "limit must be from 1 through 500");
-            ProviderHttpRequest request = ProviderHttpRequest.newBuilder("GET", baseUrl + "/" + feed + "stories.json")
-                    .header("Accept", "application/json").header("User-Agent", "superdurable-hacker-news-daily/0.1").build();
-            try (ProviderHttpResponse response = transport.send(request)) {
-                int status = response.getStatusCode();
-                if (status == 408 || status == 429 || status >= 500) {
-                    FailureKind kind = status == 429 ? FailureKind.RATE_LIMIT : FailureKind.AVAILABILITY;
-                    return retry(kind, "Hacker News is temporarily unavailable",
-                            ProviderHttp.parseRetryAfter(response.getHeaders().first("Retry-After"), clock.instant()));
-                }
-                if (status != 200) return failed("providerRejected", FailureKind.PROVIDER_REJECTION, "Hacker News rejected the request");
-                byte[] body;
-                try { body = response.readBoundedBody(maxResponseBytes); }
-                catch (BodyTooLargeException e) { return failed("invalidResponse", FailureKind.RESPONSE_TOO_LARGE, "Hacker News response exceeded the configured limit"); }
-                catch (IOException e) { return retry(FailureKind.AVAILABILITY, "Hacker News response was interrupted", Duration.ZERO); }
+            return read("/" + feed + "stories.json", body -> {
                 JsonNode feedIDs;
-                try { feedIDs = JSON.readTree(body); }
+                try { feedIDs = FirebaseQuery.JSON.readTree(body); }
                 catch (IOException e) { feedIDs = null; }
                 if (feedIDs == null || !feedIDs.isArray()) return failed("invalidResponse", FailureKind.PROTOCOL, "Hacker News returned an invalid feed");
                 List<Long> ids = new ArrayList<>((int) Math.min(limit, feedIDs.size()));
@@ -137,26 +103,7 @@ public final class StoryFeed {
                     if (ids.size() < limit) ids.add(id.longValue());
                 }
                 return QueryAttempt.branch("listed", new StoryIDs(ids, feedIDs.size() > limit, UTC_TIME.format(clock.instant())), Receipt.empty());
-            } catch (IOException e) {
-                return retry(FailureKind.AVAILABILITY, "Hacker News request failed", Duration.ZERO);
-            }
+            });
         }
-    }
-
-    private static QueryDefinition loadDefinition() {
-        try (InputStream input = StoryFeed.class.getResourceAsStream("/META-INF/dex-connectors/hackernews/operation-definitions.json")) {
-            QueryDefinition definition = JSON.treeToValue(JSON.readTree(Objects.requireNonNull(input)).get("listStoryIDs"), QueryDefinition.class);
-            definition.validate();
-            return definition;
-        } catch (IOException e) { throw new ExceptionInInitializerError(e); }
-    }
-
-    private static QueryAttempt<StoryIDs> failed(String branch, FailureKind kind, String message) {
-        return QueryAttempt.branch(branch, new StoryIDs(Collections.emptyList(), false, "0001-01-01T00:00:00Z"), Receipt.empty(),
-                new Failure(kind, "hacker-news", "listStoryIDs", message));
-    }
-
-    private static QueryAttempt<StoryIDs> retry(FailureKind kind, String message, Duration delay) {
-        return QueryAttempt.retry(new Failure(kind, "hacker-news", "listStoryIDs", message), delay);
     }
 }

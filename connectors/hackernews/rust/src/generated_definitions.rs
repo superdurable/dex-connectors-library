@@ -3,6 +3,29 @@
 use dex_connectors_sdk as sdk;
 use std::time::Duration;
 
+pub struct GetUser;
+
+impl GetUser {
+    pub fn definition() -> sdk::QueryDefinition {
+        sdk::QueryDefinition {
+            operation: sdk::OperationRef::new(r"hacker-news-daily", r"getUser"),
+            branches: Some(vec![
+                sdk::BranchDefinition::new(r"found", r"The public user was read.", false),
+                sdk::BranchDefinition::new(r"notFound", r"The user has no public profile.", true),
+                sdk::BranchDefinition::new(r"providerRejected", r"Hacker News rejected the request.", true),
+                sdk::BranchDefinition::new(r"invalidResponse", r"Hacker News returned malformed or oversized user data.", true),
+                sdk::BranchDefinition::new(r"defect", r"The username or connection configuration is invalid.", true),
+            ]),
+            step_defaults: sdk::StepDefaults {
+                execute_method_timeout: Duration::from_nanos(30000000000),
+                heartbeat_timeout: Duration::from_nanos(0),
+                execute_durability: sdk::ExecuteDurability::Async,
+                execute_retry: Some(sdk::default_connector_step_execute_retry_policy()),
+            },
+        }
+    }
+}
+
 pub struct ListStoryIDs;
 
 impl ListStoryIDs {
@@ -11,6 +34,29 @@ impl ListStoryIDs {
             operation: sdk::OperationRef::new(r"hacker-news-daily", r"listStoryIDs"),
             branches: Some(vec![
                 sdk::BranchDefinition::new(r"listed", r"The feed snapshot was read.", false),
+                sdk::BranchDefinition::new(r"providerRejected", r"Hacker News rejected the request.", true),
+                sdk::BranchDefinition::new(r"invalidResponse", r"Hacker News returned malformed or oversized data.", true),
+                sdk::BranchDefinition::new(r"defect", r"Local input or connection configuration is invalid.", true),
+            ]),
+            step_defaults: sdk::StepDefaults {
+                execute_method_timeout: Duration::from_nanos(30000000000),
+                heartbeat_timeout: Duration::from_nanos(0),
+                execute_durability: sdk::ExecuteDurability::Async,
+                execute_retry: Some(sdk::RetryPolicy { initial_interval: Duration::from_nanos(1000000000), backoff_coefficient: 2_f64, maximum_interval: Duration::from_nanos(30000000000), maximum_attempts: 0, total_duration: Duration::from_nanos(3900000000000) }),
+            },
+        }
+    }
+}
+
+pub struct GetItem;
+
+impl GetItem {
+    pub fn definition() -> sdk::QueryDefinition {
+        sdk::QueryDefinition {
+            operation: sdk::OperationRef::new(r"hacker-news-daily", r"getItem"),
+            branches: Some(vec![
+                sdk::BranchDefinition::new(r"found", r"The public item was read.", false),
+                sdk::BranchDefinition::new(r"notFound", r"The item is missing, deleted, or dead.", true),
                 sdk::BranchDefinition::new(r"providerRejected", r"Hacker News rejected the request.", true),
                 sdk::BranchDefinition::new(r"invalidResponse", r"Hacker News returned malformed or oversized data.", true),
                 sdk::BranchDefinition::new(r"defect", r"Local input or connection configuration is invalid.", true),

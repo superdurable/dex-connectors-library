@@ -60,6 +60,11 @@ tasks.register('storyFeedWorker', JavaExec) {
     mainClass = 'io.superdurable.dexconnectors.hackernews.StoryFeedWorker'
 }
 
+tasks.register('itemAuthorWorker', JavaExec) {
+    classpath = sourceSets.example.runtimeClasspath
+    mainClass = 'io.superdurable.dexconnectors.hackernews.ItemAuthorWorker'
+}
+
 test {
     inputs.file(providers.environmentVariable('CONNECTOR_CONFORMANCE_FIXTURE')
             .orElse('../../../conformance/connectors/hackernews/scenarios.json'))

@@ -3,6 +3,7 @@
 
 package io.superdurable.dexconnectors.hackernews;
 
+import io.superdurable.dexconnectors.hackernews.PublicResources.*;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -28,13 +29,13 @@ class ConnectorConformanceTest {
     private static final String ORIGIN = "https://hacker-news.firebaseio.com/v0";
     private static final String FIXTURE = "../../../conformance/connectors/hackernews/scenarios.json";
 
-    @TestFactory protected Iterable<DynamicTest> replayStoryFeeds() throws IOException {
+    @TestFactory protected Iterable<DynamicTest> replayPublicQueries() throws IOException {
         String selected = System.getenv().getOrDefault("CONNECTOR_CONFORMANCE_FIXTURE", FIXTURE);
         JsonNode scenarios = JSON.readTree(Paths.get(selected).toFile()).get("scenarios");
         assertTrue(scenarios.size() > 0);
         List<DynamicTest> tests = new java.util.ArrayList<>();
         for (JsonNode scenario : scenarios) {
-            if (!"listStoryIDs".equals(scenario.get("operation").asText())) continue;
+            if (!java.util.Arrays.asList("listStoryIDs", "getItem", "getUser").contains(scenario.get("operation").asText())) continue;
             tests.add(DynamicTest.dynamicTest(scenario.get("name").asText(), () -> replay(scenario)));
         }
         assertFalse(tests.isEmpty());
@@ -45,11 +46,24 @@ class ConnectorConformanceTest {
         String name = scenario.get("name").asText();
         assertFalse(scenario.has("pending"), name + " is pending");
         RecordedProvider provider = new RecordedProvider(scenario.get("exchanges"));
+        String operation = scenario.get("operation").asText();
         Call call = Call.create(CallId.of(scenario.get("callId").asText()), new ConnectionRef("hacker-news", "hacker-news-public"),
-                new OperationRef("hacker-news-daily", "listStoryIDs"), null, 1);
-        Clock clock = Clock.fixed(Instant.parse(scenario.get("fixedClock").asText()), ZoneOffset.UTC);
-        ListStoryIDsOperation operation = new ListStoryIDsOperation(ORIGIN, provider, 1 << 20, clock);
-        QueryAttempt<?> attempt = operation.invoke(call, JSON.treeToValue(scenario.get("input"), ListStoryIDsInput.class));
+                new OperationRef("hacker-news-daily", operation), null, 1);
+        Clock clock = Clock.fixed(Instant.parse(scenario.path("fixedClock").asText("2026-01-01T00:00:00Z")), ZoneOffset.UTC);
+        JsonNode input = scenario.get("input");
+        QueryAttempt<?> attempt;
+        switch (operation) {
+            case "listStoryIDs":
+                attempt = new ListStoryIDsOperation(ORIGIN, provider, 1 << 20, clock).invoke(call, JSON.treeToValue(input, ListStoryIDsInput.class));
+                break;
+            case "getItem":
+                attempt = new GetItemOperation(ORIGIN, provider, 1 << 20, clock).invoke(call, JSON.treeToValue(input, GetItemInput.class));
+                break;
+            case "getUser":
+                attempt = new GetUserOperation(ORIGIN, provider, 1 << 20, clock).invoke(call, JSON.treeToValue(input, GetUserInput.class));
+                break;
+            default: throw new AssertionError(operation);
+        }
         JsonNode expected = scenario.get("expected");
         assertEquals(expected.get("branch").asText(), attempt.getBranch());
         assertEquals(expected.get("retry").asBoolean(), attempt.isRetry());

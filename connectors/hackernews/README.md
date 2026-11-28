@@ -175,12 +175,11 @@ An entry that cites a sampled comment also includes that comment's permalink.
 The application builds these links from API records. The model returns IDs and
 text, and cannot supply citation URLs.
 
-## Read a public feed with Java or Rust
+## Read public feeds, items, and profiles with Java or Rust
 
 The [Java Worker](java/examples/io/superdurable/dexconnectors/hackernews/StoryFeedWorker.java)
 and [Rust Worker](rust/examples/story_feed.rs) each run a Flow that reads two IDs
-from the top Hacker News feed using `listStoryIDs`. This is the first operation
-available in these language packages. The public feed requires no credentials.
+from the top Hacker News feed using `listStoryIDs`. The public API requires no credentials.
 
 Start Dex with `dexcli dev -open=false`. From the connector's `java/` or
 `rust/` directory, run the corresponding command. Set
@@ -196,6 +195,31 @@ cargo run --example story_feed -- --read
 
 Each command prints the story IDs, whether the feed contains more IDs, and
 the UTC observation time. Omit `--read` to leave the Worker serving Flows.
+
+The [Java item author Flow](java/examples/io/superdurable/dexconnectors/hackernews/ItemAuthorWorker.java)
+and [Rust item author Flow](rust/examples/item_author.rs) call `getItem`, then pass the
+returned username to `getUser`. Start either Flow with a positive item ID that has
+a public author. Each prints the canonical public profile URL. The client can also
+read the full Flow result, including creation time, karma, profile HTML and
+submitted IDs. Escape or sanitize provider HTML before displaying it.
+
+```sh
+# java/
+./gradlew itemAuthorWorker --args='--read 8863'
+
+# rust/
+cargo run --example item_author -- --read 8863
+```
+
+To generate the FDG 2.0 files, run these commands from the connector directory.
+The current Java analyzer reports inherited Query Step handlers as missing.
+The Rust analyzer reports an unresolved Query Step type. Both examples have real
+Worker and Client tests that verify routing and retries.
+
+```sh
+dexcli visualize java/examples/io/superdurable/dexconnectors/hackernews/ItemAuthorWorker.java --schema-version 2.0 --lint app --json --open=false --out /tmp/hackernews-item-author-java
+dexcli visualize rust/examples/item_author.rs --schema-version 2.0 --lint app --json --open=false --out /tmp/hackernews-item-author-rust
+```
 
 ## Verification
 

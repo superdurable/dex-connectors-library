@@ -2314,6 +2314,470 @@
       },
       "name": "getArticleThread-transport",
       "operation": "getArticleThread"
+    },
+    {
+      "callId": "ed2059ce-30de-5391-9546-f8dcc10f7c38",
+      "exchanges": [
+        {
+          "body": "{\"id\":42,\"type\":\"comment\",\"by\":\"testauthor\",\"time\":1700000000,\"text\":\"\u003cp\u003e\u0026amp;\u003c/p\u003e\",\"parent\":17,\"kids\":[5,6],\"discussionUrl\":\"spoofed\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/item/42.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-hacker-news-daily/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "by": "testauthor",
+          "discussionUrl": "https://news.ycombinator.com/item?id=42",
+          "id": 42,
+          "kids": [
+            5,
+            6
+          ],
+          "parent": 17,
+          "text": "\u003cp\u003e\u0026amp;\u003c/p\u003e",
+          "time": 1700000000,
+          "type": "comment"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 42
+      },
+      "name": "getItem-comment",
+      "operation": "getItem"
+    },
+    {
+      "callId": "5a4805bf-8a7f-54f4-8752-58ce42b0d9e7",
+      "exchanges": [
+        {
+          "body": "null",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/item/42.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-hacker-news-daily/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "discussionUrl": "",
+          "id": 0,
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 42
+      },
+      "name": "getItem-null",
+      "operation": "getItem"
+    },
+    {
+      "callId": "4bae1b89-c894-5057-8f4d-b957e74ed322",
+      "exchanges": [
+        {
+          "body": "{\"id\":42,\"dead\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/item/42.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-hacker-news-daily/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "discussionUrl": "",
+          "id": 0,
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 42
+      },
+      "name": "getItem-dead",
+      "operation": "getItem"
+    },
+    {
+      "callId": "372d8f58-ca59-5fc7-97fd-fddb2be740a6",
+      "exchanges": [
+        {
+          "body": "{\"id\":42,\"deleted\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/item/42.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-hacker-news-daily/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "discussionUrl": "",
+          "id": 0,
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 42
+      },
+      "name": "getItem-deleted",
+      "operation": "getItem"
+    },
+    {
+      "callId": "ef12fcd5-5fc9-5790-8475-64f5e294c3b9",
+      "exchanges": [
+        {
+          "body": "{\"id\":42,\"type\":\"invalid\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/item/42.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-hacker-news-daily/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "discussionUrl": "",
+          "id": 0,
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 42
+      },
+      "name": "getItem-unknown-type",
+      "operation": "getItem"
+    },
+    {
+      "callId": "a7e03bb2-22e7-53e9-83b1-d75dc599cbd0",
+      "exchanges": [
+        {
+          "body": "{\"id\":43,\"type\":\"story\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/item/42.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-hacker-news-daily/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "discussionUrl": "",
+          "id": 0,
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 42
+      },
+      "name": "getItem-foreign-id",
+      "operation": "getItem"
+    },
+    {
+      "callId": "6d4e4797-3cfb-5e64-b0ff-cb4ba203ed17",
+      "exchanges": [
+        {
+          "body": "{\"id\":42,\"type\":\"poll\",\"kids\":[8,0]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/item/42.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-hacker-news-daily/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "discussionUrl": "",
+          "id": 0,
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 42
+      },
+      "name": "getItem-invalid-child",
+      "operation": "getItem"
+    },
+    {
+      "callId": "37688fac-a660-5456-9952-51291d33b76c",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"a+b@me\",\"about\":null,\"submitted\":[],\"profileUrl\":\"spoofed\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user/a+b@me.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-hacker-news-daily/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "created": 0,
+          "id": "a+b@me",
+          "karma": 0,
+          "profileUrl": "https://news.ycombinator.com/user?id=a%2Bb%40me"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "a+b@me"
+      },
+      "name": "getUser-escaped-profile",
+      "operation": "getUser"
+    },
+    {
+      "callId": "4e32a160-1c28-51bc-b3f4-cc5cc29c695f",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"reader\",\"submitted\":[1,0]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user/reader.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-hacker-news-daily/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "created": 0,
+          "id": "",
+          "karma": 0,
+          "profileUrl": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "reader"
+      },
+      "name": "getUser-invalid-submission",
+      "operation": "getUser"
+    },
+    {
+      "callId": "dcf532db-6a52-5eae-9d87-6257a70795da",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"reader\",\"karma\":-1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user/reader.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-hacker-news-daily/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "created": 0,
+          "id": "",
+          "karma": 0,
+          "profileUrl": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "reader"
+      },
+      "name": "getUser-negative-karma",
+      "operation": "getUser"
+    },
+    {
+      "callId": "d9e0cb76-e3f1-594c-9a27-4d269f9f9de5",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"reader\",\"created\":\"123\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user/reader.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-hacker-news-daily/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "created": 0,
+          "id": "",
+          "karma": 0,
+          "profileUrl": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "reader"
+      },
+      "name": "getUser-invalid-json-type",
+      "operation": "getUser"
+    },
+    {
+      "callId": "92e73abe-c2b5-5b07-af89-e6d2578ba80f",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "created": 0,
+          "id": "",
+          "karma": 0,
+          "profileUrl": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界"
+      },
+      "name": "getUser-oversized-utf8",
+      "operation": "getUser"
     }
   ],
   "schemaVersion": 1

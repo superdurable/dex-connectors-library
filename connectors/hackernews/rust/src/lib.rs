@@ -5,6 +5,11 @@
 
 #[rustfmt::skip]
 mod generated_definitions;
+mod resources;
+pub use resources::{
+    GetItemInput, GetItemOperation, GetUserInput, GetUserOperation, Item, User, new_get_item_step,
+    new_get_user_step,
+};
 
 use dex_connectors_sdk as sdk;
 use sdk::providerhttp::{
@@ -50,40 +55,27 @@ pub struct StoryIDs {
 }
 
 /// Query operation that makes one public Firebase GET per Execute attempt.
-pub struct ListStoryIDsOperation {
-    base_url: String,
-    max_response_bytes: usize,
-    http: ProviderHttpClient,
-    clock: Arc<dyn Fn() -> SystemTime + Send + Sync>,
-}
+pub struct ListStoryIDsOperation(FirebaseClient);
 
 impl ListStoryIDsOperation {
-    /// Use the public Firebase v0 endpoint and the manifest timeout and size limit.
+    /// Use the public Firebase endpoint and the manifest timeout and size limit.
     pub fn new() -> Result<Self, ValidationError> {
-        Self::with_client(
-            "https://hacker-news.firebaseio.com/v0",
-            1 << 20,
-            ProviderHttpClient::new(Duration::from_secs(15), AddressPolicy::PublicHttps)?,
-            Arc::new(SystemTime::now),
-        )
+        Ok(Self(FirebaseClient::new()?))
     }
 
-    /// Bind a validated base URL, configured transport, positive byte limit, and observation clock.
+    /// Use a validated base URL, bounded transport and observation clock.
     pub fn with_client(
         base_url: &str,
         max_response_bytes: usize,
         http: ProviderHttpClient,
         clock: Arc<dyn Fn() -> SystemTime + Send + Sync>,
     ) -> Result<Self, ValidationError> {
-        if max_response_bytes == 0 {
-            return Err(ValidationError::new("response byte limit must be positive"));
-        }
-        Ok(Self {
-            base_url: validate_base_url(base_url)?,
+        Ok(Self(FirebaseClient::with_client(
+            base_url,
             max_response_bytes,
             http,
             clock,
-        })
+        )?))
     }
 }
 
@@ -103,6 +95,7 @@ impl Query for ListStoryIDsOperation {
         };
         if !matches!(feed, "top" | "best" | "new" | "ask" | "show") {
             return failed(
+                "listStoryIDs",
                 "defect",
                 FailureKind::Validation,
                 "feed must be top, best, new, ask, or show",
@@ -111,77 +104,39 @@ impl Query for ListStoryIDsOperation {
         let limit = if input.limit == 0 { 50 } else { input.limit };
         if !(1..=500).contains(&limit) {
             return failed(
+                "listStoryIDs",
                 "defect",
                 FailureKind::Validation,
                 "limit must be from 1 through 500",
             );
         }
-        let request =
-            ProviderHttpRequest::new("GET", format!("{}/{feed}stories.json", self.base_url))
-                .header("Accept", "application/json")
-                .header("User-Agent", "superdurable-hacker-news-daily/0.1");
-        let Ok(mut response) = self.http.send_traced(&request) else {
-            return retry(FailureKind::Availability, "Hacker News request failed", 0.0);
-        };
-        let status = response.status();
-        if matches!(status, 408 | 429 | 500..) {
-            let kind = if status == 429 {
-                FailureKind::RateLimit
-            } else {
-                FailureKind::Availability
-            };
-            let delay = parse_retry_after(
-                response.headers().get("Retry-After").unwrap_or(""),
-                (self.clock)(),
-            );
-            return retry(kind, "Hacker News is temporarily unavailable", delay);
-        }
-        if status != 200 {
-            return failed(
-                "providerRejected",
-                FailureKind::ProviderRejection,
-                "Hacker News rejected the request",
-            );
-        }
-        let body = match read_bounded_body(&mut response, self.max_response_bytes) {
-            Ok(body) => body,
-            Err(ProviderHttpError::BodyTooLarge(_)) => {
-                return failed(
-                    "invalidResponse",
-                    FailureKind::ResponseTooLarge,
-                    "Hacker News response exceeded the configured limit",
-                );
-            }
-            Err(_) => {
-                return retry(
-                    FailureKind::Availability,
-                    "Hacker News response was interrupted",
-                    0.0,
-                );
-            }
-        };
-        let Ok(mut ids) = serde_json::from_slice::<Vec<i64>>(&body) else {
-            return failed(
-                "invalidResponse",
-                FailureKind::Protocol,
-                "Hacker News returned an invalid feed",
-            );
-        };
-        if ids.iter().any(|id| *id <= 0) {
-            return failed(
-                "invalidResponse",
-                FailureKind::Protocol,
-                "Hacker News returned an invalid item ID",
-            );
-        }
-        let has_more = ids.len() > limit as usize;
-        ids.truncate(limit as usize);
-        let output = StoryIDs {
-            ids,
-            has_more,
-            observed_at: Rfc3339NanoTimestamp::from_system_time_utc((self.clock)()),
-        };
-        QueryAttempt::branch("listed", output, Receipt::default(), None)
+        self.0
+            .read_json("listStoryIDs", &format!("/{feed}stories.json"), |body| {
+                let Ok(mut ids) = serde_json::from_slice::<Vec<i64>>(body) else {
+                    return failed(
+                        "listStoryIDs",
+                        "invalidResponse",
+                        FailureKind::Protocol,
+                        "Hacker News returned an invalid feed",
+                    );
+                };
+                if ids.iter().any(|id| *id <= 0) {
+                    return failed(
+                        "listStoryIDs",
+                        "invalidResponse",
+                        FailureKind::Protocol,
+                        "Hacker News returned an invalid item ID",
+                    );
+                }
+                let has_more = ids.len() > limit as usize;
+                ids.truncate(limit as usize);
+                let output = StoryIDs {
+                    ids,
+                    has_more,
+                    observed_at: Rfc3339NanoTimestamp::from_system_time_utc((self.0.clock)()),
+                };
+                QueryAttempt::branch("listed", output, Receipt::default(), None)
+            })
     }
 }
 
@@ -195,17 +150,132 @@ pub fn new_list_story_ids_step<I>(
     QueryStep::new(config)
 }
 
-fn failure(kind: FailureKind, message: &str) -> Failure {
-    Failure::new(kind, "hacker-news", "listStoryIDs", message)
+struct FirebaseClient {
+    base_url: String,
+    max_response_bytes: usize,
+    http: ProviderHttpClient,
+    clock: Arc<dyn Fn() -> SystemTime + Send + Sync>,
 }
-fn failed(branch: &str, kind: FailureKind, message: &str) -> QueryAttempt<StoryIDs> {
+
+impl FirebaseClient {
+    /// Use the public Firebase v0 endpoint and the manifest timeout and size limit.
+    fn new() -> Result<Self, ValidationError> {
+        Self::with_client(
+            "https://hacker-news.firebaseio.com/v0",
+            1 << 20,
+            ProviderHttpClient::new(Duration::from_secs(15), AddressPolicy::PublicHttps)?,
+            Arc::new(SystemTime::now),
+        )
+    }
+
+    /// Bind a validated base URL, configured transport, positive byte limit, and observation clock.
+    fn with_client(
+        base_url: &str,
+        max_response_bytes: usize,
+        http: ProviderHttpClient,
+        clock: Arc<dyn Fn() -> SystemTime + Send + Sync>,
+    ) -> Result<Self, ValidationError> {
+        if max_response_bytes == 0 {
+            return Err(ValidationError::new("response byte limit must be positive"));
+        }
+        Ok(Self {
+            base_url: validate_base_url(base_url)?,
+            max_response_bytes,
+            http,
+            clock,
+        })
+    }
+}
+
+impl FirebaseClient {
+    fn read_json<T: Default>(
+        &self,
+        operation: &str,
+        path: &str,
+        decode: impl FnOnce(&[u8]) -> QueryAttempt<T>,
+    ) -> QueryAttempt<T> {
+        let request = ProviderHttpRequest::new("GET", format!("{}{path}", self.base_url))
+            .header("Accept", "application/json")
+            .header("User-Agent", "superdurable-hacker-news-daily/0.1");
+        let Ok(mut response) = self.http.send_traced(&request) else {
+            return retry(
+                operation,
+                FailureKind::Availability,
+                "Hacker News request failed",
+                0.0,
+            );
+        };
+        let status = response.status();
+        if matches!(status, 408 | 429 | 500..) {
+            let kind = if status == 429 {
+                FailureKind::RateLimit
+            } else {
+                FailureKind::Availability
+            };
+            let delay = parse_retry_after(
+                response.headers().get("Retry-After").unwrap_or(""),
+                (self.clock)(),
+            );
+            return retry(
+                operation,
+                kind,
+                "Hacker News is temporarily unavailable",
+                delay,
+            );
+        }
+        if status == 404 && matches!(operation, "getItem" | "getUser") {
+            return failed(
+                operation,
+                "notFound",
+                FailureKind::NotFound,
+                "Hacker News resource was not found",
+            );
+        }
+        if status != 200 {
+            return failed(
+                operation,
+                "providerRejected",
+                FailureKind::ProviderRejection,
+                "Hacker News rejected the request",
+            );
+        }
+        let body = match read_bounded_body(&mut response, self.max_response_bytes) {
+            Ok(body) => body,
+            Err(ProviderHttpError::BodyTooLarge(_)) => {
+                return failed(
+                    operation,
+                    "invalidResponse",
+                    FailureKind::ResponseTooLarge,
+                    "Hacker News response exceeded the configured limit",
+                );
+            }
+            Err(_) => {
+                return retry(
+                    operation,
+                    FailureKind::Availability,
+                    "Hacker News response was interrupted",
+                    0.0,
+                );
+            }
+        };
+        decode(&body)
+    }
+}
+
+fn failed<T: Default>(
+    operation: &str,
+    branch: &str,
+    kind: FailureKind,
+    message: &str,
+) -> QueryAttempt<T> {
     QueryAttempt::branch(
         branch,
-        StoryIDs::default(),
+        T::default(),
         Receipt::default(),
-        Some(failure(kind, message)),
+        Some(Failure::new(kind, "hacker-news", operation, message)),
     )
 }
-fn retry(kind: FailureKind, message: &str, delay: f64) -> QueryAttempt<StoryIDs> {
-    QueryAttempt::retry(failure(kind, message), delay)
+
+fn retry<T>(operation: &str, kind: FailureKind, message: &str, delay: f64) -> QueryAttempt<T> {
+    QueryAttempt::retry(Failure::new(kind, "hacker-news", operation, message), delay)
 }

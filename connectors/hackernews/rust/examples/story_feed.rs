@@ -3,15 +3,12 @@
 
 use std::collections::BTreeMap;
 use std::error::Error;
-use std::sync::Arc;
+mod support;
 
 use dex_connector_hackernews::{
     ListStoryIDsInput, ListStoryIDsOperation, StoryIDs, new_list_story_ids_step,
 };
-use dex_connectors_sdk::dex_sdk::{
-    BlobCache, BlobCacheConfig, Context, Flow, HandlerResult, Registry, Step, StepDecision,
-    StepList, Worker, WorkerOptions,
-};
+use dex_connectors_sdk::dex_sdk::{Context, Flow, HandlerResult, Step, StepDecision, StepList};
 use dex_connectors_sdk::{
     BranchTarget, ConnectionRef, QueryResult, QueryStep, QueryStepConfig, StepAnnotations,
     ValidationError,
@@ -76,87 +73,28 @@ fn main() -> Result<(), Box<dyn Error>> {
         return Ok(());
     }
     let flow = StoryFeedFlow::new(ListStoryIDsOperation::new()?)?;
-    let registry = Registry::new().register(flow)?;
-    let directory = tempfile::tempdir()?;
-    let cache = Arc::new(BlobCache::open(BlobCacheConfig::new(
-        directory.path(),
-        16 << 20,
-        1000,
-    )?)?);
-    let address =
-        std::env::var("DEX_FLOW_SERVICE_ADDRESS").unwrap_or_else(|_| "127.0.0.1:8801".into());
-    let worker = Worker::try_new(
-        registry,
-        Arc::clone(&cache),
-        WorkerOptions::new().server_address(address),
-    )?;
-    let result = worker.start();
-    cache.close()?;
-    result?;
-    Ok(())
+    support::serve(flow)
 }
-
-use dex_connectors_sdk::dex_sdk::{Client, ClientOptions, FlowStatus};
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 fn read_once(
     new_flow: impl Fn() -> Result<StoryFeedFlow, ValidationError>,
 ) -> Result<StoryIDs, Box<dyn Error>> {
-    let registry = Registry::new().register(new_flow()?)?;
-    let directory = tempfile::tempdir()?;
-    let cache = Arc::new(BlobCache::open(BlobCacheConfig::new(
-        directory.path(),
-        16 << 20,
-        1000,
-    )?)?);
-    let address =
-        std::env::var("DEX_FLOW_SERVICE_ADDRESS").unwrap_or_else(|_| "127.0.0.1:8801".into());
-    let worker = Arc::new(Worker::try_new(
-        registry.clone(),
-        cache.clone(),
-        WorkerOptions::new().server_address(&address),
-    )?);
-    let client = Client::try_new(
-        registry,
-        cache.clone(),
-        ClientOptions::new().server_address(address),
-    )?;
-    let running_worker = worker.clone();
-    let thread = std::thread::spawn(move || running_worker.start());
-    let verification = (|| -> Result<StoryIDs, Box<dyn Error>> {
-        tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build()?
-            .block_on(async {
-                tokio::time::timeout(Duration::from_secs(30), worker.wait_pull_registered()).await
-            })??;
-        let flow_id = format!(
-            "rust-story-feed-{}",
-            SystemTime::now().duration_since(UNIX_EPOCH)?.as_nanos()
-        );
-        client.start_flow(
-            &new_flow()?,
-            &flow_id,
-            ListStoryIDsInput {
-                feed: "top".into(),
-                limit: 2,
-            },
-        )?;
-        let result = client.wait_for_flow_with_timeout(&flow_id, Duration::from_secs(30))?;
-        if result.status() != FlowStatus::Completed {
-            return Err("story feed Flow did not complete".into());
-        }
-        Ok(result.single_output::<StoryIDs>()?)
-    })();
-    worker.stop();
-    thread.join().expect("Worker thread")?;
-    cache.close()?;
-    verification
+    support::read_once(
+        new_flow,
+        ListStoryIDsInput {
+            feed: "top".into(),
+            limit: 2,
+        },
+    )
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::{
+        sync::Arc,
+        time::{Duration, SystemTime},
+    };
 
     use dex_connectors_sdk::providerhttp::{
         ProviderHttpClient, ProviderHttpError, ProviderHttpRequest, ProviderHttpResponse,

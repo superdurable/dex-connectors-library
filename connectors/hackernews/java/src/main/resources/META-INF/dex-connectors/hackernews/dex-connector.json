@@ -8,6 +8,68 @@
   },
   "factories": [
     {
+      "name": "newGetUserStep",
+      "kind": "query",
+      "operationId": "getUser",
+      "inputType": "GetUserInput",
+      "description": "Read a Hacker News user's public profile by case-sensitive username, including karma and submitted story and comment IDs.",
+      "agent": {
+        "exposed": true,
+        "branches": {
+          "defect": "rejected",
+          "notFound": "rejected",
+          "providerRejected": "rejected"
+        }
+      },
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "notFound",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetUserInput identifies a public Hacker News user by case-sensitive username.",
+        "properties": {
+          "id": {
+            "description": "ID is the username shown on the Hacker News profile page.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "type": "object"
+      }
+    },
+    {
       "name": "newListStoryIDsStep",
       "kind": "query",
       "operationId": "listStoryIDs",
@@ -61,6 +123,68 @@
             "type": "integer"
           }
         },
+        "type": "object"
+      }
+    },
+    {
+      "name": "newGetItemStep",
+      "kind": "query",
+      "operationId": "getItem",
+      "inputType": "GetItemInput",
+      "description": "Read one public Hacker News story, comment, job, or poll by its positive item ID. Returns title, author, score, source URL, discussion URL, text as untrusted HTML, and child comment IDs to read next.",
+      "agent": {
+        "exposed": true,
+        "branches": {
+          "defect": "rejected",
+          "notFound": "rejected",
+          "providerRejected": "rejected"
+        }
+      },
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "notFound",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetItemInput identifies one story, comment, job, poll, or poll option.",
+        "properties": {
+          "id": {
+            "description": "ID is a positive Hacker News item ID.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id"
+        ],
         "type": "object"
       }
     }
