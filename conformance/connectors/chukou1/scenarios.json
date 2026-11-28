@@ -436,6 +436,133 @@
       "input": {},
       "name": "listWarehouses-missing-credentials",
       "operation": "listWarehouses"
+    },
+    {
+      "callId": "742ba006-80b5-54c3-bbc2-31be008202e7",
+      "exchanges": [
+        {
+          "body": "[{\"WAREHOUSEID\":\"a\",\"WAREHOUSENAME\":\"Depot\",\"COUNTRY\":null,\"COUNTRYCODE\":\"GB\"},{\"WAREHOUSEID\":\"a\",\"WAREHOUSENAME\":\"Depot\",\"COUNTRY\":null,\"COUNTRYCODE\":\"GB\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/warehouses",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer secretTestToken"
+            ],
+            "Content-Type": [
+              "application/json; charset=utf-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "warehouses": [
+            {
+              "country": "",
+              "countryCode": "GB",
+              "id": "a",
+              "name": "Depot"
+            },
+            {
+              "country": "",
+              "countryCode": "GB",
+              "id": "a",
+              "name": "Depot"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listWarehouses-case-null-duplicates",
+      "operation": "listWarehouses"
+    },
+    {
+      "callId": "de4231eb-b2e0-5987-9df8-5ff58650f503",
+      "exchanges": [
+        {
+          "body": "[{\"WAREHOUSEID\":\"a\",\"WAREHOUSENAME\":\"Depot\",\"COUNTRY\":5,\"COUNTRYCODE\":\"GB\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/warehouses",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer secretTestToken"
+            ],
+            "Content-Type": [
+              "application/json; charset=utf-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "warehouses": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listWarehouses-invalid-country",
+      "operation": "listWarehouses"
+    },
+    {
+      "callId": "5eb90f64-2ab1-55c8-8469-d0c05df55bb8",
+      "exchanges": [
+        {
+          "body": "[{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/warehouses",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer secretTestToken"
+            ],
+            "Content-Type": [
+              "application/json; charset=utf-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "warehouses": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listWarehouses-directory-limit",
+      "operation": "listWarehouses"
     }
   ],
   "schemaVersion": 1

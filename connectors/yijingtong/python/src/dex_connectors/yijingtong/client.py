@@ -93,9 +93,9 @@ class ListWarehousesOperation:
             return self._branch("defect", FailureKind.VALIDATION)
         try:
             credentials = await self.client.credentials.resolve(call)
+            token = credentials.token.reveal()
         except (ValueError, LookupError, OSError, AttributeError):
             return self._branch("defect", FailureKind.AUTHENTICATION)
-        token = credentials.token.reveal()
         if not _valid_token(token):
             return self._branch("defect", FailureKind.AUTHENTICATION)
         body = json.dumps({"token": token}, separators=(",", ":")).encode()
@@ -136,26 +136,28 @@ class ListWarehousesOperation:
         finally:
             await response.aclose()
         try:
-            wire = json.loads(body)
+            wire = json.loads(body, object_pairs_hook=lambda pairs: {k.lower(): v for k, v in pairs})
         except (UnicodeDecodeError, ValueError):
             return self._branch("invalidResponse", FailureKind.PROTOCOL)
         if not isinstance(wire, dict) or wire.get("error") not in ("T", "F"):
             return self._branch("invalidResponse", FailureKind.PROTOCOL)
+        data = wire.get("data")
+        if data is not None and not isinstance(data, list):
+            return self._branch("invalidResponse", FailureKind.PROTOCOL)
+        warehouses: list[Warehouse] = []
+        for item in data or []:
+            if item is None:
+                item = {}
+            if not isinstance(item, dict):
+                return self._branch("invalidResponse", FailureKind.PROTOCOL)
+            fields = tuple(item.get(name) for name in ("nums", "pname", "country"))
+            if any(value is not None and not isinstance(value, str) for value in fields):
+                return self._branch("invalidResponse", FailureKind.PROTOCOL)
+            warehouses.append(Warehouse(*(value or "" for value in fields)))
         if wire["error"] == "F":
             return self._branch("providerRejected", FailureKind.PROVIDER_REJECTION)
-        data = wire.get("data")
-        if not isinstance(data, list) or len(data) > 200:
+        if data is None or len(warehouses) > 200 or any(
+            not row.id.strip() or not row.name.strip() for row in warehouses
+        ):
             return self._branch("invalidResponse", FailureKind.PROTOCOL)
-        warehouses = []
-        for item in data:
-            if (
-                not isinstance(item, dict)
-                or not isinstance(item.get("nums"), str)
-                or not item["nums"].strip()
-                or not isinstance(item.get("pname"), str)
-                or not item["pname"].strip()
-                or not isinstance(item.get("country", ""), str)
-            ):
-                return self._branch("invalidResponse", FailureKind.PROTOCOL)
-            warehouses.append(Warehouse(id=item["nums"], name=item["pname"], country=item.get("country", "")))
         return QueryAttempt.branch_result("listed", WarehousePage(warehouses=tuple(warehouses)), Receipt())

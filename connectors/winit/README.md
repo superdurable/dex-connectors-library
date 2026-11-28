@@ -7,3 +7,7 @@ The connector calls `POST https://openapi.winit.com.cn/openapi/service` with JSO
 The [runnable Dex Flow](go/examples/warehouse-list/README.md) shows connection setup. The [official Winit logo](https://cnres.winit.com.cn/winit/logo/svg/developer.svg) is included unchanged. Live seller authorization and production warehouse responses remain unverified.
 
 The [Python Flow example](python/examples/list_warehouses/) exercises this Query through Dex. Live provider authorization remains unverified.
+
+## Java and Rust
+
+The [Java Worker](java/examples/io/superdurable/dexconnectors/winit/WarehouseCatalogWorker.java) and [Rust Worker](rust/examples/list_warehouses.rs) list the warehouses visible to the `winit` connection. Supply `WINIT_APP_KEY`, `WINIT_TOKEN`, `WINIT_CLIENT_ID`, `WINIT_CLIENT_SECRET`, `WINIT_PLATFORM` through the Worker environment. With Dex running, use `./gradlew warehouseCatalogWorker` from `java/` or `cargo run --example list_warehouses` from `rust/`.

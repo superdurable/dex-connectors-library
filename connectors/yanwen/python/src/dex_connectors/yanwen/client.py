@@ -16,7 +16,14 @@ from dex_connectors.sdk import (
     QueryDefinition,
     Receipt,
 )
-from dex_connectors.sdk.providerhttp import new_provider_http_client, parse_retry_after
+from dex_connectors.sdk.providerhttp import (
+    BodyTooLargeError,
+    ProviderTransportError,
+    new_provider_http_client,
+    parse_retry_after,
+    read_bounded_body,
+    send_traced,
+)
 
 from ._generated.config import Config as Config
 from ._generated.config import Credentials as Credentials
@@ -68,10 +75,10 @@ class ListWarehousesOperation:
         """Return the generated Query contract."""
         return LIST_WAREHOUSES_DEFINITION
 
-    def _failure(self, branch: str, kind: FailureKind) -> QueryAttempt[WarehouseList]:
+    def _failure(self, branch: str, kind: FailureKind, delay: float = 0) -> QueryAttempt[WarehouseList]:
         failure = Failure(kind, "yanwen", "listWarehouses", "Yanwen warehouse query failed")
         if branch == "retry":
-            return QueryAttempt.retry(failure)
+            return QueryAttempt.retry(failure, delay)
         return QueryAttempt.branch_result(branch, WarehouseList(), Receipt(), failure)
 
     async def invoke(self, call: Call, input: ListWarehousesInput) -> QueryAttempt[WarehouseList]:
@@ -87,7 +94,7 @@ class ListWarehousesOperation:
             or user_id.strip() != user_id
             or not all(0x20 < ord(c) < 0x7F for c in user_id)
             or not token
-            or len(token) > 2048
+            or len(token.encode()) > 2048
             or token.strip() != token
         ):
             return self._failure("defect", FailureKind.AUTHENTICATION)
@@ -104,13 +111,15 @@ class ListWarehousesOperation:
             "sign": digest,
         }
         try:
-            response = await self.client.http_client.post(
+            request = self.client.http_client.build_request(
+                "POST",
                 self.client.config.base_url.rstrip("/") + "/api/order",
                 params=params,
                 content=b"{}",
                 headers={"Content-Type": "application/json; charset=UTF-8", "Accept": "application/json"},
             )
-        except httpx.HTTPError:
+            response, _ = await send_traced(self.client.http_client, request)
+        except (httpx.HTTPError, ProviderTransportError):
             return self._failure("retry", FailureKind.AVAILABILITY)
         try:
             status = response.status_code
@@ -132,10 +141,10 @@ class ListWarehousesOperation:
                     ),
                     retry_after,
                 )
-            body = await response.aread()
-            if len(body) > self.client.config.max_response_bytes:
-                return self._failure("invalidResponse", FailureKind.RESPONSE_TOO_LARGE)
-        except httpx.HTTPError:
+            body = await read_bounded_body(response, self.client.config.max_response_bytes)
+        except BodyTooLargeError:
+            return self._failure("invalidResponse", FailureKind.RESPONSE_TOO_LARGE)
+        except (httpx.HTTPError, ProviderTransportError):
             return self._failure("retry", FailureKind.AVAILABILITY)
         finally:
             await response.aclose()
@@ -151,7 +160,9 @@ class ListWarehousesOperation:
             )
             return self._failure("providerRejected", kind)
         try:
-            wire = json.loads(body)
+            wire = json.loads(
+                body, object_pairs_hook=lambda pairs: {name.lower(): value for name, value in pairs}
+            )
         except (ValueError, UnicodeError):
             return self._failure("invalidResponse", FailureKind.PROTOCOL)
         if (
@@ -161,18 +172,27 @@ class ListWarehousesOperation:
             or not wire["code"]
         ):
             return self._failure("invalidResponse", FailureKind.PROTOCOL)
-        if not wire["success"] or wire["code"] != "0":
-            if wire["code"].startswith("-"):
-                return self._failure("retry", FailureKind.AVAILABILITY)
-            return self._failure("providerRejected", FailureKind.PROVIDER_REJECTION)
         data = wire.get("data")
-        if not isinstance(data, list) or len(data) > 500:
+        if data is not None and not isinstance(data, list):
             return self._failure("invalidResponse", FailureKind.PROTOCOL)
         warehouses: list[Warehouse] = []
-        for item in data:
-            if not isinstance(item, dict) or any(
-                not isinstance(item.get(field), str) or not item[field] for field in ("code", "name", "area")
-            ):
+        for item in data or []:
+            if item is None:
+                item = {}
+            if not isinstance(item, dict):
                 return self._failure("invalidResponse", FailureKind.PROTOCOL)
-            warehouses.append(Warehouse(item["code"], item["name"], item["area"]))
+            fields = tuple(item.get(key) for key in ("code", "name", "area"))
+            if any(value is not None and not isinstance(value, str) for value in fields):
+                return self._failure("invalidResponse", FailureKind.PROTOCOL)
+            warehouses.append(Warehouse(*(value or "" for value in fields)))
+        if not wire["success"] or wire["code"] != "0":
+            if wire["code"].startswith("-"):
+                return self._failure("retry", FailureKind.AVAILABILITY, retry_after)
+            return self._failure("providerRejected", FailureKind.PROVIDER_REJECTION)
+        if (
+            data is None
+            or len(warehouses) > 500
+            or any(not row.code or not row.name or not row.area for row in warehouses)
+        ):
+            return self._failure("invalidResponse", FailureKind.PROTOCOL)
         return QueryAttempt.branch_result("listed", WarehouseList(tuple(warehouses)), Receipt(), None)

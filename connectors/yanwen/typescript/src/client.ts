@@ -40,7 +40,7 @@ export class YanwenClient {
     catch { return branch('defect', 'AUTHENTICATION'); }
     const userID = credentials.userId;
     const token = credentials.apiToken instanceof SecretString ? credentials.apiToken.reveal() : '';
-    if (typeof userID !== 'string' || !userID || userID.length > 64 || userID.trim() !== userID || !/^[!-~]+$/.test(userID) || !token || token.length > 2048 || token.trim() !== token) return branch('defect', 'AUTHENTICATION');
+    if (typeof userID !== 'string' || !userID || userID.length > 64 || userID.trim() !== userID || !/^[!-~]+$/.test(userID) || !token || Buffer.byteLength(token) > 2048 || /^\p{White_Space}|\p{White_Space}$/u.test(token)) return branch('defect', 'AUTHENTICATION');
     const timestamp = String(this.now().getTime());
     const sign = createHash('md5').update(`${token}${userID}{}jsoncommon.warehouse.getlist${timestamp}V1.0${token}`).digest('hex');
     const query = new URLSearchParams({ user_id: userID, format: 'json', method: 'common.warehouse.getlist', timestamp, version: 'V1.0', sign });
@@ -48,26 +48,34 @@ export class YanwenClient {
     let response: ProviderResponse;
     try { response = await this.send(request); }
     catch (error) {
-      if (error instanceof BodyTooLargeError && error.status === 200) return branch('invalidResponse', 'RESPONSE_TOO_LARGE');
+      if (error instanceof BodyTooLargeError && error.status !== undefined) {
+        const delay = retryDelay(error.headers ?? {});
+        if (error.status === 429) return retry('RATE_LIMIT', delay);
+        if (error.status === 408 || error.status >= 500) return retry('AVAILABILITY', delay);
+        return branch('invalidResponse', 'RESPONSE_TOO_LARGE');
+      }
       return retry('AVAILABILITY');
     }
-    const retryAfter = Object.entries(response.headers).find(([name]) => name.toLowerCase() === 'retry-after')?.[1];
-    const delay = parseRetryAfter(Array.isArray(retryAfter) ? retryAfter[0] ?? '' : retryAfter ?? '');
+    const delay = retryDelay(response.headers);
     if (response.status === 429) return retry('RATE_LIMIT', delay);
     if (response.status === 408 || response.status >= 500) return retry('AVAILABILITY', delay);
     if (response.body.length > this.maxResponseBytes) return branch('invalidResponse', 'RESPONSE_TOO_LARGE');
     if (response.status !== 200) return branch('providerRejected', response.status === 401 ? 'AUTHENTICATION' : response.status === 403 ? 'AUTHORIZATION' : [400, 404, 412].includes(response.status) ? 'VALIDATION' : 'PROVIDER_REJECTION');
     let data: unknown;
-    try { data = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(response.body)) as unknown; }
+    try { data = JSON.parse(new TextDecoder().decode(response.body), (_, value: unknown) =>
+      isRecord(value) ? Object.fromEntries(Object.entries(value).map(([key, field]) => [key.toLowerCase(), field])) : value) as unknown; }
     catch { return branch('invalidResponse', 'PROTOCOL'); }
-    if (!isRecord(data) || typeof data.success !== 'boolean' || typeof data.code !== 'string' || !data.code) return branch('invalidResponse', 'PROTOCOL');
-    if (!data.success || data.code !== '0') return data.code.startsWith('-') ? retry('AVAILABILITY', delay) : branch('providerRejected', 'PROVIDER_REJECTION');
-    if (!Array.isArray(data.data) || data.data.length > 500) return branch('invalidResponse', 'PROTOCOL');
+    if (!isRecord(data) || (data.data != null && !Array.isArray(data.data))) return branch('invalidResponse', 'PROTOCOL');
+    if (typeof data.success !== 'boolean' || typeof data.code !== 'string' || !data.code) return branch('invalidResponse', 'PROTOCOL');
     const warehouses: NonNullable<WarehouseList['warehouses']> = [];
-    for (const item of data.data) {
-      if (!isRecord(item) || typeof item.code !== 'string' || !item.code || typeof item.name !== 'string' || !item.name || typeof item.area !== 'string' || !item.area) return branch('invalidResponse', 'PROTOCOL');
-      warehouses.push({ code: item.code, name: item.name, area: item.area });
+    for (const item of (data.data ?? []) as unknown[]) {
+      if (item !== null && !isRecord(item)) return branch('invalidResponse', 'PROTOCOL');
+      const code = item?.code ?? '', name = item?.name ?? '', area = item?.area ?? '';
+      if (typeof code !== 'string' || typeof name !== 'string' || typeof area !== 'string') return branch('invalidResponse', 'PROTOCOL');
+      warehouses.push({ code, name, area });
     }
+    if (!data.success || data.code !== '0') return data.code.startsWith('-') ? retry('AVAILABILITY', delay) : branch('providerRejected', 'PROVIDER_REJECTION');
+    if (!data.data || warehouses.length > 500 || warehouses.some(row => !row.code || !row.name || !row.area)) return branch('invalidResponse', 'PROTOCOL');
     return newQueryBranch('listed', { warehouses });
   }
 }
@@ -78,6 +86,10 @@ export class ListWarehousesOperation implements Query<ListWarehousesInput, Wareh
   /** Invoke one safe provider read. */ invoke(call: Call): Promise<QueryAttempt<WarehouseList>> { return this.client.request(call); }
 }
 function isRecord(value: unknown): value is Record<string, unknown> { return typeof value === 'object' && value !== null && !Array.isArray(value); }
+function retryDelay(headers: ProviderResponse['headers']): number {
+  const value = Object.entries(headers).find(([name]) => name.toLowerCase() === 'retry-after')?.[1];
+  return parseRetryAfter(Array.isArray(value) ? value[0] ?? '' : value ?? '');
+}
 function failure(kind: Failure['kind']): Failure { return { provider: 'yanwen', operation: 'listWarehouses', kind, message: 'Yanwen warehouse request failed' }; }
 function branch(name: string, kind: Failure['kind']): QueryAttempt<WarehouseList> { return newQueryBranch(name, empty, {}, failure(kind)); }
 function retry(kind: Failure['kind'], delay = 0): QueryAttempt<WarehouseList> { return newQueryRetry(failure(kind), delay); }

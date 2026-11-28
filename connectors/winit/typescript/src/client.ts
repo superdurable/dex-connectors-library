@@ -3,6 +3,7 @@
 
 import { createHash } from 'node:crypto';
 import { SecretString, newQueryBranch, newQueryRetry, type Call, type CredentialProvider, type Failure, type Query, type QueryAttempt, type QueryDefinition } from '@superdurable/connectors-sdk';
+import { integerCode, parseBalanceResponse } from './provider-json.js';
 import { BodyTooLargeError, parseRetryAfter, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ListWarehousesDefinition } from './generated/definitions.js';
 import type { Config, Credentials, ListWarehousesInput, WarehousePage } from './generated/models.js';
@@ -52,26 +53,35 @@ export class WinitClient {
     let response: ProviderResponse;
     try { response = await this.send(request); }
     catch (error) {
-      if (error instanceof BodyTooLargeError && error.status === 200) return branch('invalidResponse', 'RESPONSE_TOO_LARGE');
+      if (error instanceof BodyTooLargeError && error.status !== undefined) {
+        const delay = retryDelay(error.headers ?? {});
+        if (error.status === 429) return retry('RATE_LIMIT', delay);
+        if (error.status === 408 || error.status >= 500) return retry('AVAILABILITY', delay);
+        return branch('invalidResponse', 'RESPONSE_TOO_LARGE');
+      }
       return retry('AVAILABILITY');
     }
-    const retryAfter = Object.entries(response.headers).find(([name]) => name.toLowerCase() === 'retry-after')?.[1];
-    const delay = parseRetryAfter(Array.isArray(retryAfter) ? retryAfter[0] ?? '' : retryAfter ?? '');
+    const delay = retryDelay(response.headers);
     if (response.status === 429) return retry('RATE_LIMIT', delay);
     if (response.status === 408 || response.status >= 500) return retry('AVAILABILITY', delay);
     if (response.body.length > this.maxResponseBytes) return branch('invalidResponse', 'RESPONSE_TOO_LARGE');
     if (response.status !== 200) return branch('providerRejected', response.status === 401 ? 'AUTHENTICATION' : response.status === 403 ? 'AUTHORIZATION' : response.status === 400 || response.status === 404 ? 'VALIDATION' : 'PROVIDER_REJECTION');
     let data: unknown;
-    try { data = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(response.body)) as unknown; }
+    try { data = parseBalanceResponse(response.body); }
     catch { return branch('invalidResponse', 'PROTOCOL'); }
-    if (!isRecord(data) || typeof data.code !== 'number' || !Number.isInteger(data.code)) return branch('invalidResponse', 'PROTOCOL');
-    if (data.code !== 0) return branch('providerRejected', 'PROVIDER_REJECTION');
-    if (!Array.isArray(data.data) || data.data.length > 200) return branch('invalidResponse', 'PROTOCOL');
+    if (!isRecord(data) || (data.data != null && !Array.isArray(data.data))) return branch('invalidResponse', 'PROTOCOL');
+    const providerCode = integerCode(data.code);
+    if (providerCode === undefined) return branch('invalidResponse', 'PROTOCOL');
     const warehouses: NonNullable<WarehousePage['warehouses']> = [];
-    for (const item of data.data) {
-      if (!isRecord(item) || typeof item.warehouseID !== 'number' || !Number.isSafeInteger(item.warehouseID) || item.warehouseID <= 0 || typeof item.warehouseCode !== 'string' || !item.warehouseCode || typeof item.warehouseName !== 'string' || !item.warehouseName) return branch('invalidResponse', 'PROTOCOL');
-      warehouses.push({ id: item.warehouseID, code: item.warehouseCode, name: item.warehouseName });
+    for (const item of (data.data ?? []) as unknown[]) {
+      if (item !== null && !isRecord(item)) return branch('invalidResponse', 'PROTOCOL');
+      const id = item?.warehouseid == null ? 0n : integerCode(item.warehouseid);
+      const code = item?.warehousecode ?? '', name = item?.warehousename ?? '';
+      if (id === undefined || typeof code !== 'string' || typeof name !== 'string') return branch('invalidResponse', 'PROTOCOL');
+      warehouses.push({ id: Number(id), code, name });
     }
+    if (providerCode !== 0n) return branch('providerRejected', 'PROVIDER_REJECTION');
+    if (!data.data || warehouses.length > 200 || warehouses.some(row => !Number.isSafeInteger(row.id) || row.id <= 0 || !row.code || !row.name)) return branch('invalidResponse', 'PROTOCOL');
     return newQueryBranch('listed', { warehouses });
   }
 }
@@ -83,7 +93,11 @@ export class ListWarehousesOperation implements Query<ListWarehousesInput, Wareh
 }
 function sign(parameters: Record<string, string>, secret: string): string { const content = Object.entries(parameters).filter(([,value]) => value).sort(([left],[right]) => left.localeCompare(right, 'en')).map(([key,value]) => `${key}${value}`).join(''); return createHash('md5').update(`${secret}${content}${secret}`).digest('hex').toUpperCase(); }
 function validSecret(value: string): boolean { return Boolean(value) && value.length <= 2048 && /^[!-~]+$/.test(value); }
-function isRecord(value: unknown): value is Record<string, unknown> { return typeof value === 'object' && value !== null && !Array.isArray(value); }
+function isRecord(value: unknown): value is Record<string, unknown> { return value !== null && typeof value === 'object' && Object.getPrototypeOf(value) === Object.prototype; }
+function retryDelay(headers: ProviderResponse['headers']): number {
+  const value = Object.entries(headers).find(([name]) => name.toLowerCase() === 'retry-after')?.[1];
+  return parseRetryAfter(Array.isArray(value) ? value[0] ?? '' : value ?? '');
+}
 function failure(kind: Failure['kind']): Failure { return { provider: 'winit', operation: 'listWarehouses', kind, message: 'Winit warehouse request failed' }; }
 function branch(name: string, kind: Failure['kind']): QueryAttempt<WarehousePage> { return newQueryBranch(name, empty, {}, failure(kind)); }
 function retry(kind: Failure['kind'], delay = 0): QueryAttempt<WarehousePage> { return newQueryRetry(failure(kind), delay); }

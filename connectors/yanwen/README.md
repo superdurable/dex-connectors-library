@@ -7,3 +7,7 @@ The [official warehouse API](https://opendocs.yw56.com.cn/webfile/71286496948251
 The response is bounded to 1 MiB and 500 warehouses. The [runnable Dex Flow](go/examples/warehouses/README.md) demonstrates a static connection, typed output, durable result, strict FDG, and a mock backed by a real Dex Worker and Client. Live customer authorization and production warehouse lists remain unverified. The logo uses the [official Yanwen Open Platform brand image](https://opendocs.yw56.com.cn/webfile/image/logo.jpg).
 
 The [Python Flow example](python/examples/list_warehouses/) exercises this Query through Dex. Live provider authorization remains unverified.
+
+## Java and Rust
+
+The [Java Worker](java/examples/io/superdurable/dexconnectors/yanwen/WarehouseCatalogWorker.java) and [Rust Worker](rust/examples/list_warehouses.rs) list the warehouses visible to the `yanwen` connection. Supply `YANWEN_USER_ID`, `YANWEN_API_TOKEN` through the Worker environment. With Dex running, use `./gradlew warehouseCatalogWorker` from `java/` or `cargo run --example list_warehouses` from `rust/`.

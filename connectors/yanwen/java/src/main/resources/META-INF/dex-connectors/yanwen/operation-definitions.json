@@ -1,0 +1,42 @@
+{
+  "listWarehouses": {
+    "branches": [
+      {
+        "description": "Yanwen returned a warehouse list, possibly empty.",
+        "id": "listed",
+        "optional": false
+      },
+      {
+        "description": "Yanwen rejected the account or request.",
+        "id": "providerRejected",
+        "optional": true
+      },
+      {
+        "description": "Yanwen returned malformed or oversized warehouse data.",
+        "id": "invalidResponse",
+        "optional": true
+      },
+      {
+        "description": "The local connection is invalid.",
+        "id": "defect",
+        "optional": true
+      }
+    ],
+    "operation": {
+      "connectorId": "yanwen",
+      "operationId": "listWarehouses"
+    },
+    "stepDefaults": {
+      "executeDurability": 2,
+      "executeMethodTimeout": 30000000000,
+      "executeRetry": {
+        "BackoffCoefficient": 2,
+        "InitialInterval": 1000000000,
+        "MaximumAttempts": 0,
+        "MaximumInterval": 300000000000,
+        "TotalDuration": 3600000000000
+      },
+      "heartbeatTimeout": 0
+    }
+  }
+}

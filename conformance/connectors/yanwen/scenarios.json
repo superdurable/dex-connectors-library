@@ -578,6 +578,301 @@
       "input": {},
       "name": "listWarehouses-oversized",
       "operation": "listWarehouses"
+    },
+    {
+      "callId": "efe3b974-3c84-5d1b-8324-f219f7d3872c",
+      "exchanges": [
+        {
+          "body": "{\"SUCCESS\":true,\"CODE\":\"0\",\"DATA\":[{\"CODE\":\"H\",\"NAME\":\"Depot\",\"AREA\":\"HK\"},{\"CODE\":\"H\",\"NAME\":\"Depot\",\"AREA\":\"HK\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/order",
+          "query": {
+            "format": [
+              "json"
+            ],
+            "method": [
+              "common.warehouse.getlist"
+            ],
+            "sign": [
+              "c202cfbaeae0148c065932fff70d060e"
+            ],
+            "timestamp": [
+              "1794673811123"
+            ],
+            "user_id": [
+              "customer-1"
+            ],
+            "version": [
+              "V1.0"
+            ]
+          },
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json; charset=UTF-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "warehouses": [
+            {
+              "area": "HK",
+              "code": "H",
+              "name": "Depot"
+            },
+            {
+              "area": "HK",
+              "code": "H",
+              "name": "Depot"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-14T16:30:11.123Z",
+      "input": {},
+      "name": "listWarehouses-clock-rollover-mixed-case",
+      "operation": "listWarehouses"
+    },
+    {
+      "callId": "59cd86c0-afea-5cad-bee5-7cbea679513e",
+      "exchanges": [
+        {
+          "body": "{\"success\":false,\"code\":\"2\",\"data\":[null]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/order",
+          "query": {
+            "format": [
+              "json"
+            ],
+            "method": [
+              "common.warehouse.getlist"
+            ],
+            "sign": [
+              "c202cfbaeae0148c065932fff70d060e"
+            ],
+            "timestamp": [
+              "1794673811123"
+            ],
+            "user_id": [
+              "customer-1"
+            ],
+            "version": [
+              "V1.0"
+            ]
+          },
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json; charset=UTF-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "warehouses": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-14T16:30:11.123Z",
+      "input": {},
+      "name": "listWarehouses-rejected-null-data",
+      "operation": "listWarehouses"
+    },
+    {
+      "callId": "158a67ed-6eb2-57a6-a7ef-ce37100c31c0",
+      "exchanges": [
+        {
+          "body": "{\"success\":false,\"code\":\"2\",\"data\":[{\"area\":false}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/order",
+          "query": {
+            "format": [
+              "json"
+            ],
+            "method": [
+              "common.warehouse.getlist"
+            ],
+            "sign": [
+              "c202cfbaeae0148c065932fff70d060e"
+            ],
+            "timestamp": [
+              "1794673811123"
+            ],
+            "user_id": [
+              "customer-1"
+            ],
+            "version": [
+              "V1.0"
+            ]
+          },
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json; charset=UTF-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "warehouses": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-14T16:30:11.123Z",
+      "input": {},
+      "name": "listWarehouses-rejected-invalid-row",
+      "operation": "listWarehouses"
+    },
+    {
+      "callId": "b1329d97-ac05-5928-8f33-9c0231c77aec",
+      "exchanges": [
+        {
+          "body": "{\"SUCCESS\":true,\"CODE\":\"0\",\"DATA\":[{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/order",
+          "query": {
+            "format": [
+              "json"
+            ],
+            "method": [
+              "common.warehouse.getlist"
+            ],
+            "sign": [
+              "c202cfbaeae0148c065932fff70d060e"
+            ],
+            "timestamp": [
+              "1794673811123"
+            ],
+            "user_id": [
+              "customer-1"
+            ],
+            "version": [
+              "V1.0"
+            ]
+          },
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json; charset=UTF-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "warehouses": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-14T16:30:11.123Z",
+      "input": {},
+      "name": "listWarehouses-directory-limit",
+      "operation": "listWarehouses"
+    },
+    {
+      "callId": "6fd582ea-d242-5528-ac2f-5ad7d5d2f654",
+      "exchanges": [
+        {
+          "body": "{\"success\":false,\"code\":\"-1\",\"data\":null}",
+          "headers": {
+            "Retry-After": "17"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/order",
+          "query": {
+            "format": [
+              "json"
+            ],
+            "method": [
+              "common.warehouse.getlist"
+            ],
+            "sign": [
+              "c202cfbaeae0148c065932fff70d060e"
+            ],
+            "timestamp": [
+              "1794673811123"
+            ],
+            "user_id": [
+              "customer-1"
+            ],
+            "version": [
+              "V1.0"
+            ]
+          },
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json; charset=UTF-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 17000,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-14T16:30:11.123Z",
+      "input": {},
+      "name": "listWarehouses-business-retry-after",
+      "operation": "listWarehouses"
     }
   ],
   "schemaVersion": 1

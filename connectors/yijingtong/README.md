@@ -13,3 +13,7 @@ The [`python/`](python/) package implements the `listWarehouses` Query. Its chec
 ## TypeScript
 
 The TypeScript package under [`typescript/`](typescript/) implements `listWarehouses` with a runnable Dex Flow, Go-recorded conformance replay, and a real Dex integration test.
+
+## Java and Rust
+
+The [Java Worker](java/examples/io/superdurable/dexconnectors/yijingtong/WarehouseCatalogWorker.java) and [Rust Worker](rust/examples/list_warehouses.rs) list the warehouses visible to the `yijingtong` connection. Supply `YIJINGTONG_TOKEN` and your tenant URL in `YIJINGTONG_BASE_URL` through the Worker environment. With Dex running, use `./gradlew warehouseCatalogWorker` from `java/` or `cargo run --example list_warehouses` from `rust/`.

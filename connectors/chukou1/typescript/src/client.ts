@@ -80,11 +80,11 @@ export class ListWarehousesOperation implements Query<ListWarehousesInput, Wareh
     const warehouses: Warehouse[] = [];
     for (const item of wire) {
       if (!item || typeof item !== 'object' || Array.isArray(item)) return terminal('invalidResponse', 'PROTOCOL', 'Chukou1 returned an invalid warehouse response');
-      const record = item as Record<string, unknown>;
-      const id = stringField(record.WarehouseId);
-      const name = stringField(record.WarehouseName);
-      const country = stringField(record.Country);
-      const countryCode = stringField(record.CountryCode);
+      const record: Record<string, unknown> = Object.fromEntries(Object.entries(item).map(([key, value]) => [key.toLowerCase(), value]));
+      const id = stringField(record.warehouseid);
+      const name = stringField(record.warehousename);
+      const country = stringField(record.country);
+      const countryCode = stringField(record.countrycode);
       if (id === undefined || name === undefined || country === undefined || countryCode === undefined || !id || !name || !countryCode)
         return terminal('invalidResponse', 'PROTOCOL', 'Chukou1 returned an invalid warehouse response');
       warehouses.push({ id, name, country, countryCode });

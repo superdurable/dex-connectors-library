@@ -16,7 +16,14 @@ from dex_connectors.sdk import (
     QueryDefinition,
     Receipt,
 )
-from dex_connectors.sdk.providerhttp import new_provider_http_client, parse_retry_after
+from dex_connectors.sdk.providerhttp import (
+    BodyTooLargeError,
+    ProviderTransportError,
+    new_provider_http_client,
+    parse_retry_after,
+    read_bounded_body,
+    send_traced,
+)
 
 from ._generated.config import Config as Config
 from ._generated.config import Credentials as Credentials
@@ -131,12 +138,14 @@ class ListWarehousesOperation:
             "version": "1.0",
         }
         try:
-            response = await self.client.http_client.post(
+            request = self.client.http_client.build_request(
+                "POST",
                 self.client.config.base_url.rstrip("/") + "/openapi/service",
                 json=body,
                 headers={"Accept": "application/json", "Content-Type": "application/json"},
             )
-        except httpx.HTTPError:
+            response, _ = await send_traced(self.client.http_client, request)
+        except (httpx.HTTPError, ProviderTransportError):
             return self._failure("retry", FailureKind.AVAILABILITY)
         try:
             status = response.status_code
@@ -153,10 +162,10 @@ class ListWarehousesOperation:
                     Failure(FailureKind.AVAILABILITY, "winit", "listWarehouses", "Winit unavailable"),
                     retry_after,
                 )
-            response_body = await response.aread()
-            if len(response_body) > self.client.config.max_response_bytes:
-                return self._failure("invalidResponse", FailureKind.RESPONSE_TOO_LARGE)
-        except httpx.HTTPError:
+            response_body = await read_bounded_body(response, self.client.config.max_response_bytes)
+        except BodyTooLargeError:
+            return self._failure("invalidResponse", FailureKind.RESPONSE_TOO_LARGE)
+        except (httpx.HTTPError, ProviderTransportError):
             return self._failure("retry", FailureKind.AVAILABILITY)
         finally:
             await response.aclose()
@@ -172,27 +181,39 @@ class ListWarehousesOperation:
             )
             return self._failure("providerRejected", kind)
         try:
-            wire = json.loads(response_body)
+            wire = json.loads(
+                response_body, object_pairs_hook=lambda pairs: {name.lower(): value for name, value in pairs}
+            )
         except (UnicodeError, ValueError):
             return self._failure("invalidResponse", FailureKind.PROTOCOL)
         if not isinstance(wire, dict) or type(wire.get("code")) is not int:
             return self._failure("invalidResponse", FailureKind.PROTOCOL)
-        if wire["code"] != 0:
-            return self._failure("providerRejected", FailureKind.PROVIDER_REJECTION)
+        if not -(1 << 63) <= wire["code"] < (1 << 63):
+            return self._failure("invalidResponse", FailureKind.PROTOCOL)
         data = wire.get("data")
-        if not isinstance(data, list) or len(data) > 200:
+        if data is not None and not isinstance(data, list):
             return self._failure("invalidResponse", FailureKind.PROTOCOL)
         warehouses: list[Warehouse] = []
-        for item in data:
-            if (
-                not isinstance(item, dict)
-                or type(item.get("warehouseID")) is not int
-                or item["warehouseID"] <= 0
-                or not isinstance(item.get("warehouseCode"), str)
-                or not item["warehouseCode"]
-                or not isinstance(item.get("warehouseName"), str)
-                or not item["warehouseName"]
+        for item in data or []:
+            if item is None:
+                item = {}
+            if not isinstance(item, dict):
+                return self._failure("invalidResponse", FailureKind.PROTOCOL)
+            identifier = item.get("warehouseid")
+            if identifier is not None and (
+                type(identifier) is not int or not -(1 << 63) <= identifier < (1 << 63)
             ):
                 return self._failure("invalidResponse", FailureKind.PROTOCOL)
-            warehouses.append(Warehouse(item["warehouseID"], item["warehouseCode"], item["warehouseName"]))
+            code, name = item.get("warehousecode"), item.get("warehousename")
+            if any(value is not None and not isinstance(value, str) for value in (code, name)):
+                return self._failure("invalidResponse", FailureKind.PROTOCOL)
+            warehouses.append(Warehouse(identifier or 0, code or "", name or ""))
+        if wire["code"] != 0:
+            return self._failure("providerRejected", FailureKind.PROVIDER_REJECTION)
+        if (
+            data is None
+            or len(warehouses) > 200
+            or any(row.id <= 0 or not row.code or not row.name for row in warehouses)
+        ):
+            return self._failure("invalidResponse", FailureKind.PROTOCOL)
         return QueryAttempt.branch_result("listed", WarehousePage(tuple(warehouses)), Receipt(), None)

@@ -166,11 +166,12 @@ def _decode_warehouse_page(body: bytes) -> WarehousePage:
     for row in document:
         if not isinstance(row, dict):
             raise ValueError("invalid Chukou1 warehouse")
+        fields = {name.lower(): value for name, value in row.items()}
         id, name, country, country_code = (
-            _json_string(row.get("WarehouseId")),
-            _json_string(row.get("WarehouseName")),
-            _json_string(row.get("Country")),
-            _json_string(row.get("CountryCode")),
+            _json_string(fields.get("warehouseid")),
+            _json_string(fields.get("warehousename")),
+            _json_string(fields.get("country")),
+            _json_string(fields.get("countrycode")),
         )
         if not id or not name or not country_code:
             raise ValueError("incomplete Chukou1 warehouse")

@@ -10,13 +10,15 @@ metadata:
 spec:
   provider: chukou1
   languages:
+    java: {version: v0.1.0, operations: [listWarehouses], triggers: []}
+    rust: {version: v0.1.0, operations: [listWarehouses], triggers: []}
     python:
-      version: v0.1.0
+      version: v0.1.1
       package: dex-connector-chukou1
       operations: [listWarehouses]
       triggers: []
     typescript:
-      version: v0.1.0
+      version: v0.1.1
       package: "@superdurable/connector-chukou1"
       operations: [listWarehouses]
       triggers: []

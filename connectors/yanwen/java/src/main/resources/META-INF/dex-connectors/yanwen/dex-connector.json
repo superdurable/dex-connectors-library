@@ -1,0 +1,52 @@
+{
+  "connectorId": "yanwen",
+  "releaseTag": "connectors/yanwen/go/v0.1.0",
+  "package": {
+    "ecosystem": "maven",
+    "name": "io.superdurable:dex-connector-yanwen",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newListWarehousesStep",
+      "kind": "query",
+      "operationId": "listWarehouses",
+      "inputType": "ListWarehousesInput",
+      "description": "List handover warehouse codes, names, and regions available to the Yanwen customer.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListWarehousesInput selects the authorized customer's entire warehouse list.",
+        "properties": {},
+        "type": "object"
+      }
+    }
+  ]
+}

@@ -50,25 +50,39 @@ export class ListWarehousesOperation implements Query<ListWarehousesInput, Wareh
       timeoutMs: this.client.timeoutMs, maxResponseBytes: this.client.maxResponseBytes,
       addressPolicy: 'publicHTTPS', signal: call.context.cancellationSignal }); }
     catch (error) {
-      if (error instanceof BodyTooLargeError && error.status === 200) return branch('invalidResponse', 'RESPONSE_TOO_LARGE');
-      if (error instanceof BodyTooLargeError && error.status !== undefined) return classifyStatus(error.status, error.headers ?? {});
+      if (error instanceof BodyTooLargeError && error.status !== undefined) {
+        if (retryable(error.status)) return classifyStatus(error.status, error.headers ?? {});
+        return branch('invalidResponse', 'RESPONSE_TOO_LARGE');
+      }
       return retry('AVAILABILITY');
     }
-    if (response.status !== 200) return classifyStatus(response.status, response.headers);
+    if (retryable(response.status)) return classifyStatus(response.status, response.headers);
     if (response.body.length > this.client.maxResponseBytes) return branch('invalidResponse', 'RESPONSE_TOO_LARGE');
+    if (response.status !== 200) return classifyStatus(response.status, response.headers);
     let document: unknown;
     try { document = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(response.body)) as unknown; }
     catch { return branch('invalidResponse', 'PROTOCOL'); }
-    if (!isRecord(document) || (document.error !== 'T' && document.error !== 'F')) return branch('invalidResponse', 'PROTOCOL');
-    if (document.error === 'F') return branch('providerRejected', 'PROVIDER_REJECTION');
-    if (!Array.isArray(document.data) || document.data.length > 200) return branch('invalidResponse', 'PROTOCOL');
+    if (!isRecord(document)) return branch('invalidResponse', 'PROTOCOL');
+    const envelope = lowerCaseFields(document);
+    if (envelope.error !== 'T' && envelope.error !== 'F') return branch('invalidResponse', 'PROTOCOL');
+    const data = envelope.data;
+    if (data != null && !Array.isArray(data)) return branch('invalidResponse', 'PROTOCOL');
     const warehouses: Warehouse[] = [];
-    for (const item of document.data as unknown[]) {
-      if (!isRecord(item) || typeof item.nums !== 'string' || !item.nums.trim() || typeof item.pname !== 'string' || !item.pname.trim() || (item.country !== undefined && typeof item.country !== 'string')) return branch('invalidResponse', 'PROTOCOL');
-      warehouses.push({ id: item.nums, name: item.pname, country: typeof item.country === 'string' ? item.country : '' });
+    for (const item of (data ?? []) as unknown[]) {
+      if (item !== null && !isRecord(item)) return branch('invalidResponse', 'PROTOCOL');
+      const fields = lowerCaseFields(item ?? {});
+      const id = fields.nums ?? '', name = fields.pname ?? '', country = fields.country ?? '';
+      if (typeof id !== 'string' || typeof name !== 'string' || typeof country !== 'string') return branch('invalidResponse', 'PROTOCOL');
+      warehouses.push({ id, name, country });
     }
+    if (envelope.error === 'F') return branch('providerRejected', 'PROVIDER_REJECTION');
+    if (!data || warehouses.length > 200 || warehouses.some(({ id, name }) => !/[^\p{White_Space}]/u.test(id) || !/[^\p{White_Space}]/u.test(name))) return branch('invalidResponse', 'PROTOCOL');
     return newQueryBranch('listed', { warehouses });
   }
+}
+function retryable(status: number): boolean { return status === 408 || status === 429 || status >= 500; }
+function lowerCaseFields(record: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(record).map(([key, value]) => [key.toLowerCase(), value]));
 }
 function isRecord(value: unknown): value is Record<string, unknown> { return typeof value === 'object' && value !== null && !Array.isArray(value); }
 function classifyStatus(status: number, headers: ProviderResponse['headers']): QueryAttempt<WarehousePage> {

@@ -1,0 +1,42 @@
+{
+  "listWarehouses": {
+    "branches": [
+      {
+        "description": "Chukou1 returned overseas warehouses, possibly empty.",
+        "id": "listed",
+        "optional": false
+      },
+      {
+        "description": "Chukou1 rejected the token or request.",
+        "id": "providerRejected",
+        "optional": true
+      },
+      {
+        "description": "Chukou1 returned malformed or oversized warehouse data.",
+        "id": "invalidResponse",
+        "optional": true
+      },
+      {
+        "description": "Local configuration or token is invalid.",
+        "id": "defect",
+        "optional": true
+      }
+    ],
+    "operation": {
+      "connectorId": "chukou1",
+      "operationId": "listWarehouses"
+    },
+    "stepDefaults": {
+      "executeDurability": 2,
+      "executeMethodTimeout": 30000000000,
+      "executeRetry": {
+        "BackoffCoefficient": 2,
+        "InitialInterval": 1000000000,
+        "MaximumAttempts": 0,
+        "MaximumInterval": 300000000000,
+        "TotalDuration": 3600000000000
+      },
+      "heartbeatTimeout": 0
+    }
+  }
+}
