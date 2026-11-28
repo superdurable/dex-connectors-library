@@ -140,6 +140,23 @@ func TestGenerateLanguagePackageManifestsAndDetectDrift(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, string(pythonManifest), `"factories": []`)
 	require.NoError(t, generate([]string{"--check", manifestPath}))
+	for _, language := range []string{"java", "rust"} {
+		var declaration string
+		for _, line := range strings.Split(languages, "\n") {
+			if strings.HasPrefix(strings.TrimSpace(line), language+":") {
+				declaration = "  languages:\n" + line + "\n"
+			}
+		}
+		standalone := strings.Replace(manifestSource, languages, declaration, 1)
+		require.NoError(t, os.WriteFile(manifestPath, []byte(standalone), 0o600))
+		require.NoError(t, generate([]string{manifestPath}))
+		require.NoError(t, generate([]string{"--check", manifestPath}))
+		path := filepath.Join(connectorDirectory, language, "dex-connector.json")
+		if language == "java" {
+			path = filepath.Join(javaConnectorManifestDirectory(connectorDirectory, "connectors/google/sheets"), "dex-connector.json")
+		}
+		require.FileExists(t, path)
+	}
 	manifestSource = strings.Replace(manifestSource, languages, "", 1)
 	require.NoError(t, os.WriteFile(manifestPath, []byte(manifestSource), 0o600))
 	require.ErrorContains(t, generate([]string{"--check", manifestPath}), "generated language package manifest is stale")

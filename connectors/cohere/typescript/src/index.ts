@@ -7,4 +7,4 @@ export * from './generated/steps.js';
 export { Connection, newConnection, newConnectionWithOperations } from './generated/connection.js';
 export { newProjectConnection } from './project.js';
 export { CohereClient, type CohereClientOptions, type CohereRequestSender } from './client.js';
-export { EmbedOperation, RerankOperation } from './operations.js';
+export { ChatOperation, EmbedOperation, RerankOperation } from './operations.js';

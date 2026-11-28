@@ -9,10 +9,15 @@ metadata:
   version: v0.1.0
 spec:
   languages:
+    java: {version: v0.1.0, operations: [listModels], triggers: []}
+    rust: {version: v0.1.0, operations: [listModels], triggers: []}
     python: {version: v0.1.0, operations: [listModels], triggers: []}
     typescript: {version: v0.1.0, package: "@superdurable/connector-zhuanqicloud", operations: [listModels], triggers: []}
   provider: zhuanqicloud
   codegen:
+    modelCatalog:
+      endpoint: https://zhuanqicloud.com/v1/models
+      providerLabel: ZhuanqiCloud
     go:
       package: zhuanqicloud
   configuration:

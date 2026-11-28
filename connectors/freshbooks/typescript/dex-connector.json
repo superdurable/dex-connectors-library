@@ -4,7 +4,7 @@
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-freshbooks",
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   "factories": [
     {
@@ -62,6 +62,62 @@
         "required": [
           "accountId",
           "invoiceId"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "newListInvoicesStep",
+      "kind": "query",
+      "operationId": "listInvoices",
+      "inputType": "ListInvoicesInput",
+      "description": "List one bounded page of invoices for an accounting account.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "missing",
+          "field": "missing",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListInvoicesInput selects a one-based invoice page; zero selects page one.",
+        "properties": {
+          "accountId": {
+            "type": "string"
+          },
+          "page": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "accountId"
         ],
         "type": "object"
       }

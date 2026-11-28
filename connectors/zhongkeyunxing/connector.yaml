@@ -9,10 +9,16 @@ metadata:
   version: v0.1.0
 spec:
   languages:
+    java: {version: v0.1.0, operations: [listModels], triggers: []}
+    rust: {version: v0.1.0, operations: [listModels], triggers: []}
     python: {version: v0.1.0, operations: [listModels], triggers: []}
     typescript: {version: v0.1.0, package: "@superdurable/connector-zhongkeyunxing", operations: [listModels], triggers: []}
   provider: zhongkeyunxing
   codegen:
+    modelCatalog:
+      endpoint: https://www.zhongkeyunx.com/v1/models
+      providerLabel: Zhongke Yunxing
+      keyPrefix: sk-
     go:
       package: zhongkeyunxing
   configuration:

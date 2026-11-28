@@ -4,11 +4,13 @@
 
 import { ConnectionRefSchema, type ConnectionRef, type Query } from '@superdurable/connectors-sdk';
 import type { LoadedProject } from '@superdurable/connectors-sdk/projectconfig';
-import type { EmbedInput, EmbedOutput, RerankInput, RerankOutput } from './models.js';
+import type { ChatInput, ChatOutput, EmbedInput, EmbedOutput, RerankInput, RerankOutput } from './models.js';
 import { ConnectorID, ProviderID } from './definitions.js';
 
 /** Typed operations supplied by a client or mock. */
 export interface Operations {
+  /** Invoke chat through this connection. */
+  chat(): Query<ChatInput, ChatOutput>;
   /** Invoke embed through this connection. */
   embed(): Query<EmbedInput, EmbedOutput>;
   /** Invoke rerank through this connection. */

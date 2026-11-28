@@ -9,6 +9,13 @@ from dex_connectors.sdk.connectormock import Case as Case
 from dex_connectors.sdk.connectormock import Query as Query
 
 from .._generated.mock import Mock as Mock
+from .._generated.mock import get_file_nodes_found as get_file_nodes_found
+from .._generated.mock import get_file_nodes_not_found as get_file_nodes_not_found
+from .._generated.mock import get_file_nodes_provider_rejected as get_file_nodes_provider_rejected
+from .._generated.mock import get_file_nodes_invalid_response as get_file_nodes_invalid_response
+from .._generated.mock import get_file_nodes_defect as get_file_nodes_defect
+from .._generated.mock import get_file_nodes_retry as get_file_nodes_retry
+from .._generated.mock import get_file_nodes_found_default as get_file_nodes_found_default
 from .._generated.mock import get_file_comments_default_answer as get_file_comments_default_answer
 from .._generated.mock import get_file_comments_invalid_key as get_file_comments_invalid_key
 from .._generated.mock import get_file_comments_listed as get_file_comments_listed
@@ -33,6 +40,13 @@ from ..models import GetFileInput as GetFileInput
 
 __all__ = [
     "Mock",
+    "get_file_nodes_found",
+    "get_file_nodes_not_found",
+    "get_file_nodes_provider_rejected",
+    "get_file_nodes_invalid_response",
+    "get_file_nodes_defect",
+    "get_file_nodes_retry",
+    "get_file_nodes_found_default",
     "get_file_found",
     "get_file_not_found",
     "get_file_default_answer",

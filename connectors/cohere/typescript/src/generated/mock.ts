@@ -4,11 +4,27 @@
 
 import { branchCase, retryCase, type Case, newQuery, type MockQuery } from '@superdurable/connectors-sdk/connectormock';
 import type { Failure } from '@superdurable/connectors-sdk';
-import type { EmbedInput, EmbedOutput, RerankInput, RankedDocument, RerankOutput } from './models.js';
-import { EmbedInputSchema, EmbedOutputSchema, RerankInputSchema, RankedDocumentSchema, RerankOutputSchema } from './models.js';
-import { ProviderID, ConnectorID, EmbedDefinition, RerankDefinition } from './definitions.js';
+import type { ChatMessage, ChatInput, ChatOutput, EmbedInput, EmbedOutput, RerankInput, RankedDocument, RerankOutput } from './models.js';
+import { ChatMessageSchema, ChatInputSchema, ChatOutputSchema, EmbedInputSchema, EmbedOutputSchema, RerankInputSchema, RankedDocumentSchema, RerankOutputSchema } from './models.js';
+import { ProviderID, ConnectorID, ChatDefinition, EmbedDefinition, RerankDefinition } from './definitions.js';
 import { newConnectionWithOperations, type Connection, type Operations } from './connection.js';
 
+/** Go zero value for ChatMessage in scripted cases. */
+export const emptyChatMessage: ChatMessage = ChatMessageSchema.parse({
+  "role": '',
+  "content": '',
+});
+/** Go zero value for ChatInput in scripted cases. */
+export const emptyChatInput: ChatInput = ChatInputSchema.parse({
+  "model": '',
+  "messages": [],
+});
+/** Go zero value for ChatOutput in scripted cases. */
+export const emptyChatOutput: ChatOutput = ChatOutputSchema.parse({
+  "id": '',
+  "text": '',
+  "finishReason": '',
+});
 /** Go zero value for EmbedInput in scripted cases. */
 export const emptyEmbedInput: EmbedInput = EmbedInputSchema.parse({
   "model": '',
@@ -35,6 +51,24 @@ export const emptyRankedDocument: RankedDocument = RankedDocumentSchema.parse({
 export const emptyRerankOutput: RerankOutput = RerankOutputSchema.parse({
   "results": [],
 });
+
+/** Script the answered branch. */
+export function chatAnswered(value: ChatOutput, failure?: Failure): Case<ChatOutput> { return branchCase("answered", value, failure); }
+/** Script the providerRejected branch. */
+export function chatProviderRejected(value: ChatOutput, failure?: Failure): Case<ChatOutput> { return branchCase("providerRejected", value, failure); }
+/** Script the invalidResponse branch. */
+export function chatInvalidResponse(value: ChatOutput, failure?: Failure): Case<ChatOutput> { return branchCase("invalidResponse", value, failure); }
+/** Script the defect branch. */
+export function chatDefect(value: ChatOutput, failure?: Failure): Case<ChatOutput> { return branchCase("defect", value, failure); }
+/** Script a safe retry of chat. */
+export function chatRetry(failure: Failure, retryAfterMs = 0): Case<ChatOutput> { return retryCase(failure, retryAfterMs); }
+/** Manifest scenario defaultAnswer for chat. */
+export function chatDefaultAnswer(): Case<ChatOutput> {
+  const value = ChatOutputSchema.parse({"finishReason":"COMPLETE","id":"chat-mock-1","text":"The release note is the best match."});
+  return branchCase("answered", value);
+}
+/** Default chat scenario. */
+export function chatDefault(): Case<ChatOutput> { return chatDefaultAnswer(); }
 
 /** Script the embedded branch. */
 export function embedEmbedded(value: EmbedOutput, failure?: Failure): Case<EmbedOutput> { return branchCase("embedded", value, failure); }
@@ -84,20 +118,24 @@ export function rerankInvalidKey(): Case<RerankOutput> {
 
 /** Scripted operations and manifest defaults for this connector. */
 export class GeneratedMock implements Operations {
+  readonly #chat: MockQuery<ChatInput, ChatOutput>;
   readonly #embed: MockQuery<EmbedInput, EmbedOutput>;
   readonly #rerank: MockQuery<RerankInput, RerankOutput>;
   readonly #connection: Connection;
 
   constructor(connectionName: string) {
+    this.#chat = newQuery<ChatInput, ChatOutput>(ChatDefinition).default(chatDefault());
     this.#embed = newQuery<EmbedInput, EmbedOutput>(EmbedDefinition).default(embedDefault());
     this.#rerank = newQuery<RerankInput, RerankOutput>(RerankDefinition).default(rerankDefault());
     this.#connection = newConnectionWithOperations(this, { provider: ProviderID, name: connectionName });
   }
 
   connection(): Connection { return this.#connection; }
+  chat(): MockQuery<ChatInput, ChatOutput> { return this.#chat; }
   embed(): MockQuery<EmbedInput, EmbedOutput> { return this.#embed; }
   rerank(): MockQuery<RerankInput, RerankOutput> { return this.#rerank; }
   assertNoFailures(): void {
+    this.#chat.assertNoFailures();
     this.#embed.assertNoFailures();
     this.#rerank.assertNoFailures();
   }

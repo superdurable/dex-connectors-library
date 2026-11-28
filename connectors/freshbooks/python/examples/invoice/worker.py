@@ -13,6 +13,7 @@ from dex_connectors.sdk.projectconfig import load_from_environment
 from dex_connectors.freshbooks import new_project_connection
 
 from .flow import CONNECTION_NAME, InvoiceFlow
+from .list_flow import InvoicePageFlow
 
 
 async def run_worker() -> None:
@@ -22,7 +23,9 @@ async def run_worker() -> None:
     cache = None
     try:
         connection = new_project_connection(project, CONNECTION_NAME)
-        registry = dex.Registry([InvoiceFlow(connection)], allow_async_handlers=True)
+        registry = dex.Registry(
+            [InvoiceFlow(connection), InvoicePageFlow(connection)], allow_async_handlers=True
+        )
         cache_directory = os.environ.get(
             "DEX_BLOB_CACHE_DIR",
             str(Path(tempfile.gettempdir()) / "dex-freshbooks-python-invoice-blobs"),

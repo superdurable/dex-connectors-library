@@ -11,3 +11,12 @@ Provider contract: [official developer documentation](https://fireworks-simulato
 The [Python package](python/) implements `listModels` and replays the Go-recorded provider scenarios. Its checked-in Flow tests retry and persistence against a real Dex Worker and Client.
 
 The [TypeScript package](typescript/) implements the same Query and Go-recorded scenarios. Its runnable Flow tests retry and persistence against a real Dex Worker and Client.
+
+The [Java Worker](java/examples/io/superdurable/dexconnectors/huo15/ModelCatalogWorker.java) and
+[Rust Worker](rust/examples/list_models.rs) serve the same model-list Query.
+Both examples read the key from `HUO15_API_KEY` in the Worker environment and use
+the static connection name `huo15`. Start Dex locally with `dexcli dev -open=false`,
+then run `./gradlew modelCatalogWorker` from `java/` or `cargo run --example list_models`
+from `rust/`. Start `JavaHuo15ModelCatalog` with an empty JSON string or `RustHuo15ModelCatalog` with `{}`.
+Run `./gradlew check dexDevTest` and `cargo test --all-targets` in those directories
+to replay Go scenarios and exercise retry through a real Worker and Client.

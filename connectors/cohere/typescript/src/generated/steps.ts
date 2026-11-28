@@ -5,7 +5,35 @@
 import { goToBranch, newQueryStep, type Query, type QueryResult, type QueryStep, type QueryStepConfig } from '@superdurable/connectors-sdk';
 import type { StepTarget } from '@superdurable/dex';
 import type { Connection } from './connection.js';
-import type { EmbedInput, EmbedOutput, RerankInput, RerankOutput } from './models.js';
+import type { ChatInput, ChatOutput, EmbedInput, EmbedOutput, RerankInput, RerankOutput } from './models.js';
+
+/** Configuration for the chat connector Step. */
+export interface ChatStepConfig<StepInput, OperationInput = ChatInput, OperationOutput = ChatOutput> extends Omit<QueryStepConfig<StepInput, OperationInput, OperationOutput>, 'operation' | 'connection' | 'branches'> {
+  /** Named connection supplying this operation. */
+  connection: Connection<{ chat(): Query<OperationInput, OperationOutput> }>;
+  /** Name matching the bound connection. */
+  connectionName: string;
+  /** Cohere returned a complete text reply. */
+  answered: StepTarget<QueryResult<OperationOutput>>;
+  /** Cohere conclusively rejected the chat request. */
+  providerRejected?: StepTarget<QueryResult<OperationOutput>>;
+  /** Cohere returned malformed or oversized chat data. */
+  invalidResponse?: StepTarget<QueryResult<OperationOutput>>;
+  /** Local input or connection credentials are invalid. */
+  defect?: StepTarget<QueryResult<OperationOutput>>;
+}
+
+/** Build the chat Step from a named connection. */
+export function newChatStep<StepInput, OperationInput = ChatInput, OperationOutput = ChatOutput>(configuration: ChatStepConfig<StepInput, OperationInput, OperationOutput>): QueryStep<StepInput, OperationInput, OperationOutput> {
+  const { connection, connectionName, answered, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
+  if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
+  return newQueryStep({ ...stepConfiguration, operation: connection.operations.chat(), connection: connection.reference, branches: [
+    goToBranch("answered", answered),
+    ...(providerRejected ? [goToBranch("providerRejected", providerRejected)] : []),
+    ...(invalidResponse ? [goToBranch("invalidResponse", invalidResponse)] : []),
+    ...(defect ? [goToBranch("defect", defect)] : []),
+  ] });
+}
 
 /** Configuration for the embed connector Step. */
 export interface EmbedStepConfig<StepInput, OperationInput = EmbedInput, OperationOutput = EmbedOutput> extends Omit<QueryStepConfig<StepInput, OperationInput, OperationOutput>, 'operation' | 'connection' | 'branches'> {

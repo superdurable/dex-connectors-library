@@ -4,7 +4,7 @@
 import { newQueryBranch, newQueryRetry, SecretString, zeroReceipt, type Call, type Failure, type QueryAttempt } from '@superdurable/connectors-sdk';
 import { BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import type { Config, CredentialSource, Credentials } from './generated/models.js';
-import { EmbedOperation, RerankOperation } from './operations.js';
+import { ChatOperation, EmbedOperation, RerankOperation } from './operations.js';
 
 const defaultBaseURL = 'https://api.cohere.com';
 const defaultTimeoutMs = 30_000;
@@ -43,6 +43,9 @@ export class CohereClient {
     this.send = options.send ?? sendProviderRequest;
     this.now = options.now ?? (() => new Date());
   }
+
+  /** Bind one billed text generation query. */
+  chat(): ChatOperation { return new ChatOperation(this); }
 
   /** Bind one embedding query. */
   embed(): EmbedOperation { return new EmbedOperation(this); }

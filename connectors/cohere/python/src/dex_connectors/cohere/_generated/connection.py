@@ -9,29 +9,33 @@ from dex_connectors.sdk import ConnectionRef, Query, Call, SecretString
 from dex_connectors.sdk.projectconfig import ConnectionKey, LoadedProject
 
 from ..client import Client, Config, Credentials
-from .definitions import CONNECTOR_ID, EMBED_DEFINITION, RERANK_DEFINITION
-from ..models import EmbedInput, EmbedOutput, RerankInput, RerankOutput
+from .definitions import CONNECTOR_ID, CHAT_DEFINITION, EMBED_DEFINITION, RERANK_DEFINITION
+from ..models import ChatInput, ChatOutput, EmbedInput, EmbedOutput, RerankInput, RerankOutput
 
 class Connection:
 
-    __slots__ = ('_embed', '_rerank', '_client', 'reference')
+    __slots__ = ('_embed', '_rerank', '_chat', '_client', 'reference')
 
     def __init__(self,
         reference: ConnectionRef,
         embed: Query[EmbedInput, EmbedOutput],
         rerank: Query[RerankInput, RerankOutput],
+        chat: Query[ChatInput, ChatOutput],
         client: Client | None = None,
     ) -> None:
         reference.validate()
-        if reference.provider != CONNECTOR_ID or embed is None or rerank is None:
+        if reference.provider != CONNECTOR_ID or embed is None or rerank is None or chat is None:
             raise ValueError("Cohere connection provider and operations are required")
         if embed.definition().operation != EMBED_DEFINITION.operation:
             raise ValueError("Cohere connection operation identity differs")
         if rerank.definition().operation != RERANK_DEFINITION.operation:
             raise ValueError("Cohere connection operation identity differs")
+        if chat.definition().operation != CHAT_DEFINITION.operation:
+            raise ValueError("Cohere connection operation identity differs")
         self.reference = reference
         self._embed = embed
         self._rerank = rerank
+        self._chat = chat
         self._client = client
 
     def embed(self) -> Query[EmbedInput, EmbedOutput]:
@@ -39,6 +43,9 @@ class Connection:
 
     def rerank(self) -> Query[RerankInput, RerankOutput]:
         return self._rerank
+
+    def chat(self) -> Query[ChatInput, ChatOutput]:
+        return self._chat
 
     async def aclose(self) -> None:
         if self._client is not None:
@@ -56,7 +63,7 @@ setattr(Connection, '__module__', 'dex_connectors.cohere.connection')
 def new_connection(client: Client, reference: ConnectionRef) -> Connection:
     if client is None:
         raise ValueError("Cohere client is required")
-    return Connection(reference, client.embed(), client.rerank(), client)
+    return Connection(reference, client.embed(), client.rerank(), client.chat(), client)
 
 setattr(new_connection, '__module__', 'dex_connectors.cohere.connection')
 
@@ -64,9 +71,10 @@ setattr(new_connection, '__module__', 'dex_connectors.cohere.connection')
 def new_connection_with_operations(
     embed: Query[EmbedInput, EmbedOutput],
     rerank: Query[RerankInput, RerankOutput],
+    chat: Query[ChatInput, ChatOutput],
     reference: ConnectionRef,
 ) -> Connection:
-    return Connection(reference, embed, rerank)
+    return Connection(reference, embed, rerank, chat)
 
 setattr(new_connection_with_operations, '__module__', 'dex_connectors.cohere.connection')
 

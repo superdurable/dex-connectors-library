@@ -10,9 +10,15 @@ metadata:
 spec:
   provider: miyang
   languages:
+    java: {version: v0.1.0, operations: [listModels], triggers: []}
+    rust: {version: v0.1.0, operations: [listModels], triggers: []}
     python: {version: v0.1.0, operations: [listModels], triggers: []}
     typescript: {version: v0.1.0, operations: [listModels], triggers: []}
   codegen:
+    modelCatalog:
+      endpoint: https://miyang.cn/api/v1/models
+      providerLabel: Miyang
+      keyPrefix: miyang-
     go:
       package: miyang
   configuration:

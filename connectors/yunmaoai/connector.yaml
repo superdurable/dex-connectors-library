@@ -9,10 +9,16 @@ metadata:
   version: v0.1.0
 spec:
   languages:
+    java: {version: v0.1.0, operations: [listModels], triggers: []}
+    rust: {version: v0.1.0, operations: [listModels], triggers: []}
     python: {version: v0.1.0, operations: [listModels], triggers: []}
     typescript: {version: v0.1.0, package: "@superdurable/connector-yunmaoai", operations: [listModels], triggers: []}
   provider: yunmaoai
   codegen:
+    modelCatalog:
+      objectTags: absent
+      endpoint: https://api.yunmaoai.com/v1/models
+      providerLabel: YunMaoAI
     go:
       package: yunmaoai
   configuration:

@@ -4,9 +4,94 @@
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-cohere",
-    "version": "0.1.1"
+    "version": "0.2.0"
   },
   "factories": [
+    {
+      "name": "newChatStep",
+      "kind": "query",
+      "operationId": "chat",
+      "inputType": "ChatInput",
+      "description": "Generate one text reply from a Cohere v2 chat model.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "answered",
+          "field": "answered",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "$defs": {
+          "ChatMessage": {
+            "additionalProperties": false,
+            "description": "ChatMessage is one text message in chronological order.",
+            "properties": {
+              "content": {
+                "description": "Content is the nonempty message text.",
+                "type": "string"
+              },
+              "role": {
+                "description": "Role is system, user, or assistant.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "content",
+              "role"
+            ],
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "description": "ChatInput selects a model and a text conversation for one generation.",
+        "properties": {
+          "max_tokens": {
+            "description": "MaxTokens limits generated output tokens; zero uses the model default.",
+            "type": "integer"
+          },
+          "messages": {
+            "description": "Messages are chronological text messages.",
+            "items": {
+              "$ref": "#/$defs/ChatMessage"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "model": {
+            "description": "Model is a Cohere Chat model ID.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "messages",
+          "model"
+        ],
+        "type": "object"
+      }
+    },
     {
       "name": "newEmbedStep",
       "kind": "query",

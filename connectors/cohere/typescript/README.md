@@ -28,3 +28,5 @@ make test-connector-conformance CONNECTOR_DIRECTORY=connectors/cohere
 
 The conformance fixture replays Go-recorded HTTP requests and results. Live
 Cohere authorization and responses have not been verified.
+
+The Worker also serves [`CohereChatTS`](examples/cohere-search/chat.ts) through `newChatStep`. Supply a chat model, one to 100 chronological text messages and an optional output token limit. The result contains the provider reply ID, concatenated text, and finish reason. A repeated request can incur another provider charge.

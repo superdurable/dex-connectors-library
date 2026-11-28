@@ -10,9 +10,15 @@ metadata:
 spec:
   provider: modelbest
   languages:
+    java: {version: v0.1.0, operations: [listModels], triggers: []}
+    rust: {version: v0.1.0, operations: [listModels], triggers: []}
     python: {version: v0.1.0, operations: [listModels], triggers: []}
     typescript: {version: v0.1.0, operations: [listModels], triggers: []}
   codegen:
+    modelCatalog:
+      objectTags: absent
+      endpoint: https://api.modelbest.cn/v1/models
+      providerLabel: ModelBest
     go:
       package: modelbest
   configuration:

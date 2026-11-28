@@ -498,17 +498,20 @@ func generate(args []string) error {
 		}
 	}
 	args = positional
-	if language != "" && language != "typescript" && language != "python" {
+	if language != "" && !slices.Contains(schema.PackageLanguageNames(), language) {
 		return fmt.Errorf("unsupported generate language %q", language)
 	}
 	if len(args) != 1 {
-		return errors.New("usage: connectorctl generate [--check] [--lang python|typescript] <manifest>")
+		return errors.New("usage: connectorctl generate [--check] [--lang python|typescript|java|rust] <manifest>")
 	}
 	manifest, err := load(args[0])
 	if err != nil {
 		return err
 	}
 	goPackage := newConnectorGoPackage(args[0])
+	if language == "java" || language == "rust" {
+		return generateNativePackage(args[0], manifest, goPackage, language, check)
+	}
 	if language == "python" {
 		generated, err := generatedPythonFiles(args[0], manifest, goPackage)
 		if err != nil {

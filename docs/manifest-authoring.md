@@ -134,6 +134,19 @@ without rejecting unknown fields, so it accepts the field, and Dex's copy of the
 schema adds it later. The minimum Dex CLI for these packages is 1.38.0; see
 [Generated input schema](#generated-input-schema).
 
+Java and Rust packages get their operation definitions from the same manifest.
+Java packages load `operation-definitions.json` beside the embedded connector descriptor.
+Rust packages import `src/generated_definitions.rs`.
+
+For providers exposing a bearer-authenticated model list, `spec.codegen.modelCatalog`
+can generate the Java and Rust `listModels` clients. Set the fixed HTTPS `endpoint`
+and `providerLabel`, along with `keyPrefix` when the provider requires one.
+The `objectTags` setting accepts `lowercase` (the default), `uppercase`, or `absent`
+for the response's list and model type tags. The protocol validates the full response,
+returns its total model count, and retains at most fifty model IDs in provider order.
+The [365 API manifest](../connectors/365api/connector.yaml) includes the complete
+declaration. Run the package's Go-recorded scenarios to verify the provider contract.
+
 For every declared TypeScript package, `connectorctl generate` also writes
 `typescript/src/generated/{models,definitions,steps,connection,mock}.ts`.
 Operation models come from the manifest's named types in the connector Go

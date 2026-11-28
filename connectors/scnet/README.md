@@ -12,3 +12,12 @@ The [runnable Flow](go/examples/list-models/) starts with `{}` and completes wit
 
 The [Python package](python/) implements `listModels` and its [runnable Flow](python/examples/current_query/) verifies retry and persistence with a real local Dex Worker and Client.
 The [TypeScript package](typescript/) provides the same `ListModels` operation, a Go-recorded conformance suite, and a runnable Dex Worker and Client example.
+
+The [Java Worker](java/examples/io/superdurable/dexconnectors/scnet/ModelCatalogWorker.java) and
+[Rust Worker](rust/examples/list_models.rs) serve the same model-list Query.
+Both examples read the key from `SCNET_API_KEY` in the Worker environment and use
+the static connection name `scnet`. Start Dex locally with `dexcli dev -open=false`,
+then run `./gradlew modelCatalogWorker` from `java/` or `cargo run --example list_models`
+from `rust/`. Start `JavaScnetModelCatalog` with an empty JSON string or `RustScnetModelCatalog` with `{}`.
+Run `./gradlew check dexDevTest` and `cargo test --all-targets` in those directories
+to replay Go scenarios and exercise retry through a real Worker and Client.

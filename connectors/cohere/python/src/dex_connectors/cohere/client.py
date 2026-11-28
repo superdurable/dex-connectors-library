@@ -42,6 +42,8 @@ from ._generated.config import (
 from ._generated.config import (
     Credentials as Credentials,
 )
+from ._generated.definitions import ANSWERED as ANSWERED
+from ._generated.definitions import CHAT_DEFINITION as CHAT_DEFINITION
 from ._generated.definitions import (
     CONNECTOR_ID as CONNECTOR_ID,
 )
@@ -72,7 +74,16 @@ from ._generated.definitions import (
 from ._generated.definitions import (
     RERANK_OPERATION_ID as RERANK_OPERATION_ID,
 )
-from .models import EmbedInput, EmbedOutput, RankedDocument, RerankInput, RerankOutput
+from .models import (
+    ChatInput,
+    ChatMessage,
+    ChatOutput,
+    EmbedInput,
+    EmbedOutput,
+    RankedDocument,
+    RerankInput,
+    RerankOutput,
+)
 
 INPUT_TYPES = ("search_document", "search_query", "classification", "clustering")
 _DEFAULT_BASE_URL = "https://api.cohere.com"
@@ -104,6 +115,10 @@ class Client:
         self.http_client = http_client or new_provider_http_client(
             config.timeout_seconds or _DEFAULT_TIMEOUT_SECONDS
         )
+
+    def chat(self) -> "ChatOperation":
+        """Bind the text generation Query to this client."""
+        return ChatOperation(self)
 
     def embed(self) -> "EmbedOperation":
         """Bind the embedding Query to this client."""
@@ -210,6 +225,84 @@ class Client:
             return QueryAttempt.branch_result(success, value, Receipt())
         finally:
             await response.aclose()
+
+
+class ChatOperation:
+    """Generate one text reply. A repeated request can be billed again."""
+
+    def __init__(self, client: Client) -> None:
+        if client is None:
+            raise ValueError("Cohere client is required")
+        self.client = client
+
+    def definition(self) -> QueryDefinition:
+        """Return the manifest's chat identity and billed-operation retry policy."""
+        return CHAT_DEFINITION
+
+    async def invoke(self, call: Call, input: ChatInput) -> QueryAttempt[ChatOutput]:
+        """Validate and submit the conversation in its original order."""
+        if (
+            not isinstance(input, ChatInput)
+            or not isinstance(input.model, str)
+            or not input.model.strip()
+            or not isinstance(input.messages, (tuple, list))
+            or not 1 <= len(input.messages) <= 100
+            or type(input.max_tokens) is not int
+            or input.max_tokens < 0
+        ):
+            return _failed(
+                "chat",
+                DEFECT,
+                ChatOutput(),
+                FailureKind.VALIDATION,
+                "model, 1 to 100 messages, and nonnegative maxTokens are required",
+            )
+        messages = []
+        for message in input.messages:
+            if (
+                not isinstance(message, ChatMessage)
+                or message.role not in ("user", "assistant", "system")
+                or not isinstance(message.content, str)
+                or not message.content.strip()
+            ):
+                return _failed(
+                    "chat",
+                    DEFECT,
+                    ChatOutput(),
+                    FailureKind.VALIDATION,
+                    "messages require text and a supported role",
+                )
+            messages.append({"role": message.role, "content": message.content})
+        payload: dict[str, Any] = {"model": input.model, "messages": messages}
+        if input.max_tokens:
+            payload["max_tokens"] = input.max_tokens
+        return await self.client.invoke_json(
+            call, "chat", "/v2/chat", payload, ChatOutput(), ANSWERED, _decode_chat
+        )
+
+
+def _decode_chat(document: Any) -> ChatOutput:
+    reply = _object(document)
+    message = _object(reply.get("message"))
+    if (
+        not isinstance(reply.get("id"), str)
+        or not reply["id"]
+        or not isinstance(reply.get("finish_reason"), str)
+        or not reply["finish_reason"]
+        or message.get("role") != "assistant"
+        or not isinstance(message.get("content"), list)
+    ):
+        raise ValueError("incomplete chat reply")
+    parts = []
+    for raw_part in message["content"]:
+        part = _object(raw_part)
+        if part.get("type") != "text" or (part.get("text") is not None and not isinstance(part["text"], str)):
+            raise ValueError("unsupported chat content")
+        parts.append(part.get("text") or "")
+    text = "".join(parts)
+    if not text:
+        raise ValueError("empty chat reply")
+    return ChatOutput(reply["id"], text, reply["finish_reason"])
 
 
 class EmbedOperation:

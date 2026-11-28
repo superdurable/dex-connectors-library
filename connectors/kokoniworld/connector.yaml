@@ -10,9 +10,15 @@ metadata:
 spec:
   provider: kokoniworld
   languages:
+    java: {version: v0.1.0, operations: [listModels], triggers: []}
+    rust: {version: v0.1.0, operations: [listModels], triggers: []}
     python: {version: v0.1.0, operations: [listModels], triggers: []}
     typescript: {version: v0.1.0, package: "@superdurable/connector-kokoniworld", operations: [listModels], triggers: []}
   codegen:
+    modelCatalog:
+      endpoint: https://api.kokoniworld.com/v1/models
+      providerLabel: Kokoni World
+      keyPrefix: sk-
     go:
       package: kokoniworld
   configuration:

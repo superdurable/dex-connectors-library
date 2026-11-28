@@ -14,3 +14,12 @@ The `python/` package provides the `listModels` Query. Run its checked-in exampl
 ## TypeScript
 
 `@superdurable/connector-shuntianchuang` provides the `listModels` Query and a [runnable TypeScript Dex example](typescript/examples/basic/README.md). The package replays Go-recorded provider scenarios with `npm run check`, and `npm run test:integration` verifies retry and persistence against `dexcli dev -open=false`. Real provider credentials and live API behavior have not been verified.
+
+The [Java Worker](java/examples/io/superdurable/dexconnectors/shuntianchuang/ModelCatalogWorker.java) and
+[Rust Worker](rust/examples/list_models.rs) serve the same model-list Query.
+Both examples read the key from `SHUNTIANCHUANG_API_KEY` in the Worker environment and use
+the static connection name `shuntianchuang`. Start Dex locally with `dexcli dev -open=false`,
+then run `./gradlew modelCatalogWorker` from `java/` or `cargo run --example list_models`
+from `rust/`. Start `JavaShuntianchuangModelCatalog` with an empty JSON string or `RustShuntianchuangModelCatalog` with `{}`.
+Run `./gradlew check dexDevTest` and `cargo test --all-targets` in those directories
+to replay Go scenarios and exercise retry through a real Worker and Client.

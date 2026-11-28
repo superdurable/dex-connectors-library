@@ -4,7 +4,7 @@
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-freshbooks",
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   "factories": [
     {
@@ -62,6 +62,62 @@
         "required": [
           "accountId",
           "invoiceId"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "new_list_invoices_step",
+      "kind": "query",
+      "operationId": "listInvoices",
+      "inputType": "ListInvoicesInput",
+      "description": "List one bounded page of invoices for an accounting account.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "missing",
+          "field": "missing",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListInvoicesInput selects a one-based invoice page; zero selects page one.",
+        "properties": {
+          "accountId": {
+            "type": "string"
+          },
+          "page": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "accountId"
         ],
         "type": "object"
       }

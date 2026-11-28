@@ -11,3 +11,12 @@ Provider contract: [official developer documentation](https://www.hby365.studio/
 The [TypeScript package](typescript/README.md) implements `listModels` and includes a [runnable Dex Flow](typescript/examples/model-list/README.md). Its provider scenarios replay the Go-recorded contract; live provider authorization remains unverified without user-controlled credentials.
 
 The [Python package](python/README.md) implements `listModels` with a runnable Dex Flow and Go-recorded provider conformance scenarios. Import it as `dex_connectors._365api`; the leading underscore makes the numeric directory name a valid Python module.
+
+The [Java Worker](java/examples/io/superdurable/dexconnectors/hby365/ModelCatalogWorker.java) and
+[Rust Worker](rust/examples/list_models.rs) serve the same model-list Query.
+Both examples read the key from `HBY365_API_KEY` in the Worker environment and use
+the static connection name `hby365`. Start Dex locally with `dexcli dev -open=false`,
+then run `./gradlew modelCatalogWorker` from `java/` or `cargo run --example list_models`
+from `rust/`. Start `JavaHby365ModelCatalog` with an empty JSON string or `RustHby365ModelCatalog` with `{}`.
+Run `./gradlew check dexDevTest` and `cargo test --all-targets` in those directories
+to replay Go scenarios and exercise retry through a real Worker and Client.

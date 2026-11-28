@@ -12,3 +12,12 @@ Provider contract: [official developer documentation](https://api.kokoniworld.co
 The TypeScript package `@superdurable/connector-kokoniworld` implements `listModels`. Its runnable Flow is in [`typescript/examples/basic`](typescript/examples/basic); conformance tests replay Go-recorded provider responses. Live Kokoni World authorization remains unverified.
 
 The [Python package](python/) mirrors the Go Query and includes a [runnable Dex Worker/Client Flow](python/examples/list_models/) and Go scenario replay. Real provider credentials and live API behavior remain unverified.
+
+The [Java Worker](java/examples/io/superdurable/dexconnectors/kokoniworld/ModelCatalogWorker.java) and
+[Rust Worker](rust/examples/list_models.rs) serve the same model-list Query.
+Both examples read the key from `KOKONIWORLD_API_KEY` in the Worker environment and use
+the static connection name `kokoniworld`. Start Dex locally with `dexcli dev -open=false`,
+then run `./gradlew modelCatalogWorker` from `java/` or `cargo run --example list_models`
+from `rust/`. Start `JavaKokoniworldModelCatalog` with an empty JSON string or `RustKokoniworldModelCatalog` with `{}`.
+Run `./gradlew check dexDevTest` and `cargo test --all-targets` in those directories
+to replay Go scenarios and exercise retry through a real Worker and Client.

@@ -15,3 +15,12 @@ The [Python package](python/README.md) implements `listModels` and includes a [r
 ## TypeScript
 
 The [TypeScript package](typescript/README.md) implements `listModels` with a [runnable Dex Flow](typescript/examples/basic/README.md). Its provider scenarios replay the same 17 Go-recorded requests and outcomes. Live provider authorization remains unverified.
+
+The [Java Worker](java/examples/io/superdurable/dexconnectors/dimleap/ModelCatalogWorker.java) and
+[Rust Worker](rust/examples/list_models.rs) serve the same model-list Query.
+Both examples read the key from `DIMLEAP_API_KEY` in the Worker environment and use
+the static connection name `dimleap`. Start Dex locally with `dexcli dev -open=false`,
+then run `./gradlew modelCatalogWorker` from `java/` or `cargo run --example list_models`
+from `rust/`. Start `JavaDimleapModelCatalog` with an empty JSON string or `RustDimleapModelCatalog` with `{}`.
+Run `./gradlew check dexDevTest` and `cargo test --all-targets` in those directories
+to replay Go scenarios and exercise retry through a real Worker and Client.

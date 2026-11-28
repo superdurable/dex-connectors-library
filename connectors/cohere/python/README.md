@@ -1,8 +1,8 @@
 # Cohere connector for Python
 
-Install with `pip install dex-connector-cohere==0.1.0`. The package requires
+Install with `pip install dex-connector-cohere==0.2.0`. The package requires
 `dex-connectors-sdk==0.1.0` and `dex-python-sdk>=1.28.0`, and implements the
-manifest Queries `embed` and `rerank` with the same branches, defaults, and
+manifest Queries `embed`, `rerank`, and `chat` with the same branches, defaults, and
 failure classification as the Go module.
 
 ## Operations
@@ -38,3 +38,5 @@ a project containing the `cohere` connection.
 
 `coheremock.Mock` scripts both Queries and defaults to the manifest answers.
 Run `uv run pytest tests` for provider parity and manifest contract checks.
+
+The Worker also serves [`CohereChat`](examples/cohere_search/chat.py) through `new_chat_step`. Supply a chat model, one to 100 chronological text messages and an optional output token limit. The result contains the provider reply ID, concatenated text, and finish reason. A repeated request can incur another provider charge.

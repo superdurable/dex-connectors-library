@@ -9,6 +9,8 @@ metadata:
   version: v0.1.0
 spec:
   languages:
+    java: {version: v0.1.0, operations: [listModels], triggers: []}
+    rust: {version: v0.1.0, operations: [listModels], triggers: []}
     python: {version: v0.1.0, operations: [listModels], triggers: []}
     typescript:
       version: v0.1.0
@@ -16,6 +18,9 @@ spec:
       triggers: []
   provider: hby365
   codegen:
+    modelCatalog:
+      endpoint: https://www.hby365.studio/v1/models
+      providerLabel: 365 API
     go:
       package: hby365
   configuration:

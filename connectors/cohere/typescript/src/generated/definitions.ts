@@ -9,6 +9,35 @@ export const ConnectorID = "cohere";
 /** Provider identity for named connections. */
 export const ProviderID = "cohere";
 
+/** Branch IDs for chat. */
+export const ChatBranch = {
+  Answered: "answered",
+  ProviderRejected: "providerRejected",
+  InvalidResponse: "invalidResponse",
+  Defect: "defect",
+} as const;
+/** Cohere returned a complete text reply. */
+export const ChatBranchAnswered = ChatBranch.Answered;
+/** Cohere conclusively rejected the chat request. */
+export const ChatBranchProviderRejected = ChatBranch.ProviderRejected;
+/** Cohere returned malformed or oversized chat data. */
+export const ChatBranchInvalidResponse = ChatBranch.InvalidResponse;
+/** Local input or connection credentials are invalid. */
+export const ChatBranchDefect = ChatBranch.Defect;
+/** Manifest definition for chat. */
+export const ChatDefinition: QueryDefinition = {
+  operation: { connectorId: ConnectorID, operationId: "chat" },
+  branches: [
+    { id: "answered", description: "Cohere returned a complete text reply." },
+    { id: "providerRejected", description: "Cohere conclusively rejected the chat request.", optional: true },
+    { id: "invalidResponse", description: "Cohere returned malformed or oversized chat data.", optional: true },
+    { id: "defect", description: "Local input or connection credentials are invalid.", optional: true },
+  ],
+  stepDefaults: { executeMethodTimeoutMs: 45000, executeDurability: "sync", executeRetry: { initialIntervalMs: 2000, backoffCoefficient: 2, maximumIntervalMs: 30000, maximumAttempts: 3, totalDurationMs: 300000 } },
+};
+/** Manifest metadata for chat. */
+export const ChatMetadata = { kind: "query", idempotency: "none", authorization: "required" } as const;
+
 /** Branch IDs for embed. */
 export const EmbedBranch = {
   Embedded: "embedded",

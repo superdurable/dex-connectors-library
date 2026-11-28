@@ -10,9 +10,15 @@ metadata:
 spec:
   provider: tokenfab
   languages:
+    java: {version: v0.1.0, operations: [listModels], triggers: []}
+    rust: {version: v0.1.0, operations: [listModels], triggers: []}
     python: {version: v0.1.0, operations: [listModels], triggers: []}
     typescript: {version: v0.1.0, operations: [listModels], triggers: []}
   codegen:
+    modelCatalog:
+      endpoint: https://api.tokenfab.cn/v1/models
+      providerLabel: TokenFab
+      keyPrefix: tk-
     go:
       package: tokenfab
   configuration:

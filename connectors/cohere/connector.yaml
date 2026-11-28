@@ -11,13 +11,13 @@ spec:
   provider: cohere
   languages:
     python:
-      version: v0.1.0
-      operations: [embed, rerank]
+      version: v0.2.0
+      operations: [embed, rerank, chat]
       triggers: []
     typescript:
-      version: v0.1.1
+      version: v0.2.0
       package: "@superdurable/connector-cohere"
-      operations: [embed, rerank]
+      operations: [embed, rerank, chat]
       triggers: []
   codegen:
     go:

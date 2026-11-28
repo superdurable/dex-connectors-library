@@ -8,8 +8,8 @@ from dex_connectors.sdk import ConnectionRef, Failure, FailureKind
 from dex_connectors.sdk.connectormock import Case, Query
 
 from ..connection import Connection, new_connection_with_operations
-from ..models import EmbedInput, EmbedOutput, RankedDocument, RerankInput, RerankOutput
-from .definitions import CONNECTOR_ID, DEFECT, EMBEDDED, EMBED_DEFINITION, INVALID_RESPONSE, PROVIDER_REJECTED, RANKED, RERANK_DEFINITION
+from ..models import ChatInput, ChatMessage, ChatOutput, EmbedInput, EmbedOutput, RankedDocument, RerankInput, RerankOutput
+from .definitions import CONNECTOR_ID, ANSWERED, CHAT_DEFINITION, DEFECT, EMBEDDED, EMBED_DEFINITION, INVALID_RESPONSE, PROVIDER_REJECTED, RANKED, RERANK_DEFINITION
 
 def embed_embedded(value: EmbedOutput, failure: Failure | None = None) -> Case[EmbedOutput]:
     return Case.branch_result(EMBEDDED, value, failure)
@@ -81,6 +81,36 @@ def rerank_invalid_key() -> Case[RerankOutput]:
 
 setattr(rerank_invalid_key, '__module__', "dex_connectors.cohere.coheremock")
 
+def chat_answered(value: ChatOutput, failure: Failure | None = None) -> Case[ChatOutput]:
+    return Case.branch_result(ANSWERED, value, failure)
+
+setattr(chat_answered, '__module__', "dex_connectors.cohere.coheremock")
+
+def chat_provider_rejected(value: ChatOutput, failure: Failure | None = None) -> Case[ChatOutput]:
+    return Case.branch_result(PROVIDER_REJECTED, value, failure)
+
+setattr(chat_provider_rejected, '__module__', "dex_connectors.cohere.coheremock")
+
+def chat_invalid_response(value: ChatOutput, failure: Failure | None = None) -> Case[ChatOutput]:
+    return Case.branch_result(INVALID_RESPONSE, value, failure)
+
+setattr(chat_invalid_response, '__module__', "dex_connectors.cohere.coheremock")
+
+def chat_defect(value: ChatOutput, failure: Failure | None = None) -> Case[ChatOutput]:
+    return Case.branch_result(DEFECT, value, failure)
+
+setattr(chat_defect, '__module__', "dex_connectors.cohere.coheremock")
+
+def chat_retry(failure: Failure, after_seconds: float = 0) -> Case[ChatOutput]:
+    return Case.retry(failure, after_seconds)
+
+setattr(chat_retry, '__module__', "dex_connectors.cohere.coheremock")
+
+def chat_default_answer() -> Case[ChatOutput]:
+    return Case.branch_result(ANSWERED, ChatOutput(id='chat-mock-1', text='The release note is the best match.', finish_reason='COMPLETE'))
+
+setattr(chat_default_answer, '__module__', "dex_connectors.cohere.coheremock")
+
 
 class Mock:
 
@@ -89,9 +119,12 @@ class Mock:
         self.embed_script.default(embed_default_embedding())
         self.rerank_script: Query[RerankInput, RerankOutput] = Query(RERANK_DEFINITION)
         self.rerank_script.default(rerank_default_ranking())
+        self.chat_script: Query[ChatInput, ChatOutput] = Query(CHAT_DEFINITION)
+        self.chat_script.default(chat_default_answer())
         self._connection = new_connection_with_operations(
             embed=self.embed_script,
             rerank=self.rerank_script,
+            chat=self.chat_script,
             reference=ConnectionRef(CONNECTOR_ID, connection_name),
         )
 
@@ -116,4 +149,10 @@ __all__ = [
     "rerank_retry",
     "rerank_default_ranking",
     "rerank_invalid_key",
+    "chat_answered",
+    "chat_provider_rejected",
+    "chat_invalid_response",
+    "chat_defect",
+    "chat_retry",
+    "chat_default_answer",
 ]

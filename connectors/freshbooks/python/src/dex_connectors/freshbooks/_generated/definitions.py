@@ -17,9 +17,11 @@ from dex_connectors.sdk import (
 CONNECTOR_ID = "freshbooks"
 PROVIDER = "freshbooks"
 GET_INVOICE_OPERATION_ID = "getInvoice"
+LIST_INVOICES_OPERATION_ID = "listInvoices"
 DEFECT = "defect"
 FOUND = "found"
 INVALID_RESPONSE = "invalidResponse"
+LISTED = "listed"
 MISSING = "missing"
 PROVIDER_REJECTED = "providerRejected"
 
@@ -31,6 +33,22 @@ GET_INVOICE_DEFINITION = QueryDefinition(
         BranchDefinition(PROVIDER_REJECTED, "FreshBooks conclusively rejected the read.", True),
         BranchDefinition(INVALID_RESPONSE, "FreshBooks returned malformed or oversized invoice JSON.", True),
         BranchDefinition(DEFECT, "The account ID, invoice ID, or OAuth credentials are invalid.", True),
+    ),
+    StepDefaults(
+        timedelta(seconds=30),
+        2,
+        execute_retry=default_connector_step_execute_retry_policy(),
+    ),
+)
+
+LIST_INVOICES_DEFINITION = QueryDefinition(
+    OperationRef(CONNECTOR_ID, LIST_INVOICES_OPERATION_ID),
+    (
+        BranchDefinition(LISTED, "FreshBooks returned the requested invoice page.", False),
+        BranchDefinition(MISSING, "FreshBooks did not find the account.", True),
+        BranchDefinition(PROVIDER_REJECTED, "FreshBooks conclusively rejected the read.", True),
+        BranchDefinition(INVALID_RESPONSE, "FreshBooks returned malformed or oversized invoice JSON.", True),
+        BranchDefinition(DEFECT, "The account ID, page, or OAuth credentials are invalid.", True),
     ),
     StepDefaults(
         timedelta(seconds=30),

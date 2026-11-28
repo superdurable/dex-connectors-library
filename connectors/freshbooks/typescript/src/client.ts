@@ -6,7 +6,7 @@ import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oa
 import { BodyTooLargeError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { Authorization, CredentialFields } from './generated/refresh.js';
 import type { Config, Credentials } from './generated/models.js';
-import { GetInvoiceOperation } from './operations.js';
+import { GetInvoiceOperation, ListInvoicesOperation } from './operations.js';
 
 /** Injectable FreshBooks transport and OAuth refresh dependencies. */
 export interface FreshBooksClientOptions {
@@ -50,6 +50,9 @@ export class FreshBooksClient {
   }
 
   /** Bind the invoice Query. */ getInvoice(): GetInvoiceOperation { return new GetInvoiceOperation(this); }
+
+  /** Read one page from the authorized accounting account. */
+  listInvoices(): ListInvoicesOperation { return new ListInvoicesOperation(this); }
 
   /** Send one bounded GET with a bearer token held outside Flow state. */
   async get(call: Call, path: string): Promise<FreshBooksExchange> {

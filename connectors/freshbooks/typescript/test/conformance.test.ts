@@ -5,11 +5,10 @@ import { it } from 'vitest';
 import { SecretString, StaticCredentialProvider, type Call } from '@superdurable/connectors-sdk';
 import { ProviderTransportError } from '@superdurable/connectors-sdk/providerhttp';
 import { FreshBooksClient } from '../src/client.js';
-import { GetInvoiceInputSchema } from '../src/generated/models.js';
+import { GetInvoiceInputSchema, ListInvoicesInputSchema } from '../src/generated/models.js';
 import { answerRecordedRequest, loadScenarios, replay, type ExchangeRecorder, type Scenario } from '../../../../conformance/runners/typescript/connector_scenarios.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/freshbooks/scenarios.json', import.meta.url))
-  .filter(scenario => scenario.operation === 'getInvoice');
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/freshbooks/scenarios.json', import.meta.url));
 const connection = { provider: 'freshbooks', name: 'freshbooks' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeFreshBooks, ''));
 
@@ -27,5 +26,6 @@ async function invokeFreshBooks(scenario: Scenario, recorder: ExchangeRecorder) 
     reportProgress() {}, writeText() {}, hasProgressStream: () => false, hasTextStream: () => false,
   };
   if (scenario.operation === 'getInvoice') return client.getInvoice().invoke(call, GetInvoiceInputSchema.parse(scenario.input));
+  if (scenario.operation === 'listInvoices') return client.listInvoices().invoke(call, ListInvoicesInputSchema.parse(scenario.input));
   throw new Error(`unknown FreshBooks operation ${scenario.operation}`);
 }

@@ -124,6 +124,19 @@ export interface Invoice {
   /** PaymentStatus is FreshBooks' current payment status. */
   "paymentStatus": string;
 }
+/** ListInvoicesInput selects a one-based invoice page; zero selects page one. */
+export interface ListInvoicesInput {
+  "accountId": string;
+  "page"?: number | undefined;
+}
+/** InvoicePage contains one page of invoices without client contact details. */
+export interface InvoicePage {
+  "accountId": string;
+  "invoices": Array<Invoice> | null;
+  "page": number;
+  "pageCount": number;
+  "total": number;
+}
 
 /** Runtime validator for GetInvoiceInput. */
 export const GetInvoiceInputSchema = z.strictObject({
@@ -140,3 +153,18 @@ export const InvoiceSchema = z.strictObject({
   "currencyCode": z.string(),
   "paymentStatus": z.string(),
 }) satisfies z.ZodType<Invoice>;
+
+/** Runtime validator for ListInvoicesInput. */
+export const ListInvoicesInputSchema = z.strictObject({
+  "accountId": z.string(),
+  "page": z.number().int().optional(),
+}) satisfies z.ZodType<ListInvoicesInput>;
+
+/** Runtime validator for InvoicePage. */
+export const InvoicePageSchema = z.strictObject({
+  "accountId": z.string(),
+  "invoices": z.array(InvoiceSchema).nullable(),
+  "page": z.number().int(),
+  "pageCount": z.number().int(),
+  "total": z.number().int(),
+}) satisfies z.ZodType<InvoicePage>;

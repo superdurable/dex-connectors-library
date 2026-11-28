@@ -3,12 +3,51 @@
 
 import { newQueryBranch, zeroReceipt, type Call, type Failure, type Query, type QueryAttempt } from '@superdurable/connectors-sdk';
 import type { CohereClient } from './client.js';
-import { EmbedDefinition, RerankDefinition } from './generated/definitions.js';
-import type { EmbedInput, EmbedOutput, RankedDocument, RerankInput, RerankOutput } from './generated/models.js';
+import { ChatDefinition, EmbedDefinition, RerankDefinition } from './generated/definitions.js';
+import type { ChatInput, ChatOutput, EmbedInput, EmbedOutput, RankedDocument, RerankInput, RerankOutput } from './generated/models.js';
 
 const emptyEmbed: EmbedOutput = { id: '', embeddings: [] };
 const emptyRerank: RerankOutput = { results: [] };
 const allowedInputTypes = new Set(['search_document', 'search_query', 'classification', 'clustering']);
+
+/** Generate one text reply from a chronological conversation. Repeats can incur additional charges. */
+export class ChatOperation implements Query<ChatInput, ChatOutput> {
+  /** Bind the provider client. */
+  constructor(private readonly client: CohereClient) {}
+  /** Return the manifest's billed-operation retry policy. */
+  definition() { return ChatDefinition; }
+  /** Submit one conversation and concatenate the returned text blocks. */
+  async invoke(call: Call, input: ChatInput): Promise<QueryAttempt<ChatOutput>> {
+    const empty = { id: '', text: '', finishReason: '' };
+    if (typeof input?.model !== 'string' || !input.model.trim() || !Array.isArray(input.messages)
+        || !input.messages.length || input.messages.length > 100 || !Number.isSafeInteger(input.max_tokens ?? 0)
+        || (input.max_tokens ?? 0) < 0) {
+      return defect('chat', empty, 'model, 1 to 100 messages, and nonnegative maxTokens are required');
+    }
+    if (input.messages.some(message => !message || !['system', 'user', 'assistant'].includes(message.role)
+        || typeof message.content !== 'string' || !message.content.trim())) {
+      return defect('chat', empty, 'messages require text and a supported role');
+    }
+    return this.client.invokeJSON(call, 'chat', '/v2/chat', {
+      model: input.model, messages: input.messages.map(({ role, content }) => ({ role, content })),
+      ...(input.max_tokens ? { max_tokens: input.max_tokens } : {}),
+    }, 'answered', empty, decodeChat);
+  }
+}
+
+function decodeChat(body: unknown): ChatOutput {
+  const reply = asRecord(body);
+  const message = asRecord(reply.message);
+  if (typeof reply.id !== 'string' || !reply.id || typeof reply.finish_reason !== 'string' || !reply.finish_reason
+      || message.role !== 'assistant' || !Array.isArray(message.content)) throw new TypeError('incomplete chat reply');
+  const text = message.content.map(part => {
+    const block = asRecord(part);
+    if (block.type !== 'text' || (block.text != null && typeof block.text !== 'string')) throw new TypeError('unsupported chat content');
+    return block.text ?? '';
+  }).join('');
+  if (!text) throw new TypeError('empty chat reply');
+  return { id: reply.id, finishReason: reply.finish_reason, text };
+}
 
 /** Cohere v2 text embedding query. */
 export class EmbedOperation implements Query<EmbedInput, EmbedOutput> {

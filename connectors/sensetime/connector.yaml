@@ -9,10 +9,16 @@ metadata:
   version: v0.1.0
 spec:
   languages:
+    java: {version: v0.1.0, operations: [listModels], triggers: []}
+    rust: {version: v0.1.0, operations: [listModels], triggers: []}
     python: {version: v0.1.0, operations: [listModels], triggers: []}
     typescript: {version: v0.1.0, operations: [listModels], triggers: []}
   provider: sensetime
   codegen:
+    modelCatalog:
+      objectTags: uppercase
+      endpoint: https://api.sensenova.cn/v1/llm/models
+      providerLabel: SenseTime
     go:
       package: sensetime
   configuration:

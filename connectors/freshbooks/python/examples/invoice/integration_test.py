@@ -19,10 +19,13 @@ from dex_connectors.freshbooks import (
     Credentials,
     GetInvoiceInput,
     Invoice,
+    InvoicePage,
+    ListInvoicesInput,
     new_connection,
 )
 
 from .flow import CONNECTION_NAME, InvoiceFlow
+from .list_flow import InvoicePageFlow
 
 
 @pytest.mark.asyncio
@@ -33,6 +36,11 @@ async def test_invoice_retries_503(tmp_path: Path) -> None:
 
     def answer(request: httpx.Request) -> httpx.Response:
         assert request.headers["Authorization"] == "Bearer synthetic-freshbooks-token"
+        if request.url.path.endswith("/invoices/invoices"):
+            assert dict(request.url.params) == {"page": "2", "per_page": "100"}
+            return httpx.Response(
+                200, json={"response": {"result": {"page": 2, "pages": 2, "total": 100, "invoices": []}}}
+            )
         assert request.url.path == "/accounting/account/KAG77/invoices/invoices/2201278"
         requests.append(request)
         if len(requests) == 1:
@@ -69,7 +77,8 @@ async def test_invoice_retries_503(tmp_path: Path) -> None:
         )
         connection = new_connection(provider, reference)
         flow = InvoiceFlow(connection)
-        registry = dex.Registry([flow], allow_async_handlers=True)
+        page_flow = InvoicePageFlow(connection)
+        registry = dex.Registry([flow, page_flow], allow_async_handlers=True)
         cache = dex.open_blob_cache(dex.BlobCacheConfig(str(tmp_path / "blobs"), 1 << 24))
         worker = dex.AsyncWorker(registry, cache, dex.WorkerOptions(server_address=address))
         worker_task = asyncio.create_task(worker.start())
@@ -82,6 +91,11 @@ async def test_invoice_retries_503(tmp_path: Path) -> None:
                 assert result.status == dex.FlowStatus.COMPLETED, result.error_message
                 assert result.single_output(Invoice).invoice_id == 2201278
                 assert len(requests) == 2
+                page_id = f"freshbooks-python-page-{uuid4().hex}"
+                await client.start_flow(page_flow, page_id, ListInvoicesInput("KAG77", 2))
+                page = await asyncio.wait_for(client.wait_for_flow(page_id, timedelta(seconds=25)), 30)
+                assert page.status == dex.FlowStatus.COMPLETED, page.error_message
+                assert page.single_output(InvoicePage) == InvoicePage("KAG77", (), 2, 2, 100)
         finally:
             await worker.stop()
             await worker_task

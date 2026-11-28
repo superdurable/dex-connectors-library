@@ -6,10 +6,9 @@ import { SecretString, type Call } from '@superdurable/connectors-sdk';
 import { ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
 import { answerRecordedRequest, ExchangeRecorder, loadScenarios, replay, scenarioCall, type Scenario } from '../../../../conformance/runners/typescript/connector_scenarios.js';
 import { CohereClient } from '../src/client.js';
-import { EmbedInputSchema, RerankInputSchema } from '../src/generated/models.js';
+import { ChatInputSchema, EmbedInputSchema, RerankInputSchema } from '../src/generated/models.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/cohere/scenarios.json', import.meta.url))
-  .filter(scenario => scenario.operation === 'embed' || scenario.operation === 'rerank');
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/cohere/scenarios.json', import.meta.url));
 const connection = { provider: 'cohere', name: 'cohere' };
 const progress = { reportProgress() {}, writeText() {}, hasProgressStream: () => false, hasTextStream: () => false };
 
@@ -23,6 +22,7 @@ async function invokeCohere(scenario: Scenario, recorder: ExchangeRecorder) {
   const call = scenarioCall(scenario, connection, 'cohere', {
     flowId: 'cohere-conformance', cancellationSignal: new AbortController().signal,
   }, progress) as Call;
+  if (scenario.operation === 'chat') return client.chat().invoke(call, ChatInputSchema.parse(scenario.input));
   if (scenario.operation === 'embed') return client.embed().invoke(call, EmbedInputSchema.parse(scenario.input));
   if (scenario.operation === 'rerank') return client.rerank().invoke(call, RerankInputSchema.parse(scenario.input));
   throw new Error(`unknown Cohere operation ${scenario.operation}`);

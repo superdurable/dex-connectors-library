@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -240,6 +241,20 @@ type StudioUnitPort struct {
 
 type Codegen struct {
 	Go GoCodegen `yaml:"go" json:"go"`
+	// ModelCatalog generates native clients for the bounded model-list protocol.
+	ModelCatalog *ModelCatalogCodegen `yaml:"modelCatalog,omitempty" json:"modelCatalog,omitempty"`
+}
+
+// ModelCatalogCodegen selects a bearer-authenticated GET of an OpenAI-compatible model catalog.
+type ModelCatalogCodegen struct {
+	// ObjectTags specifies the list and model type tags: lowercase (default), uppercase, or absent.
+	ObjectTags string `yaml:"objectTags,omitempty" json:"objectTags,omitempty"`
+	// Endpoint is the fixed HTTPS model-list URL.
+	Endpoint string `yaml:"endpoint" json:"endpoint"`
+	// KeyPrefix is the required API key prefix, or empty for any nonempty visible ASCII key.
+	KeyPrefix string `yaml:"keyPrefix,omitempty" json:"keyPrefix,omitempty"`
+	// ProviderLabel identifies the provider in safe error messages.
+	ProviderLabel string `yaml:"providerLabel" json:"providerLabel"`
 }
 
 type GoCodegen struct {
@@ -853,6 +868,18 @@ func (manifest Manifest) Validate() error {
 	}
 	if !regexp.MustCompile(`^[a-z][a-z0-9]*$`).MatchString(manifest.Spec.Codegen.Go.Package) {
 		problems = append(problems, "spec.codegen.go.package must be a Go package name")
+	}
+	if protocol := manifest.Spec.Codegen.ModelCatalog; protocol != nil {
+		if !slices.Contains([]string{"", "lowercase", "uppercase", "absent"}, protocol.ObjectTags) {
+			problems = append(problems, "spec.codegen.modelCatalog.objectTags must be lowercase, uppercase, or absent")
+		}
+		endpoint, err := url.Parse(protocol.Endpoint)
+		if err != nil || endpoint.Scheme != "https" || endpoint.Hostname() == "" || endpoint.Path == "" || endpoint.User != nil || endpoint.RawQuery != "" || endpoint.Fragment != "" {
+			problems = append(problems, "spec.codegen.modelCatalog.endpoint must be a fixed HTTPS URL with a path")
+		}
+		if !regexp.MustCompile(`^[A-Za-z0-9._-]*$`).MatchString(protocol.KeyPrefix) || !regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9 ._-]*$`).MatchString(protocol.ProviderLabel) {
+			problems = append(problems, "spec.codegen.modelCatalog requires a printable provider label and an alphanumeric key prefix with optional punctuation")
+		}
 	}
 	problems = append(problems, validateFields("configuration", manifest.Spec.Configuration.Fields, false)...)
 	if len(manifest.Spec.Auth.Methods) == 0 {

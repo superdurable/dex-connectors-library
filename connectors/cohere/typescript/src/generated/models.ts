@@ -64,6 +64,31 @@ export function decodeCredentials(value: unknown): Credentials {
 /** Host-owned source of private connector credentials. */
 export type CredentialSource = CredentialProvider<Credentials>;
 
+/** ChatMessage is one text message in chronological order. */
+export interface ChatMessage {
+  /** Role is system, user, or assistant. */
+  "role": string;
+  /** Content is the nonempty message text. */
+  "content": string;
+}
+/** ChatInput selects a model and a text conversation for one generation. */
+export interface ChatInput {
+  /** Model is a Cohere Chat model ID. */
+  "model": string;
+  /** Messages are chronological text messages. */
+  "messages": Array<ChatMessage> | null;
+  /** MaxTokens limits generated output tokens; zero uses the model default. */
+  "max_tokens"?: number | undefined;
+}
+/** ChatOutput contains the provider reply and completion reason. */
+export interface ChatOutput {
+  /** ID is the provider response identifier. */
+  "id": string;
+  /** Text is the concatenated text content. */
+  "text": string;
+  /** FinishReason identifies why generation stopped. */
+  "finishReason": string;
+}
 /** EmbedInput asks Cohere to embed up to 96 texts as float vectors. */
 export interface EmbedInput {
   /** Model is a Cohere Embed model ID. */
@@ -103,6 +128,26 @@ export interface RerankOutput {
   /** Results are the ranked document indices and scores. */
   "results": Array<RankedDocument> | null;
 }
+
+/** Runtime validator for ChatMessage. */
+export const ChatMessageSchema = z.strictObject({
+  "role": z.string(),
+  "content": z.string(),
+}) satisfies z.ZodType<ChatMessage>;
+
+/** Runtime validator for ChatInput. */
+export const ChatInputSchema = z.strictObject({
+  "model": z.string(),
+  "messages": z.array(ChatMessageSchema).nullable(),
+  "max_tokens": z.number().int().optional(),
+}) satisfies z.ZodType<ChatInput>;
+
+/** Runtime validator for ChatOutput. */
+export const ChatOutputSchema = z.strictObject({
+  "id": z.string(),
+  "text": z.string(),
+  "finishReason": z.string(),
+}) satisfies z.ZodType<ChatOutput>;
 
 /** Runtime validator for EmbedInput. */
 export const EmbedInputSchema = z.strictObject({

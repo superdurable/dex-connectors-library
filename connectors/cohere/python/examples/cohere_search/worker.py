@@ -12,6 +12,7 @@ from dex_connectors.sdk.projectconfig import load_from_environment
 
 from dex_connectors.cohere import new_project_connection
 
+from .chat import ChatFlow
 from .flow import CONNECTION_NAME, SearchFlow
 
 
@@ -22,7 +23,7 @@ async def run_worker() -> None:
     cache = None
     try:
         connection = new_project_connection(project, CONNECTION_NAME)
-        registry = dex.Registry([SearchFlow(connection)], allow_async_handlers=True)
+        registry = dex.Registry([SearchFlow(connection), ChatFlow(connection)], allow_async_handlers=True)
         cache_directory = os.environ.get(
             "DEX_BLOB_CACHE_DIR", str(Path(tempfile.gettempdir()) / "dex-cohere-search-blobs")
         )

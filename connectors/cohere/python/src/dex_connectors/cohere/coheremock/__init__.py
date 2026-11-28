@@ -9,6 +9,12 @@ from dex_connectors.sdk.connectormock import Case as Case
 from dex_connectors.sdk.connectormock import Query as Query
 
 from .._generated.mock import Mock as Mock
+from .._generated.mock import chat_answered as chat_answered
+from .._generated.mock import chat_default_answer as chat_default_answer
+from .._generated.mock import chat_defect as chat_defect
+from .._generated.mock import chat_invalid_response as chat_invalid_response
+from .._generated.mock import chat_provider_rejected as chat_provider_rejected
+from .._generated.mock import chat_retry as chat_retry
 from .._generated.mock import embed_default_embedding as embed_default_embedding
 from .._generated.mock import embed_invalid_key as embed_invalid_key
 from .._generated.mock import rerank_default_ranking as rerank_default_ranking
@@ -29,6 +35,12 @@ from ..models import RerankOutput as RerankOutput
 
 __all__ = [
     "Mock",
+    "chat_answered",
+    "chat_provider_rejected",
+    "chat_invalid_response",
+    "chat_defect",
+    "chat_retry",
+    "chat_default_answer",
     "embed_default_embedding",
     "embed_invalid_key",
     "rerank_default_ranking",

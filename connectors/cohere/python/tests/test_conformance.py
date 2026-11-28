@@ -14,11 +14,7 @@ ROOT = Path(__file__).parents[4]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 import connector_scenarios as conformance  # noqa: E402
 
-SCENARIOS = [
-    scenario
-    for scenario in conformance.load_scenarios(ROOT / "conformance/connectors/cohere/scenarios.json")
-    if scenario["operation"] in {"embed", "rerank"}
-]
+SCENARIOS = conformance.load_scenarios(ROOT / "conformance/connectors/cohere/scenarios.json")
 CONNECTION = sdk.ConnectionRef("cohere", "cohere")
 ADAPTER = conformance.PythonOperationAdapter(
     "cohere",
@@ -29,6 +25,7 @@ ADAPTER = conformance.PythonOperationAdapter(
         conformance.static_credentials(CONNECTION, cohere.Credentials(sdk.SecretString("test-secret-key"))),
         client,
     ),
+    decode_input_with_dex=True,
 )
 
 

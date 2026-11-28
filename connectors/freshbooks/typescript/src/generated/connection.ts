@@ -5,13 +5,15 @@
 import { ConnectionRefSchema, type ConnectionRef, type Query } from '@superdurable/connectors-sdk';
 import type { LoadedProject } from '@superdurable/connectors-sdk/projectconfig';
 import { newRefreshingCredentialProvider, type CredentialDecoder, type CredentialEncoder, type SharedCredentialDecoder } from '@superdurable/connectors-sdk/projectconfig';
-import type { GetInvoiceInput, Invoice } from './models.js';
+import type { GetInvoiceInput, Invoice, ListInvoicesInput, InvoicePage } from './models.js';
 import { ConnectorID, ProviderID } from './definitions.js';
 
 /** Typed operations supplied by a client or mock. */
 export interface Operations {
   /** Invoke getInvoice through this connection. */
   getInvoice(): Query<GetInvoiceInput, Invoice>;
+  /** Invoke listInvoices through this connection. */
+  listInvoices(): Query<ListInvoicesInput, InvoicePage>;
 }
 
 /** Named connector connection kept outside Flow state. */

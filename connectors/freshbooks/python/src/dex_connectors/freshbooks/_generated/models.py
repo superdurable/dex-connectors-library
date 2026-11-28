@@ -3,6 +3,15 @@
 # ruff: noqa
 
 from dataclasses import dataclass, field as _dataclass_field
+from typing import Any
+
+def _replace_nil_slices(value: Any, depth: int) -> Any:
+    if value is None:
+        return ()
+    if depth == 1:
+        return tuple(value)
+    return tuple(_replace_nil_slices(item, depth - 1) for item in value)
+
 
 # GetInvoiceInput identifies an invoice within an accounting account.
 @dataclass(frozen=True, slots=True)
@@ -34,3 +43,31 @@ class Invoice:
 
 
 setattr(Invoice, '__module__', 'dex_connectors.freshbooks.models')
+
+
+# ListInvoicesInput selects a one-based invoice page; zero selects page one.
+@dataclass(frozen=True, slots=True)
+class ListInvoicesInput:
+    account_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'accountId'})
+    page: int = _dataclass_field(default=0, metadata={'dex_json_omit_default': True})
+
+
+setattr(ListInvoicesInput, '__module__', 'dex_connectors.freshbooks.models')
+
+
+# InvoicePage contains one page of invoices without client contact details.
+@dataclass(frozen=True, slots=True)
+class InvoicePage:
+    account_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'accountId'})
+    invoices: tuple[Invoice, ...] = ()
+    page: int = 0
+    page_count: int = _dataclass_field(default=0, metadata={'dex_json_name': 'pageCount'})
+    total: int = 0
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, 'invoices', _replace_nil_slices(self.invoices, 1))
+
+
+InvoicePage.__annotations__['invoices'] = tuple[Invoice, ...] | None
+InvoicePage.__dataclass_fields__['invoices'].type = tuple[Invoice, ...] | None
+setattr(InvoicePage, '__module__', 'dex_connectors.freshbooks.models')

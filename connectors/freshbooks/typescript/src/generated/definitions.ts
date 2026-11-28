@@ -41,3 +41,36 @@ export const GetInvoiceDefinition: QueryDefinition = {
 };
 /** Manifest metadata for getInvoice. */
 export const GetInvoiceMetadata = { kind: "query", idempotency: "none", authorization: "required" } as const;
+
+/** Branch IDs for listInvoices. */
+export const ListInvoicesBranch = {
+  Listed: "listed",
+  Missing: "missing",
+  ProviderRejected: "providerRejected",
+  InvalidResponse: "invalidResponse",
+  Defect: "defect",
+} as const;
+/** FreshBooks returned the requested invoice page. */
+export const ListInvoicesBranchListed = ListInvoicesBranch.Listed;
+/** FreshBooks did not find the account. */
+export const ListInvoicesBranchMissing = ListInvoicesBranch.Missing;
+/** FreshBooks conclusively rejected the read. */
+export const ListInvoicesBranchProviderRejected = ListInvoicesBranch.ProviderRejected;
+/** FreshBooks returned malformed or oversized invoice JSON. */
+export const ListInvoicesBranchInvalidResponse = ListInvoicesBranch.InvalidResponse;
+/** The account ID, page, or OAuth credentials are invalid. */
+export const ListInvoicesBranchDefect = ListInvoicesBranch.Defect;
+/** Manifest definition for listInvoices. */
+export const ListInvoicesDefinition: QueryDefinition = {
+  operation: { connectorId: ConnectorID, operationId: "listInvoices" },
+  branches: [
+    { id: "listed", description: "FreshBooks returned the requested invoice page." },
+    { id: "missing", description: "FreshBooks did not find the account.", optional: true },
+    { id: "providerRejected", description: "FreshBooks conclusively rejected the read.", optional: true },
+    { id: "invalidResponse", description: "FreshBooks returned malformed or oversized invoice JSON.", optional: true },
+    { id: "defect", description: "The account ID, page, or OAuth credentials are invalid.", optional: true },
+  ],
+  stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
+};
+/** Manifest metadata for listInvoices. */
+export const ListInvoicesMetadata = { kind: "query", idempotency: "none", authorization: "required" } as const;

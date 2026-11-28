@@ -55,6 +55,17 @@
           "additionalProperties": false,
           "required": ["go"],
           "properties": {
+            "modelCatalog": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["endpoint", "providerLabel"],
+              "properties": {
+                "endpoint": { "type": "string", "format": "uri", "pattern": "^https://" },
+                "keyPrefix": { "type": "string", "pattern": "^[A-Za-z0-9._-]*$" },
+                "objectTags": { "enum": ["lowercase", "uppercase", "absent"] },
+                "providerLabel": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9 ._-]*$" }
+              }
+            },
             "go": {
               "type": "object",
               "additionalProperties": false,

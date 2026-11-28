@@ -29,7 +29,7 @@ from ._generated.config import Credentials as Credentials
 from ._generated.refresh import AUTHORIZATION, CREDENTIAL_FIELDS
 
 if TYPE_CHECKING:
-    from .operations import GetInvoiceOperation
+    from .operations import GetInvoiceOperation, ListInvoicesOperation
 
 
 @dataclass(frozen=True, slots=True)
@@ -78,6 +78,12 @@ class Client:
         from .operations import GetInvoiceOperation
 
         return GetInvoiceOperation(self)
+
+    def list_invoices(self) -> ListInvoicesOperation:
+        """Bind the paginated invoice Query."""
+        from .operations import ListInvoicesOperation
+
+        return ListInvoicesOperation(self)
 
     async def aclose(self) -> None:
         """Close the transport after Worker shutdown."""

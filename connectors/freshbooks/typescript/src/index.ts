@@ -7,4 +7,4 @@ export * from './generated/steps.js';
 export { Connection, newConnection, newConnectionWithOperations } from './generated/connection.js';
 export { newProjectConnection } from './project.js';
 export { FreshBooksClient, type FreshBooksClientOptions } from './client.js';
-export { GetInvoiceOperation } from './operations.js';
+export { GetInvoiceOperation, ListInvoicesOperation } from './operations.js';

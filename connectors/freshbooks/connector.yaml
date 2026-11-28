@@ -11,14 +11,14 @@ spec:
   provider: freshbooks
   languages:
     python:
-      version: v0.1.0
+      version: v0.2.0
       package: dex-connector-freshbooks
-      operations: [getInvoice]
+      operations: [getInvoice, listInvoices]
       triggers: []
     typescript:
-      version: v0.1.0
+      version: v0.2.0
       package: '@superdurable/connector-freshbooks'
-      operations: [getInvoice]
+      operations: [getInvoice, listInvoices]
       triggers: []
   codegen:
     go:

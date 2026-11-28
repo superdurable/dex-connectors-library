@@ -95,3 +95,48 @@ class RerankOutput:
 RerankOutput.__annotations__['results'] = tuple[RankedDocument, ...] | None
 RerankOutput.__dataclass_fields__['results'].type = tuple[RankedDocument, ...] | None
 setattr(RerankOutput, '__module__', 'dex_connectors.cohere.models')
+
+
+# ChatMessage is one text message in chronological order.
+@dataclass(frozen=True, slots=True)
+class ChatMessage:
+    # Role is system, user, or assistant.
+    role: str = ''
+    # Content is the nonempty message text.
+    content: str = ''
+
+
+setattr(ChatMessage, '__module__', 'dex_connectors.cohere.models')
+
+
+# ChatInput selects a model and a text conversation for one generation.
+@dataclass(frozen=True, slots=True)
+class ChatInput:
+    # Model is a Cohere Chat model ID.
+    model: str = ''
+    # Messages are chronological text messages.
+    messages: tuple[ChatMessage, ...] = ()
+    # MaxTokens limits generated output tokens; zero uses the model default.
+    max_tokens: int = _dataclass_field(default=0, metadata={'dex_json_omit_default': True})
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, 'messages', _replace_nil_slices(self.messages, 1))
+
+
+ChatInput.__annotations__['messages'] = tuple[ChatMessage, ...] | None
+ChatInput.__dataclass_fields__['messages'].type = tuple[ChatMessage, ...] | None
+setattr(ChatInput, '__module__', 'dex_connectors.cohere.models')
+
+
+# ChatOutput contains the provider reply and completion reason.
+@dataclass(frozen=True, slots=True)
+class ChatOutput:
+    # ID is the provider response identifier.
+    id: str = ''
+    # Text is the concatenated text content.
+    text: str = ''
+    # FinishReason identifies why generation stopped.
+    finish_reason: str = _dataclass_field(default='', metadata={'dex_json_name': 'finishReason'})
+
+
+setattr(ChatOutput, '__module__', 'dex_connectors.cohere.models')

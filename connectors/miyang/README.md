@@ -9,3 +9,12 @@ The [runnable Dex example](go/examples/list-models/) uses a synthetic mock. Live
 The [Python listModels example](python/examples/) provides a runnable Dex Worker and local conformance replay.
 
 The [TypeScript listModels example](typescript/examples/basic/) runs a Dex Worker and Client, with Go-recorded provider scenarios replayed by the package tests.
+
+The [Java Worker](java/examples/io/superdurable/dexconnectors/miyang/ModelCatalogWorker.java) and
+[Rust Worker](rust/examples/list_models.rs) serve the same model-list Query.
+Both examples read the key from `MIYANG_API_KEY` in the Worker environment and use
+the static connection name `miyang`. Start Dex locally with `dexcli dev -open=false`,
+then run `./gradlew modelCatalogWorker` from `java/` or `cargo run --example list_models`
+from `rust/`. Start `JavaMiyangModelCatalog` with an empty JSON string or `RustMiyangModelCatalog` with `{}`.
+Run `./gradlew check dexDevTest` and `cargo test --all-targets` in those directories
+to replay Go scenarios and exercise retry through a real Worker and Client.

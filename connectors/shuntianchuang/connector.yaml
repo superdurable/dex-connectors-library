@@ -9,6 +9,8 @@ metadata:
   version: v0.1.0
 spec:
   languages:
+    java: {version: v0.1.0, operations: [listModels], triggers: []}
+    rust: {version: v0.1.0, operations: [listModels], triggers: []}
     python:
       version: v0.1.0
       operations: [listModels]
@@ -16,6 +18,10 @@ spec:
     typescript: {version: v0.1.0, operations: [listModels], triggers: []}
   provider: shuntianchuang
   codegen:
+    modelCatalog:
+      endpoint: https://api-model.shuntianchuang.cn/v1/models
+      providerLabel: Shuntianchuang
+      keyPrefix: sk-
     go:
       package: shuntianchuang
   configuration:

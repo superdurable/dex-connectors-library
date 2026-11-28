@@ -9,10 +9,16 @@ metadata:
   version: v0.1.0
 spec:
   languages:
+    java: {version: v0.1.0, operations: [listModels], triggers: []}
+    rust: {version: v0.1.0, operations: [listModels], triggers: []}
     python: {version: v0.1.0, operations: [listModels], triggers: []}
     typescript: {version: v0.1.0, operations: [listModels], triggers: []}
   provider: shinloo
   codegen:
+    modelCatalog:
+      endpoint: https://api.shinloo.com/v1/models
+      providerLabel: ShinLinkAI
+      keyPrefix: sk-sl-
     go:
       package: shinloo
   configuration:

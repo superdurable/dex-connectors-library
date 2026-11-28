@@ -10,6 +10,8 @@ metadata:
 spec:
   provider: dimleap
   languages:
+    java: {version: v0.1.0, operations: [listModels], triggers: []}
+    rust: {version: v0.1.0, operations: [listModels], triggers: []}
     python:
       version: v0.1.0
       operations: [listModels]
@@ -20,6 +22,9 @@ spec:
       operations: [listModels]
       triggers: []
   codegen:
+    modelCatalog:
+      endpoint: https://api.dimleap.cn/v1/models
+      providerLabel: Dimleap
     go:
       package: dimleap
   configuration:

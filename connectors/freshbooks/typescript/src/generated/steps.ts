@@ -5,7 +5,7 @@
 import { goToBranch, newQueryStep, type Query, type QueryResult, type QueryStep, type QueryStepConfig } from '@superdurable/connectors-sdk';
 import type { StepTarget } from '@superdurable/dex';
 import type { Connection } from './connection.js';
-import type { GetInvoiceInput, Invoice } from './models.js';
+import type { GetInvoiceInput, Invoice, ListInvoicesInput, InvoicePage } from './models.js';
 
 /** Configuration for the getInvoice connector Step. */
 export interface GetInvoiceStepConfig<StepInput, OperationInput = GetInvoiceInput, OperationOutput = Invoice> extends Omit<QueryStepConfig<StepInput, OperationInput, OperationOutput>, 'operation' | 'connection' | 'branches'> {
@@ -31,6 +31,37 @@ export function newGetInvoiceStep<StepInput, OperationInput = GetInvoiceInput, O
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
   return newQueryStep({ ...stepConfiguration, operation: connection.operations.getInvoice(), connection: connection.reference, branches: [
     goToBranch("found", found),
+    ...(missing ? [goToBranch("missing", missing)] : []),
+    ...(providerRejected ? [goToBranch("providerRejected", providerRejected)] : []),
+    ...(invalidResponse ? [goToBranch("invalidResponse", invalidResponse)] : []),
+    ...(defect ? [goToBranch("defect", defect)] : []),
+  ] });
+}
+
+/** Configuration for the listInvoices connector Step. */
+export interface ListInvoicesStepConfig<StepInput, OperationInput = ListInvoicesInput, OperationOutput = InvoicePage> extends Omit<QueryStepConfig<StepInput, OperationInput, OperationOutput>, 'operation' | 'connection' | 'branches'> {
+  /** Named connection supplying this operation. */
+  connection: Connection<{ listInvoices(): Query<OperationInput, OperationOutput> }>;
+  /** Name matching the bound connection. */
+  connectionName: string;
+  /** FreshBooks returned the requested invoice page. */
+  listed: StepTarget<QueryResult<OperationOutput>>;
+  /** FreshBooks did not find the account. */
+  missing?: StepTarget<QueryResult<OperationOutput>>;
+  /** FreshBooks conclusively rejected the read. */
+  providerRejected?: StepTarget<QueryResult<OperationOutput>>;
+  /** FreshBooks returned malformed or oversized invoice JSON. */
+  invalidResponse?: StepTarget<QueryResult<OperationOutput>>;
+  /** The account ID, page, or OAuth credentials are invalid. */
+  defect?: StepTarget<QueryResult<OperationOutput>>;
+}
+
+/** Build the listInvoices Step from a named connection. */
+export function newListInvoicesStep<StepInput, OperationInput = ListInvoicesInput, OperationOutput = InvoicePage>(configuration: ListInvoicesStepConfig<StepInput, OperationInput, OperationOutput>): QueryStep<StepInput, OperationInput, OperationOutput> {
+  const { connection, connectionName, listed, missing, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
+  if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
+  return newQueryStep({ ...stepConfiguration, operation: connection.operations.listInvoices(), connection: connection.reference, branches: [
+    goToBranch("listed", listed),
     ...(missing ? [goToBranch("missing", missing)] : []),
     ...(providerRejected ? [goToBranch("providerRejected", providerRejected)] : []),
     ...(invalidResponse ? [goToBranch("invalidResponse", invalidResponse)] : []),

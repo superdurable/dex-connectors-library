@@ -3,6 +3,8 @@
 """Cohere embedding and rerank Queries for Dex connector Steps."""
 
 from .client import (
+    ANSWERED,
+    CHAT_DEFINITION,
     CONNECTOR_ID,
     DEFECT,
     EMBED_DEFINITION,
@@ -12,6 +14,7 @@ from .client import (
     PROVIDER_REJECTED,
     RANKED,
     RERANK_DEFINITION,
+    ChatOperation,
     Client,
     Config,
     Credentials,
@@ -19,11 +22,27 @@ from .client import (
     RerankOperation,
 )
 from .connection import Connection, new_connection, new_connection_with_operations, new_project_connection
-from .models import EmbedInput, EmbedOutput, RankedDocument, RerankInput, RerankOutput
-from .steps import new_embed_step, new_rerank_step
+from .models import (
+    ChatInput,
+    ChatMessage,
+    ChatOutput,
+    EmbedInput,
+    EmbedOutput,
+    RankedDocument,
+    RerankInput,
+    RerankOutput,
+)
+from .steps import new_chat_step, new_embed_step, new_rerank_step
 
 __all__ = [
     "Client",
+    "ChatOperation",
+    "ChatMessage",
+    "ChatInput",
+    "ChatOutput",
+    "CHAT_DEFINITION",
+    "ANSWERED",
+    "new_chat_step",
     "Config",
     "Connection",
     "Credentials",

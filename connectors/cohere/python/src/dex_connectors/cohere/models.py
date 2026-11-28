@@ -2,6 +2,9 @@
 # SPDX-License-Identifier: MIT
 """Public model names backed by Go-derived generated dataclasses."""
 
+from ._generated.models import ChatInput as ChatInput
+from ._generated.models import ChatMessage as ChatMessage
+from ._generated.models import ChatOutput as ChatOutput
 from ._generated.models import EmbedInput as EmbedInput
 from ._generated.models import EmbedOutput as EmbedOutput
 from ._generated.models import (

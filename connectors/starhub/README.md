@@ -13,3 +13,12 @@ Provider contract: [developer docs](https://www.starhubc.com/docs), [service ter
 The first Python package release is `v0.1.0`. See the [Python README](python/README.md) and its runnable Flow for the operation contract and local Dex verification.
 
 The [TypeScript package](typescript/) provides the same `ListModels` operation, Go-recorded conformance tests, and a runnable Dex Worker and Client example.
+
+The [Java Worker](java/examples/io/superdurable/dexconnectors/starhub/ModelCatalogWorker.java) and
+[Rust Worker](rust/examples/list_models.rs) serve the same model-list Query.
+Both examples read the key from `STARHUB_API_KEY` in the Worker environment and use
+the static connection name `starhub`. Start Dex locally with `dexcli dev -open=false`,
+then run `./gradlew modelCatalogWorker` from `java/` or `cargo run --example list_models`
+from `rust/`. Start `JavaStarhubModelCatalog` with an empty JSON string or `RustStarhubModelCatalog` with `{}`.
+Run `./gradlew check dexDevTest` and `cargo test --all-targets` in those directories
+to replay Go scenarios and exercise retry through a real Worker and Client.

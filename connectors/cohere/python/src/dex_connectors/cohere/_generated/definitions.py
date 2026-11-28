@@ -18,6 +18,8 @@ CONNECTOR_ID = "cohere"
 PROVIDER = "cohere"
 EMBED_OPERATION_ID = "embed"
 RERANK_OPERATION_ID = "rerank"
+CHAT_OPERATION_ID = "chat"
+ANSWERED = "answered"
 DEFECT = "defect"
 EMBEDDED = "embedded"
 INVALID_RESPONSE = "invalidResponse"
@@ -50,6 +52,21 @@ RERANK_DEFINITION = QueryDefinition(
     StepDefaults(
         timedelta(seconds=45),
         2,
+        execute_retry=RetryPolicy(timedelta(seconds=2), 2, timedelta(seconds=30), 3, timedelta(seconds=300)),
+    ),
+)
+
+CHAT_DEFINITION = QueryDefinition(
+    OperationRef(CONNECTOR_ID, CHAT_OPERATION_ID),
+    (
+        BranchDefinition(ANSWERED, "Cohere returned a complete text reply.", False),
+        BranchDefinition(PROVIDER_REJECTED, "Cohere conclusively rejected the chat request.", True),
+        BranchDefinition(INVALID_RESPONSE, "Cohere returned malformed or oversized chat data.", True),
+        BranchDefinition(DEFECT, "Local input or connection credentials are invalid.", True),
+    ),
+    StepDefaults(
+        timedelta(seconds=45),
+        1,
         execute_retry=RetryPolicy(timedelta(seconds=2), 2, timedelta(seconds=30), 3, timedelta(seconds=300)),
     ),
 )

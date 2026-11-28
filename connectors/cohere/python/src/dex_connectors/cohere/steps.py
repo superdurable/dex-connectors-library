@@ -15,6 +15,7 @@ from dex_connectors.sdk import StepAnnotations as StepAnnotations
 from ._generated.steps import (
     StepInput as StepInput,
 )
+from ._generated.steps import new_chat_step as new_chat_step
 from ._generated.steps import (
     new_embed_step as new_embed_step,
 )

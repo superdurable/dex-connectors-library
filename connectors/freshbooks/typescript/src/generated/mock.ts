@@ -4,9 +4,9 @@
 
 import { branchCase, retryCase, type Case, newQuery, type MockQuery } from '@superdurable/connectors-sdk/connectormock';
 import type { Failure } from '@superdurable/connectors-sdk';
-import type { GetInvoiceInput, Invoice } from './models.js';
-import { GetInvoiceInputSchema, InvoiceSchema } from './models.js';
-import { ProviderID, GetInvoiceDefinition } from './definitions.js';
+import type { GetInvoiceInput, Invoice, ListInvoicesInput, InvoicePage } from './models.js';
+import { GetInvoiceInputSchema, InvoiceSchema, ListInvoicesInputSchema, InvoicePageSchema } from './models.js';
+import { ProviderID, GetInvoiceDefinition, ListInvoicesDefinition } from './definitions.js';
 import { newConnectionWithOperations, type Connection, type Operations } from './connection.js';
 
 /** Go zero value for GetInvoiceInput in scripted cases. */
@@ -22,6 +22,18 @@ export const emptyInvoice: Invoice = InvoiceSchema.parse({
   "amount": '',
   "currencyCode": '',
   "paymentStatus": '',
+});
+/** Go zero value for ListInvoicesInput in scripted cases. */
+export const emptyListInvoicesInput: ListInvoicesInput = ListInvoicesInputSchema.parse({
+  "accountId": '',
+});
+/** Go zero value for InvoicePage in scripted cases. */
+export const emptyInvoicePage: InvoicePage = InvoicePageSchema.parse({
+  "accountId": '',
+  "invoices": [],
+  "page": 0,
+  "pageCount": 0,
+  "total": 0,
 });
 
 /** Script the found branch. */
@@ -44,19 +56,43 @@ export function getInvoiceFoundDefault(): Case<Invoice> {
 /** Default getInvoice scenario. */
 export function getInvoiceDefault(): Case<Invoice> { return getInvoiceFoundDefault(); }
 
+/** Script the listed branch. */
+export function listInvoicesListed(value: InvoicePage, failure?: Failure): Case<InvoicePage> { return branchCase("listed", value, failure); }
+/** Script the missing branch. */
+export function listInvoicesMissing(value: InvoicePage, failure?: Failure): Case<InvoicePage> { return branchCase("missing", value, failure); }
+/** Script the providerRejected branch. */
+export function listInvoicesProviderRejected(value: InvoicePage, failure?: Failure): Case<InvoicePage> { return branchCase("providerRejected", value, failure); }
+/** Script the invalidResponse branch. */
+export function listInvoicesInvalidResponse(value: InvoicePage, failure?: Failure): Case<InvoicePage> { return branchCase("invalidResponse", value, failure); }
+/** Script the defect branch. */
+export function listInvoicesDefect(value: InvoicePage, failure?: Failure): Case<InvoicePage> { return branchCase("defect", value, failure); }
+/** Script a safe retry of listInvoices. */
+export function listInvoicesRetry(failure: Failure, retryAfterMs = 0): Case<InvoicePage> { return retryCase(failure, retryAfterMs); }
+/** Manifest scenario listedDefault for listInvoices. */
+export function listInvoicesListedDefault(): Case<InvoicePage> {
+  const value = InvoicePageSchema.parse({"accountId":"KAG77","invoices":[{"accountId":"KAG77","amount":"800.00","currencyCode":"USD","invoiceId":2201278,"invoiceNumber":"0000003","paymentStatus":"unpaid"}],"page":1,"pageCount":1,"total":1});
+  return branchCase("listed", value);
+}
+/** Default listInvoices scenario. */
+export function listInvoicesDefault(): Case<InvoicePage> { return listInvoicesListedDefault(); }
+
 /** Scripted operations and manifest defaults for this connector. */
 export class GeneratedMock implements Operations {
   readonly #getInvoice: MockQuery<GetInvoiceInput, Invoice>;
+  readonly #listInvoices: MockQuery<ListInvoicesInput, InvoicePage>;
   readonly #connection: Connection;
 
   constructor(connectionName: string) {
     this.#getInvoice = newQuery<GetInvoiceInput, Invoice>(GetInvoiceDefinition).default(getInvoiceDefault());
+    this.#listInvoices = newQuery<ListInvoicesInput, InvoicePage>(ListInvoicesDefinition).default(listInvoicesDefault());
     this.#connection = newConnectionWithOperations(this, { provider: ProviderID, name: connectionName });
   }
 
   connection(): Connection { return this.#connection; }
   getInvoice(): MockQuery<GetInvoiceInput, Invoice> { return this.#getInvoice; }
+  listInvoices(): MockQuery<ListInvoicesInput, InvoicePage> { return this.#listInvoices; }
   assertNoFailures(): void {
     this.#getInvoice.assertNoFailures();
+    this.#listInvoices.assertNoFailures();
   }
 }

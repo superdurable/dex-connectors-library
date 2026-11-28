@@ -577,13 +577,15 @@ class PythonOperationAdapter:
 
     def __init__(self, connector_id: str, connection: sdk.ConnectionRef, module: object,
                  create_client: Callable[[httpx.AsyncClient, ExchangeRecorder], object],
-                 operation_types: dict[str, type] | None = None, with_context: bool = False) -> None:
+                 operation_types: dict[str, type] | None = None, with_context: bool = False,
+                 decode_input_with_dex: bool = False) -> None:
         self.connector_id = connector_id
         self.connection = connection
         self.module = module
         self.create_client = create_client
         self.operation_types = operation_types or {}
         self.with_context = with_context
+        self.decode_input_with_dex = decode_input_with_dex
 
     async def invoke(self, scenario: dict[str, Any], recorder: ExchangeRecorder,
                      context: HeartbeatContext) -> object:
@@ -594,17 +596,11 @@ class PythonOperationAdapter:
             operation = (self.operation_types[operation_name](client) if operation_name in self.operation_types
                          else getattr(client, self._snake_case(operation_name))())
             input_type = getattr(self.module, operation_name[0].upper() + operation_name[1:] + "Input")
-            generated_models = importlib.import_module(f"{self.module.__name__}._generated.models")
-            is_generated_input = getattr(generated_models, input_type.__name__, None) is input_type
-            fields_by_wire_name = {field.metadata.get("dex_json_name", field.name): field
-                                   for field in fields(input_type)}
-            input_arguments = {}
-            for key, value in scenario["input"].items():
-                field = fields_by_wire_name[key]
-                if not is_generated_input and field.metadata.get("dex_json_format") == "rfc3339" and isinstance(value, str):
-                    value = datetime.fromisoformat(value.replace("Z", "+00:00"))
-                input_arguments[field.name] = value
-            input_value = input_type(**input_arguments)
+            if self.decode_input_with_dex:
+                payload = Value(WireKind.JSON, json.dumps(scenario["input"]))
+                input_value = CodecRegistry().resolve(input_type).decode(payload)
+            else:
+                input_value = self._construct_input(input_type, scenario["input"])
             call_arguments = {"context": context} if self.with_context else {}
             if hasattr(operation, "idempotency_key"):
                 call_arguments.update(production_send_cap_arguments(operation.definition()))
@@ -614,6 +610,19 @@ class PythonOperationAdapter:
             if hasattr(operation, "idempotency_key"):
                 return await invoke_production_mutation(operation, call, input_value, scenario["idempotencyKey"])
             return await operation.invoke(call, input_value)
+
+    def _construct_input(self, input_type: type, wire_input: dict[str, Any]) -> object:
+        generated_models = importlib.import_module(f"{self.module.__name__}._generated.models")
+        is_generated_input = getattr(generated_models, input_type.__name__, None) is input_type
+        fields_by_wire_name = {field.metadata.get("dex_json_name", field.name): field
+                               for field in fields(input_type)}
+        input_arguments = {}
+        for key, value in wire_input.items():
+            field = fields_by_wire_name[key]
+            if not is_generated_input and field.metadata.get("dex_json_format") == "rfc3339" and isinstance(value, str):
+                value = datetime.fromisoformat(value.replace("Z", "+00:00"))
+            input_arguments[field.name] = value
+        return input_type(**input_arguments)
 
     @staticmethod
     def _snake_case(value: str) -> str:
