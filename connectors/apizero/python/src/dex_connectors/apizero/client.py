@@ -135,7 +135,7 @@ class GetAccountInfoOperation:
         finally:
             await response.aclose()
         try:
-            wire: Any = json.loads(body, parse_constant=lambda _: (_ for _ in ()).throw(ValueError()))
+            wire: Any = _decode_envelope(body)
         except (ValueError, UnicodeDecodeError):
             wire = None
         if (
@@ -200,3 +200,39 @@ def _classify_code(code: int, delay: float) -> QueryAttempt[GetAccountInfoOutput
         FailureKind.PROVIDER_REJECTION,
         f"ApiZero rejected account request with code {code}",
     )
+
+
+def _invalid_json_number(token: str) -> None:
+    raise ValueError("Invalid JSON number")
+
+
+def _optional_integer(value: object) -> bool:
+    return value is None or (type(value) is int and -(1 << 63) <= value < (1 << 63))
+
+
+def _decode_envelope(body: bytes) -> dict[str, Any]:
+    wire = json.loads(
+        body.decode("utf-8", errors="replace"),
+        object_hook=lambda fields: {key.lower(): value for key, value in fields.items()},
+        parse_constant=_invalid_json_number,
+    )
+    if not isinstance(wire, dict) or not _optional_integer(wire.get("code")):
+        raise ValueError("Invalid account status")
+    data = wire.get("data")
+    if data is not None and not isinstance(data, dict):
+        raise ValueError("Invalid account fields")
+    if data is not None:
+        if data.get("scope") is not None and not isinstance(data["scope"], str):
+            raise ValueError("Invalid account scope")
+        wallet = data.get("balance")
+        if wallet is not None and (
+            not isinstance(wallet, dict)
+            or (wallet.get("yuan") is not None and not isinstance(wallet["yuan"], str))
+        ):
+            raise ValueError("Invalid wallet balance")
+        key = data.get("key")
+        if key is not None and (
+            not isinstance(key, dict) or not _optional_integer(key.get("quota_remaining"))
+        ):
+            raise ValueError("Invalid key quota")
+    return wire

@@ -20,6 +20,9 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	if scenario.Name == "getAccountStatus-defect" {
 		credentials = Credentials{}
 	}
+	if scenario.Name == "getAccountStatus-invalidISID" {
+		credentials.ISID = "060066023"
+	}
 	client, err := New(Config{}, sdkgo.StaticCredentialProvider[Credentials]{testConnection: credentials}, WithHTTPClient(transport))
 	require.NoError(t, err)
 	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{

@@ -229,6 +229,564 @@
       "input": {},
       "name": "getAccountStatus-defect",
       "operation": "getAccountStatus"
+    },
+    {
+      "callId": "3ba6958e-157c-5230-b580-b8c12d5f2965",
+      "exchanges": [
+        {
+          "body": "{\"CODE\":0,\"MESSAGE\":\"ok\",\"CREDITS_CHARGED\":0,\"CREDITS_BALANCE\":880,\"DATA\":{\"APP_ID\":1,\"FROZEN_CREDITS\":2,\"IS_SANDBOX\":false}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open/v1/account",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sk-tx-live-test-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "retrieved",
+        "failureKind": "",
+        "output": {
+          "appId": 1,
+          "creditsBalance": 880,
+          "frozenCredits": 2,
+          "isSandbox": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountStatus-folded",
+      "operation": "getAccountStatus"
+    },
+    {
+      "callId": "db66c306-e2c2-5579-9c57-9653af2ec45a",
+      "exchanges": [
+        {
+          "body": "{\"code\":9223372036854775808}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open/v1/account",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sk-tx-live-test-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "appId": 0,
+          "creditsBalance": 0,
+          "frozenCredits": 0,
+          "isSandbox": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountStatus-signed-overflow",
+      "operation": "getAccountStatus"
+    },
+    {
+      "callId": "b1237bc3-f4e6-5c44-8dda-290b43f65f23",
+      "exchanges": [
+        {
+          "body": "{\"code\":1.0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open/v1/account",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sk-tx-live-test-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "appId": 0,
+          "creditsBalance": 0,
+          "frozenCredits": 0,
+          "isSandbox": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountStatus-noninteger-code",
+      "operation": "getAccountStatus"
+    },
+    {
+      "callId": "d73fa6a3-23db-5878-b1ec-4c418d093322",
+      "exchanges": [
+        {
+          "body": "{\"code\":40300}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open/v1/account",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sk-tx-live-test-secret"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "appId": 0,
+          "creditsBalance": 0,
+          "frozenCredits": 0,
+          "isSandbox": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountStatus-business-on-403",
+      "operation": "getAccountStatus"
+    },
+    {
+      "callId": "9683ad23-c98d-5a9f-a150-6aed88df8ca8",
+      "exchanges": [
+        {
+          "body": "{\"code\":42900}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open/v1/account",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sk-tx-live-test-secret"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 7000,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountStatus-frequency-code",
+      "operation": "getAccountStatus"
+    },
+    {
+      "callId": "bb5967b4-6b15-53b5-b3d2-1bd0ac900a9c",
+      "exchanges": [
+        {
+          "body": "{\"code\":50400}",
+          "headers": {
+            "Retry-After": "4"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open/v1/account",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sk-tx-live-test-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 4000,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountStatus-busy-code",
+      "operation": "getAccountStatus"
+    },
+    {
+      "callId": "9e8692bc-b52a-59dc-81f7-1484e424027a",
+      "exchanges": [
+        {
+          "body": "{\"code\":50000}",
+          "headers": {
+            "Retry-After": "5"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open/v1/account",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sk-tx-live-test-secret"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 5000,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountStatus-unavailable-code",
+      "operation": "getAccountStatus"
+    },
+    {
+      "callId": "2c8987b1-262a-50b8-bf13-056d66595ffd",
+      "exchanges": [
+        {
+          "body": "{\"code\":40100}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open/v1/account",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sk-tx-live-test-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "appId": 0,
+          "creditsBalance": 0,
+          "frozenCredits": 0,
+          "isSandbox": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountStatus-auth-code",
+      "operation": "getAccountStatus"
+    },
+    {
+      "callId": "2037e399-d93a-512e-b2a3-be74b83b060f",
+      "exchanges": [
+        {
+          "body": "{\"code\":42901}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open/v1/account",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sk-tx-live-test-secret"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "appId": 0,
+          "creditsBalance": 0,
+          "frozenCredits": 0,
+          "isSandbox": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountStatus-quota-code",
+      "operation": "getAccountStatus"
+    },
+    {
+      "callId": "306bd116-2e09-56ca-b28d-880509534492",
+      "exchanges": [
+        {
+          "body": "{\"code\":40100,\"data\":{\"app_id\":\"2\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open/v1/account",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sk-tx-live-test-secret"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "appId": 0,
+          "creditsBalance": 0,
+          "frozenCredits": 0,
+          "isSandbox": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountStatus-invalid-rejection",
+      "operation": "getAccountStatus"
+    },
+    {
+      "callId": "ada68e3e-54e3-5855-91b7-970d7a3c3701",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"message\":\"ok\",\"credits_charged\":0,\"credits_balance\":880,\"data\":{\"app_id\":1,\"frozen_credits\":2,\"is_sandbox\":0}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open/v1/account",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sk-tx-live-test-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "appId": 0,
+          "creditsBalance": 0,
+          "frozenCredits": 0,
+          "isSandbox": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountStatus-invalid-sandbox",
+      "operation": "getAccountStatus"
+    },
+    {
+      "callId": "c138578d-4591-510d-bfa9-776099978548",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"message\":\"ok\",\"credits_charged\":0,\"credits_balance\":880,\"data\":{\"app_id\":1,\"frozen_credits\":2,\"is_sandbox\":true}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open/v1/account",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sk-tx-live-test-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "retrieved",
+        "failureKind": "",
+        "output": {
+          "appId": 1,
+          "creditsBalance": 880,
+          "frozenCredits": 2,
+          "isSandbox": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountStatus-sandbox",
+      "operation": "getAccountStatus"
+    },
+    {
+      "callId": "4a794c6a-4956-5508-a72f-2f86373d5da6",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"message\":\"ok\",\"credits_charged\":1,\"credits_balance\":880,\"data\":{\"app_id\":1,\"frozen_credits\":2,\"is_sandbox\":false}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open/v1/account",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sk-tx-live-test-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "appId": 0,
+          "creditsBalance": 0,
+          "frozenCredits": 0,
+          "isSandbox": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountStatus-charged",
+      "operation": "getAccountStatus"
+    },
+    {
+      "callId": "df2434c9-9ac1-5378-862a-7bc639914166",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"message\":\"ok\",\"credits_charged\":0,\"credits_balance\":880,\"data\":{\"app_id\":1,\"frozen_credits\":-1,\"is_sandbox\":false}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open/v1/account",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sk-tx-live-test-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "appId": 0,
+          "creditsBalance": 0,
+          "frozenCredits": 0,
+          "isSandbox": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountStatus-negative-frozen",
+      "operation": "getAccountStatus"
+    },
+    {
+      "callId": "ea10b41c-b936-5328-8f1f-414fad3670da",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"message\":\"ok\",\"credits_charged\":0,\"credits_balance\":880,\"data\":{\"app_id\":1,\"frozen_credits\":2,\"is_sandbox\":false}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open/v1/account",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sk-tx-live-test-secret"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "appId": 0,
+          "creditsBalance": 0,
+          "frozenCredits": 0,
+          "isSandbox": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountStatus-success-on-403",
+      "operation": "getAccountStatus"
     }
   ],
   "schemaVersion": 1

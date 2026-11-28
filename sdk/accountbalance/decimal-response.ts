@@ -31,3 +31,34 @@ export function integerCode(value: unknown): bigint | undefined {
   const integer = BigInt(value.source);
   return integer >= -(1n << 63n) && integer < (1n << 63n) ? integer : undefined;
 }
+
+interface AccountFields {
+  readonly [field: string]: 'integer' | 'string' | 'boolean' | AccountFields;
+}
+
+/** Decode declared account fields, retaining integers outside JavaScript's exact number range. */
+export function decodeAccountFields(body: Uint8Array, fields: AccountFields): Record<string, unknown> {
+  return readAccountFields(parseBalanceResponse(body), fields);
+}
+
+function readAccountFields(value: unknown, fields: AccountFields): Record<string, unknown> {
+  if (value === null || typeof value !== 'object' || Object.getPrototypeOf(value) !== Object.prototype)
+    throw new TypeError('Expected an account object');
+  const source = value as Record<string, unknown>;
+  const result: Record<string, unknown> = {};
+  for (const [name, kind] of Object.entries(fields)) {
+    const field = source[name];
+    if (field == null) continue;
+    if (typeof kind === 'object') result[name] = readAccountFields(field, kind);
+    else if (kind === 'integer') {
+      const integer = integerCode(field);
+      if (integer === undefined) throw new TypeError('Invalid account integer');
+      const number = Number(integer);
+      result[name] = Number.isSafeInteger(number) ? number : integer;
+    } else {
+      if (typeof field !== kind) throw new TypeError('Invalid account field');
+      result[name] = field;
+    }
+  }
+  return result;
+}

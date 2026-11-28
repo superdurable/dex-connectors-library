@@ -12,3 +12,7 @@ The [Python package](python/README.md) implements `getAccountInfo` and includes
 a runnable Dex Flow plus Go-recorded provider conformance scenarios.
 
 The [TypeScript package and runnable Flow](typescript/README.md) replay the Go-recorded provider contract and exercise the Flow against a real local Dex Server.
+
+## Java and Rust
+
+The [Java Worker](java/examples/io/superdurable/dexconnectors/apizero/AccountInfoWorker.java) and [Rust Worker](rust/examples/get_account_info.rs) run `getAccountInfo` with the `apizero` connection. Supply `APIZERO_API_KEY` through the Worker environment. With Dex running, use `./gradlew accountInfoWorker` from `java/` or `cargo run --example get_account_info` from `rust/`.

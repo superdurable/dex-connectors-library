@@ -59,9 +59,10 @@ sourceSets {
     }
 }
 
-tasks.register('accountBalanceWorker', JavaExec) {
+def workerClass = findProperty('accountWorkerClass') ?: 'AccountBalanceWorker'
+tasks.register(workerClass.uncapitalize(), JavaExec) {
     classpath = sourceSets.example.runtimeClasspath
-    mainClass = "io.superdurable.dexconnectors.${projectDir.parentFile.name}.AccountBalanceWorker"
+    mainClass = "io.superdurable.dexconnectors.${projectDir.parentFile.name}.${workerClass}"
 }
 
 test {

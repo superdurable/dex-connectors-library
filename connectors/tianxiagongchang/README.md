@@ -19,3 +19,7 @@ The [Python package](python/) exposes the same Query and branch contract as Go. 
 ## TypeScript
 
 `@superdurable/connector-tianxiagongchang` provides the `getAccountStatus` Query and a [runnable TypeScript Dex example](typescript/examples/basic/README.md). The package replays Go-recorded provider scenarios with `npm run check`, and `npm run test:integration` verifies retry and persistence against `dexcli dev -open=false`. Real provider credentials and live API behavior have not been verified.
+
+## Java and Rust
+
+The [Java Worker](java/examples/io/superdurable/dexconnectors/tianxiagongchang/AccountStatusWorker.java) and [Rust Worker](rust/examples/get_account_status.rs) run `getAccountStatus` with the `tianxiagongchang` connection. Supply `TIANXIAGONGCHANG_API_KEY` through the Worker environment. With Dex running, use `./gradlew accountStatusWorker` from `java/` or `cargo run --example get_account_status` from `rust/`.

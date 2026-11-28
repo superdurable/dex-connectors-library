@@ -1,0 +1,42 @@
+{
+  "getAccountInfo": {
+    "branches": [
+      {
+        "description": "ApiZero returned account or prepaid Key information.",
+        "id": "found",
+        "optional": false
+      },
+      {
+        "description": "ApiZero rejected the Key or request.",
+        "id": "providerRejected",
+        "optional": true
+      },
+      {
+        "description": "ApiZero returned malformed or oversized data.",
+        "id": "invalidResponse",
+        "optional": true
+      },
+      {
+        "description": "The local API Key is invalid.",
+        "id": "defect",
+        "optional": true
+      }
+    ],
+    "operation": {
+      "connectorId": "apizero",
+      "operationId": "getAccountInfo"
+    },
+    "stepDefaults": {
+      "executeDurability": 2,
+      "executeMethodTimeout": 30000000000,
+      "executeRetry": {
+        "BackoffCoefficient": 2,
+        "InitialInterval": 2000000000,
+        "MaximumAttempts": 3,
+        "MaximumInterval": 30000000000,
+        "TotalDuration": 300000000000
+      },
+      "heartbeatTimeout": 0
+    }
+  }
+}

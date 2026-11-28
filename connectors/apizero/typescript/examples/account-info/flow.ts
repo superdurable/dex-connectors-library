@@ -3,7 +3,7 @@
 
 import { Attribute, StepList, StepRef, goTo, gracefulComplete, jsonCodec, type Context, type Flow, type PersistenceSchema, type Step, type StepDecision } from '@superdurable/dex';
 import type { QueryResult } from '@superdurable/connectors-sdk';
-import { newGetAccountInfoStep, type Connection, type GetAccountInfoInput, type GetAccountInfoOutput } from '../../src/index.js';
+import { newGetAccountInfoStep, type Connection, type GetAccountInfoInput, type GetAccountInfoOutput } from '@superdurable/connector-apizero';
 
 /** Static Dex Web connection for the ApiZero example. */
 export const ConnectionName = 'apizero';

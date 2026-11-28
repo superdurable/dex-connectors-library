@@ -255,6 +255,566 @@
       "input": {},
       "name": "getAccountStatus-transport",
       "operation": "getAccountStatus"
+    },
+    {
+      "callId": "31a2536a-dcab-5b9c-a7a9-a3152067a9a0",
+      "exchanges": [
+        {
+          "body": "{\"CODE\":200,\"DATA\":{\"ISID\":60066023,\"TODAY_USED\":3,\"TODAY_REMAINING\":997}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/resource/v1/isas/mine/information",
+          "query": {
+            "isid": [
+              "60066023"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer private-test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "retrieved",
+        "failureKind": "",
+        "output": {
+          "isid": 60066023,
+          "todayRemaining": 997,
+          "todayUsed": 3
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountStatus-folded",
+      "operation": "getAccountStatus"
+    },
+    {
+      "callId": "9c82e944-7ed6-541a-8150-b37a1b99c84d",
+      "exchanges": [
+        {
+          "body": "{\"code\":9223372036854775808}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/resource/v1/isas/mine/information",
+          "query": {
+            "isid": [
+              "60066023"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer private-test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "isid": 0,
+          "todayRemaining": 0,
+          "todayUsed": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountStatus-signed-overflow",
+      "operation": "getAccountStatus"
+    },
+    {
+      "callId": "a68f7fd1-43f3-5505-86e2-463cd9808fae",
+      "exchanges": [
+        {
+          "body": "{\"code\":1.0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/resource/v1/isas/mine/information",
+          "query": {
+            "isid": [
+              "60066023"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer private-test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "isid": 0,
+          "todayRemaining": 0,
+          "todayUsed": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountStatus-noninteger-code",
+      "operation": "getAccountStatus"
+    },
+    {
+      "callId": "011305a7-44d9-5cb0-ba08-c76855ca8406",
+      "exchanges": [
+        {
+          "body": "{\"code\":502}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/resource/v1/isas/mine/information",
+          "query": {
+            "isid": [
+              "60066023"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer private-test-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "isid": 0,
+          "todayRemaining": 0,
+          "todayUsed": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountStatus-business-on-403",
+      "operation": "getAccountStatus"
+    },
+    {
+      "callId": "8e5455e3-e8f3-5731-8c94-5056c068075d",
+      "exchanges": [
+        {
+          "body": "{\"code\":429}",
+          "headers": {
+            "Retry-After": "6"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/resource/v1/isas/mine/information",
+          "query": {
+            "isid": [
+              "60066023"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer private-test-token"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 6000,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountStatus-frequency-code",
+      "operation": "getAccountStatus"
+    },
+    {
+      "callId": "0d56691a-5839-555e-ad73-9d50f0c48047",
+      "exchanges": [
+        {
+          "body": "{\"code\":500}",
+          "headers": {
+            "Retry-After": "5"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/resource/v1/isas/mine/information",
+          "query": {
+            "isid": [
+              "60066023"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer private-test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 5000,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountStatus-busy-code",
+      "operation": "getAccountStatus"
+    },
+    {
+      "callId": "0ecd14b5-525e-535e-8a3d-9c4699eb81a3",
+      "exchanges": [
+        {
+          "body": "{\"code\":403}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/resource/v1/isas/mine/information",
+          "query": {
+            "isid": [
+              "60066023"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer private-test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "isid": 0,
+          "todayRemaining": 0,
+          "todayUsed": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountStatus-auth-code",
+      "operation": "getAccountStatus"
+    },
+    {
+      "callId": "2fc9f215-2a4a-5c9b-9002-abb5beff3229",
+      "exchanges": [
+        {
+          "body": "{\"code\":200,\"data\":{\"isid\":60066024,\"today_used\":3,\"today_remaining\":997}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/resource/v1/isas/mine/information",
+          "query": {
+            "isid": [
+              "60066023"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer private-test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "isid": 0,
+          "todayRemaining": 0,
+          "todayUsed": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountStatus-wrong-isid",
+      "operation": "getAccountStatus"
+    },
+    {
+      "callId": "f3ef86f9-6b3b-5903-8c50-c34ada581f4d",
+      "exchanges": [
+        {
+          "body": "{\"code\":502,\"data\":{\"today_remaining\":true}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/resource/v1/isas/mine/information",
+          "query": {
+            "isid": [
+              "60066023"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer private-test-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "isid": 0,
+          "todayRemaining": 0,
+          "todayUsed": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountStatus-malformed-rejection",
+      "operation": "getAccountStatus"
+    },
+    {
+      "callId": "f75faada-438a-50e9-92f1-511b6f1e6ae4",
+      "exchanges": [
+        {
+          "body": "{\"code\":200,\"data\":{\"isid\":60066023,\"today_used\":3,\"today_remaining\":-1}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/resource/v1/isas/mine/information",
+          "query": {
+            "isid": [
+              "60066023"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer private-test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "isid": 0,
+          "todayRemaining": 0,
+          "todayUsed": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountStatus-negative-count",
+      "operation": "getAccountStatus"
+    },
+    {
+      "callId": "a35294c7-3ea9-5dff-a31b-21f1af74d948",
+      "exchanges": [
+        {
+          "body": "{\"code\":200,\"data\":{\"isid\":60066023,\"today_used\":3,\"today_remaining\":997.0}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/resource/v1/isas/mine/information",
+          "query": {
+            "isid": [
+              "60066023"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer private-test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "isid": 0,
+          "todayRemaining": 0,
+          "todayUsed": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountStatus-fractional-count",
+      "operation": "getAccountStatus"
+    },
+    {
+      "callId": "4906ea9d-1d83-5542-b59f-897314af9f6d",
+      "exchanges": [
+        {
+          "body": "{\"code\":200,\"data\":{\"isid\":60066023,\"today_used\":3,\"today_remaining\":0}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/resource/v1/isas/mine/information",
+          "query": {
+            "isid": [
+              "60066023"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer private-test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "retrieved",
+        "failureKind": "",
+        "output": {
+          "isid": 60066023,
+          "todayRemaining": 0,
+          "todayUsed": 3
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountStatus-zero-count",
+      "operation": "getAccountStatus"
+    },
+    {
+      "callId": "b5dc2a92-8ca2-516f-8b39-4b165bec7678",
+      "exchanges": [
+        {
+          "body": "{\"code\":200,\"data\":{\"isid\":60066023,\"today_used\":3,\"today_remaining\":997}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/resource/v1/isas/mine/information",
+          "query": {
+            "isid": [
+              "60066023"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer private-test-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "isid": 0,
+          "todayRemaining": 0,
+          "todayUsed": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountStatus-success-on-403",
+      "operation": "getAccountStatus"
+    },
+    {
+      "callId": "990f43b7-e3ad-5919-bee0-1f78b444aea7",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "isid": 0,
+          "todayRemaining": 0,
+          "todayUsed": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountStatus-invalidISID",
+      "operation": "getAccountStatus"
     }
   ],
   "schemaVersion": 1

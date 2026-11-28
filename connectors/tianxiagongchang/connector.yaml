@@ -10,8 +10,10 @@ metadata:
 spec:
   provider: tianxiagongchang
   languages:
-    python: {version: v0.1.0, operations: [getAccountStatus], triggers: []}
-    typescript: {version: v0.1.0, operations: [getAccountStatus], triggers: []}
+    java: {version: v0.1.0, operations: [getAccountStatus], triggers: []}
+    rust: {version: v0.1.0, operations: [getAccountStatus], triggers: []}
+    python: {version: v0.1.1, operations: [getAccountStatus], triggers: []}
+    typescript: {version: v0.1.1, operations: [getAccountStatus], triggers: []}
   codegen:
     go:
       package: tianxiagongchang

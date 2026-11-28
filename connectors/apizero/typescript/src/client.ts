@@ -5,6 +5,9 @@ import { SecretString, newQueryBranch, newQueryRetry, type Call, type Credential
 import { BodyTooLargeError, parseRetryAfter, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { GetAccountInfoDefinition } from './generated/definitions.js';
 import type { Config, Credentials, GetAccountInfoInput, GetAccountInfoOutput } from './generated/models.js';
+import { decodeAccountFields } from './decimal-response.js';
+
+const accountFields = {code: 'integer', data: {scope: 'string', balance: {yuan: 'string'}, key: {quota_remaining: 'integer'}}} as const;
 
 const accountInfoEndpoint = 'https://v1.apizero.cn/api/user-info';
 const emptyOutput: GetAccountInfoOutput = { scope: '' };
@@ -71,11 +74,12 @@ export class GetAccountInfoOperation implements Query<GetAccountInfoInput, GetAc
     }
     const delayMs = retryAfter(response.headers);
     if (response.status === 429) return retry('RATE_LIMIT', 'ApiZero rate limited the request', delayMs);
+    if (response.body.length > this.client.maxResponseBytes) return branch('invalidResponse', 'RESPONSE_TOO_LARGE', 'ApiZero response exceeded the configured limit');
     let document: unknown;
-    try { document = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(response.body)) as unknown; }
+    try { document = decodeAccountFields(response.body, accountFields); }
     catch { return classifyUnparsedResponse(response.status, delayMs); }
-    if (!isRecord(document) || !Number.isInteger(document.code)) return classifyUnparsedResponse(response.status, delayMs);
-    const code = document.code as number;
+    if (!isRecord(document) || (typeof document.code !== 'number' && typeof document.code !== 'bigint')) return classifyUnparsedResponse(response.status, delayMs);
+    const code = document.code;
     if (code !== 0) return classifyBusinessCode(code, delayMs);
     if (response.status !== 200) return branch('invalidResponse', 'PROTOCOL', 'ApiZero returned success with unexpected HTTP status');
     const data = document.data;
@@ -86,7 +90,7 @@ export class GetAccountInfoOperation implements Query<GetAccountInfoInput, GetAc
   }
 }
 
-function classifyBusinessCode(code: number, delayMs: number): QueryAttempt<GetAccountInfoOutput> {
+function classifyBusinessCode(code: number | bigint, delayMs: number): QueryAttempt<GetAccountInfoOutput> {
   if (code === 4029) return retry('RATE_LIMIT', 'ApiZero per-second rate limit exceeded', delayMs);
   if (code === 5000 || code === 5020 || code === 5021 || code === 5030) return retry('AVAILABILITY', 'ApiZero service is temporarily unavailable', delayMs);
   if (code === 4011 || code === 4015) return branch('providerRejected', 'AUTHENTICATION', 'ApiZero rejected the API Key');
@@ -99,7 +103,7 @@ function classifyUnparsedResponse(status: number, delayMs: number): QueryAttempt
   return branch('invalidResponse', 'PROTOCOL', 'ApiZero returned invalid account data');
 }
 function retryAfter(headers: ProviderResponse['headers']): number {
-  const header = headers['retry-after'];
+  const header = Object.entries(headers).find(([name]) => name.toLowerCase() === 'retry-after')?.[1];
   return parseRetryAfter(Array.isArray(header) ? header[0] ?? '' : header ?? '');
 }
 function isRecord(value: unknown): value is Record<string, unknown> { return typeof value === 'object' && value !== null && !Array.isArray(value); }

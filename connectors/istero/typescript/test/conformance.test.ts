@@ -13,7 +13,7 @@ it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario,
 
 async function invokeIsTero(scenario: Scenario, recorder: ExchangeRecorder) {
   if (scenario.operation !== 'getAccountStatus') throw new Error(`unknown IsTero operation ${scenario.operation}`);
-  const client = new IsTeroClient({}, new StaticCredentialProvider([[connection, { apiKey: new SecretString(scenario.name.endsWith('defect') ? '' : 'private-test-token'), isid: '60066023' }]]), {
+  const client = new IsTeroClient({}, new StaticCredentialProvider([[connection, { apiKey: new SecretString(scenario.name.endsWith('defect') ? '' : 'private-test-token'), isid: scenario.name.endsWith('-invalidISID') ? '060066023' : '60066023' }]]), {
     send: request => answerRecordedRequest(recorder, request, before => new ProviderTransportError(before)),
   });
   const call: Call = {

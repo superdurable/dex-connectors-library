@@ -15,3 +15,7 @@ The first Python package lives in [`python/`](python/). It implements `getAccoun
 ## TypeScript
 
 The [TypeScript package](typescript/) provides the same account-status Query with a runnable Dex Worker/Client example and Go-recorded conformance replay.
+
+## Java and Rust
+
+The [Java Worker](java/examples/io/superdurable/dexconnectors/istero/AccountStatusWorker.java) and [Rust Worker](rust/examples/get_account_status.rs) run `getAccountStatus` with the `istero` connection. Supply `ISTERO_API_KEY` and `ISTERO_ISID` through the Worker environment. With Dex running, use `./gradlew accountStatusWorker` from `java/` or `cargo run --example get_account_status` from `rust/`.

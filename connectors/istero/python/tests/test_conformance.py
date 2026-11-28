@@ -25,8 +25,10 @@ ADAPTER = conformance.PythonOperationAdapter(
         conformance.static_credentials(
             CONNECTION,
             istero.Credentials(
-                sdk.SecretString("private-test-token"),
-                "invalid" if recorder.scenario["name"] == "getAccountStatus-defect" else "60066023",
+                sdk.SecretString(
+                    "" if recorder.scenario["name"] == "getAccountStatus-defect" else "private-test-token"
+                ),
+                "060066023" if recorder.scenario["name"] == "getAccountStatus-invalidISID" else "60066023",
             ),
         ),
         http_client,

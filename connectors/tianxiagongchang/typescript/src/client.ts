@@ -5,6 +5,9 @@ import { SecretString, newQueryBranch, newQueryRetry, type Call, type Credential
 import { BodyTooLargeError, parseRetryAfter, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { GetAccountStatusDefinition } from './generated/definitions.js';
 import type { Config, Credentials, GetAccountStatusInput, GetAccountStatusOutput } from './generated/models.js';
+import { decodeAccountFields } from './decimal-response.js';
+
+const accountFields = {code: 'integer', credits_charged: 'integer', credits_balance: 'integer', data: {app_id: 'integer', frozen_credits: 'integer', is_sandbox: 'boolean'}} as const;
 
 const emptyOutput: GetAccountStatusOutput = { appId: 0, creditsBalance: 0, frozenCredits: 0, isSandbox: false };
 /** Optional provider transport for deterministic tests. */
@@ -36,11 +39,10 @@ export class TianxiaGongchangClient {
     let response: ProviderResponse;
     try { response = await this.send(request); }
     catch (error) {
-      if (error instanceof BodyTooLargeError && error.status !== undefined) return { response: { status: error.status, headers: error.headers ?? {}, body: new Uint8Array() }, error: 'tooLarge', retryAfterMs: 0 };
+      if (error instanceof BodyTooLargeError && error.status !== undefined) return { response: { status: error.status, headers: error.headers ?? {}, body: new Uint8Array() }, error: 'tooLarge', retryAfterMs: retryDelay(error.headers ?? {}) };
       return { error: 'transport', retryAfterMs: 0 };
     }
-    const retryAfterValue = Object.entries(response.headers).find(([key]) => key.toLowerCase() === 'retry-after')?.[1];
-    return { response, error: response.body.length > this.maxResponseBytes ? 'tooLarge' : undefined, retryAfterMs: parseRetryAfter(Array.isArray(retryAfterValue) ? retryAfterValue[0] ?? '' : retryAfterValue ?? '') };
+    return { response, error: response.body.length > this.maxResponseBytes ? 'tooLarge' : undefined, retryAfterMs: retryDelay(response.headers) };
   }
 }
 /** Classify the provider response without storing credentials in Dex state. */
@@ -59,8 +61,8 @@ export class GetAccountStatusOperation implements Query<GetAccountStatusInput, G
     if (status === 408 || status >= 500) return retry('AVAILABILITY', exchange.retryAfterMs);
     if (exchange.error === 'tooLarge') return branch('invalidResponse', 'RESPONSE_TOO_LARGE');
     let document: unknown;
-    try { document = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(body)) as unknown; } catch { return branch('invalidResponse', 'PROTOCOL'); }
-    if (!isRecord(document) || typeof document.code !== 'number' || !Number.isInteger(document.code)) return branch('invalidResponse', 'PROTOCOL');
+    try { document = decodeAccountFields(body, accountFields); } catch { return branch('invalidResponse', 'PROTOCOL'); }
+    if (!isRecord(document) || (typeof document.code !== 'number' && typeof document.code !== 'bigint')) return branch('invalidResponse', 'PROTOCOL');
     if (document.code === 42900) return retry('RATE_LIMIT', exchange.retryAfterMs);
     if (document.code === 50000 || document.code === 50400) return retry('AVAILABILITY', exchange.retryAfterMs);
     if (document.code === 40100) return branch('providerRejected', 'AUTHENTICATION');
@@ -70,6 +72,10 @@ export class GetAccountStatusOperation implements Query<GetAccountStatusInput, G
     if (status !== 200 || document.credits_charged !== 0 || typeof document.credits_balance !== 'number' || !Number.isSafeInteger(document.credits_balance) || document.credits_balance < 0 || !isRecord(data) || typeof data.app_id !== 'number' || !Number.isSafeInteger(data.app_id) || data.app_id <= 0 || typeof data.frozen_credits !== 'number' || !Number.isSafeInteger(data.frozen_credits) || data.frozen_credits < 0 || typeof data.is_sandbox !== 'boolean') return branch('invalidResponse', 'PROTOCOL');
     return newQueryBranch('retrieved', { appId: data.app_id, creditsBalance: document.credits_balance, frozenCredits: data.frozen_credits, isSandbox: data.is_sandbox });
   }
+}
+function retryDelay(headers: ProviderResponse['headers']): number {
+  const retryAfterValue = Object.entries(headers).find(([key]) => key.toLowerCase() === 'retry-after')?.[1];
+  return parseRetryAfter(Array.isArray(retryAfterValue) ? retryAfterValue[0] ?? '' : retryAfterValue ?? '');
 }
 function isRecord(value: unknown): value is Record<string, unknown> { return typeof value === 'object' && value !== null && !Array.isArray(value); }
 function failure(kind: Failure['kind']): Failure { return { provider: 'tianxiagongchang', operation: 'getAccountStatus', kind, message: 'TianxiaGongchang provider request failed' }; }

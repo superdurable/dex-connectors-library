@@ -1,0 +1,42 @@
+{
+  "getAccountStatus": {
+    "branches": [
+      {
+        "description": "ISAS returned account quota counters.",
+        "id": "retrieved",
+        "optional": false
+      },
+      {
+        "description": "ISAS rejected the token or account ID.",
+        "id": "providerRejected",
+        "optional": true
+      },
+      {
+        "description": "The account response was malformed or oversized.",
+        "id": "invalidResponse",
+        "optional": true
+      },
+      {
+        "description": "Local key configuration is invalid.",
+        "id": "defect",
+        "optional": true
+      }
+    ],
+    "operation": {
+      "connectorId": "istero",
+      "operationId": "getAccountStatus"
+    },
+    "stepDefaults": {
+      "executeDurability": 2,
+      "executeMethodTimeout": 30000000000,
+      "executeRetry": {
+        "BackoffCoefficient": 2,
+        "InitialInterval": 1000000000,
+        "MaximumAttempts": 0,
+        "MaximumInterval": 300000000000,
+        "TotalDuration": 3600000000000
+      },
+      "heartbeatTimeout": 0
+    }
+  }
+}

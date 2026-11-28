@@ -291,6 +291,746 @@
       "input": {},
       "name": "getAccountInfo-oversized",
       "operation": "getAccountInfo"
+    },
+    {
+      "callId": "7b33c483-43b2-5677-a8f7-f6883c3b3945",
+      "exchanges": [
+        {
+          "body": "{\"CODE\":0,\"DATA\":{\"SCOPE\":\"account\",\"BALANCE\":{\"YUAN\":\"123.4000\"},\"KEY\":{\"QUOTA_REMAINING\":99}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/user-info",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sk_live_test-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "balanceYuan": "123.4000",
+          "scope": "account"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountInfo-folded",
+      "operation": "getAccountInfo"
+    },
+    {
+      "callId": "dca7be18-1003-5d8a-bdd6-ca2660079b52",
+      "exchanges": [
+        {
+          "body": "{\"code\":9223372036854775808}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/user-info",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sk_live_test-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "scope": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountInfo-signed-overflow",
+      "operation": "getAccountInfo"
+    },
+    {
+      "callId": "e740ebef-6f29-5a26-820d-f8a12f91a02e",
+      "exchanges": [
+        {
+          "body": "{\"code\":1.0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/user-info",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sk_live_test-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "scope": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountInfo-noninteger-code",
+      "operation": "getAccountInfo"
+    },
+    {
+      "callId": "be87f9c8-a280-5952-996d-d85f8f69af7d",
+      "exchanges": [
+        {
+          "body": "{\"code\":4011}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/user-info",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sk_live_test-secret"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "scope": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountInfo-business-on-403",
+      "operation": "getAccountInfo"
+    },
+    {
+      "callId": "5aa62c1c-8df2-547d-94e9-0ee55318fd50",
+      "exchanges": [
+        {
+          "body": "{\"code\":4029}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/user-info",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sk_live_test-secret"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 7000,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountInfo-business-4029",
+      "operation": "getAccountInfo"
+    },
+    {
+      "callId": "9862e546-bdaf-5fe3-b591-13b7d9a56af1",
+      "exchanges": [
+        {
+          "body": "{\"code\":5000}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/user-info",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sk_live_test-secret"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 7000,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountInfo-business-5000",
+      "operation": "getAccountInfo"
+    },
+    {
+      "callId": "a4e1c5d6-ae3d-55ef-8010-788e84dc32a5",
+      "exchanges": [
+        {
+          "body": "{\"code\":5020}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/user-info",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sk_live_test-secret"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 7000,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountInfo-business-5020",
+      "operation": "getAccountInfo"
+    },
+    {
+      "callId": "b4781c67-0afc-54fa-997e-7b93538a2267",
+      "exchanges": [
+        {
+          "body": "{\"code\":5021}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/user-info",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sk_live_test-secret"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 7000,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountInfo-business-5021",
+      "operation": "getAccountInfo"
+    },
+    {
+      "callId": "1c77a66b-f710-546e-accf-c57f462bf7bf",
+      "exchanges": [
+        {
+          "body": "{\"code\":5030}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/user-info",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sk_live_test-secret"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 7000,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountInfo-business-5030",
+      "operation": "getAccountInfo"
+    },
+    {
+      "callId": "03eb54ff-c8c2-5a54-9d47-d28eff21f0a8",
+      "exchanges": [
+        {
+          "body": "{\"code\":4015}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/user-info",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sk_live_test-secret"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "scope": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountInfo-business-4015",
+      "operation": "getAccountInfo"
+    },
+    {
+      "callId": "7c140e87-ec5d-56bd-8f1c-71e9e3b6ec4c",
+      "exchanges": [
+        {
+          "body": "{\"code\":4013}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/user-info",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sk_live_test-secret"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "scope": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountInfo-business-4013",
+      "operation": "getAccountInfo"
+    },
+    {
+      "callId": "13372146-3319-5511-b214-599602ecfe17",
+      "exchanges": [
+        {
+          "body": "{\"code\":4014}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/user-info",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sk_live_test-secret"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "scope": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountInfo-business-4014",
+      "operation": "getAccountInfo"
+    },
+    {
+      "callId": "cfaf79a7-1f36-52b7-89e5-acf39ffb182d",
+      "exchanges": [
+        {
+          "body": "{\"code\":4060}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/user-info",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sk_live_test-secret"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "scope": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountInfo-business-4060",
+      "operation": "getAccountInfo"
+    },
+    {
+      "callId": "aab1bfe7-7228-5466-9d37-cd99f43a775e",
+      "exchanges": [
+        {
+          "body": "{\"code\":4011,\"data\":{\"key\":{\"quota_remaining\":\"10\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/user-info",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sk_live_test-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "scope": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountInfo-malformed-key",
+      "operation": "getAccountInfo"
+    },
+    {
+      "callId": "3dacd406-2894-5627-ba0c-b378881ecb56",
+      "exchanges": [
+        {
+          "body": "{\"code\":4011,\"data\":{\"balance\":{\"yuan\":5}}}",
+          "headers": {
+            "Retry-After": "3"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/user-info",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sk_live_test-secret"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 3000,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountInfo-malformed-503",
+      "operation": "getAccountInfo"
+    },
+    {
+      "callId": "db940e96-4caf-516f-a0c0-8dfed96f2e37",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"scope\":\"account\",\"balance\":{\"yuan\":\"123.4000\"},\"key\":{\"quota_remaining\":99}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/user-info",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sk_live_test-secret"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "scope": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountInfo-success-on-503",
+      "operation": "getAccountInfo"
+    },
+    {
+      "callId": "6a4fc655-2f3d-57d9-8035-a619c2bfc688",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"scope\":null}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/user-info",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sk_live_test-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "scope": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountInfo-null-scope",
+      "operation": "getAccountInfo"
+    },
+    {
+      "callId": "88f1e1f0-4ce0-5413-be9a-eeb29390ba1d",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"scope\":\"key\",\"key\":{\"quota_remaining\":-2}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/user-info",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sk_live_test-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "scope": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountInfo-negative-quota",
+      "operation": "getAccountInfo"
+    },
+    {
+      "callId": "467bcb55-c226-5fd2-989c-e05bf560c6a5",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"scope\":\"key\",\"key\":{\"quota_remaining\":0}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/user-info",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sk_live_test-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "keyQuotaRemaining": 0,
+          "scope": "key"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountInfo-zero-quota",
+      "operation": "getAccountInfo"
+    },
+    {
+      "callId": "671507a3-5ba2-5760-b6f9-7f64d0cde489",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"scope\":\"account\",\"balance\":{\"yuan\":\"000.00\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/user-info",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sk_live_test-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "balanceYuan": "000.00",
+          "scope": "account"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountInfo-zero-wallet",
+      "operation": "getAccountInfo"
+    },
+    {
+      "callId": "983c58ef-be9d-5497-beeb-ba3f1ef25156",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"scope\":\"account\",\"balance\":{\"yuan\":\"999999999999999999999999999999999\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/user-info",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sk_live_test-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "scope": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountInfo-oversize-yuan",
+      "operation": "getAccountInfo"
     }
   ],
   "schemaVersion": 1

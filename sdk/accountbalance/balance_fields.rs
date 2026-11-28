@@ -7,6 +7,7 @@ use serde_json::value::RawValue;
 use std::collections::BTreeMap;
 
 /// Field lookup follows the provider's Go JSON contract and preserves decimal token text.
+#[derive(Default)]
 pub(super) struct BalanceFields(BTreeMap<String, Box<RawValue>>);
 impl<'de> Deserialize<'de> for BalanceFields {
     fn deserialize<D: serde::Deserializer<'de>>(decoder: D) -> Result<Self, D::Error> {

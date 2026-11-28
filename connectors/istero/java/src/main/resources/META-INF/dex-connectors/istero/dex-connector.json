@@ -1,0 +1,52 @@
+{
+  "connectorId": "istero",
+  "releaseTag": "connectors/istero/go/v0.1.0",
+  "package": {
+    "ecosystem": "maven",
+    "name": "io.superdurable:dex-connector-istero",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newGetAccountStatusStep",
+      "kind": "query",
+      "operationId": "getAccountStatus",
+      "inputType": "GetAccountStatusInput",
+      "description": "Read the ISAS account's daily API call counters without charge.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "retrieved",
+          "field": "retrieved",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetAccountStatusInput requests the account state associated with the configured Token and ISID.",
+        "properties": {},
+        "type": "object"
+      }
+    }
+  ]
+}
