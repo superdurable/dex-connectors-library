@@ -4,9 +4,73 @@
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-gusto",
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   "factories": [
+    {
+      "name": "new_list_employees_step",
+      "kind": "query",
+      "operationId": "listEmployees",
+      "inputType": "ListEmployeesInput",
+      "description": "Read one bounded page of employees from an authorized company.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "missing",
+          "field": "missing",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListEmployeesInput selects one bounded page from an authorized company.",
+        "properties": {
+          "companyId": {
+            "description": "CompanyID is the company UUID from Gusto's authorized company.",
+            "type": "string"
+          },
+          "page": {
+            "description": "Page is a positive one-based page number.",
+            "type": "integer"
+          },
+          "perPage": {
+            "description": "PerPage is the number of employees per page, from 1 to 100.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "companyId",
+          "page",
+          "perPage"
+        ],
+        "type": "object"
+      }
+    },
     {
       "name": "new_get_employee_step",
       "kind": "query",

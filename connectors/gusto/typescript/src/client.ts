@@ -6,7 +6,7 @@ import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oa
 import { BodyTooLargeError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { Authorization, CredentialFields } from './generated/refresh.js';
 import type { Config, Credentials } from './generated/models.js';
-import { GetEmployeeOperation } from './operations.js';
+import { GetEmployeeOperation, ListEmployeesOperation } from './operations.js';
 
 /** Injectable Gusto transport and OAuth refresh dependencies. */
 export interface GustoClientOptions {
@@ -50,6 +50,9 @@ export class GustoClient {
   }
 
   /** Bind the employee Query. */ getEmployee(): GetEmployeeOperation { return new GetEmployeeOperation(this); }
+
+  /** Bind a page of employees from one authorized company. */
+  listEmployees(): ListEmployeesOperation { return new ListEmployeesOperation(this); }
 
   /** Send one bounded GET with a bearer token held outside Flow state. */
   async get(call: Call, path: string): Promise<GustoExchange> {

@@ -29,7 +29,7 @@ from ._generated.config import Credentials as Credentials
 from ._generated.refresh import AUTHORIZATION, CREDENTIAL_FIELDS
 
 if TYPE_CHECKING:
-    from .operations import GetEmployeeOperation
+    from .operations import GetEmployeeOperation, ListEmployeesOperation
 
 
 @dataclass(frozen=True, slots=True)
@@ -78,6 +78,12 @@ class Client:
         from .operations import GetEmployeeOperation
 
         return GetEmployeeOperation(self)
+
+    def list_employees(self) -> ListEmployeesOperation:
+        """Bind the company employee page Query to this client."""
+        from .operations import ListEmployeesOperation
+
+        return ListEmployeesOperation(self)
 
     async def aclose(self) -> None:
         """Close the transport after Worker shutdown."""

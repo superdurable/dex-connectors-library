@@ -13,6 +13,8 @@ import { expect, it } from 'vitest';
 import { RipplingClient } from '../../src/client.js';
 import { newConnection, type WorkerSummary, type Credentials } from '../../src/index.js';
 import { ConnectionName, WorkerInspectionFlow } from '../../examples/worker-inspection/flow.js';
+import { WorkerListFlow } from '../../examples/worker-inspection/list-flow.js';
+import type { WorkerPage } from '../../src/index.js';
 
 it('retries a provider 503 and persists the worker through real Dex', async () => {
   const dexAddress = process.env.DEX_FLOW_SERVICE_ADDRESS;
@@ -21,6 +23,19 @@ it('retries a provider 503 and persists the worker through real Dex', async () =
   let attempts = 0;
   const server = createServer((request, response) => {
     if (request.headers.authorization !== 'Bearer sample-rippling-api-token') { response.writeHead(401).end(); return; }
+    const url = new URL(request.url ?? '/', 'http://127.0.0.1');
+    if (url.pathname === '/workers/') {
+      const cursor = url.searchParams.get('cursor');
+      if (cursor === 'a+/=' && url.searchParams.size === 1) {
+        response.writeHead(200).end(JSON.stringify({ results: [] }));
+      } else if (url.searchParams.get('limit') === '2' && url.searchParams.size === 1) {
+        response.writeHead(200).end(JSON.stringify({
+          results: [{ id: 'example-2', title: 'Engineer', status: null, salary: 77 }],
+          next_link: 'https://example.invalid/workers/?cursor=a%2B%2F%3D',
+        }));
+      } else { response.writeHead(400).end(); }
+      return;
+    }
     if (request.url !== `/workers/${encodeURIComponent(workerId)}/`) { response.writeHead(404).end(); return; }
     attempts++;
     if (attempts === 1) { response.writeHead(503).end(); return; }
@@ -40,7 +55,8 @@ it('retries a provider 503 and persists the worker through real Dex', async () =
   });
   const connection = newConnection(provider, { provider: 'rippling', name: ConnectionName });
   const flow = new WorkerInspectionFlow(connection);
-  const registry = new Registry([flow]);
+  const pageFlow = new WorkerListFlow(connection);
+  const registry = new Registry([flow, pageFlow]);
   const worker = new Worker(registry, cache, { serverAddress: dexAddress });
   const client = new Client(registry, cache, { serverAddress: dexAddress });
   try {
@@ -53,6 +69,17 @@ it('retries a provider 503 and persists the worker through real Dex', async () =
     expect(result.singleOutput<WorkerSummary>().id).toBe(workerId);
     expect(result.singleOutput<WorkerSummary>().status).toBe('ACTIVE');
     expect(attempts).toBe(2);
+    const firstId = `rippling-first-${randomUUID()}`;
+    await client.startFlow(pageFlow, firstId, { limit: 2 });
+    const first = await client.waitForFlow(firstId, 30_000);
+    expect(first.status, first.errorMessage).toBe('completed');
+    const page = first.singleOutput<WorkerPage>();
+    expect(page).toEqual({ workers: [{ id: 'example-2', title: 'Engineer', status: '' }], nextCursor: 'a+/=' });
+    const lastId = `rippling-last-${randomUUID()}`;
+    await client.startFlow(pageFlow, lastId, { cursor: page.nextCursor });
+    const last = await client.waitForFlow(lastId, 30_000);
+    expect(last.status, last.errorMessage).toBe('completed');
+    expect(last.singleOutput<WorkerPage>()).toEqual({ workers: [], nextCursor: '' });
   } finally {
     await client.close(); await worker.close(); cache.close();
     await rm(directory, { recursive: true, force: true });

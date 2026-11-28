@@ -5,7 +5,38 @@
 import { goToBranch, newQueryStep, type Query, type QueryResult, type QueryStep, type QueryStepConfig } from '@superdurable/connectors-sdk';
 import type { StepTarget } from '@superdurable/dex';
 import type { Connection } from './connection.js';
-import type { GetEmployeeInput, Employee } from './models.js';
+import type { ListEmployeesInput, EmployeesPage, GetEmployeeInput, Employee } from './models.js';
+
+/** Configuration for the listEmployees connector Step. */
+export interface ListEmployeesStepConfig<StepInput, OperationInput = ListEmployeesInput, OperationOutput = EmployeesPage> extends Omit<QueryStepConfig<StepInput, OperationInput, OperationOutput>, 'operation' | 'connection' | 'branches'> {
+  /** Named connection supplying this operation. */
+  connection: Connection<{ listEmployees(): Query<OperationInput, OperationOutput> }>;
+  /** Name matching the bound connection. */
+  connectionName: string;
+  /** Gusto returned the requested employee page. */
+  listed: StepTarget<QueryResult<OperationOutput>>;
+  /** The company is not visible to this connection. */
+  missing?: StepTarget<QueryResult<OperationOutput>>;
+  /** Gusto conclusively rejected the list request. */
+  providerRejected?: StepTarget<QueryResult<OperationOutput>>;
+  /** Gusto returned malformed or oversized employee data. */
+  invalidResponse?: StepTarget<QueryResult<OperationOutput>>;
+  /** Page settings, company UUID, or OAuth credentials are invalid. */
+  defect?: StepTarget<QueryResult<OperationOutput>>;
+}
+
+/** Build the listEmployees Step from a named connection. */
+export function newListEmployeesStep<StepInput, OperationInput = ListEmployeesInput, OperationOutput = EmployeesPage>(configuration: ListEmployeesStepConfig<StepInput, OperationInput, OperationOutput>): QueryStep<StepInput, OperationInput, OperationOutput> {
+  const { connection, connectionName, listed, missing, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
+  if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
+  return newQueryStep({ ...stepConfiguration, operation: connection.operations.listEmployees(), connection: connection.reference, branches: [
+    goToBranch("listed", listed),
+    ...(missing ? [goToBranch("missing", missing)] : []),
+    ...(providerRejected ? [goToBranch("providerRejected", providerRejected)] : []),
+    ...(invalidResponse ? [goToBranch("invalidResponse", invalidResponse)] : []),
+    ...(defect ? [goToBranch("defect", defect)] : []),
+  ] });
+}
 
 /** Configuration for the getEmployee connector Step. */
 export interface GetEmployeeStepConfig<StepInput, OperationInput = GetEmployeeInput, OperationOutput = Employee> extends Omit<QueryStepConfig<StepInput, OperationInput, OperationOutput>, 'operation' | 'connection' | 'branches'> {

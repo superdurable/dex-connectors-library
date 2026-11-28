@@ -4,9 +4,9 @@
 
 import { branchCase, retryCase, type Case, newQuery, type MockQuery } from '@superdurable/connectors-sdk/connectormock';
 import type { Failure } from '@superdurable/connectors-sdk';
-import type { GetWorkerInput, WorkerSummary } from './models.js';
-import { GetWorkerInputSchema, WorkerSummarySchema } from './models.js';
-import { ProviderID, GetWorkerDefinition } from './definitions.js';
+import type { GetWorkerInput, WorkerSummary, ListWorkersInput, WorkerPage } from './models.js';
+import { GetWorkerInputSchema, WorkerSummarySchema, ListWorkersInputSchema, WorkerPageSchema } from './models.js';
+import { ProviderID, GetWorkerDefinition, ListWorkersDefinition } from './definitions.js';
 import { newConnectionWithOperations, type Connection, type Operations } from './connection.js';
 
 /** Go zero value for GetWorkerInput in scripted cases. */
@@ -18,6 +18,14 @@ export const emptyWorkerSummary: WorkerSummary = WorkerSummarySchema.parse({
   "id": '',
   "title": '',
   "status": '',
+});
+/** Go zero value for ListWorkersInput in scripted cases. */
+export const emptyListWorkersInput: ListWorkersInput = ListWorkersInputSchema.parse({
+});
+/** Go zero value for WorkerPage in scripted cases. */
+export const emptyWorkerPage: WorkerPage = WorkerPageSchema.parse({
+  "workers": [],
+  "nextCursor": '',
 });
 
 /** Script the found branch. */
@@ -40,19 +48,41 @@ export function getWorkerFoundDefault(): Case<WorkerSummary> {
 /** Default getWorker scenario. */
 export function getWorkerDefault(): Case<WorkerSummary> { return getWorkerFoundDefault(); }
 
+/** Script the found branch. */
+export function listWorkersFound(value: WorkerPage, failure?: Failure): Case<WorkerPage> { return branchCase("found", value, failure); }
+/** Script the providerRejected branch. */
+export function listWorkersProviderRejected(value: WorkerPage, failure?: Failure): Case<WorkerPage> { return branchCase("providerRejected", value, failure); }
+/** Script the invalidResponse branch. */
+export function listWorkersInvalidResponse(value: WorkerPage, failure?: Failure): Case<WorkerPage> { return branchCase("invalidResponse", value, failure); }
+/** Script the defect branch. */
+export function listWorkersDefect(value: WorkerPage, failure?: Failure): Case<WorkerPage> { return branchCase("defect", value, failure); }
+/** Script a safe retry of listWorkers. */
+export function listWorkersRetry(failure: Failure, retryAfterMs = 0): Case<WorkerPage> { return retryCase(failure, retryAfterMs); }
+/** Manifest scenario foundDefault for listWorkers. */
+export function listWorkersFoundDefault(): Case<WorkerPage> {
+  const value = WorkerPageSchema.parse({"nextCursor":"","workers":[{"id":"65699281fb7bc7c3510f44a6","status":"ACTIVE","title":"Engineer"}]});
+  return branchCase("found", value);
+}
+/** Default listWorkers scenario. */
+export function listWorkersDefault(): Case<WorkerPage> { return listWorkersFoundDefault(); }
+
 /** Scripted operations and manifest defaults for this connector. */
 export class GeneratedMock implements Operations {
   readonly #getWorker: MockQuery<GetWorkerInput, WorkerSummary>;
+  readonly #listWorkers: MockQuery<ListWorkersInput, WorkerPage>;
   readonly #connection: Connection;
 
   constructor(connectionName: string) {
     this.#getWorker = newQuery<GetWorkerInput, WorkerSummary>(GetWorkerDefinition).default(getWorkerDefault());
+    this.#listWorkers = newQuery<ListWorkersInput, WorkerPage>(ListWorkersDefinition).default(listWorkersDefault());
     this.#connection = newConnectionWithOperations(this, { provider: ProviderID, name: connectionName });
   }
 
   connection(): Connection { return this.#connection; }
   getWorker(): MockQuery<GetWorkerInput, WorkerSummary> { return this.#getWorker; }
+  listWorkers(): MockQuery<ListWorkersInput, WorkerPage> { return this.#listWorkers; }
   assertNoFailures(): void {
     this.#getWorker.assertNoFailures();
+    this.#listWorkers.assertNoFailures();
   }
 }

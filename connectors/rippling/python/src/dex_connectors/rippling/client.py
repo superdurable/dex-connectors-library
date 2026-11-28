@@ -5,10 +5,11 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Any
-from urllib.parse import quote
+from typing import TypeVar
+from urllib.parse import parse_qs, quote, urlencode, urlsplit
 
 import httpx
 from dex_connectors.sdk import (
@@ -33,8 +34,8 @@ from dex_connectors.sdk.providerhttp import (
 
 from ._generated.config import Config as Config
 from ._generated.config import Credentials as Credentials
-from ._generated.definitions import GET_WORKER_DEFINITION
-from .models import GetWorkerInput, WorkerSummary
+from ._generated.definitions import GET_WORKER_DEFINITION, LIST_WORKERS_DEFINITION
+from .models import GetWorkerInput, ListWorkersInput, WorkerPage, WorkerSummary
 
 
 @dataclass(frozen=True, slots=True)
@@ -47,16 +48,13 @@ class _Exchange:
     error: str = ""
 
 
-def _failure(kind: FailureKind, message: str) -> Failure:
-    return Failure(kind, "rippling", "getWorker", message)
+_Output = TypeVar("_Output")
 
 
-def _branch(branch: str, kind: FailureKind, message: str) -> QueryAttempt[WorkerSummary]:
-    return QueryAttempt.branch_result(branch, WorkerSummary(), Receipt(), _failure(kind, message))
-
-
-def _retry(kind: FailureKind, message: str, delay: float = 0) -> QueryAttempt[WorkerSummary]:
-    return QueryAttempt.retry(_failure(kind, message), delay)
+def _branch(
+    operation: str, empty: _Output, branch: str, kind: FailureKind, message: str
+) -> QueryAttempt[_Output]:
+    return QueryAttempt.branch_result(branch, empty, Receipt(), Failure(kind, "rippling", operation, message))
 
 
 def _valid_worker_id(worker_id: object) -> bool:
@@ -68,19 +66,16 @@ def _valid_worker_id(worker_id: object) -> bool:
     )
 
 
-def _decode_worker(body: bytes, requested_worker_id: str) -> WorkerSummary:
-    raw: Any = json.loads(body)
-    if not isinstance(raw, dict):
-        raise ValueError("worker data missing")
-    if raw.get("id") != requested_worker_id:
-        raise ValueError("worker identity does not match request")
+def _decode_worker(raw: object) -> WorkerSummary:
+    if not isinstance(raw, dict) or not isinstance(raw.get("id"), str) or not _valid_worker_id(raw["id"]):
+        raise ValueError("worker identity is invalid")
     status = raw.get("status")
     title = raw.get("title")
     if status is not None and not isinstance(status, str):
         raise ValueError("worker status is invalid")
     if title is not None and not isinstance(title, str):
         raise ValueError("worker title is invalid")
-    return WorkerSummary(requested_worker_id, title or "", status or "")
+    return WorkerSummary(raw["id"], title or "", status or "")
 
 
 class Client:
@@ -110,12 +105,16 @@ class Client:
         """Bind the getWorker Query to this client."""
         return GetWorkerOperation(self)
 
+    def list_workers(self) -> ListWorkersOperation:
+        """Bind the paginated worker Query to this connection."""
+        return ListWorkersOperation(self)
+
     async def aclose(self) -> None:
         """Close the HTTP client when this client created it."""
         if self._owns_client:
             await self.http_client.aclose()
 
-    async def _get(self, call: Call, worker_id: str) -> _Exchange:
+    async def _get(self, call: Call, path: str) -> _Exchange:
         try:
             credential = await self.credentials.resolve(call)
             api_token = credential.api_token.reveal()
@@ -126,7 +125,7 @@ class Client:
         try:
             request = self.http_client.build_request(
                 "GET",
-                self.base_url + "/workers/" + quote(worker_id, safe="") + "/",
+                self.base_url + path,
                 headers={"Accept": "application/json", "Authorization": "Bearer " + api_token},
             )
             response, _ = await send_traced(self.http_client, request)
@@ -159,41 +158,141 @@ class GetWorkerOperation:
         """Classify worker lookup outcomes consistently with Go."""
         if not isinstance(input, GetWorkerInput) or not _valid_worker_id(input.worker_id):
             return _branch(
+                "getWorker",
+                WorkerSummary(),
                 "defect",
                 FailureKind.VALIDATION,
                 "worker ID must contain 1–64 URL-safe characters",
             )
-        exchange = await self.client._get(call, input.worker_id)
-        if exchange.error == "credential":
-            return _branch(
-                "defect", FailureKind.AUTHENTICATION, "Rippling credentials are unavailable or invalid"
-            )
-        if exchange.error == "request":
-            return _retry(FailureKind.TRANSPORT, "Rippling request failed")
-        if exchange.status == 429:
-            return _retry(FailureKind.RATE_LIMIT, "Rippling rate limited the request", exchange.retry_after)
-        if exchange.status == 408 or exchange.status >= 500:
-            return _retry(
-                FailureKind.AVAILABILITY, "Rippling is temporarily unavailable", exchange.retry_after
-            )
-        if exchange.status == 404:
-            return _branch("notFound", FailureKind.NOT_FOUND, "Rippling did not expose the worker")
-        if exchange.status != 200:
-            return _branch(
-                "providerRejected",
-                FailureKind.PROVIDER_REJECTION,
-                f"Rippling rejected HTTP {exchange.status}",
-            )
-        if exchange.error == "too_large":
-            return _branch(
-                "invalidResponse",
-                FailureKind.RESPONSE_TOO_LARGE,
-                "Rippling response exceeded the configured limit",
-            )
-        if exchange.error:
-            return _retry(FailureKind.TRANSPORT, "Rippling response was interrupted")
+        exchange = await self.client._get(call, "/workers/" + quote(input.worker_id, safe="") + "/")
+        failed = _read_failure(exchange, "getWorker", WorkerSummary())
+        if failed is not None:
+            return failed
         try:
-            worker_summary = _decode_worker(exchange.body, input.worker_id)
+            worker = _decode_worker(json.loads(exchange.body))
+            if worker.id != input.worker_id:
+                raise ValueError("worker identity does not match request")
         except (ValueError, TypeError, UnicodeDecodeError):
-            return _branch("invalidResponse", FailureKind.PROTOCOL, "Rippling returned invalid worker JSON")
-        return QueryAttempt.branch_result("found", worker_summary, Receipt())
+            return _branch(
+                "getWorker",
+                WorkerSummary(),
+                "invalidResponse",
+                FailureKind.PROTOCOL,
+                "Rippling returned invalid worker JSON",
+            )
+        return QueryAttempt.branch_result("found", worker, Receipt())
+
+
+def _read_failure(exchange: _Exchange, operation: str, empty: _Output) -> QueryAttempt[_Output] | None:
+    def retry(kind: FailureKind, message: str, delay: float = 0) -> QueryAttempt[_Output]:
+        return QueryAttempt.retry(Failure(kind, "rippling", operation, message), delay)
+
+    if exchange.error == "credential":
+        return _branch(
+            operation,
+            empty,
+            "defect",
+            FailureKind.AUTHENTICATION,
+            "Rippling credentials are unavailable or invalid",
+        )
+    if exchange.error == "request":
+        return retry(FailureKind.TRANSPORT, "Rippling request failed")
+    if exchange.status == 429:
+        return retry(FailureKind.RATE_LIMIT, "Rippling rate limited the request", exchange.retry_after)
+    if exchange.status == 408 or exchange.status >= 500:
+        return retry(FailureKind.AVAILABILITY, "Rippling is temporarily unavailable", exchange.retry_after)
+    if exchange.status == 404 and operation == "getWorker":
+        return _branch(
+            operation, empty, "notFound", FailureKind.NOT_FOUND, "Rippling did not expose the worker"
+        )
+    if exchange.status != 200:
+        return _branch(
+            operation,
+            empty,
+            "providerRejected",
+            FailureKind.PROVIDER_REJECTION,
+            f"Rippling rejected HTTP {exchange.status}",
+        )
+    if exchange.error == "too_large":
+        return _branch(
+            operation,
+            empty,
+            "invalidResponse",
+            FailureKind.RESPONSE_TOO_LARGE,
+            "Rippling response exceeded the configured limit",
+        )
+    if exchange.error:
+        return retry(FailureKind.TRANSPORT, "Rippling response was interrupted")
+    return None
+
+
+class ListWorkersOperation:
+    """Read one page of workers visible to the Rippling connection."""
+
+    def __init__(self, client: Client) -> None:
+        self.client = client
+
+    def definition(self) -> QueryDefinition:
+        """Return the manifest-generated worker page contract."""
+        return LIST_WORKERS_DEFINITION
+
+    async def invoke(self, call: Call, input: ListWorkersInput) -> QueryAttempt[WorkerPage]:
+        """Read a bounded response and project worker IDs, statuses, titles and the next cursor."""
+        if (
+            not isinstance(input, ListWorkersInput)
+            or type(input.limit) is not int
+            or not 0 <= input.limit <= 100
+            or not isinstance(input.cursor, str)
+            or len(input.cursor.encode()) > 2048
+        ):
+            return _branch(
+                "listWorkers",
+                WorkerPage(),
+                "defect",
+                FailureKind.VALIDATION,
+                "invalid worker page limit or cursor",
+            )
+        params = {}
+        if input.cursor:
+            params["cursor"] = input.cursor
+        if input.limit:
+            params["limit"] = str(input.limit)
+        path = "/workers/" + ("?" + urlencode(params) if params else "")
+        exchange = await self.client._get(call, path)
+        failed = _read_failure(exchange, "listWorkers", WorkerPage())
+        if failed is not None:
+            return failed
+        try:
+            document = json.loads(exchange.body)
+            if not isinstance(document, dict) or not isinstance(document.get("results"), list):
+                raise ValueError("worker page is invalid")
+            workers = tuple(_decode_worker(record) for record in document["results"])
+            page = WorkerPage(workers=workers, next_cursor=_next_cursor(document.get("next_link")))
+        except (ValueError, TypeError, UnicodeDecodeError):
+            return _branch(
+                "listWorkers",
+                WorkerPage(),
+                "invalidResponse",
+                FailureKind.PROTOCOL,
+                "Rippling returned invalid worker page JSON",
+            )
+        return QueryAttempt.branch_result("found", page, Receipt())
+
+
+def _next_cursor(link: object) -> str:
+    if link is None or link == "":
+        return ""
+    if not isinstance(link, str) or re.search(r"[\x00-\x1f\x7f]", link):
+        raise ValueError("invalid worker page link")
+    parsed = urlsplit(link)
+    if re.search(r"%(?![0-9a-fA-F]{2})", parsed.path):
+        raise ValueError("invalid worker page path")
+    for pair in parsed.query.split("&"):
+        if ";" in pair or re.search(r"%(?![0-9a-fA-F]{2})", pair):
+            continue
+        values = parse_qs(pair, keep_blank_values=True).get("cursor")
+        if values:
+            if values[0]:
+                return values[0]
+            break
+    raise ValueError("worker page cursor missing")

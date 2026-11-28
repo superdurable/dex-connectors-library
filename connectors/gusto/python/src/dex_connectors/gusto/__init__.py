@@ -4,12 +4,16 @@
 
 from .client import Client, Config, Credentials
 from .connection import Connection, new_connection, new_connection_with_operations, new_project_connection
-from .models import Employee, GetEmployeeInput
-from .operations import GetEmployeeOperation
-from .steps import new_get_employee_step
+from .models import Employee, EmployeesPage, GetEmployeeInput, ListEmployeesInput
+from .operations import GetEmployeeOperation, ListEmployeesOperation
+from .steps import new_get_employee_step, new_list_employees_step
 
 __all__ = [
     "Employee",
+    "EmployeesPage",
+    "ListEmployeesInput",
+    "ListEmployeesOperation",
+    "new_list_employees_step",
     "Client",
     "Config",
     "Connection",

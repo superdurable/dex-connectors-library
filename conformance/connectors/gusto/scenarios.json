@@ -732,6 +732,164 @@
       },
       "name": "listEmployees-transportFailure",
       "operation": "listEmployees"
+    },
+    {
+      "callId": "ad3ebc10-09be-5c7b-866e-e742b4b88557",
+      "exchanges": [
+        {
+          "body": "[{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"compensations\":[{\"rate\":\"99999\"}]}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/companies/7d61f73e-a18c-46a5-88e2-2bfa894657d7/employees",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "per": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-gusto-token"
+            ],
+            "X-Gusto-Api-Version": [
+              "2026-06-15"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "employees": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "companyId": "7d61f73e-a18c-46a5-88e2-2bfa894657d7",
+        "page": 2,
+        "perPage": 100
+      },
+      "name": "listEmployees-mixed-company",
+      "operation": "listEmployees"
+    },
+    {
+      "callId": "4dddb7ee-d99a-5c46-997e-f6ba8eca4fbb",
+      "exchanges": [
+        {
+          "body": "[{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":null,\"company_uuid\":\"7D61F73E-A18C-46A5-88E2-2BFA894657D7\",\"compensations\":[{\"rate\":\"99999\"}]}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/companies/7d61f73e-a18c-46a5-88e2-2bfa894657d7/employees",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "per": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-gusto-token"
+            ],
+            "X-Gusto-Api-Version": [
+              "2026-06-15"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "employees": [
+            {
+              "companyId": "7D61F73E-A18C-46A5-88E2-2BFA894657D7",
+              "email": "",
+              "employeeId": "90a68db5-cb3a-4f64-bb60-c0a934ee7600",
+              "firstName": "Ada",
+              "lastName": "Lovelace"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "companyId": "7d61f73e-a18c-46a5-88e2-2bfa894657d7",
+        "page": 2,
+        "perPage": 100
+      },
+      "name": "listEmployees-optional-email",
+      "operation": "listEmployees"
+    },
+    {
+      "callId": "330d7020-567c-528f-a48e-afdca4cf8647",
+      "exchanges": [
+        {
+          "body": "[{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]},{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/companies/7d61f73e-a18c-46a5-88e2-2bfa894657d7/employees",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "per": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-gusto-token"
+            ],
+            "X-Gusto-Api-Version": [
+              "2026-06-15"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "employees": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "companyId": "7d61f73e-a18c-46a5-88e2-2bfa894657d7",
+        "page": 2,
+        "perPage": 100
+      },
+      "name": "listEmployees-too-many-records",
+      "operation": "listEmployees"
     }
   ],
   "schemaVersion": 1

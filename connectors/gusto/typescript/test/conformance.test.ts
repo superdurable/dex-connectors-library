@@ -5,10 +5,10 @@ import { it } from 'vitest';
 import { SecretString, StaticCredentialProvider, type Call } from '@superdurable/connectors-sdk';
 import { ProviderTransportError } from '@superdurable/connectors-sdk/providerhttp';
 import { GustoClient } from '../src/client.js';
-import { GetEmployeeInputSchema } from '../src/generated/models.js';
+import { GetEmployeeInputSchema, ListEmployeesInputSchema } from '../src/generated/models.js';
 import { answerRecordedRequest, loadScenarios, replay, type ExchangeRecorder, type Scenario } from '../../../../conformance/runners/typescript/connector_scenarios.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/gusto/scenarios.json', import.meta.url)).filter(scenario => scenario.operation === 'getEmployee');
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/gusto/scenarios.json', import.meta.url));
 const connection = { provider: 'gusto', name: 'gusto' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeGusto, ''));
 
@@ -26,5 +26,6 @@ async function invokeGusto(scenario: Scenario, recorder: ExchangeRecorder) {
     reportProgress() {}, writeText() {}, hasProgressStream: () => false, hasTextStream: () => false,
   };
   if (scenario.operation === 'getEmployee') return client.getEmployee().invoke(call, GetEmployeeInputSchema.parse(scenario.input));
+  if (scenario.operation === 'listEmployees') return client.listEmployees().invoke(call, ListEmployeesInputSchema.parse(scenario.input));
   throw new Error(`unknown Gusto operation ${scenario.operation}`);
 }

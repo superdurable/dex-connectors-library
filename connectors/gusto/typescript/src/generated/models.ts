@@ -102,10 +102,14 @@ export function decodeSharedCredentials(value: unknown): Credentials {
 /** Host-owned source of private connector credentials. */
 export type CredentialSource = RefreshingCredentialProvider<Credentials>;
 
-/** GetEmployeeInput identifies one employee in the authorized company. */
-export interface GetEmployeeInput {
-  /** EmployeeID is the employee UUID from Gusto's employee list or webhook. */
-  "employeeId": string;
+/** ListEmployeesInput selects one bounded page from an authorized company. */
+export interface ListEmployeesInput {
+  /** CompanyID is the company UUID from Gusto's authorized company. */
+  "companyId": string;
+  /** Page is a positive one-based page number. */
+  "page": number;
+  /** PerPage is the number of employees per page, from 1 to 100. */
+  "perPage": number;
 }
 /** Employee projects safe identity and contact fields from one Gusto employee. */
 export interface Employee {
@@ -120,11 +124,23 @@ export interface Employee {
   /** CompanyID is the employing company's UUID. */
   "companyId": string;
 }
+/** EmployeesPage contains selected employee fields for one company page. */
+export interface EmployeesPage {
+  /** Employees excludes compensation, tax, address, and job details. */
+  "employees": Array<Employee> | null;
+}
+/** GetEmployeeInput identifies one employee in the authorized company. */
+export interface GetEmployeeInput {
+  /** EmployeeID is the employee UUID from Gusto's employee list or webhook. */
+  "employeeId": string;
+}
 
-/** Runtime validator for GetEmployeeInput. */
-export const GetEmployeeInputSchema = z.strictObject({
-  "employeeId": z.string(),
-}) satisfies z.ZodType<GetEmployeeInput>;
+/** Runtime validator for ListEmployeesInput. */
+export const ListEmployeesInputSchema = z.strictObject({
+  "companyId": z.string(),
+  "page": z.number().int(),
+  "perPage": z.number().int(),
+}) satisfies z.ZodType<ListEmployeesInput>;
 
 /** Runtime validator for Employee. */
 export const EmployeeSchema = z.strictObject({
@@ -134,3 +150,13 @@ export const EmployeeSchema = z.strictObject({
   "email": z.string(),
   "companyId": z.string(),
 }) satisfies z.ZodType<Employee>;
+
+/** Runtime validator for EmployeesPage. */
+export const EmployeesPageSchema = z.strictObject({
+  "employees": z.array(EmployeeSchema).nullable(),
+}) satisfies z.ZodType<EmployeesPage>;
+
+/** Runtime validator for GetEmployeeInput. */
+export const GetEmployeeInputSchema = z.strictObject({
+  "employeeId": z.string(),
+}) satisfies z.ZodType<GetEmployeeInput>;

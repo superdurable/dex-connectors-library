@@ -4,13 +4,15 @@
 
 import { ConnectionRefSchema, type ConnectionRef, type Query } from '@superdurable/connectors-sdk';
 import type { LoadedProject } from '@superdurable/connectors-sdk/projectconfig';
-import type { GetWorkerInput, WorkerSummary } from './models.js';
+import type { GetWorkerInput, WorkerSummary, ListWorkersInput, WorkerPage } from './models.js';
 import { ConnectorID, ProviderID } from './definitions.js';
 
 /** Typed operations supplied by a client or mock. */
 export interface Operations {
   /** Invoke getWorker through this connection. */
   getWorker(): Query<GetWorkerInput, WorkerSummary>;
+  /** Invoke listWorkers through this connection. */
+  listWorkers(): Query<ListWorkersInput, WorkerPage>;
 }
 
 /** Named connector connection kept outside Flow state. */

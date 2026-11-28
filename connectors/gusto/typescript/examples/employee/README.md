@@ -5,3 +5,7 @@ This runnable Flow calls `getEmployee` through the static `gusto` Dex Web connec
 For local FDG 2.0 generation, link this unreleased package under `node_modules/@superdurable/connector-gusto`, then run `dexcli visualize examples/employee/flow.ts --schema-version 2.0 --lint app --json --out /tmp/gusto-typescript-fdg --open=false` from the TypeScript package directory.
 
 With `dexcli dev` running, `npm run test:integration` exercises the Flow through a real Dex Worker and Client against a local provider fixture. Live Gusto authorization has not been verified.
+
+The Worker also serves [the employee page Flow](list-flow.ts). Start `GustoEmployeeListTypeScript` with the authorized company UUID as `companyId`, a one-based `page`, and a `perPage` value from 1 to 100. The Flow returns employee identity fields in provider order, including an empty employee list for an empty page.
+
+From the TypeScript package directory, validate the page Flow with `dexcli visualize examples/employee/list-flow.ts --schema-version 2.0 --lint app --json --open=false --out /tmp/gusto-typescript-page`.

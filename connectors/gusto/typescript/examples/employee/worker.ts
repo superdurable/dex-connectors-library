@@ -7,12 +7,13 @@ import { Registry, Worker, openBlobCache } from '@superdurable/dex';
 import { loadFromEnvironment } from '@superdurable/connectors-sdk/projectconfig';
 import { newProjectConnection } from '../../src/index.js';
 import { ConnectionName, EmployeeFlow } from './flow.js';
+import { EmployeeListFlow } from './list-flow.js';
 
 /** Run the Employee example with its static project connection. */
 export async function runEmployeeWorker(signal: AbortSignal): Promise<void> {
   const project = await loadFromEnvironment();
   const connection = newProjectConnection(project, ConnectionName);
-  const registry = new Registry([new EmployeeFlow(connection)]);
+  const registry = new Registry([new EmployeeFlow(connection), new EmployeeListFlow(connection)]);
   const blobCache = openBlobCache({ directory: process.env.DEX_BLOB_CACHE_DIR || join(tmpdir(), 'dex-gusto-ts-blobs'), maxBytes: 1 << 30 });
   const worker = new Worker(registry, blobCache, { serverAddress: process.env.DEX_FLOW_SERVICE_ADDRESS || '127.0.0.1:8801' });
   try {

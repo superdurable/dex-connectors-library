@@ -9,6 +9,39 @@ export const ConnectorID = "gusto";
 /** Provider identity for named connections. */
 export const ProviderID = "gusto";
 
+/** Branch IDs for listEmployees. */
+export const ListEmployeesBranch = {
+  Listed: "listed",
+  Missing: "missing",
+  ProviderRejected: "providerRejected",
+  InvalidResponse: "invalidResponse",
+  Defect: "defect",
+} as const;
+/** Gusto returned the requested employee page. */
+export const ListEmployeesBranchListed = ListEmployeesBranch.Listed;
+/** The company is not visible to this connection. */
+export const ListEmployeesBranchMissing = ListEmployeesBranch.Missing;
+/** Gusto conclusively rejected the list request. */
+export const ListEmployeesBranchProviderRejected = ListEmployeesBranch.ProviderRejected;
+/** Gusto returned malformed or oversized employee data. */
+export const ListEmployeesBranchInvalidResponse = ListEmployeesBranch.InvalidResponse;
+/** Page settings, company UUID, or OAuth credentials are invalid. */
+export const ListEmployeesBranchDefect = ListEmployeesBranch.Defect;
+/** Manifest definition for listEmployees. */
+export const ListEmployeesDefinition: QueryDefinition = {
+  operation: { connectorId: ConnectorID, operationId: "listEmployees" },
+  branches: [
+    { id: "listed", description: "Gusto returned the requested employee page." },
+    { id: "missing", description: "The company is not visible to this connection.", optional: true },
+    { id: "providerRejected", description: "Gusto conclusively rejected the list request.", optional: true },
+    { id: "invalidResponse", description: "Gusto returned malformed or oversized employee data.", optional: true },
+    { id: "defect", description: "Page settings, company UUID, or OAuth credentials are invalid.", optional: true },
+  ],
+  stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
+};
+/** Manifest metadata for listEmployees. */
+export const ListEmployeesMetadata = { kind: "query", idempotency: "none", authorization: "required" } as const;
+
 /** Branch IDs for getEmployee. */
 export const GetEmployeeBranch = {
   Found: "found",

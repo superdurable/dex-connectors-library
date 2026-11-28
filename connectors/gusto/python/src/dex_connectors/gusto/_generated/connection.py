@@ -11,30 +11,37 @@ from dex_connectors.sdk.projectconfig.provider import RefreshingCredentialProvid
 from dex_connectors.sdk.oauthtoken import ManifestCredentialRefreshDriver
 
 from ..client import Client, Config, Credentials
-from .definitions import CONNECTOR_ID, GET_EMPLOYEE_DEFINITION
+from .definitions import CONNECTOR_ID, GET_EMPLOYEE_DEFINITION, LIST_EMPLOYEES_DEFINITION
 from .refresh import AUTHORIZATION, CREDENTIAL_FIELDS
-from ..models import Employee, GetEmployeeInput
+from ..models import Employee, EmployeesPage, GetEmployeeInput, ListEmployeesInput
 
 class Connection:
 
-    __slots__ = ('_get_employee', '_client', 'reference')
+    __slots__ = ('_get_employee', '_list_employees', '_client', 'reference')
 
     def __init__(self,
         reference: ConnectionRef,
         get_employee: Query[GetEmployeeInput, Employee],
+        list_employees: Query[ListEmployeesInput, EmployeesPage],
         client: Client | None = None,
     ) -> None:
         reference.validate()
-        if reference.provider != CONNECTOR_ID or get_employee is None:
+        if reference.provider != CONNECTOR_ID or get_employee is None or list_employees is None:
             raise ValueError("Gusto connection provider and operations are required")
         if get_employee.definition().operation != GET_EMPLOYEE_DEFINITION.operation:
             raise ValueError("Gusto connection operation identity differs")
+        if list_employees.definition().operation != LIST_EMPLOYEES_DEFINITION.operation:
+            raise ValueError("Gusto connection operation identity differs")
         self.reference = reference
         self._get_employee = get_employee
+        self._list_employees = list_employees
         self._client = client
 
     def get_employee(self) -> Query[GetEmployeeInput, Employee]:
         return self._get_employee
+
+    def list_employees(self) -> Query[ListEmployeesInput, EmployeesPage]:
+        return self._list_employees
 
     async def aclose(self) -> None:
         if self._client is not None:
@@ -52,16 +59,17 @@ setattr(Connection, '__module__', 'dex_connectors.gusto.connection')
 def new_connection(client: Client, reference: ConnectionRef) -> Connection:
     if client is None:
         raise ValueError("Gusto client is required")
-    return Connection(reference, client.get_employee(), client)
+    return Connection(reference, client.get_employee(), client.list_employees(), client)
 
 setattr(new_connection, '__module__', 'dex_connectors.gusto.connection')
 
 
 def new_connection_with_operations(
     get_employee: Query[GetEmployeeInput, Employee],
+    list_employees: Query[ListEmployeesInput, EmployeesPage],
     reference: ConnectionRef,
 ) -> Connection:
-    return Connection(reference, get_employee)
+    return Connection(reference, get_employee, list_employees)
 
 setattr(new_connection_with_operations, '__module__', 'dex_connectors.gusto.connection')
 

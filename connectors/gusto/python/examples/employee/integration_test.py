@@ -18,11 +18,13 @@ from dex_connectors.gusto import (
     Config,
     Credentials,
     Employee,
+    EmployeesPage,
     GetEmployeeInput,
     new_connection,
 )
 
 from .flow import CONNECTION_NAME, EmployeeFlow
+from .list_flow import EmployeeListFlow, EmployeePageRequest
 
 
 @pytest.mark.asyncio
@@ -33,6 +35,25 @@ async def test_employee_retries_503(tmp_path: Path) -> None:
 
     def answer(request: httpx.Request) -> httpx.Response:
         assert request.headers["Authorization"] == "Bearer synthetic-gusto-token"
+        if request.url.path.startswith("/v1/companies/"):
+            assert request.url.path == "/v1/companies/7d61f73e-a18c-46a5-88e2-2bfa894657d7/employees"
+            assert request.url.params["per"] == "2"
+            if request.url.params["page"] == "2":
+                return httpx.Response(200, json=[])
+            assert request.url.params["page"] == "1"
+            return httpx.Response(
+                200,
+                json=[
+                    {
+                        "uuid": "90a68db5-cb3a-4f64-bb60-c0a934ee7600",
+                        "first_name": "Ada",
+                        "last_name": "Lovelace",
+                        "email": None,
+                        "company_uuid": "7d61f73e-a18c-46a5-88e2-2bfa894657d7",
+                        "compensations": [{"rate": 77}],
+                    }
+                ],
+            )
         assert request.url.path == "/v1/employees/90a68db5-cb3a-4f64-bb60-c0a934ee7600"
         requests.append(request)
         if len(requests) == 1:
@@ -63,7 +84,8 @@ async def test_employee_retries_503(tmp_path: Path) -> None:
         )
         connection = new_connection(provider, reference)
         flow = EmployeeFlow(connection)
-        registry = dex.Registry([flow], allow_async_handlers=True)
+        page_flow = EmployeeListFlow(connection)
+        registry = dex.Registry([flow, page_flow], allow_async_handlers=True)
         cache = dex.open_blob_cache(dex.BlobCacheConfig(str(tmp_path / "blobs"), 1 << 24))
         worker = dex.AsyncWorker(registry, cache, dex.WorkerOptions(server_address=address))
         worker_task = asyncio.create_task(worker.start())
@@ -78,6 +100,20 @@ async def test_employee_retries_503(tmp_path: Path) -> None:
                 assert result.status == dex.FlowStatus.COMPLETED, result.error_message
                 assert result.single_output(Employee).employee_id == "90a68db5-cb3a-4f64-bb60-c0a934ee7600"
                 assert len(requests) == 2
+                company_id = "7d61f73e-a18c-46a5-88e2-2bfa894657d7"
+                expected_employee = Employee(
+                    "90a68db5-cb3a-4f64-bb60-c0a934ee7600", "Ada", "Lovelace", "", company_id
+                )
+                for page_number, expected_employees in ((1, (expected_employee,)), (2, ())):
+                    page_id = f"gusto-page-{uuid4().hex}"
+                    await client.start_flow(
+                        page_flow, page_id, EmployeePageRequest(company_id, page_number, 2)
+                    )
+                    page_result = await asyncio.wait_for(
+                        client.wait_for_flow(page_id, timedelta(seconds=25)), 30
+                    )
+                    assert page_result.status == dex.FlowStatus.COMPLETED, page_result.error_message
+                    assert page_result.single_output(EmployeesPage).employees == expected_employees
         finally:
             await worker.stop()
             await worker_task

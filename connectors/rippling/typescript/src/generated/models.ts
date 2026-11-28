@@ -78,6 +78,20 @@ export interface WorkerSummary {
   /** Status is the visible employment state, or empty when unavailable. */
   "status": string;
 }
+/** ListWorkersInput selects one page of visible worker summaries. */
+export interface ListWorkersInput {
+  /** Limit is the number of workers to return, from 1 to 100. Zero uses Rippling's default. */
+  "limit"?: number | undefined;
+  /** Cursor is the opaque pagination cursor returned by an earlier page. */
+  "cursor"?: string | undefined;
+}
+/** WorkerPage contains visible worker summaries and the next opaque cursor. */
+export interface WorkerPage {
+  /** Workers contains only IDs, statuses, and titles visible to the token owner. */
+  "workers": Array<WorkerSummary> | null;
+  /** NextCursor is empty when Rippling reports no further page. */
+  "nextCursor": string;
+}
 
 /** Runtime validator for GetWorkerInput. */
 export const GetWorkerInputSchema = z.strictObject({
@@ -90,3 +104,15 @@ export const WorkerSummarySchema = z.strictObject({
   "title": z.string(),
   "status": z.string(),
 }) satisfies z.ZodType<WorkerSummary>;
+
+/** Runtime validator for ListWorkersInput. */
+export const ListWorkersInputSchema = z.strictObject({
+  "limit": z.number().int().optional(),
+  "cursor": z.string().optional(),
+}) satisfies z.ZodType<ListWorkersInput>;
+
+/** Runtime validator for WorkerPage. */
+export const WorkerPageSchema = z.strictObject({
+  "workers": z.array(WorkerSummarySchema).nullable(),
+  "nextCursor": z.string(),
+}) satisfies z.ZodType<WorkerPage>;

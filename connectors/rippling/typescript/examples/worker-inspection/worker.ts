@@ -7,12 +7,13 @@ import { Registry, Worker, openBlobCache } from '@superdurable/dex';
 import { loadFromEnvironment } from '@superdurable/connectors-sdk/projectconfig';
 import { newProjectConnection } from '../../src/index.js';
 import { ConnectionName, WorkerInspectionFlow } from './flow.js';
+import { WorkerListFlow } from './list-flow.js';
 
 /** Serve the worker inspection Flow with its static project connection. */
 export async function runRipplingWorker(signal: AbortSignal): Promise<void> {
   const project = await loadFromEnvironment();
   const connection = newProjectConnection(project, ConnectionName);
-  const registry = new Registry([new WorkerInspectionFlow(connection)]);
+  const registry = new Registry([new WorkerInspectionFlow(connection), new WorkerListFlow(connection)]);
   const blobCache = openBlobCache({ directory: process.env.DEX_BLOB_CACHE_DIR || join(tmpdir(), 'dex-rippling-ts-blobs'), maxBytes: 1 << 30 });
   const worker = new Worker(registry, blobCache, { serverAddress: process.env.DEX_FLOW_SERVICE_ADDRESS || '127.0.0.1:8801' });
   try {

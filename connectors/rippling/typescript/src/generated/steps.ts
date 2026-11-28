@@ -5,7 +5,7 @@
 import { goToBranch, newQueryStep, type Query, type QueryResult, type QueryStep, type QueryStepConfig } from '@superdurable/connectors-sdk';
 import type { StepTarget } from '@superdurable/dex';
 import type { Connection } from './connection.js';
-import type { GetWorkerInput, WorkerSummary } from './models.js';
+import type { GetWorkerInput, WorkerSummary, ListWorkersInput, WorkerPage } from './models.js';
 
 /** Configuration for the getWorker connector Step. */
 export interface GetWorkerStepConfig<StepInput, OperationInput = GetWorkerInput, OperationOutput = WorkerSummary> extends Omit<QueryStepConfig<StepInput, OperationInput, OperationOutput>, 'operation' | 'connection' | 'branches'> {
@@ -32,6 +32,34 @@ export function newGetWorkerStep<StepInput, OperationInput = GetWorkerInput, Ope
   return newQueryStep({ ...stepConfiguration, operation: connection.operations.getWorker(), connection: connection.reference, branches: [
     goToBranch("found", found),
     ...(notFound ? [goToBranch("notFound", notFound)] : []),
+    ...(providerRejected ? [goToBranch("providerRejected", providerRejected)] : []),
+    ...(invalidResponse ? [goToBranch("invalidResponse", invalidResponse)] : []),
+    ...(defect ? [goToBranch("defect", defect)] : []),
+  ] });
+}
+
+/** Configuration for the listWorkers connector Step. */
+export interface ListWorkersStepConfig<StepInput, OperationInput = ListWorkersInput, OperationOutput = WorkerPage> extends Omit<QueryStepConfig<StepInput, OperationInput, OperationOutput>, 'operation' | 'connection' | 'branches'> {
+  /** Named connection supplying this operation. */
+  connection: Connection<{ listWorkers(): Query<OperationInput, OperationOutput> }>;
+  /** Name matching the bound connection. */
+  connectionName: string;
+  /** Rippling returned the worker page. */
+  found: StepTarget<QueryResult<OperationOutput>>;
+  /** Rippling conclusively rejected the list request. */
+  providerRejected?: StepTarget<QueryResult<OperationOutput>>;
+  /** Rippling returned malformed or oversized JSON. */
+  invalidResponse?: StepTarget<QueryResult<OperationOutput>>;
+  /** Local input or connection credentials are invalid. */
+  defect?: StepTarget<QueryResult<OperationOutput>>;
+}
+
+/** Build the listWorkers Step from a named connection. */
+export function newListWorkersStep<StepInput, OperationInput = ListWorkersInput, OperationOutput = WorkerPage>(configuration: ListWorkersStepConfig<StepInput, OperationInput, OperationOutput>): QueryStep<StepInput, OperationInput, OperationOutput> {
+  const { connection, connectionName, found, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
+  if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
+  return newQueryStep({ ...stepConfiguration, operation: connection.operations.listWorkers(), connection: connection.reference, branches: [
+    goToBranch("found", found),
     ...(providerRejected ? [goToBranch("providerRejected", providerRejected)] : []),
     ...(invalidResponse ? [goToBranch("invalidResponse", invalidResponse)] : []),
     ...(defect ? [goToBranch("defect", defect)] : []),

@@ -4,7 +4,7 @@
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-rippling",
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   "factories": [
     {
@@ -58,6 +58,56 @@
         "required": [
           "workerId"
         ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "new_list_workers_step",
+      "kind": "query",
+      "operationId": "listWorkers",
+      "inputType": "ListWorkersInput",
+      "description": "List one page of visible workers without personal or compensation details.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListWorkersInput selects one page of visible worker summaries.",
+        "properties": {
+          "cursor": {
+            "description": "Cursor is the opaque pagination cursor returned by an earlier page.",
+            "type": "string"
+          },
+          "limit": {
+            "description": "Limit is the number of workers to return, from 1 to 100. Zero uses Rippling's default.",
+            "type": "integer"
+          }
+        },
         "type": "object"
       }
     }

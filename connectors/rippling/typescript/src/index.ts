@@ -6,4 +6,4 @@ export * from './generated/definitions.js';
 export * from './generated/steps.js';
 export { Connection, newConnection, newConnectionWithOperations } from './generated/connection.js';
 export { newProjectConnection } from './project.js';
-export { RipplingClient, GetWorkerOperation, type RipplingClientOptions } from './client.js';
+export { RipplingClient, GetWorkerOperation, ListWorkersOperation, type RipplingClientOptions } from './client.js';

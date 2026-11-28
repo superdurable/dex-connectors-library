@@ -11,14 +11,14 @@ spec:
   provider: gusto
   languages:
     python:
-      version: v0.1.0
+      version: v0.2.0
       package: dex-connector-gusto
-      operations: [getEmployee]
+      operations: [getEmployee, listEmployees]
       triggers: []
     typescript:
-      version: v0.1.0
+      version: v0.2.0
       package: '@superdurable/connector-gusto'
-      operations: [getEmployee]
+      operations: [getEmployee, listEmployees]
       triggers: []
   codegen:
     go:

@@ -11,14 +11,14 @@ spec:
   provider: rippling
   languages:
     python:
-      version: v0.1.0
+      version: v0.2.0
       package: dex-connector-rippling
-      operations: [getWorker]
+      operations: [getWorker, listWorkers]
       triggers: []
     typescript:
-      version: v0.1.0
+      version: v0.2.0
       package: "@superdurable/connector-rippling"
-      operations: [getWorker]
+      operations: [getWorker, listWorkers]
       triggers: []
   codegen:
     go:

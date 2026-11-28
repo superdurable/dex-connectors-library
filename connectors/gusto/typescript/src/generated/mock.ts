@@ -4,14 +4,16 @@
 
 import { branchCase, retryCase, type Case, newQuery, type MockQuery } from '@superdurable/connectors-sdk/connectormock';
 import type { Failure } from '@superdurable/connectors-sdk';
-import type { GetEmployeeInput, Employee } from './models.js';
-import { GetEmployeeInputSchema, EmployeeSchema } from './models.js';
-import { ProviderID, GetEmployeeDefinition } from './definitions.js';
+import type { ListEmployeesInput, Employee, EmployeesPage, GetEmployeeInput } from './models.js';
+import { ListEmployeesInputSchema, EmployeeSchema, EmployeesPageSchema, GetEmployeeInputSchema } from './models.js';
+import { ProviderID, ListEmployeesDefinition, GetEmployeeDefinition } from './definitions.js';
 import { newConnectionWithOperations, type Connection, type Operations } from './connection.js';
 
-/** Go zero value for GetEmployeeInput in scripted cases. */
-export const emptyGetEmployeeInput: GetEmployeeInput = GetEmployeeInputSchema.parse({
-  "employeeId": '',
+/** Go zero value for ListEmployeesInput in scripted cases. */
+export const emptyListEmployeesInput: ListEmployeesInput = ListEmployeesInputSchema.parse({
+  "companyId": '',
+  "page": 0,
+  "perPage": 0,
 });
 /** Go zero value for Employee in scripted cases. */
 export const emptyEmployee: Employee = EmployeeSchema.parse({
@@ -21,6 +23,34 @@ export const emptyEmployee: Employee = EmployeeSchema.parse({
   "email": '',
   "companyId": '',
 });
+/** Go zero value for EmployeesPage in scripted cases. */
+export const emptyEmployeesPage: EmployeesPage = EmployeesPageSchema.parse({
+  "employees": [],
+});
+/** Go zero value for GetEmployeeInput in scripted cases. */
+export const emptyGetEmployeeInput: GetEmployeeInput = GetEmployeeInputSchema.parse({
+  "employeeId": '',
+});
+
+/** Script the listed branch. */
+export function listEmployeesListed(value: EmployeesPage, failure?: Failure): Case<EmployeesPage> { return branchCase("listed", value, failure); }
+/** Script the missing branch. */
+export function listEmployeesMissing(value: EmployeesPage, failure?: Failure): Case<EmployeesPage> { return branchCase("missing", value, failure); }
+/** Script the providerRejected branch. */
+export function listEmployeesProviderRejected(value: EmployeesPage, failure?: Failure): Case<EmployeesPage> { return branchCase("providerRejected", value, failure); }
+/** Script the invalidResponse branch. */
+export function listEmployeesInvalidResponse(value: EmployeesPage, failure?: Failure): Case<EmployeesPage> { return branchCase("invalidResponse", value, failure); }
+/** Script the defect branch. */
+export function listEmployeesDefect(value: EmployeesPage, failure?: Failure): Case<EmployeesPage> { return branchCase("defect", value, failure); }
+/** Script a safe retry of listEmployees. */
+export function listEmployeesRetry(failure: Failure, retryAfterMs = 0): Case<EmployeesPage> { return retryCase(failure, retryAfterMs); }
+/** Manifest scenario listedDefault for listEmployees. */
+export function listEmployeesListedDefault(): Case<EmployeesPage> {
+  const value = EmployeesPageSchema.parse({"employees":[{"companyId":"7d61f73e-a18c-46a5-88e2-2bfa894657d7","email":"ada@example.com","employeeId":"90a68db5-cb3a-4f64-bb60-c0a934ee7600","firstName":"Ada","lastName":"Lovelace"}]});
+  return branchCase("listed", value);
+}
+/** Default listEmployees scenario. */
+export function listEmployeesDefault(): Case<EmployeesPage> { return listEmployeesListedDefault(); }
 
 /** Script the found branch. */
 export function getEmployeeFound(value: Employee, failure?: Failure): Case<Employee> { return branchCase("found", value, failure); }
@@ -44,17 +74,21 @@ export function getEmployeeDefault(): Case<Employee> { return getEmployeeFoundDe
 
 /** Scripted operations and manifest defaults for this connector. */
 export class GeneratedMock implements Operations {
+  readonly #listEmployees: MockQuery<ListEmployeesInput, EmployeesPage>;
   readonly #getEmployee: MockQuery<GetEmployeeInput, Employee>;
   readonly #connection: Connection;
 
   constructor(connectionName: string) {
+    this.#listEmployees = newQuery<ListEmployeesInput, EmployeesPage>(ListEmployeesDefinition).default(listEmployeesDefault());
     this.#getEmployee = newQuery<GetEmployeeInput, Employee>(GetEmployeeDefinition).default(getEmployeeDefault());
     this.#connection = newConnectionWithOperations(this, { provider: ProviderID, name: connectionName });
   }
 
   connection(): Connection { return this.#connection; }
+  listEmployees(): MockQuery<ListEmployeesInput, EmployeesPage> { return this.#listEmployees; }
   getEmployee(): MockQuery<GetEmployeeInput, Employee> { return this.#getEmployee; }
   assertNoFailures(): void {
+    this.#listEmployees.assertNoFailures();
     this.#getEmployee.assertNoFailures();
   }
 }

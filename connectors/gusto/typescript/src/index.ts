@@ -7,4 +7,4 @@ export * from './generated/steps.js';
 export { Connection, newConnection, newConnectionWithOperations } from './generated/connection.js';
 export { newProjectConnection } from './project.js';
 export { GustoClient, type GustoClientOptions } from './client.js';
-export { GetEmployeeOperation } from './operations.js';
+export { GetEmployeeOperation, ListEmployeesOperation } from './operations.js';

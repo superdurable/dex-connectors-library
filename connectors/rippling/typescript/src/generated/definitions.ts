@@ -41,3 +41,32 @@ export const GetWorkerDefinition: QueryDefinition = {
 };
 /** Manifest metadata for getWorker. */
 export const GetWorkerMetadata = { kind: "query", idempotency: "none", authorization: "required" } as const;
+
+/** Branch IDs for listWorkers. */
+export const ListWorkersBranch = {
+  Found: "found",
+  ProviderRejected: "providerRejected",
+  InvalidResponse: "invalidResponse",
+  Defect: "defect",
+} as const;
+/** Rippling returned the worker page. */
+export const ListWorkersBranchFound = ListWorkersBranch.Found;
+/** Rippling conclusively rejected the list request. */
+export const ListWorkersBranchProviderRejected = ListWorkersBranch.ProviderRejected;
+/** Rippling returned malformed or oversized JSON. */
+export const ListWorkersBranchInvalidResponse = ListWorkersBranch.InvalidResponse;
+/** Local input or connection credentials are invalid. */
+export const ListWorkersBranchDefect = ListWorkersBranch.Defect;
+/** Manifest definition for listWorkers. */
+export const ListWorkersDefinition: QueryDefinition = {
+  operation: { connectorId: ConnectorID, operationId: "listWorkers" },
+  branches: [
+    { id: "found", description: "Rippling returned the worker page." },
+    { id: "providerRejected", description: "Rippling conclusively rejected the list request.", optional: true },
+    { id: "invalidResponse", description: "Rippling returned malformed or oversized JSON.", optional: true },
+    { id: "defect", description: "Local input or connection credentials are invalid.", optional: true },
+  ],
+  stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
+};
+/** Manifest metadata for listWorkers. */
+export const ListWorkersMetadata = { kind: "query", idempotency: "none", authorization: "required" } as const;
