@@ -494,6 +494,526 @@
       },
       "name": "getRepository-redirect",
       "operation": "getRepository"
+    },
+    {
+      "callId": "4b7cf452-83e0-52a5-8298-72d0da2058a8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v5/repos/open-source/demo",
+          "query": {
+            "access_token": [
+              "test-gitee-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "repository": {
+            "defaultBranch": "",
+            "description": "",
+            "forksCount": 0,
+            "fullName": "",
+            "htmlUrl": "",
+            "id": 0,
+            "name": "",
+            "private": false,
+            "starsCount": 0
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "owner": "open-source",
+        "repo": "demo"
+      },
+      "name": "getRepository-forbidden",
+      "operation": "getRepository"
+    },
+    {
+      "callId": "ca17d30c-c5bc-5247-bb40-d2660a282dff",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v5/repos/open-source/demo",
+          "query": {
+            "access_token": [
+              "test-gitee-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "repository": {
+            "defaultBranch": "",
+            "description": "",
+            "forksCount": 0,
+            "fullName": "",
+            "htmlUrl": "",
+            "id": 0,
+            "name": "",
+            "private": false,
+            "starsCount": 0
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "owner": "open-source",
+        "repo": "demo"
+      },
+      "name": "getRepository-bad-request",
+      "operation": "getRepository"
+    },
+    {
+      "callId": "a6fa8688-ed3a-5552-8af6-366f9f9364c4",
+      "exchanges": [
+        {
+          "body": "{\"id\":117,\"full_name\":\"group/sample\",\"name\":\"sample\",\"private\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v5/repos/open-source/demo",
+          "query": {
+            "access_token": [
+              "test-gitee-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "repository": {
+            "defaultBranch": "",
+            "description": "",
+            "forksCount": 0,
+            "fullName": "group/sample",
+            "htmlUrl": "",
+            "id": 117,
+            "name": "sample",
+            "private": false,
+            "starsCount": 0
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "owner": "open-source",
+        "repo": "demo"
+      },
+      "name": "getRepository-missing-optional-fields",
+      "operation": "getRepository"
+    },
+    {
+      "callId": "49f333c6-4708-5e7b-bc4a-b8fee4de7a1c",
+      "exchanges": [
+        {
+          "body": "{\"id\":117,\"full_name\":\"group/sample\",\"name\":\"sample\",\"private\":null}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v5/repos/open-source/demo",
+          "query": {
+            "access_token": [
+              "test-gitee-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "repository": {
+            "defaultBranch": "",
+            "description": "",
+            "forksCount": 0,
+            "fullName": "group/sample",
+            "htmlUrl": "",
+            "id": 117,
+            "name": "sample",
+            "private": false,
+            "starsCount": 0
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "owner": "open-source",
+        "repo": "demo"
+      },
+      "name": "getRepository-null-private",
+      "operation": "getRepository"
+    },
+    {
+      "callId": "f53a66ec-2069-541a-aa53-3fa6370583f0",
+      "exchanges": [
+        {
+          "body": "{\"ID\":117,\"FULL_NAME\":\"group/sample\",\"NAME\":\"sample\",\"PRIVATE\":false,\"DEFAULT_BRANCH\":\"main\",\"STARGAZERS_COUNT\":4,\"FORKS_COUNT\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v5/repos/open-source/demo",
+          "query": {
+            "access_token": [
+              "test-gitee-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "repository": {
+            "defaultBranch": "main",
+            "description": "",
+            "forksCount": 1,
+            "fullName": "group/sample",
+            "htmlUrl": "",
+            "id": 117,
+            "name": "sample",
+            "private": false,
+            "starsCount": 4
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "owner": "open-source",
+        "repo": "demo"
+      },
+      "name": "getRepository-mixed-case-fields",
+      "operation": "getRepository"
+    },
+    {
+      "callId": "600ca839-919d-5702-aaf1-77e64035b0b3",
+      "exchanges": [
+        {
+          "body": "{\"id\":117,\"full_name\":\"group/sample\",\"name\":\"sample\",\"private\":false,\"default_branch\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v5/repos/open-source/demo",
+          "query": {
+            "access_token": [
+              "test-gitee-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "repository": {
+            "defaultBranch": "",
+            "description": "",
+            "forksCount": 0,
+            "fullName": "",
+            "htmlUrl": "",
+            "id": 0,
+            "name": "",
+            "private": false,
+            "starsCount": 0
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "owner": "open-source",
+        "repo": "demo"
+      },
+      "name": "getRepository-invalid-default-branch",
+      "operation": "getRepository"
+    },
+    {
+      "callId": "59930b76-ae11-536b-a86d-86ad8a7b8c2b",
+      "exchanges": [
+        {
+          "body": "{\"id\":117,\"full_name\":\"group/sample\",\"name\":\"sample\",\"private\":\"false\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v5/repos/open-source/demo",
+          "query": {
+            "access_token": [
+              "test-gitee-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "repository": {
+            "defaultBranch": "",
+            "description": "",
+            "forksCount": 0,
+            "fullName": "",
+            "htmlUrl": "",
+            "id": 0,
+            "name": "",
+            "private": false,
+            "starsCount": 0
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "owner": "open-source",
+        "repo": "demo"
+      },
+      "name": "getRepository-invalid-private-type",
+      "operation": "getRepository"
+    },
+    {
+      "callId": "dae3fecd-ea73-53ec-84dd-0066c75a120c",
+      "exchanges": [
+        {
+          "body": "{\"id\":117.0,\"full_name\":\"group/sample\",\"name\":\"sample\",\"private\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v5/repos/open-source/demo",
+          "query": {
+            "access_token": [
+              "test-gitee-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "repository": {
+            "defaultBranch": "",
+            "description": "",
+            "forksCount": 0,
+            "fullName": "",
+            "htmlUrl": "",
+            "id": 0,
+            "name": "",
+            "private": false,
+            "starsCount": 0
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "owner": "open-source",
+        "repo": "demo"
+      },
+      "name": "getRepository-fractional-id",
+      "operation": "getRepository"
+    },
+    {
+      "callId": "62b3460e-fdc7-52e1-842e-d13bd15261a4",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "repository": {
+            "defaultBranch": "",
+            "description": "",
+            "forksCount": 0,
+            "fullName": "",
+            "htmlUrl": "",
+            "id": 0,
+            "name": "",
+            "private": false,
+            "starsCount": 0
+          }
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "owner": "example",
+        "repo": ".."
+      },
+      "name": "getRepository-path-traversal",
+      "operation": "getRepository"
+    },
+    {
+      "callId": "4b4a946b-9592-5e79-b014-5305a5400fc7",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "5"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v5/repos/open-source/demo",
+          "query": {
+            "access_token": [
+              "test-gitee-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 5000,
+        "uncertain": false
+      },
+      "input": {
+        "owner": "open-source",
+        "repo": "demo"
+      },
+      "name": "getRepository-retry-after-503",
+      "operation": "getRepository"
+    },
+    {
+      "callId": "5c645d58-9714-5b8a-aa55-67efa06edc91",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"repository is not visible\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v5/repos/open-source/demo",
+          "query": {
+            "access_token": [
+              "test-gitee-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "repository": {
+            "defaultBranch": "",
+            "description": "",
+            "forksCount": 0,
+            "fullName": "",
+            "htmlUrl": "",
+            "id": 0,
+            "name": "",
+            "private": false,
+            "starsCount": 0
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "owner": "open-source",
+        "repo": "demo"
+      },
+      "name": "getRepository-missing-smallLimit",
+      "operation": "getRepository"
     }
   ],
   "schemaVersion": 1

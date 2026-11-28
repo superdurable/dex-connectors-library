@@ -18,10 +18,16 @@ it('retries a provider 503 and persists the result through real Dex', async () =
   const dexAddress = process.env.DEX_FLOW_SERVICE_ADDRESS;
   if (!dexAddress) throw new Error('set DEX_FLOW_SERVICE_ADDRESS to a running dexcli dev service');
   let attempts = 0;
-  const server = createServer((_request, response) => {
+  const server = createServer((request, response) => {
+    const path = new URL(request.url ?? '/', 'http://127.0.0.1');
+    if (request.method !== 'GET' || path.pathname !== '/api/v5/repos/open-source/demo'
+        || path.searchParams.get('access_token') !== 'test-gitee-token' || request.headers.authorization) {
+      response.writeHead(403).end();
+      return;
+    }
     attempts++;
     if (attempts === 1) { response.writeHead(503).end(); return; }
-    response.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify({ id: 101, full_name: 'open-source/demo', name: 'demo', description: 'Example repository', html_url: 'https://gitee.com/open-source/demo', private: false, default_branch: 'master', stargazers_count: 5, forks_count: 2 }));
+    response.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify({ id: 101, FULL_NAME: 'open-source/demo', name: 'demo', description: 'Example repository', html_url: 'https://gitee.com/open-source/demo', private: false, default_branch: 'master', stargazers_count: 5, forks_count: null }));
   });
   server.listen(0, '127.0.0.1');
   await once(server, 'listening');
@@ -30,7 +36,9 @@ it('retries a provider 503 and persists the result through real Dex', async () =
   const directory = await mkdtemp(join(tmpdir(), 'dex-gitee-ts-integration-'));
   const cache = openBlobCache({ directory, maxBytes: 64 * 1024 * 1024 });
   const credentials: Credentials = { accessToken: new SecretString('test-gitee-token') };
-  const provider = new GiteeClient({}, { resolve: async () => credentials }, { send: async request => { const reply = await fetch(`http://127.0.0.1:${address.port}`, { method: request.method, headers: request.headers, body: request.body ? Buffer.from(request.body) : undefined }); return { status: reply.status, headers: Object.fromEntries(reply.headers), body: new Uint8Array(await reply.arrayBuffer()) }; } });
+  const provider = new GiteeClient({}, { resolve: async () => credentials }, { send: async request => {
+    const url = new URL(request.url);
+    const reply = await fetch(`http://127.0.0.1:${address.port}${url.pathname}${url.search}`, { method: request.method, headers: request.headers, body: request.body ? Buffer.from(request.body) : undefined }); return { status: reply.status, headers: Object.fromEntries(reply.headers), body: new Uint8Array(await reply.arrayBuffer()) }; } });
   const connection = newConnection(provider, { provider: 'gitee', name: ConnectionName });
   const flow = new GiteeInspectionFlow(connection);
   const registry = new Registry([flow]);
@@ -43,7 +51,7 @@ it('retries a provider 503 and persists the result through real Dex', async () =
     await client.startFlow(flow, flowId, { owner: 'open-source', repo: 'demo' });
     const result = await client.waitForFlow(flowId, 60_000);
     expect(result.status, result.errorMessage).toBe('completed');
-    expect(result.singleOutput()).toEqual({ repository: { id: 101, fullName: 'open-source/demo', name: 'demo', description: 'Example repository', htmlUrl: 'https://gitee.com/open-source/demo', private: false, defaultBranch: 'master', starsCount: 5, forksCount: 2 } });
+    expect(result.singleOutput()).toEqual({ repository: { id: 101, fullName: 'open-source/demo', name: 'demo', description: 'Example repository', htmlUrl: 'https://gitee.com/open-source/demo', private: false, defaultBranch: 'master', starsCount: 5, forksCount: 0 } });
     expect(attempts).toBe(2);
   } finally {
     await client.close(); await worker.close(); cache.close();

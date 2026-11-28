@@ -369,6 +369,436 @@
       },
       "name": "getRepository-transportAfter",
       "operation": "getRepository"
+    },
+    {
+      "callId": "413a2d1a-f276-5198-a975-b49170b63f59",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v5/repos/example/sample",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-personal-access-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "defaultBranch": "",
+          "fullName": "",
+          "id": 0,
+          "private": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "owner": "example",
+        "repo": "sample"
+      },
+      "name": "getRepository-forbidden",
+      "operation": "getRepository"
+    },
+    {
+      "callId": "18621b55-e04b-5022-b727-35dbea149d4c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v5/repos/example/sample",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-personal-access-token"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "VALIDATION",
+        "output": {
+          "defaultBranch": "",
+          "fullName": "",
+          "id": 0,
+          "private": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "owner": "example",
+        "repo": "sample"
+      },
+      "name": "getRepository-bad-request",
+      "operation": "getRepository"
+    },
+    {
+      "callId": "842a8caa-9ea0-5875-935e-3543cc7bb439",
+      "exchanges": [
+        {
+          "body": "{\"id\":117,\"full_name\":\"group/sample\",\"name\":\"sample\",\"private\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v5/repos/example/sample",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-personal-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "fetched",
+        "failureKind": "",
+        "output": {
+          "defaultBranch": "",
+          "fullName": "group/sample",
+          "id": 117,
+          "private": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "owner": "example",
+        "repo": "sample"
+      },
+      "name": "getRepository-missing-optional-fields",
+      "operation": "getRepository"
+    },
+    {
+      "callId": "e1438841-0d1b-5001-b1c0-c9bafff2ff79",
+      "exchanges": [
+        {
+          "body": "{\"id\":117,\"full_name\":\"group/sample\",\"name\":\"sample\",\"private\":null}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v5/repos/example/sample",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-personal-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "defaultBranch": "",
+          "fullName": "",
+          "id": 0,
+          "private": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "owner": "example",
+        "repo": "sample"
+      },
+      "name": "getRepository-null-private",
+      "operation": "getRepository"
+    },
+    {
+      "callId": "e06bb76d-226f-54d8-88ed-95807e8733ad",
+      "exchanges": [
+        {
+          "body": "{\"ID\":117,\"FULL_NAME\":\"group/sample\",\"NAME\":\"sample\",\"PRIVATE\":false,\"DEFAULT_BRANCH\":\"main\",\"STARGAZERS_COUNT\":4,\"FORKS_COUNT\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v5/repos/example/sample",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-personal-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "fetched",
+        "failureKind": "",
+        "output": {
+          "defaultBranch": "main",
+          "fullName": "group/sample",
+          "id": 117,
+          "private": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "owner": "example",
+        "repo": "sample"
+      },
+      "name": "getRepository-mixed-case-fields",
+      "operation": "getRepository"
+    },
+    {
+      "callId": "a04af4de-57a7-520d-a3dc-80e0cd8d2fd8",
+      "exchanges": [
+        {
+          "body": "{\"id\":117,\"full_name\":\"group/sample\",\"name\":\"sample\",\"private\":false,\"default_branch\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v5/repos/example/sample",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-personal-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "defaultBranch": "",
+          "fullName": "",
+          "id": 0,
+          "private": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "owner": "example",
+        "repo": "sample"
+      },
+      "name": "getRepository-invalid-default-branch",
+      "operation": "getRepository"
+    },
+    {
+      "callId": "004a061c-c0be-5ab4-a216-d4851e439b1b",
+      "exchanges": [
+        {
+          "body": "{\"id\":117,\"full_name\":\"group/sample\",\"name\":\"sample\",\"private\":\"false\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v5/repos/example/sample",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-personal-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "defaultBranch": "",
+          "fullName": "",
+          "id": 0,
+          "private": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "owner": "example",
+        "repo": "sample"
+      },
+      "name": "getRepository-invalid-private-type",
+      "operation": "getRepository"
+    },
+    {
+      "callId": "6e0b1461-4a6d-515e-a5c4-d59c373bd1da",
+      "exchanges": [
+        {
+          "body": "{\"id\":117.0,\"full_name\":\"group/sample\",\"name\":\"sample\",\"private\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v5/repos/example/sample",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-personal-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "defaultBranch": "",
+          "fullName": "",
+          "id": 0,
+          "private": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "owner": "example",
+        "repo": "sample"
+      },
+      "name": "getRepository-fractional-id",
+      "operation": "getRepository"
+    },
+    {
+      "callId": "8f116713-b5dc-5a14-bd9a-5b51d215d012",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "defaultBranch": "",
+          "fullName": "",
+          "id": 0,
+          "private": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "owner": "example",
+        "repo": ".."
+      },
+      "name": "getRepository-path-traversal",
+      "operation": "getRepository"
+    },
+    {
+      "callId": "7ccda7c1-87c9-5d66-91f9-b7f5a20b2968",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "5"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v5/repos/example/sample",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-personal-access-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 5000,
+        "uncertain": false
+      },
+      "input": {
+        "owner": "example",
+        "repo": "sample"
+      },
+      "name": "getRepository-retry-after-503",
+      "operation": "getRepository"
+    },
+    {
+      "callId": "b5d9b68a-1f9b-50fa-bdc4-06ca6d7041fb",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"repository is not visible\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v5/repos/example/sample",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-personal-access-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "defaultBranch": "",
+          "fullName": "",
+          "id": 0,
+          "private": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "owner": "example",
+        "repo": "sample"
+      },
+      "name": "getRepository-missing-smallLimit",
+      "operation": "getRepository"
     }
   ],
   "schemaVersion": 1

@@ -18,10 +18,15 @@ it('retries a provider 503 and persists the result through real Dex', async () =
   const dexAddress = process.env.DEX_FLOW_SERVICE_ADDRESS;
   if (!dexAddress) throw new Error('set DEX_FLOW_SERVICE_ADDRESS to a running dexcli dev service');
   let attempts = 0;
-  const server = createServer((_request, response) => {
+  const server = createServer((request, response) => {
+    if (request.method !== 'GET' || request.url !== '/api/v5/repos/example/sample'
+        || request.headers.authorization !== 'Bearer test-personal-access-token') {
+      response.writeHead(403).end();
+      return;
+    }
     attempts++;
     if (attempts === 1) { response.writeHead(503).end(); return; }
-    response.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify({ id: 12345, full_name: 'example/sample', private: true, default_branch: 'main' }));
+    response.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify({ id: 12345, FULL_NAME: 'example/sample', private: true, default_branch: null }));
   });
   server.listen(0, '127.0.0.1');
   await once(server, 'listening');
@@ -30,7 +35,9 @@ it('retries a provider 503 and persists the result through real Dex', async () =
   const directory = await mkdtemp(join(tmpdir(), 'dex-gitcode-ts-integration-'));
   const cache = openBlobCache({ directory, maxBytes: 64 * 1024 * 1024 });
   const credentials: Credentials = { accessToken: new SecretString('test-personal-access-token') };
-  const provider = new GitcodeClient({}, { resolve: async () => credentials }, { send: async request => { const reply = await fetch(`http://127.0.0.1:${address.port}`, { method: request.method, headers: request.headers, body: request.body ? Buffer.from(request.body) : undefined }); return { status: reply.status, headers: Object.fromEntries(reply.headers), body: new Uint8Array(await reply.arrayBuffer()) }; } });
+  const provider = new GitcodeClient({}, { resolve: async () => credentials }, { send: async request => {
+    const url = new URL(request.url);
+    const reply = await fetch(`http://127.0.0.1:${address.port}${url.pathname}${url.search}`, { method: request.method, headers: request.headers, body: request.body ? Buffer.from(request.body) : undefined }); return { status: reply.status, headers: Object.fromEntries(reply.headers), body: new Uint8Array(await reply.arrayBuffer()) }; } });
   const connection = newConnection(provider, { provider: 'gitcode', name: ConnectionName });
   const flow = new GitcodeInspectionFlow(connection);
   const registry = new Registry([flow]);
@@ -43,7 +50,7 @@ it('retries a provider 503 and persists the result through real Dex', async () =
     await client.startFlow(flow, flowId, { owner: 'example', repo: 'sample' });
     const result = await client.waitForFlow(flowId, 60_000);
     expect(result.status, result.errorMessage).toBe('completed');
-    expect(result.singleOutput()).toEqual({ id: 12345, fullName: 'example/sample', private: true, defaultBranch: 'main' });
+    expect(result.singleOutput()).toEqual({ id: 12345, fullName: 'example/sample', private: true, defaultBranch: '' });
     expect(attempts).toBe(2);
   } finally {
     await client.close(); await worker.close(); cache.close();

@@ -21,7 +21,7 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		credentials = Credentials{}
 	}
 	config := Config{BaseURL: endpoint}
-	if scenario.Name == "getRepository-oversized" {
+	if scenario.Name == "getRepository-oversized" || scenario.Name == "getRepository-missing-smallLimit" {
 		config.MaxResponseBytes = 16
 	}
 	client, err := New(config, sdkgo.StaticCredentialProvider[Credentials]{testConnection: credentials}, WithHTTPClient(transport))

@@ -22,7 +22,9 @@ ADAPTER = conformance.PythonOperationAdapter(
     gitcode,
     lambda http_client, recorder: gitcode.Client(
         gitcode.Config(
-            max_response_bytes=16 if recorder.scenario["name"] == "getRepository-oversized" else 262144
+            max_response_bytes=16
+            if recorder.scenario["name"] in ("getRepository-oversized", "getRepository-missing-smallLimit")
+            else 262144
         ),
         conformance.static_credentials(
             CONNECTION, gitcode.Credentials(sdk.SecretString("test-personal-access-token"))

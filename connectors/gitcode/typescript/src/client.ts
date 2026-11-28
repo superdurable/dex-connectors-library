@@ -70,11 +70,41 @@ export class GetRepositoryOperation implements Query<GetRepositoryInput, GetRepo
     if (exchange.error === 'tooLarge') return branch('invalidResponse', 'RESPONSE_TOO_LARGE');
     if (status === 404) return branch('notFound', 'PROVIDER_REJECTION');
     if (status !== 200) return branch('providerRejected', status === 401 ? 'AUTHENTICATION' : status === 400 ? 'VALIDATION' : 'PROVIDER_REJECTION');
-    let wire: unknown;
-    try { wire = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(body)) as unknown; } catch { wire = undefined; }
-    if (!isObject(wire) || typeof wire.id !== 'number' || !Number.isSafeInteger(wire.id) || wire.id <= 0 || typeof wire.full_name !== 'string' || !wire.full_name || typeof wire.private !== 'boolean' || (wire.default_branch !== undefined && typeof wire.default_branch !== 'string')) return branch('invalidResponse', 'PROTOCOL');
-    return newQueryBranch('fetched', { id: wire.id, fullName: wire.full_name, private: wire.private, defaultBranch: wire.default_branch ?? '' });
+    try {
+      const record: unknown = JSON.parse(
+        new TextDecoder('utf-8', { fatal: true }).decode(body), readIntegerToken,
+      );
+      if (!isObject(record)) return branch('invalidResponse', 'PROTOCOL');
+      const fields = Object.fromEntries(Object.entries(record).map(([key, value]) => [key.toLowerCase(), value]));
+      const id = repositoryInteger(fields.id);
+      const fullName = repositoryText(fields.full_name);
+      const defaultBranch = repositoryText(fields.default_branch);
+      if (!id || !fullName || typeof fields.private !== 'boolean') return branch('invalidResponse', 'PROTOCOL');
+      return newQueryBranch('fetched', { id, fullName, private: fields.private, defaultBranch });
+    } catch {
+      return branch('invalidResponse', 'PROTOCOL');
+    }
   }
+}
+
+// Go integer fields reject decimal and exponent tokens even when their mathematical value is integral.
+function readIntegerToken(_key: string, value: unknown, context?: { source?: string }): unknown {
+  if (typeof value === 'number' && context?.source && !/^-?\d+$/.test(context.source)) return NaN;
+  return value;
+}
+
+function repositoryText(value: unknown): string {
+  if (value == null) return '';
+  if (typeof value !== 'string') throw new TypeError('invalid repository text');
+  return value;
+}
+
+function repositoryInteger(value: unknown): number {
+  if (value == null) return 0;
+  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0) {
+    throw new TypeError('invalid repository integer');
+  }
+  return value;
 }
 
 function isObject(value: unknown): value is Record<string, unknown> { return typeof value === 'object' && value !== null && !Array.isArray(value); }

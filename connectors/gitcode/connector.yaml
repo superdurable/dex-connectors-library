@@ -9,9 +9,11 @@ metadata:
   version: v0.1.0
 spec:
   languages:
-    python: {version: v0.1.0, operations: [getRepository], triggers: []}
+    java: {version: v0.1.0, operations: [getRepository], triggers: []}
+    rust: {version: v0.1.0, operations: [getRepository], triggers: []}
+    python: {version: v0.1.1, operations: [getRepository], triggers: []}
     typescript:
-      version: v0.1.0
+      version: v0.1.1
       package: "@superdurable/connector-gitcode"
       operations: [getRepository]
       triggers: []

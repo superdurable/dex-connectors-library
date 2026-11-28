@@ -22,7 +22,9 @@ ADAPTER = conformance.PythonOperationAdapter(
     gitee,
     lambda http_client, recorder: gitee.Client(
         gitee.Config(
-            max_response_bytes=16 if recorder.scenario["name"] == "getRepository-oversized" else 262144
+            max_response_bytes=16
+            if recorder.scenario["name"] in ("getRepository-oversized", "getRepository-missing-smallLimit")
+            else 262144
         ),
         conformance.static_credentials(CONNECTION, gitee.Credentials(sdk.SecretString("test-gitee-token")))
         if recorder.scenario["name"] != "getRepository-defect"

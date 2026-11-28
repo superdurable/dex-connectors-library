@@ -1,0 +1,47 @@
+{
+  "getRepository": {
+    "branches": [
+      {
+        "description": "GitCode returned the repository.",
+        "id": "fetched",
+        "optional": false
+      },
+      {
+        "description": "The repository does not exist or is inaccessible.",
+        "id": "notFound",
+        "optional": true
+      },
+      {
+        "description": "GitCode rejected the token or request.",
+        "id": "providerRejected",
+        "optional": true
+      },
+      {
+        "description": "GitCode returned malformed or oversized data.",
+        "id": "invalidResponse",
+        "optional": true
+      },
+      {
+        "description": "Local owner/repository path or connection credentials are invalid.",
+        "id": "defect",
+        "optional": true
+      }
+    ],
+    "operation": {
+      "connectorId": "gitcode",
+      "operationId": "getRepository"
+    },
+    "stepDefaults": {
+      "executeDurability": 2,
+      "executeMethodTimeout": 30000000000,
+      "executeRetry": {
+        "BackoffCoefficient": 2,
+        "InitialInterval": 1000000000,
+        "MaximumAttempts": 0,
+        "MaximumInterval": 300000000000,
+        "TotalDuration": 3600000000000
+      },
+      "heartbeatTimeout": 0
+    }
+  }
+}

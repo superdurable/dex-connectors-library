@@ -43,14 +43,13 @@ async def test_repository_lookup_retries_503(tmp_path: Path) -> None:
             200,
             json={
                 "id": 101,
-                "full_name": "open-source/demo",
+                "FULL_NAME": "open-source/demo",
                 "name": "demo",
                 "description": "Example repository",
                 "html_url": "https://gitee.com/open-source/demo",
                 "private": False,
                 "default_branch": "master",
                 "stargazers_count": 5,
-                "forks_count": 2,
             },
         )
 
@@ -82,7 +81,7 @@ async def test_repository_lookup_retries_503(tmp_path: Path) -> None:
                         False,
                         "master",
                         5,
-                        2,
+                        0,
                     )
                 )
                 assert len(requests) == 2

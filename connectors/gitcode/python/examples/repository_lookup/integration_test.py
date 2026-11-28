@@ -42,9 +42,9 @@ async def test_repository_lookup_retries_503(tmp_path: Path) -> None:
             200,
             json={
                 "id": 101,
-                "full_name": "open-source/demo",
+                "FULL_NAME": "open-source/demo",
                 "private": False,
-                "default_branch": "master",
+                "default_branch": None,
             },
         )
 
@@ -66,7 +66,7 @@ async def test_repository_lookup_retries_503(tmp_path: Path) -> None:
                 result = await asyncio.wait_for(client.wait_for_flow(flow_id, timedelta(seconds=25)), 30)
                 assert result.status == dex.FlowStatus.COMPLETED, result.error_message
                 output = result.single_output(GetRepositoryOutput)
-                assert output == GetRepositoryOutput(101, "open-source/demo", False, "master")
+                assert output == GetRepositoryOutput(101, "open-source/demo", False, "")
                 assert len(requests) == 2
                 assert "test-gitcode-token" not in repr(output)
         finally:

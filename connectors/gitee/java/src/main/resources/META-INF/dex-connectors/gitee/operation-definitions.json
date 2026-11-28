@@ -1,0 +1,47 @@
+{
+  "getRepository": {
+    "branches": [
+      {
+        "description": "Gitee returned repository metadata.",
+        "id": "found",
+        "optional": false
+      },
+      {
+        "description": "The repository was not found or is not visible to this token.",
+        "id": "notFound",
+        "optional": true
+      },
+      {
+        "description": "Gitee rejected the token or request.",
+        "id": "providerRejected",
+        "optional": true
+      },
+      {
+        "description": "Gitee returned malformed or oversized data.",
+        "id": "invalidResponse",
+        "optional": true
+      },
+      {
+        "description": "Input or connection credentials are invalid.",
+        "id": "defect",
+        "optional": true
+      }
+    ],
+    "operation": {
+      "connectorId": "gitee",
+      "operationId": "getRepository"
+    },
+    "stepDefaults": {
+      "executeDurability": 2,
+      "executeMethodTimeout": 30000000000,
+      "executeRetry": {
+        "BackoffCoefficient": 2,
+        "InitialInterval": 1000000000,
+        "MaximumAttempts": 0,
+        "MaximumInterval": 300000000000,
+        "TotalDuration": 3600000000000
+      },
+      "heartbeatTimeout": 0
+    }
+  }
+}

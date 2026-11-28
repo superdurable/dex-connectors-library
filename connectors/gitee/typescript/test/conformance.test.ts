@@ -14,7 +14,7 @@ it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario,
 async function invokeGitee(scenario: Scenario, recorder: ExchangeRecorder) {
   const accessToken = scenario.name.endsWith('defect') ? '' : 'test-gitee-token';
   const credentials: Array<[typeof connection, { accessToken: SecretString }]> = [[connection, { accessToken: new SecretString(accessToken) }]];
-  const client = new GiteeClient({ maxResponseBytes: scenario.name.endsWith('oversized') ? 8 : 262144 }, new StaticCredentialProvider(credentials), {
+  const client = new GiteeClient({ maxResponseBytes: ['getRepository-oversized', 'getRepository-missing-smallLimit'].includes(scenario.name) ? 16 : 262144 }, new StaticCredentialProvider(credentials), {
     send: request => answerRecordedRequest(recorder, request, before => new ProviderTransportError(before)),
   });
   const call: Call = {

@@ -170,20 +170,15 @@ class GetRepositoryOperation:
             try:
                 document = json.loads(body, parse_constant=lambda _: (_ for _ in ()).throw(ValueError()))
                 if not isinstance(document, dict):
-                    raise ValueError
-                if (
-                    type(document.get("id")) is not int
-                    or document["id"] <= 0
-                    or not isinstance(document.get("full_name"), str)
-                    or not document["full_name"]
-                    or type(document.get("private")) is not bool
-                ):
-                    raise ValueError
+                    raise ValueError("expected a repository object")
+                fields = {key.lower(): value for key, value in document.items()}
+                identifier = _repository_integer(fields.get("id"))
+                full_name = _repository_text(fields.get("full_name"))
+                is_private = fields.get("private")
+                if identifier == 0 or not full_name or not isinstance(is_private, bool):
+                    raise ValueError("invalid repository metadata")
                 output = GetRepositoryOutput(
-                    document["id"],
-                    document["full_name"],
-                    document["private"],
-                    document.get("default_branch") or "",
+                    identifier, full_name, is_private, _repository_text(fields.get("default_branch"))
                 )
             except (ValueError, TypeError, UnicodeDecodeError):
                 return _branch(
@@ -192,6 +187,22 @@ class GetRepositoryOperation:
             return QueryAttempt.branch_result(FETCHED, output, Receipt())
         finally:
             await response.aclose()
+
+
+def _repository_text(value: object) -> str:
+    if value is None:
+        return ""
+    if not isinstance(value, str):
+        raise ValueError("invalid repository text")
+    return value
+
+
+def _repository_integer(value: object) -> int:
+    if value is None:
+        return 0
+    if type(value) is not int or not 0 <= value <= (1 << 63) - 1:
+        raise ValueError("invalid repository integer")
+    return value
 
 
 Config.__doc__ = "GitCode HTTPS origin, request timeout in seconds, and response bound in bytes."
