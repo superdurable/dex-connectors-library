@@ -62,8 +62,8 @@ export class WapiClient {
     if (!Array.isArray(data.retdata) || data.retdata.length > 5000) return branch('invalidResponse', 'PROTOCOL');
     const brands: NonNullable<ListVehicleBrandsOutput['brands']> = [];
     for (const item of data.retdata) {
-      if (!isRecord(item) || typeof item.ppid !== 'string' || !item.ppid || item.ppid.length > 50 || typeof item.pp_name !== 'string' || !item.pp_name || item.pp_name.length > 256 || typeof item.pp_price !== 'number' || !Number.isSafeInteger(item.pp_price) || item.pp_price < 0) return branch('invalidResponse', 'PROTOCOL');
-      if (brands.length < 200) brands.push({ id: item.ppid, name: item.pp_name, priceFen: item.pp_price });
+      if (!isRecord(item) || typeof item.ppid !== 'string' || !item.ppid || Buffer.byteLength(item.ppid) > 50 || typeof item.pp_name !== 'string' || !item.pp_name || Buffer.byteLength(item.pp_name) > 256 || (item.pp_price != null && (typeof item.pp_price !== 'number' || !Number.isSafeInteger(item.pp_price) || item.pp_price < 0))) return branch('invalidResponse', 'PROTOCOL');
+      if (brands.length < 200) brands.push({ id: item.ppid, name: item.pp_name, priceFen: item.pp_price ?? 0 });
     }
     return newQueryBranch('found', { total: data.retdata.length, brands });
   }

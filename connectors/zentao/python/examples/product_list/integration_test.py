@@ -26,7 +26,7 @@ async def test_provider_query_retries_503(tmp_path: Path) -> None:
     scenarios = json.loads(
         (Path(__file__).parents[5] / "conformance/connectors/zentao/scenarios.json").read_text()
     )["scenarios"]
-    success = scenarios[0]
+    success = next(item for item in scenarios if item["name"] == "listProducts-nullCode")
     exchanges = success["exchanges"]
     requests: list[httpx.Request] = []
 
@@ -36,14 +36,14 @@ async def test_provider_query_retries_503(tmp_path: Path) -> None:
             return httpx.Response(503)
         exchange = exchanges[len(requests) - 2]
         assert request.method == exchange["method"]
-        assert request.url.path == exchange["path"]
+        assert request.url.path == "/zentao" + exchange["path"]
         return httpx.Response(exchange["status"], content=exchange["body"])
 
     reference = ConnectionRef("zentao", CONNECTION_NAME)
     credentials = Credentials(SecretString("secretToken"))
     async with httpx.AsyncClient(transport=httpx.MockTransport(answer)) as http_client:
         provider = Client(
-            Config(base_url="https://zentao.example"),
+            Config(base_url="https://zentao.example/zentao"),
             StaticCredentialProvider({reference: credentials}),
             http_client,
         )
@@ -62,6 +62,7 @@ async def test_provider_query_retries_503(tmp_path: Path) -> None:
                 assert result.status == dex.FlowStatus.COMPLETED, result.error_message
                 output = result.single_output(ProductList)
                 assert len(output.products) == len(success["expected"]["output"]["products"])
+                assert output.products[0].code == ""
                 assert len(requests) == len(exchanges) + 1
         finally:
             await worker.stop()

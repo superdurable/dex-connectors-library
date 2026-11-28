@@ -21,7 +21,7 @@ it('retries a provider 503 and persists the result through real Dex', async () =
   const server = createServer((_request, response) => {
     attempts++;
     if (attempts === 1) { response.writeHead(503).end(); return; }
-    response.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify({codeid:"10000",retdata:[{ppid:"15",pp_name:"Synthetic Brand",pp_price:3400}]}));
+    response.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify({codeid:"10000",retdata:[{ppid:"15",pp_name:"Synthetic Brand"}]}));
   });
   server.listen(0, '127.0.0.1');
   await once(server, 'listening');
@@ -47,7 +47,7 @@ it('retries a provider 503 and persists the result through real Dex', async () =
     await client.startFlow(flow, flowId, {});
     const result = await client.waitForFlow(flowId, 60_000);
     expect(result.status, result.errorMessage).toBe('completed');
-    expect(result.singleOutput()).toEqual({total:1,brands:[{id:"15",name:"Synthetic Brand",priceFen:3400}]});
+    expect(result.singleOutput()).toEqual({total:1,brands:[{id:"15",name:"Synthetic Brand",priceFen:0}]});
     expect(attempts).toBe(2);
   } finally {
     await client.close(); await worker.close(); cache.close();

@@ -13,3 +13,18 @@ The logo uses the official [ZenTao website footer asset](https://static.zentao.n
 The first Python package implements the read-only product list and replays the Go-recorded provider outcomes. See the [Python package](python/README.md) and its [runnable Flow](python/examples/product_list/README.md). Live ZenTao authorization and responses remain unverified.
 
 The [TypeScript package](typescript/) (v0.1.0) includes a [runnable Dex Flow](typescript/examples/basic/) and Go conformance replay.
+
+The connection URL is the installation root, including any subpath. The connector adds `/api.php/v1/products` and returns an empty string for an omitted or null product code.
+
+## Java and Rust
+
+The [Java Worker](java/examples/io/superdurable/dexconnectors/zentao/ProductDirectoryWorker.java) registers `JavaZenTaoProductDirectory`. Run `./gradlew productDirectoryWorker` from `java/` with `ZENTAO_TOKEN` and the installation root in `ZENTAO_BASE_URL` supplied through your credential manager. Hosted Java applications can use `ProductDirectory.fromProject` with their loaded connection.
+
+The [Rust Worker](rust/examples/list_products.rs) registers `RustZenTaoProductDirectory`. From `rust/`, run `cargo run --example list_products` with `DEX_CONNECTOR_CONFIG_FILE` pointing at the connections file exported by Dex Web. Both examples use the static `zentao` connection name and `DEX_FLOW_SERVICE_ADDRESS` to select the Dex server. Start the Flow with an empty JSON object.
+
+Generate and lint the Flow Definition Graphs from the connector directory.
+
+```sh
+dexcli visualize java/examples/io/superdurable/dexconnectors/zentao/ProductDirectoryWorker.java --language java --schema-version 2.0 --lint app --open=false --json --out /tmp/zentao-java
+dexcli visualize rust/examples/list_products.rs --language rust --schema-version 2.0 --lint app --open=false --json --out /tmp/zentao-rust
+```

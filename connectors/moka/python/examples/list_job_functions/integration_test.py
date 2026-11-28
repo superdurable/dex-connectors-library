@@ -30,7 +30,10 @@ async def test_list_job_functions_retries_503(tmp_path: Path) -> None:
     """Run the checked-in Flow across Dex retry and persistence boundaries."""
     address = os.environ["DEX_FLOW_SERVICE_ADDRESS"]
     requests: list[httpx.Request] = []
-    response_body = '{"jobs":[{"id":2873,"label":"Technology","jobCount":64,"email":"must not persist"}]}'
+    response_body = (
+        '{"jobs":[{"id":2873,"label":"Technology","jobCount":64,'
+        '"parentId":null,"email":"must not persist"}]}'
+    )
 
     def answer(request: httpx.Request) -> httpx.Response:
         requests.append(request)
@@ -56,7 +59,7 @@ async def test_list_job_functions_retries_503(tmp_path: Path) -> None:
                 result = await asyncio.wait_for(client.wait_for_flow(flow_id, timedelta(seconds=40)), 45)
                 assert result.status == dex.FlowStatus.COMPLETED, result.error_message
                 output = result.single_output(ListJobFunctionsOutput)
-                assert output != ListJobFunctionsOutput()
+                assert output.functions and output.functions[0].parent_id == 0
                 assert len(requests) == 2
         finally:
             await worker.stop()

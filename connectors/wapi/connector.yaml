@@ -9,8 +9,10 @@ metadata:
   version: v0.1.0
 spec:
   languages:
-    python: {version: v0.1.0, operations: [listVehicleBrands], triggers: []}
-    typescript: {version: v0.1.0, operations: [listVehicleBrands], triggers: []}
+    java: {version: v0.1.0, operations: [listVehicleBrands], triggers: []}
+    rust: {version: v0.1.0, operations: [listVehicleBrands], triggers: []}
+    python: {version: v0.1.1, operations: [listVehicleBrands], triggers: []}
+    typescript: {version: v0.1.1, operations: [listVehicleBrands], triggers: []}
   provider: wapi
   codegen:
     go:

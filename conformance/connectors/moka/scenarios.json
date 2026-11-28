@@ -294,6 +294,267 @@
       "input": {},
       "name": "listJobFunctions-transport",
       "operation": "listJobFunctions"
+    },
+    {
+      "callId": "20e5fd14-6ca7-5c94-a989-218fec583d79",
+      "exchanges": [
+        {
+          "body": "{\"jobs\":[{\"id\":2873,\"label\":\"Technology\",\"jobCount\":64,\"email\":\"must not persist\",\"parentId\":null}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api-platform/v1/jobs-groupedby-zhineng/orgid-test",
+          "query": {
+            "mode": [
+              "social"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2VjcmV0LWFwaS1rZXk6"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "functions": [
+            {
+              "id": 2873,
+              "jobCount": 64,
+              "label": "Technology",
+              "parentId": 0
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listJobFunctions-nullParent",
+      "operation": "listJobFunctions"
+    },
+    {
+      "callId": "15aa7b9e-1e17-540c-80ac-f71b5c6c6047",
+      "exchanges": [
+        {
+          "body": "{\"jobs\":[{\"id\":2873,\"label\":\"Technology\",\"jobCount\":64,\"email\":\"must not persist\",\"parentId\":876}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api-platform/v1/jobs-groupedby-zhineng/orgid-test",
+          "query": {
+            "mode": [
+              "social"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2VjcmV0LWFwaS1rZXk6"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "functions": [
+            {
+              "id": 2873,
+              "jobCount": 64,
+              "label": "Technology",
+              "parentId": 876
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listJobFunctions-child",
+      "operation": "listJobFunctions"
+    },
+    {
+      "callId": "8ef5732f-8f11-5335-96ea-df6a8e6ec36a",
+      "exchanges": [
+        {
+          "body": "{\"jobs\":[{\"id\":2873,\"label\":\"Technology\",\"jobCount\":64,\"email\":\"must not persist\",\"parentId\":-1}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api-platform/v1/jobs-groupedby-zhineng/orgid-test",
+          "query": {
+            "mode": [
+              "social"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2VjcmV0LWFwaS1rZXk6"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "functions": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listJobFunctions-invalidParent",
+      "operation": "listJobFunctions"
+    },
+    {
+      "callId": "77fc5a44-0ec6-5801-b492-121d5c9cafbb",
+      "exchanges": [
+        {
+          "body": "{\"jobs\":[{\"id\":2873,\"label\":\"Technology\",\"jobCount\":0,\"email\":\"must not persist\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api-platform/v1/jobs-groupedby-zhineng/orgid-test",
+          "query": {
+            "mode": [
+              "social"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2VjcmV0LWFwaS1rZXk6"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "functions": [
+            {
+              "id": 2873,
+              "jobCount": 0,
+              "label": "Technology",
+              "parentId": 0
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listJobFunctions-noJobs",
+      "operation": "listJobFunctions"
+    },
+    {
+      "callId": "5996c476-35e1-52af-a1e4-52826bbd55b7",
+      "exchanges": [
+        {
+          "body": "{\"jobs\":[{\"id\":2873,\"label\":\"Technology\",\"jobCount\":-1,\"email\":\"must not persist\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api-platform/v1/jobs-groupedby-zhineng/orgid-test",
+          "query": {
+            "mode": [
+              "social"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2VjcmV0LWFwaS1rZXk6"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "functions": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listJobFunctions-negativeJobs",
+      "operation": "listJobFunctions"
+    },
+    {
+      "callId": "735217ba-4b7c-5cfe-810b-5e21ca47dee0",
+      "exchanges": [
+        {
+          "body": "{\"jobs\":[{\"id\":0,\"label\":\"Technology\",\"jobCount\":64,\"email\":\"must not persist\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api-platform/v1/jobs-groupedby-zhineng/orgid-test",
+          "query": {
+            "mode": [
+              "social"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2VjcmV0LWFwaS1rZXk6"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "functions": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listJobFunctions-zeroID",
+      "operation": "listJobFunctions"
     }
   ],
   "schemaVersion": 1

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { SecretString, newQueryBranch, newQueryRetry, type Call, type CredentialProvider, type Failure, type Query, type QueryAttempt, type QueryDefinition } from '@superdurable/connectors-sdk';
-import { BodyTooLargeError, parseRetryAfter, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { BodyTooLargeError, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ListProductsDefinition } from './generated/definitions.js';
 import type { Config, Credentials, ListProductsInput, ProductList } from './generated/models.js';
 
@@ -22,12 +22,11 @@ export class ZenTaoClient {
   /** Validate immutable provider settings. */
   constructor(config: Config, private readonly credentials: CredentialProvider<Credentials>, options: ZenTaoClientOptions = {}) {
     if (!config || !credentials) throw new TypeError('ZenTao configuration and credentials are required');
-    this.baseUrl = (config.baseUrl ?? '').replace(/\/$/, '');
-    const url = new URL(this.baseUrl);
-    if ((url.protocol !== 'https:' && !(url.protocol === 'http:' && ['localhost','127.0.0.1','[::1]'].includes(url.hostname))) || url.search || url.hash || false) throw new TypeError('ZenTao base URL is invalid');
+    this.baseUrl = validateBaseURL(config.baseUrl ?? '');
+    if (this.baseUrl.endsWith('/api.php') || this.baseUrl.includes('/api.php/')) throw new TypeError('ZenTao requires the installation root without /api.php');
     this.timeoutMs = config.timeoutMs ?? 15000;
     this.maxResponseBytes = config.maxResponseBytes ?? 1048576;
-    if (!Number.isSafeInteger(this.timeoutMs) || this.timeoutMs <= 0 || !Number.isSafeInteger(this.maxResponseBytes) || this.maxResponseBytes <= 0 || this.maxResponseBytes > 16 << 20) throw new TypeError('ZenTao request limits are invalid');
+    if (!Number.isSafeInteger(this.timeoutMs) || this.timeoutMs <= 0 || !Number.isSafeInteger(this.maxResponseBytes) || this.maxResponseBytes <= 0) throw new TypeError('ZenTao request limits are invalid');
     this.send = options.send ?? sendProviderRequest;
     this.now = options.now ?? (() => new Date());
   }
@@ -42,17 +41,19 @@ export class ZenTaoClient {
     if (!isHeaderSafe(secret)) return branch('defect', 'AUTHENTICATION');
     const request: ProviderRequest = { url: this.baseUrl + '/api.php/v1/products', method: 'GET', headers: { Accept: 'application/json', Token: secret }, timeoutMs: this.timeoutMs, maxResponseBytes: this.maxResponseBytes, addressPolicy: this.baseUrl.startsWith('https:') ? 'publicHTTPS' : 'privateNetworkHTTP', signal: call.context.cancellationSignal };
     let response: ProviderResponse;
+    let oversized = false;
     try { response = await this.send(request); }
     catch (error) {
-      if (error instanceof BodyTooLargeError && error.status !== undefined) return branch('invalidResponse', 'RESPONSE_TOO_LARGE');
-      return retry('AVAILABILITY');
+      if (!(error instanceof BodyTooLargeError) || error.status === undefined) return retry('AVAILABILITY');
+      response = { status: error.status, headers: error.headers ?? {}, body: new Uint8Array() };
+      oversized = true;
     }
     const { status, body } = response;
     const retryHeader = Object.entries(response.headers).find(([key]) => key.toLowerCase() === 'retry-after')?.[1];
     const delay = parseRetryAfter(Array.isArray(retryHeader) ? retryHeader[0] ?? '' : retryHeader ?? '', this.now());
     if (status === 429) return retry('RATE_LIMIT', delay);
     if (status === 408 || status >= 500) return retry('AVAILABILITY', delay);
-    if (body.length > this.maxResponseBytes) return branch('invalidResponse', 'RESPONSE_TOO_LARGE');
+    if (oversized || body.length > this.maxResponseBytes) return branch('invalidResponse', 'RESPONSE_TOO_LARGE');
     if (status !== 200) return branch('providerRejected', status === 401 ? 'AUTHENTICATION' : status === 403 ? 'AUTHORIZATION' : status === 400 || status === 404 ? 'VALIDATION' : 'PROVIDER_REJECTION');
     let wire: unknown;
     try { wire = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(body)) as unknown; }
@@ -60,8 +61,8 @@ export class ZenTaoClient {
     if (!isRecord(wire) || !Number.isSafeInteger(wire.total) || (wire.total as number) < 0 || !Array.isArray(wire.products) || wire.products.length > 1000) return branch('invalidResponse', 'PROTOCOL');
     const products: ProductList['products'] = [];
     for (const item of wire.products) {
-      if (!isRecord(item) || !Number.isSafeInteger(item.id) || (item.id as number) <= 0 || typeof item.name !== 'string' || !item.name || typeof item.code !== 'string' || !['normal','branch','platform'].includes(String(item.type)) || !['open','private'].includes(String(item.acl))) return branch('invalidResponse', 'PROTOCOL');
-      products.push({ id: item.id as number, name: item.name, code: item.code, type: item.type as string, accessControl: item.acl as string });
+      if (!isRecord(item) || !Number.isSafeInteger(item.id) || (item.id as number) <= 0 || typeof item.name !== 'string' || !item.name || (item.code != null && typeof item.code !== 'string') || (typeof item.type !== 'string' || !['normal','branch','platform'].includes(item.type)) || (typeof item.acl !== 'string' || !['open','private'].includes(item.acl))) return branch('invalidResponse', 'PROTOCOL');
+      products.push({ id: item.id as number, name: item.name, code: item.code ?? '', type: item.type as string, accessControl: item.acl as string });
     }
     return newQueryBranch('listed', { products, total: wire.total as number });
   }

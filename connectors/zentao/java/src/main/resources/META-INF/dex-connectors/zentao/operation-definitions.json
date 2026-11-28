@@ -1,0 +1,42 @@
+{
+  "listProducts": {
+    "branches": [
+      {
+        "description": "ZenTao returned a product list, possibly empty.",
+        "id": "listed",
+        "optional": false
+      },
+      {
+        "description": "ZenTao rejected the token or permissions.",
+        "id": "providerRejected",
+        "optional": true
+      },
+      {
+        "description": "ZenTao returned malformed or oversized data.",
+        "id": "invalidResponse",
+        "optional": true
+      },
+      {
+        "description": "Local connection configuration or credentials are invalid.",
+        "id": "defect",
+        "optional": true
+      }
+    ],
+    "operation": {
+      "connectorId": "zentao",
+      "operationId": "listProducts"
+    },
+    "stepDefaults": {
+      "executeDurability": 2,
+      "executeMethodTimeout": 30000000000,
+      "executeRetry": {
+        "BackoffCoefficient": 2,
+        "InitialInterval": 1000000000,
+        "MaximumAttempts": 0,
+        "MaximumInterval": 300000000000,
+        "TotalDuration": 3600000000000
+      },
+      "heartbeatTimeout": 0
+    }
+  }
+}

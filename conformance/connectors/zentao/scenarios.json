@@ -301,6 +301,282 @@
       "input": {},
       "name": "listProducts-defect",
       "operation": "listProducts"
+    },
+    {
+      "callId": "4ea77c51-cf40-5bd2-8668-1f348208b351",
+      "exchanges": [
+        {
+          "body": "{\"total\":1,\"products\":[{\"id\":6,\"name\":\"Example\",\"code\":null,\"type\":\"normal\",\"acl\":\"private\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api.php/v1/products",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Token": [
+              "secretToken"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "products": [
+            {
+              "accessControl": "private",
+              "code": "",
+              "id": 6,
+              "name": "Example",
+              "type": "normal"
+            }
+          ],
+          "total": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listProducts-nullCode",
+      "operation": "listProducts"
+    },
+    {
+      "callId": "60845e16-b821-5a51-bf6a-83200ab8cd9c",
+      "exchanges": [
+        {
+          "body": "{\"total\":1,\"products\":[{\"id\":6,\"name\":\"Example\",\"code\":\"example\",\"type\":\"platform\",\"acl\":\"open\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api.php/v1/products",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Token": [
+              "secretToken"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "products": [
+            {
+              "accessControl": "open",
+              "code": "example",
+              "id": 6,
+              "name": "Example",
+              "type": "platform"
+            }
+          ],
+          "total": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listProducts-platform",
+      "operation": "listProducts"
+    },
+    {
+      "callId": "e2b25d75-3248-5adb-88d0-98f6005bddc3",
+      "exchanges": [
+        {
+          "body": "{\"total\":1,\"products\":[{\"id\":6,\"name\":\"Example\",\"code\":\"example\",\"type\":\"branch\",\"acl\":\"private\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api.php/v1/products",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Token": [
+              "secretToken"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "products": [
+            {
+              "accessControl": "private",
+              "code": "example",
+              "id": 6,
+              "name": "Example",
+              "type": "branch"
+            }
+          ],
+          "total": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listProducts-branchProduct",
+      "operation": "listProducts"
+    },
+    {
+      "callId": "c2f28ccb-061f-5ad3-9355-11b768420c90",
+      "exchanges": [
+        {
+          "body": "{\"total\":1,\"products\":[{\"id\":6,\"name\":\"Example\",\"code\":\"example\",\"type\":\"normal\",\"acl\":\"custom\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api.php/v1/products",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Token": [
+              "secretToken"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "products": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listProducts-invalidACL",
+      "operation": "listProducts"
+    },
+    {
+      "callId": "8460dd2d-1774-5344-a358-4b028e527fa7",
+      "exchanges": [
+        {
+          "body": "{\"total\":1,\"products\":[{\"id\":6,\"name\":\"Example\",\"code\":\"example\",\"type\":[\"normal\"],\"acl\":\"private\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api.php/v1/products",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Token": [
+              "secretToken"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "products": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listProducts-invalidType",
+      "operation": "listProducts"
+    },
+    {
+      "callId": "605368df-90e4-50e6-b2c1-e25588bf5f3e",
+      "exchanges": [
+        {
+          "body": "{\"total\":1,\"products\":[{\"id\":0,\"name\":\"Example\",\"code\":\"example\",\"type\":\"normal\",\"acl\":\"private\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api.php/v1/products",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Token": [
+              "secretToken"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "products": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listProducts-invalidID",
+      "operation": "listProducts"
+    },
+    {
+      "callId": "fe4bef9d-0612-54df-a127-22c78a28da38",
+      "exchanges": [
+        {
+          "body": "{\"total\":-1,\"products\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api.php/v1/products",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Token": [
+              "secretToken"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "products": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listProducts-negativeTotal",
+      "operation": "listProducts"
     }
   ],
   "schemaVersion": 1

@@ -16,7 +16,7 @@ it('retries provider 503 and persists the result through real Dex', async () => 
   const dexAddress = process.env.DEX_FLOW_SERVICE_ADDRESS;
   if (!dexAddress) throw new Error('set DEX_FLOW_SERVICE_ADDRESS to a running dexcli dev service');
   let attempts = 0;
-  const providerBody = new TextEncoder().encode("{\"jobs\":[{\"id\":2873,\"label\":\"Technology\",\"jobCount\":64,\"email\":\"must not persist\"}]}");
+  const providerBody = new TextEncoder().encode("{\"jobs\":[{\"id\":2873,\"label\":\"Technology\",\"jobCount\":64,\"parentId\":null,\"email\":\"must not persist\"}]}");
   const directory = await mkdtemp(join(tmpdir(), 'dex-moka-ts-integration-'));
   const cache = openBlobCache({ directory, maxBytes: 64 * 1024 * 1024 });
   const credentials: Credentials = { apiKey: new SecretString("secret-api-key") };

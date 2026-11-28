@@ -1,0 +1,42 @@
+{
+  "listVehicleBrands": {
+    "branches": [
+      {
+        "description": "Wapi returned the vehicle brand list.",
+        "id": "found",
+        "optional": false
+      },
+      {
+        "description": "Wapi rejected the application or request.",
+        "id": "providerRejected",
+        "optional": true
+      },
+      {
+        "description": "Wapi returned malformed or oversized brand data.",
+        "id": "invalidResponse",
+        "optional": true
+      },
+      {
+        "description": "The local app credentials are invalid.",
+        "id": "defect",
+        "optional": true
+      }
+    ],
+    "operation": {
+      "connectorId": "wapi",
+      "operationId": "listVehicleBrands"
+    },
+    "stepDefaults": {
+      "executeDurability": 2,
+      "executeMethodTimeout": 30000000000,
+      "executeRetry": {
+        "BackoffCoefficient": 2,
+        "InitialInterval": 1000000000,
+        "MaximumAttempts": 0,
+        "MaximumInterval": 300000000000,
+        "TotalDuration": 3600000000000
+      },
+      "heartbeatTimeout": 0
+    }
+  }
+}

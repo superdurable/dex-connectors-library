@@ -125,23 +125,25 @@ class ListJobFunctionsOperation:
             return None
         values = []
         for item in jobs:
+            if not isinstance(item, dict):
+                return None
+            parent_id = 0 if item.get("parentId") is None else item["parentId"]
             if (
-                not isinstance(item, dict)
-                or type(item.get("id")) is not int
+                type(item.get("id")) is not int
                 or item["id"] <= 0
                 or not isinstance(item.get("label"), str)
                 or not item["label"]
                 or type(item.get("jobCount")) is not int
                 or item["jobCount"] < 0
-                or type(item.get("parentId", 0)) is not int
-                or item.get("parentId", 0) < 0
+                or type(parent_id) is not int
+                or parent_id < 0
             ):
                 return None
             values.append(
                 JobFunction(
                     id=item["id"],
                     label=item["label"],
-                    parent_id=item.get("parentId", 0),
+                    parent_id=parent_id,
                     job_count=item["jobCount"],
                 )
             )

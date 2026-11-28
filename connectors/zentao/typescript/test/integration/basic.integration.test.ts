@@ -18,7 +18,7 @@ it('retries one 503 and persists the provider result through real Dex', async ()
   const dexAddress = process.env.DEX_FLOW_SERVICE_ADDRESS;
   if (!dexAddress) throw new Error('set DEX_FLOW_SERVICE_ADDRESS to a running dexcli dev service');
   let requests = 0;
-  const bodies = [{ total: 1, products: [{ id: 6, name: "Example", code: "example", type: "normal", acl: "private" }] }];
+  const bodies = [{ total: 1, products: [{ id: 6, name: "Example", code: null, type: "normal", acl: "private" }] }];
   const server = createServer((request, response) => {
     requests++;
     if (requests === 1) { response.writeHead(503).end(); return; }
@@ -50,7 +50,7 @@ it('retries one 503 and persists the provider result through real Dex', async ()
     await client.startFlow(flow, flowId, {});
     const result = await client.waitForFlow(flowId, 60_000);
     expect(result.status, result.errorMessage).toBe('completed');
-    expect(result.singleOutput()).toEqual({ products: [{ id: 6, name: "Example", code: "example", type: "normal", accessControl: "private" }], total: 1 });
+    expect(result.singleOutput()).toEqual({ products: [{ id: 6, name: "Example", code: "", type: "normal", accessControl: "private" }], total: 1 });
     expect(requests).toBe(2);
   } finally {
     await client.close(); await worker.close(); cache.close();

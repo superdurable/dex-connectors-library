@@ -70,7 +70,7 @@ export class ListJobFunctionsOperation implements Query<ListJobFunctionsInput, L
     for (const item of jobs) {
       if (!item || typeof item !== 'object' || Array.isArray(item)) return branch('invalidResponse', 'PROTOCOL');
       const record = item as Record<string, unknown>;
-      if (!Number.isSafeInteger(record.id) || Number(record.id) <= 0 || typeof record.label !== 'string' || !record.label || !Number.isSafeInteger(record.jobCount) || Number(record.jobCount) < 0 || (record.parentId !== undefined && (!Number.isSafeInteger(record.parentId) || Number(record.parentId) < 0))) return branch('invalidResponse', 'PROTOCOL');
+      if (!Number.isSafeInteger(record.id) || Number(record.id) <= 0 || typeof record.label !== 'string' || !record.label || !Number.isSafeInteger(record.jobCount) || Number(record.jobCount) < 0 || (record.parentId != null && (!Number.isSafeInteger(record.parentId) || Number(record.parentId) < 0))) return branch('invalidResponse', 'PROTOCOL');
       functions.push({ id: Number(record.id), label: record.label, parentId: Number(record.parentId ?? 0), jobCount: Number(record.jobCount) });
     }
     return newQueryBranch('found', { functions });

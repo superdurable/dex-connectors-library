@@ -10,9 +10,11 @@ metadata:
 spec:
   provider: moka
   languages:
-    python: {version: v0.1.0, operations: [listJobFunctions], triggers: []}
+    java: {version: v0.1.0, operations: [listJobFunctions], triggers: []}
+    rust: {version: v0.1.0, operations: [listJobFunctions], triggers: []}
+    python: {version: v0.1.1, operations: [listJobFunctions], triggers: []}
     typescript:
-      version: v0.1.0
+      version: v0.1.1
       package: "@superdurable/connector-moka"
       operations: [listJobFunctions]
       triggers: []

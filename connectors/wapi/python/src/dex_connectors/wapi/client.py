@@ -167,13 +167,15 @@ class ListVehicleBrandsOperation:
                 if not isinstance(item, dict):
                     return self._branch("invalidResponse", FailureKind.PROTOCOL)
                 identifier, name, price = item.get("ppid"), item.get("pp_name"), item.get("pp_price")
+                if price is None:
+                    price = 0
                 if (
                     not isinstance(identifier, str)
                     or not identifier
-                    or len(identifier) > 50
+                    or len(identifier.encode("utf-8", "replace")) > 50
                     or not isinstance(name, str)
                     or not name
-                    or len(name) > 256
+                    or len(name.encode("utf-8", "replace")) > 256
                     or not isinstance(price, int)
                     or isinstance(price, bool)
                     or price < 0

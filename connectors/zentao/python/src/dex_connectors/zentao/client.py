@@ -2,11 +2,9 @@
 # SPDX-License-Identifier: MIT
 """ZenTao REST v1 product catalog Query with Go-compatible outcomes."""
 
-import ipaddress
 import json
 from datetime import UTC, datetime
 from typing import Any
-from urllib.parse import urlsplit
 
 import httpx
 from dex_connectors.sdk import (
@@ -25,6 +23,7 @@ from dex_connectors.sdk.providerhttp import (
     parse_retry_after,
     read_bounded_body,
     send_traced,
+    validate_base_url,
 )
 
 from ._generated.config import Config as Config
@@ -43,26 +42,6 @@ def _retry(kind: FailureKind, message: str, delay: float = 0) -> QueryAttempt[Pr
     return QueryAttempt.retry(Failure(kind, "zentao", "listProducts", message), delay)
 
 
-def _validated_base_url(value: str) -> str:
-    if not value or any(ord(character) <= 0x20 or ord(character) > 0x7E for character in value):
-        raise ValueError("ZenTao base URL must be printable ASCII")
-    try:
-        parsed = urlsplit(value)
-        host = parsed.hostname
-    except ValueError as error:
-        raise ValueError("ZenTao base URL is invalid") from error
-    if not host or parsed.username or parsed.password or parsed.query or parsed.fragment:
-        raise ValueError("ZenTao base URL is invalid")
-    if parsed.scheme != "https":
-        try:
-            is_loopback = host == "localhost" or ipaddress.ip_address(host).is_loopback
-        except ValueError:
-            is_loopback = host == "localhost"
-        if parsed.scheme != "http" or not is_loopback:
-            raise ValueError("ZenTao base URL must use HTTPS")
-    return value.rstrip("/")
-
-
 class Client:
     """Own ZenTao settings and resolve credentials for each product list."""
 
@@ -76,7 +55,9 @@ class Client:
             raise ValueError("configuration and credentials are required")
         if config.timeout_seconds <= 0 or config.max_response_bytes <= 0:
             raise ValueError("ZenTao timeout and maxResponseBytes must be positive")
-        self.base_url = _validated_base_url(config.base_url)
+        self.base_url = validate_base_url(config.base_url)
+        if self.base_url.endswith("/api.php") or "/api.php/" in self.base_url:
+            raise ValueError("ZenTao requires the installation root without /api.php")
         self.credentials = credentials
         self.max_response_bytes = config.max_response_bytes
         self.http_client = http_client or new_provider_http_client(config.timeout_seconds)
@@ -195,7 +176,7 @@ def _decode_products(body: bytes) -> QueryAttempt[ProductList]:
             return _branch(
                 "invalidResponse", FailureKind.PROTOCOL, "ZenTao returned an invalid product-list response"
             )
-        code = entry.get("code", "")
+        code = "" if entry.get("code") is None else entry["code"]
         if not isinstance(code, str):
             return _branch(
                 "invalidResponse", FailureKind.PROTOCOL, "ZenTao returned an invalid product-list response"

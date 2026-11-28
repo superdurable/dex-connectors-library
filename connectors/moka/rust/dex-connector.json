@@ -1,0 +1,52 @@
+{
+  "connectorId": "moka",
+  "releaseTag": "connectors/moka/go/v0.1.0",
+  "package": {
+    "ecosystem": "cargo",
+    "name": "dex-connector-moka",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_list_job_functions_step",
+      "kind": "query",
+      "operationId": "listJobFunctions",
+      "inputType": "ListJobFunctionsInput",
+      "description": "List recruitment job functions and counts for one organization and mode.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListJobFunctionsInput has no user-supplied query parameters.",
+        "properties": {},
+        "type": "object"
+      }
+    }
+  ]
+}

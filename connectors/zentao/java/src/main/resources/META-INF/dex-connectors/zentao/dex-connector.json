@@ -1,0 +1,52 @@
+{
+  "connectorId": "zentao",
+  "releaseTag": "connectors/zentao/go/v0.1.0",
+  "package": {
+    "ecosystem": "maven",
+    "name": "io.superdurable:dex-connector-zentao",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newListProductsStep",
+      "kind": "query",
+      "operationId": "listProducts",
+      "inputType": "ListProductsInput",
+      "description": "List product IDs, names, codes, types, and access-control flags from REST v1, omitting user records.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListProductsInput has no selector; ZenTao REST v1 lists visible products.",
+        "properties": {},
+        "type": "object"
+      }
+    }
+  ]
+}

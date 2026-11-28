@@ -1,0 +1,52 @@
+{
+  "connectorId": "wapi",
+  "releaseTag": "connectors/wapi/go/v0.1.0",
+  "package": {
+    "ecosystem": "cargo",
+    "name": "dex-connector-wapi",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_list_vehicle_brands_step",
+      "kind": "query",
+      "operationId": "listVehicleBrands",
+      "inputType": "ListVehicleBrandsInput",
+      "description": "Read vehicle brand names and maintenance-record query prices in fen.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListVehicleBrandsInput requests the public brand-price list for an authorized app.",
+        "properties": {},
+        "type": "object"
+      }
+    }
+  ]
+}

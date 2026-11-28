@@ -41,7 +41,7 @@ async def test_list_vehicle_brands_retries_503(tmp_path: Path) -> None:
             return httpx.Response(503)
         return httpx.Response(
             200,
-            json={"codeid": "10000", "retdata": [{"ppid": "15", "pp_name": "宝马", "pp_price": 3400}]},
+            json={"codeid": "10000", "retdata": [{"ppid": "15", "pp_name": "宝马", "pp_price": None}]},
         )
 
     reference = ConnectionRef("wapi", CONNECTION_NAME)
@@ -70,7 +70,7 @@ async def test_list_vehicle_brands_retries_503(tmp_path: Path) -> None:
                 assert output.total == 1
                 assert len(output.brands) == 1
                 assert output.brands[0].id == "15"
-                assert output.brands[0].price_fen == 3400
+                assert output.brands[0].price_fen == 0
                 assert len(requests) == 2
         finally:
             await worker.stop()

@@ -440,6 +440,296 @@
       "input": {},
       "name": "listVehicleBrands-bad-price",
       "operation": "listVehicleBrands"
+    },
+    {
+      "callId": "6f696642-170d-5673-a800-0c968b67a6f4",
+      "exchanges": [
+        {
+          "body": "{\"codeid\":\"10000\",\"retdata\":[{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":null}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/pyi/170/324",
+          "query": {
+            "appid": [
+              "123"
+            ],
+            "format": [
+              "json"
+            ],
+            "sign": [
+              "cdf4f0a9fb8d9e9000b8f4e014b9e41b"
+            ],
+            "time": [
+              "1795089600"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "brands": [
+            {
+              "id": "15",
+              "name": "宝马",
+              "priceFen": 0
+            }
+          ],
+          "total": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-19T12:00:00Z",
+      "input": {},
+      "name": "listVehicleBrands-nullPrice",
+      "operation": "listVehicleBrands"
+    },
+    {
+      "callId": "9abe3e3e-46a4-5ad5-a6c6-4f8786f36271",
+      "exchanges": [
+        {
+          "body": "{\"codeid\":\"10000\",\"retdata\":[{\"ppid\":\"車車車車車車車車車車車車車車車車車\",\"pp_name\":\"宝马\",\"pp_price\":3400}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/pyi/170/324",
+          "query": {
+            "appid": [
+              "123"
+            ],
+            "format": [
+              "json"
+            ],
+            "sign": [
+              "cdf4f0a9fb8d9e9000b8f4e014b9e41b"
+            ],
+            "time": [
+              "1795089600"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "brands": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-19T12:00:00Z",
+      "input": {},
+      "name": "listVehicleBrands-longID",
+      "operation": "listVehicleBrands"
+    },
+    {
+      "callId": "e53e2613-7820-53c0-a52e-0b5124573c6c",
+      "exchanges": [
+        {
+          "body": "{\"codeid\":\"10000\",\"retdata\":[{\"ppid\":\"15\",\"pp_name\":\"車車車車車車車車車車車車車車車車車車車車車車車車車車車車車車車車車車車車車車車車車車車車車車車車車車車車車車車車車車車車車車車車車車車車車車車車車車車車車車車車車車車車車車\",\"pp_price\":3400}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/pyi/170/324",
+          "query": {
+            "appid": [
+              "123"
+            ],
+            "format": [
+              "json"
+            ],
+            "sign": [
+              "cdf4f0a9fb8d9e9000b8f4e014b9e41b"
+            ],
+            "time": [
+              "1795089600"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "brands": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-19T12:00:00Z",
+      "input": {},
+      "name": "listVehicleBrands-longName",
+      "operation": "listVehicleBrands"
+    },
+    {
+      "callId": "4cb29222-f770-51cc-aa6d-9de01928f798",
+      "exchanges": [
+        {
+          "body": "{\"codeid\":\"10000\",\"retdata\":[{\"ppid\":\"15\",\"pp_name\":\"\",\"pp_price\":3400}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/pyi/170/324",
+          "query": {
+            "appid": [
+              "123"
+            ],
+            "format": [
+              "json"
+            ],
+            "sign": [
+              "cdf4f0a9fb8d9e9000b8f4e014b9e41b"
+            ],
+            "time": [
+              "1795089600"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "brands": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-19T12:00:00Z",
+      "input": {},
+      "name": "listVehicleBrands-missingName",
+      "operation": "listVehicleBrands"
+    },
+    {
+      "callId": "1cbe2cb5-c742-573f-b7f1-1a33da196bc2",
+      "exchanges": [
+        {
+          "body": "{\"codeid\":\"10000\",\"retdata\":[{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400},{\"ppid\":\"\",\"pp_name\":\"missing id\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/pyi/170/324",
+          "query": {
+            "appid": [
+              "123"
+            ],
+            "format": [
+              "json"
+            ],
+            "sign": [
+              "cdf4f0a9fb8d9e9000b8f4e014b9e41b"
+            ],
+            "time": [
+              "1795089600"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "brands": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-19T12:00:00Z",
+      "input": {},
+      "name": "listVehicleBrands-lateInvalid",
+      "operation": "listVehicleBrands"
+    },
+    {
+      "callId": "24f49e01-da1d-5660-844a-bbe156154f38",
+      "exchanges": [
+        {
+          "body": "{\"codeid\":\"10014\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/pyi/170/324",
+          "query": {
+            "appid": [
+              "123"
+            ],
+            "format": [
+              "json"
+            ],
+            "sign": [
+              "cdf4f0a9fb8d9e9000b8f4e014b9e41b"
+            ],
+            "time": [
+              "1795089600"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-19T12:00:00Z",
+      "input": {},
+      "name": "listVehicleBrands-quotaRecovery",
+      "operation": "listVehicleBrands"
     }
   ],
   "schemaVersion": 1

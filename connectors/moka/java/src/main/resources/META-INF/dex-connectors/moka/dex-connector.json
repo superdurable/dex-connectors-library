@@ -1,0 +1,52 @@
+{
+  "connectorId": "moka",
+  "releaseTag": "connectors/moka/go/v0.1.0",
+  "package": {
+    "ecosystem": "maven",
+    "name": "io.superdurable:dex-connector-moka",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newListJobFunctionsStep",
+      "kind": "query",
+      "operationId": "listJobFunctions",
+      "inputType": "ListJobFunctionsInput",
+      "description": "List recruitment job functions and counts for one organization and mode.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListJobFunctionsInput has no user-supplied query parameters.",
+        "properties": {},
+        "type": "object"
+      }
+    }
+  ]
+}
