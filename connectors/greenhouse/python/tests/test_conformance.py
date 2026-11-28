@@ -17,7 +17,6 @@ import connector_scenarios as conformance  # type: ignore[import-not-found]  # n
 SCENARIOS = [
     scenario
     for scenario in conformance.load_scenarios(ROOT / "conformance/connectors/greenhouse/scenarios.json")
-    if scenario["operation"] == "getCandidate"
 ]
 CONNECTION = sdk.ConnectionRef("greenhouse", "greenhouse")
 TEST_CREDENTIALS = greenhouse.Credentials(
@@ -28,7 +27,7 @@ ADAPTER = conformance.PythonOperationAdapter(
     CONNECTION,
     greenhouse,
     lambda http_client, _recorder: greenhouse.Client(
-        greenhouse.Config(base_url="http://127.0.0.1:8848/v3"),
+        greenhouse.Config(base_url="http://127.0.0.1:12345/v3"),
         conformance.static_credentials(CONNECTION, TEST_CREDENTIALS),
         http_client,
     ),

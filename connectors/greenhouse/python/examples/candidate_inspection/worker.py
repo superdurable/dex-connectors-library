@@ -13,6 +13,7 @@ from dex_connectors.sdk.projectconfig import load_from_environment
 from dex_connectors.greenhouse import new_project_connection
 
 from .flow import CONNECTION_NAME, CandidateInspectionFlow
+from .list_flow import CandidateListFlow
 
 
 async def run_worker() -> None:
@@ -22,7 +23,9 @@ async def run_worker() -> None:
     cache = None
     try:
         connection = new_project_connection(project, CONNECTION_NAME)
-        registry = dex.Registry([CandidateInspectionFlow(connection)], allow_async_handlers=True)
+        registry = dex.Registry(
+            [CandidateInspectionFlow(connection), CandidateListFlow(connection)], allow_async_handlers=True
+        )
         cache_directory = os.environ.get(
             "DEX_BLOB_CACHE_DIR",
             str(Path(tempfile.gettempdir()) / "dex-greenhouse-candidate-inspection-blobs"),

@@ -7,12 +7,13 @@ import { Registry, Worker, openBlobCache } from '@superdurable/dex';
 import { loadFromEnvironment } from '@superdurable/connectors-sdk/projectconfig';
 import { newProjectConnection } from '../../src/index.js';
 import { ConnectionName, CandidateInspectionFlow } from './flow.js';
+import { CandidateListFlow } from './list-flow.js';
 
 /** Serve the candidate inspection Flow with its static project connection. */
 export async function runGreenhouseWorker(signal: AbortSignal): Promise<void> {
   const project = await loadFromEnvironment();
   const connection = newProjectConnection(project, ConnectionName);
-  const registry = new Registry([new CandidateInspectionFlow(connection)]);
+  const registry = new Registry([new CandidateInspectionFlow(connection), new CandidateListFlow(connection)]);
   const blobCache = openBlobCache({ directory: process.env.DEX_BLOB_CACHE_DIR || join(tmpdir(), 'dex-greenhouse-ts-blobs'), maxBytes: 1 << 30 });
   const worker = new Worker(registry, blobCache, { serverAddress: process.env.DEX_FLOW_SERVICE_ADDRESS || '127.0.0.1:8801' });
   try {

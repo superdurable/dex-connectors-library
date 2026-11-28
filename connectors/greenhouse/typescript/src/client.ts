@@ -4,9 +4,9 @@
 import { ReauthorizationRequiredError, SecretString, newQueryBranch, newQueryRetry, resolveCredential, resolveCredentialAfterRejection, type Call, type Failure, type Query, type QueryAttempt, type QueryDefinition } from '@superdurable/connectors-sdk';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
 import { BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
-import { GetCandidateDefinition } from './generated/definitions.js';
+import { GetCandidateDefinition, ListCandidatesDefinition } from './generated/definitions.js';
 import { Authorization, CredentialFields } from './generated/refresh.js';
-import type { CandidateProfile, Config, CredentialSource, Credentials, GetCandidateInput } from './generated/models.js';
+import type { CandidateProfile, Config, CredentialSource, Credentials, GetCandidateInput, ListCandidatesInput, CandidateProfilesPage } from './generated/models.js';
 
 const defaultBaseURL = 'https://harvest.greenhouse.io/v3';
 const emptyProfile = (): CandidateProfile => ({ id: 0, firstName: '', lastName: '' });
@@ -20,12 +20,14 @@ interface Exchange {
   status: number;
   body: Uint8Array;
   retryAfterMs: number;
+  link?: string;
   error?: 'credential' | 'request' | 'tooLarge';
 }
 
 /** Authenticated Greenhouse Harvest v3 client for selected candidate fields. */
 export class GreenhouseClient {
-  private readonly baseURL: string;
+  /** Validated Harvest v3 endpoint used to verify pagination links. */
+  readonly baseURL: string;
   private readonly timeoutMs: number;
   private readonly maxResponseBytes: number;
   private readonly send: (request: ProviderRequest) => Promise<ProviderResponse>;
@@ -45,8 +47,16 @@ export class GreenhouseClient {
 
   /** Bind the getCandidate Query. */ getCandidate(): GetCandidateOperation { return new GetCandidateOperation(this); }
 
+  /** Bind candidate pagination to this connection. */
+  listCandidates(): ListCandidatesOperation { return new ListCandidatesOperation(this); }
+
   /** Resolve the renewable token and perform one bounded candidate lookup. */
   async get(call: Call, candidateID: number): Promise<Exchange> {
+    return this.getCandidates(call, new URLSearchParams({ fields: 'id,first_name,last_name', ids: String(candidateID), per_page: '1' }));
+  }
+
+  /** Send a bounded Harvest candidates request, refreshing a rejected token once. */
+  async getCandidates(call: Call, query: URLSearchParams): Promise<Exchange> {
     let token: string;
     try {
       const credentials = await resolveCredential(this.credentials, call, this.refreshDriver, call.context.cancellationSignal);
@@ -54,7 +64,7 @@ export class GreenhouseClient {
     } catch (error) { return emptyExchange(error instanceof ReauthorizationRequiredError ? 'credential' : 'request'); }
     if (!isHeaderSafeCredential(token)) return emptyExchange('credential');
     for (let attempt = 0; attempt < 2; attempt++) {
-      const exchange = await this.sendCandidateRequest(call, token, candidateID);
+      const exchange = await this.sendCandidateRequest(call, token, query);
       if (exchange.status !== 401 || attempt > 0 || !('resolveAfterRejection' in this.credentials)) return exchange;
       try {
         const replacement = await resolveCredentialAfterRejection(this.credentials, call, this.refreshDriver, call.context.cancellationSignal);
@@ -65,8 +75,7 @@ export class GreenhouseClient {
     return emptyExchange('request');
   }
 
-  private async sendCandidateRequest(call: Call, token: string, candidateID: number): Promise<Exchange> {
-    const query = new URLSearchParams({ fields: 'id,first_name,last_name', ids: String(candidateID), per_page: '1' });
+  private async sendCandidateRequest(call: Call, token: string, query: URLSearchParams): Promise<Exchange> {
     const request: ProviderRequest = {
       url: `${this.baseURL}/candidates?${query}`, method: 'GET',
       headers: { Accept: 'application/json', Authorization: `Bearer ${token}` },
@@ -86,7 +95,7 @@ export class GreenhouseClient {
     const retryAfterMs = parseRetryAfter(header(response.headers, 'retry-after'));
     if (isTooLarge || response.body.length > this.maxResponseBytes)
       return { status: response.status, body: new Uint8Array(), retryAfterMs, error: 'tooLarge' };
-    return { status: response.status, body: response.body, retryAfterMs };
+    return { status: response.status, body: response.body, retryAfterMs, link: header(response.headers, 'link') };
   }
 }
 
@@ -137,4 +146,68 @@ function decodeCandidate(body: Uint8Array, candidateID: number): CandidateProfil
   const last = typeof lastName === 'string' ? lastName : '';
   if (!first.trim() && !last.trim()) return undefined;
   return { id: candidateID, firstName: first, lastName: last };
+}
+
+/** Read IDs and names from one page of authorized Harvest candidates. */
+export class ListCandidatesOperation implements Query<ListCandidatesInput, CandidateProfilesPage> {
+  /** Bind the authenticated Harvest client. */
+  constructor(private readonly client: GreenhouseClient) {}
+
+  /** Return the manifest-generated pagination contract. */
+  definition(): QueryDefinition { return ListCandidatesDefinition; }
+
+  /** Request a first page or resume from the cursor of a preceding page. */
+  async invoke(call: Call, input: ListCandidatesInput): Promise<QueryAttempt<CandidateProfilesPage>> {
+    const branch = (name: string, kind: Failure['kind'], message: string) =>
+      newQueryBranch<CandidateProfilesPage>(name, {candidates: []}, {}, {kind, provider: 'greenhouse', operation: 'listCandidates', message});
+    const retry = (kind: Failure['kind'], message: string, delay = 0) =>
+      newQueryRetry<CandidateProfilesPage>({kind, provider: 'greenhouse', operation: 'listCandidates', message}, delay);
+    if (!input || typeof input !== 'object' || (input.cursor != null && typeof input.cursor !== 'string'))
+      return branch('defect', 'VALIDATION', 'page size or cursor is invalid');
+    const pageSize = input.pageSize ?? 0;
+    const cursor = input.cursor ?? '';
+    if (!Number.isSafeInteger(pageSize) || pageSize < 0 || pageSize > 500 ||
+        (cursor !== '' && (pageSize !== 0 || Buffer.byteLength(cursor) > 4096 || cursor.trim() === '')))
+      return branch('defect', 'VALIDATION', 'page size or cursor is invalid');
+    const query = cursor ? new URLSearchParams({cursor}) : new URLSearchParams({fields: 'id,first_name,last_name'});
+    if (pageSize) query.set('per_page', String(pageSize));
+    const exchange = await this.client.getCandidates(call, query);
+    if (exchange.error === 'credential') return branch('defect', 'AUTHENTICATION', 'Greenhouse access token is unavailable or invalid');
+    if (exchange.error === 'request') return retry('TRANSPORT', 'Greenhouse request failed');
+    if (exchange.status === 429) return retry('RATE_LIMIT', 'Greenhouse rate limited the request', exchange.retryAfterMs);
+    if (exchange.status === 408 || exchange.status >= 500) return retry('AVAILABILITY', 'Greenhouse is temporarily unavailable', exchange.retryAfterMs);
+    if (exchange.status !== 200) return branch('providerRejected', 'PROVIDER_REJECTION', `Greenhouse rejected HTTP ${exchange.status}`);
+    if (exchange.error === 'tooLarge') return branch('invalidResponse', 'RESPONSE_TOO_LARGE', 'Greenhouse response exceeded the configured limit');
+    const page = decodeCandidatePage(exchange, this.client.baseURL);
+    if (!page) return branch('invalidResponse', 'PROTOCOL', 'Greenhouse returned an invalid candidate page');
+    return newQueryBranch('listed', page);
+  }
+}
+
+function decodeCandidatePage(exchange: Exchange, baseURL: string): CandidateProfilesPage | undefined {
+  let rows: unknown;
+  try { rows = JSON.parse(new TextDecoder('utf-8', {fatal: true}).decode(exchange.body)); }
+  catch { return undefined; }
+  if (!Array.isArray(rows) || rows.length > 500) return undefined;
+  const candidates: CandidateProfile[] = [];
+  for (const row of rows) {
+    if (!isObject(row) || typeof row.id !== 'number' || !Number.isSafeInteger(row.id) || row.id <= 0) return undefined;
+    const firstName = row.first_name ?? '';
+    const lastName = row.last_name ?? '';
+    if (typeof firstName !== 'string' || typeof lastName !== 'string') return undefined;
+    candidates.push({id: row.id, firstName, lastName});
+  }
+  for (const entry of (exchange.link ?? '').split(',')) {
+    const parts = entry.trim().split(';');
+    if (parts.length !== 2 || parts[1]?.trim() !== 'rel="next"') continue;
+    const target = parts[0]?.trim() ?? '';
+    if (!target.startsWith('<') || !target.endsWith('>')) return undefined;
+    let url: URL;
+    try { url = new URL(target.slice(1, -1)); } catch { return undefined; }
+    const cursor = url.searchParams.get('cursor');
+    if (url.origin + url.pathname !== baseURL + '/candidates' || !cursor ||
+        [...url.searchParams.keys()].some(key => key !== 'cursor')) return undefined;
+    return {candidates, nextCursor: cursor};
+  }
+  return {candidates};
 }

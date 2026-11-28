@@ -8,8 +8,8 @@ from dex_connectors.sdk import ConnectionRef, Failure, FailureKind
 from dex_connectors.sdk.connectormock import Case, Query
 
 from ..connection import Connection, new_connection_with_operations
-from ..models import CandidateProfile, GetCandidateInput
-from .definitions import CONNECTOR_ID, DEFECT, FOUND, GET_CANDIDATE_DEFINITION, INVALID_RESPONSE, NOT_FOUND, PROVIDER_REJECTED
+from ..models import CandidateProfile, CandidateProfilesPage, GetCandidateInput, ListCandidatesInput
+from .definitions import CONNECTOR_ID, DEFECT, FOUND, GET_CANDIDATE_DEFINITION, INVALID_RESPONSE, LISTED, LIST_CANDIDATES_DEFINITION, NOT_FOUND, PROVIDER_REJECTED
 
 def get_candidate_found(value: CandidateProfile, failure: Failure | None = None) -> Case[CandidateProfile]:
     return Case.branch_result(FOUND, value, failure)
@@ -46,14 +46,47 @@ def get_candidate_found_default() -> Case[CandidateProfile]:
 
 setattr(get_candidate_found_default, '__module__', "dex_connectors.greenhouse.greenhousemock")
 
+def list_candidates_listed(value: CandidateProfilesPage, failure: Failure | None = None) -> Case[CandidateProfilesPage]:
+    return Case.branch_result(LISTED, value, failure)
+
+setattr(list_candidates_listed, '__module__', "dex_connectors.greenhouse.greenhousemock")
+
+def list_candidates_provider_rejected(value: CandidateProfilesPage, failure: Failure | None = None) -> Case[CandidateProfilesPage]:
+    return Case.branch_result(PROVIDER_REJECTED, value, failure)
+
+setattr(list_candidates_provider_rejected, '__module__', "dex_connectors.greenhouse.greenhousemock")
+
+def list_candidates_invalid_response(value: CandidateProfilesPage, failure: Failure | None = None) -> Case[CandidateProfilesPage]:
+    return Case.branch_result(INVALID_RESPONSE, value, failure)
+
+setattr(list_candidates_invalid_response, '__module__', "dex_connectors.greenhouse.greenhousemock")
+
+def list_candidates_defect(value: CandidateProfilesPage, failure: Failure | None = None) -> Case[CandidateProfilesPage]:
+    return Case.branch_result(DEFECT, value, failure)
+
+setattr(list_candidates_defect, '__module__', "dex_connectors.greenhouse.greenhousemock")
+
+def list_candidates_retry(failure: Failure, after_seconds: float = 0) -> Case[CandidateProfilesPage]:
+    return Case.retry(failure, after_seconds)
+
+setattr(list_candidates_retry, '__module__', "dex_connectors.greenhouse.greenhousemock")
+
+def list_candidates_listed_default() -> Case[CandidateProfilesPage]:
+    return Case.branch_result(LISTED, CandidateProfilesPage(candidates=(CandidateProfile(id=53883394, first_name='Sample', last_name='Candidate'),), next_cursor=''))
+
+setattr(list_candidates_listed_default, '__module__', "dex_connectors.greenhouse.greenhousemock")
+
 
 class Mock:
 
     def __init__(self, connection_name: str = "greenhouse") -> None:
         self.get_candidate_script: Query[GetCandidateInput, CandidateProfile] = Query(GET_CANDIDATE_DEFINITION)
         self.get_candidate_script.default(get_candidate_found_default())
+        self.list_candidates_script: Query[ListCandidatesInput, CandidateProfilesPage] = Query(LIST_CANDIDATES_DEFINITION)
+        self.list_candidates_script.default(list_candidates_listed_default())
         self._connection = new_connection_with_operations(
             get_candidate=self.get_candidate_script,
+            list_candidates=self.list_candidates_script,
             reference=ConnectionRef(CONNECTOR_ID, connection_name),
         )
 
@@ -71,4 +104,10 @@ __all__ = [
     "get_candidate_defect",
     "get_candidate_retry",
     "get_candidate_found_default",
+    "list_candidates_listed",
+    "list_candidates_provider_rejected",
+    "list_candidates_invalid_response",
+    "list_candidates_defect",
+    "list_candidates_retry",
+    "list_candidates_listed_default",
 ]

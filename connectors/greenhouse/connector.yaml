@@ -11,14 +11,14 @@ spec:
   provider: greenhouse
   languages:
     python:
-      version: v0.1.0
+      version: v0.2.0
       package: dex-connector-greenhouse
-      operations: [getCandidate]
+      operations: [getCandidate, listCandidates]
       triggers: []
     typescript:
-      version: v0.1.0
+      version: v0.2.0
       package: '@superdurable/connector-greenhouse'
-      operations: [getCandidate]
+      operations: [getCandidate, listCandidates]
       triggers: []
   codegen:
     go:

@@ -4,9 +4,59 @@
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-greenhouse",
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   "factories": [
+    {
+      "name": "new_list_candidates_step",
+      "kind": "query",
+      "operationId": "listCandidates",
+      "inputType": "ListCandidatesInput",
+      "description": "Read one page of candidate IDs and names, with an opaque cursor for the next page.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListCandidatesInput selects one page of candidate profiles.",
+        "properties": {
+          "cursor": {
+            "description": "Cursor is the opaque value returned by a preceding page; leave blank for the first page.",
+            "type": "string"
+          },
+          "pageSize": {
+            "description": "PageSize is 1 to 500; zero selects Greenhouse's default page size.",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
+    },
     {
       "name": "new_get_candidate_step",
       "kind": "query",

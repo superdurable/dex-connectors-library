@@ -91,10 +91,12 @@ export function decodeSharedCredentials(value: unknown): Credentials {
 /** Host-owned source of private connector credentials. */
 export type CredentialSource = RefreshingCredentialProvider<Credentials>;
 
-/** GetCandidateInput selects a non-secret Greenhouse candidate ID. */
-export interface GetCandidateInput {
-  /** CandidateID is the positive integer ID from a Greenhouse candidate page or API list. */
-  "candidateId": number;
+/** ListCandidatesInput selects one page of candidate profiles. */
+export interface ListCandidatesInput {
+  /** PageSize is 1 to 500; zero selects Greenhouse's default page size. */
+  "pageSize"?: number | undefined;
+  /** Cursor is the opaque value returned by a preceding page; leave blank for the first page. */
+  "cursor"?: string | undefined;
 }
 /** CandidateProfile excludes email addresses, phone numbers, resumes, and notes. */
 export interface CandidateProfile {
@@ -105,11 +107,24 @@ export interface CandidateProfile {
   /** LastName is the candidate's last name, or empty when Greenhouse stores null. */
   "lastName": string;
 }
+/** CandidateProfilesPage contains selected profile fields and an optional next cursor. */
+export interface CandidateProfilesPage {
+  /** Candidates contains only IDs and names, without contact information. */
+  "candidates": Array<CandidateProfile> | null;
+  /** NextCursor is blank when the last page has been read. */
+  "nextCursor"?: string | undefined;
+}
+/** GetCandidateInput selects a non-secret Greenhouse candidate ID. */
+export interface GetCandidateInput {
+  /** CandidateID is the positive integer ID from a Greenhouse candidate page or API list. */
+  "candidateId": number;
+}
 
-/** Runtime validator for GetCandidateInput. */
-export const GetCandidateInputSchema = z.strictObject({
-  "candidateId": z.number().int(),
-}) satisfies z.ZodType<GetCandidateInput>;
+/** Runtime validator for ListCandidatesInput. */
+export const ListCandidatesInputSchema = z.strictObject({
+  "pageSize": z.number().int().optional(),
+  "cursor": z.string().optional(),
+}) satisfies z.ZodType<ListCandidatesInput>;
 
 /** Runtime validator for CandidateProfile. */
 export const CandidateProfileSchema = z.strictObject({
@@ -117,3 +132,14 @@ export const CandidateProfileSchema = z.strictObject({
   "firstName": z.string(),
   "lastName": z.string(),
 }) satisfies z.ZodType<CandidateProfile>;
+
+/** Runtime validator for CandidateProfilesPage. */
+export const CandidateProfilesPageSchema = z.strictObject({
+  "candidates": z.array(CandidateProfileSchema).nullable(),
+  "nextCursor": z.string().optional(),
+}) satisfies z.ZodType<CandidateProfilesPage>;
+
+/** Runtime validator for GetCandidateInput. */
+export const GetCandidateInputSchema = z.strictObject({
+  "candidateId": z.number().int(),
+}) satisfies z.ZodType<GetCandidateInput>;

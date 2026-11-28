@@ -1,0 +1,42 @@
+{
+  "listStoryIDs": {
+    "branches": [
+      {
+        "description": "The feed snapshot was read.",
+        "id": "listed",
+        "optional": false
+      },
+      {
+        "description": "Hacker News rejected the request.",
+        "id": "providerRejected",
+        "optional": true
+      },
+      {
+        "description": "Hacker News returned malformed or oversized data.",
+        "id": "invalidResponse",
+        "optional": true
+      },
+      {
+        "description": "Local input or connection configuration is invalid.",
+        "id": "defect",
+        "optional": true
+      }
+    ],
+    "operation": {
+      "connectorId": "hacker-news-daily",
+      "operationId": "listStoryIDs"
+    },
+    "stepDefaults": {
+      "executeDurability": 2,
+      "executeMethodTimeout": 30000000000,
+      "executeRetry": {
+        "BackoffCoefficient": 2,
+        "InitialInterval": 1000000000,
+        "MaximumAttempts": 0,
+        "MaximumInterval": 30000000000,
+        "TotalDuration": 3900000000000
+      },
+      "heartbeatTimeout": 0
+    }
+  }
+}

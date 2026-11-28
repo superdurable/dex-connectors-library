@@ -9,6 +9,35 @@ export const ConnectorID = "greenhouse";
 /** Provider identity for named connections. */
 export const ProviderID = "greenhouse";
 
+/** Branch IDs for listCandidates. */
+export const ListCandidatesBranch = {
+  Listed: "listed",
+  ProviderRejected: "providerRejected",
+  InvalidResponse: "invalidResponse",
+  Defect: "defect",
+} as const;
+/** Greenhouse returned a candidate page. */
+export const ListCandidatesBranchListed = ListCandidatesBranch.Listed;
+/** Greenhouse conclusively rejected the list request. */
+export const ListCandidatesBranchProviderRejected = ListCandidatesBranch.ProviderRejected;
+/** Greenhouse returned malformed or oversized page data. */
+export const ListCandidatesBranchInvalidResponse = ListCandidatesBranch.InvalidResponse;
+/** Page settings or connection credentials are invalid. */
+export const ListCandidatesBranchDefect = ListCandidatesBranch.Defect;
+/** Manifest definition for listCandidates. */
+export const ListCandidatesDefinition: QueryDefinition = {
+  operation: { connectorId: ConnectorID, operationId: "listCandidates" },
+  branches: [
+    { id: "listed", description: "Greenhouse returned a candidate page." },
+    { id: "providerRejected", description: "Greenhouse conclusively rejected the list request.", optional: true },
+    { id: "invalidResponse", description: "Greenhouse returned malformed or oversized page data.", optional: true },
+    { id: "defect", description: "Page settings or connection credentials are invalid.", optional: true },
+  ],
+  stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
+};
+/** Manifest metadata for listCandidates. */
+export const ListCandidatesMetadata = { kind: "query", idempotency: "none", authorization: "required" } as const;
+
 /** Branch IDs for getCandidate. */
 export const GetCandidateBranch = {
   Found: "found",

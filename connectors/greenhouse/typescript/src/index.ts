@@ -6,4 +6,4 @@ export * from './generated/definitions.js';
 export * from './generated/steps.js';
 export { Connection, newConnection, newConnectionWithOperations } from './generated/connection.js';
 export { newProjectConnection } from './project.js';
-export { GreenhouseClient, GetCandidateOperation, type GreenhouseClientOptions } from './client.js';
+export { GreenhouseClient, GetCandidateOperation, ListCandidatesOperation, type GreenhouseClientOptions } from './client.js';

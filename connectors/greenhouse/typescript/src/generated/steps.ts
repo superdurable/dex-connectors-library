@@ -5,7 +5,35 @@
 import { goToBranch, newQueryStep, type Query, type QueryResult, type QueryStep, type QueryStepConfig } from '@superdurable/connectors-sdk';
 import type { StepTarget } from '@superdurable/dex';
 import type { Connection } from './connection.js';
-import type { GetCandidateInput, CandidateProfile } from './models.js';
+import type { ListCandidatesInput, CandidateProfilesPage, GetCandidateInput, CandidateProfile } from './models.js';
+
+/** Configuration for the listCandidates connector Step. */
+export interface ListCandidatesStepConfig<StepInput, OperationInput = ListCandidatesInput, OperationOutput = CandidateProfilesPage> extends Omit<QueryStepConfig<StepInput, OperationInput, OperationOutput>, 'operation' | 'connection' | 'branches'> {
+  /** Named connection supplying this operation. */
+  connection: Connection<{ listCandidates(): Query<OperationInput, OperationOutput> }>;
+  /** Name matching the bound connection. */
+  connectionName: string;
+  /** Greenhouse returned a candidate page. */
+  listed: StepTarget<QueryResult<OperationOutput>>;
+  /** Greenhouse conclusively rejected the list request. */
+  providerRejected?: StepTarget<QueryResult<OperationOutput>>;
+  /** Greenhouse returned malformed or oversized page data. */
+  invalidResponse?: StepTarget<QueryResult<OperationOutput>>;
+  /** Page settings or connection credentials are invalid. */
+  defect?: StepTarget<QueryResult<OperationOutput>>;
+}
+
+/** Build the listCandidates Step from a named connection. */
+export function newListCandidatesStep<StepInput, OperationInput = ListCandidatesInput, OperationOutput = CandidateProfilesPage>(configuration: ListCandidatesStepConfig<StepInput, OperationInput, OperationOutput>): QueryStep<StepInput, OperationInput, OperationOutput> {
+  const { connection, connectionName, listed, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
+  if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
+  return newQueryStep({ ...stepConfiguration, operation: connection.operations.listCandidates(), connection: connection.reference, branches: [
+    goToBranch("listed", listed),
+    ...(providerRejected ? [goToBranch("providerRejected", providerRejected)] : []),
+    ...(invalidResponse ? [goToBranch("invalidResponse", invalidResponse)] : []),
+    ...(defect ? [goToBranch("defect", defect)] : []),
+  ] });
+}
 
 /** Configuration for the getCandidate connector Step. */
 export interface GetCandidateStepConfig<StepInput, OperationInput = GetCandidateInput, OperationOutput = CandidateProfile> extends Omit<QueryStepConfig<StepInput, OperationInput, OperationOutput>, 'operation' | 'connection' | 'branches'> {

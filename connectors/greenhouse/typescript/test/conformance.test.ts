@@ -5,10 +5,10 @@ import { it } from 'vitest';
 import { SecretString, StaticCredentialProvider, type Call } from '@superdurable/connectors-sdk';
 import { ProviderTransportError } from '@superdurable/connectors-sdk/providerhttp';
 import { GreenhouseClient } from '../src/client.js';
-import { GetCandidateInputSchema } from '../src/generated/models.js';
+import { GetCandidateInputSchema, ListCandidatesInputSchema } from '../src/generated/models.js';
 import { answerRecordedRequest, loadScenarios, replay, type ExchangeRecorder, type Scenario } from '../../../../conformance/runners/typescript/connector_scenarios.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/greenhouse/scenarios.json', import.meta.url)).filter(scenario => scenario.operation === 'getCandidate');
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/greenhouse/scenarios.json', import.meta.url));
 const connection = { provider: 'greenhouse', name: 'greenhouse' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeGreenhouse, '/v3'));
 
@@ -22,6 +22,7 @@ async function invokeGreenhouse(scenario: Scenario, recorder: ExchangeRecorder) 
     id: scenario.callId, connection, operation: { connectorId: 'greenhouse', operationId: scenario.operation },
     reportProgress() {}, writeText() {}, hasProgressStream: () => false, hasTextStream: () => false,
   };
+  if (scenario.operation === 'listCandidates') return client.listCandidates().invoke(call, ListCandidatesInputSchema.parse(scenario.input));
   if (scenario.operation === 'getCandidate') return client.getCandidate().invoke(call, GetCandidateInputSchema.parse(scenario.input));
   throw new Error(`unknown Greenhouse operation ${scenario.operation}`);
 }

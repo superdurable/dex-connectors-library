@@ -14,6 +14,9 @@ import { GreenhouseClient } from '../../src/client.js';
 import { newConnection, type CandidateProfile, type Credentials } from '../../src/index.js';
 import { ConnectionName, CandidateInspectionFlow } from '../../examples/candidate-inspection/flow.js';
 
+import { CandidateListFlow } from '../../examples/candidate-inspection/list-flow.js';
+import type { CandidateProfilesPage } from '../../src/generated/models.js';
+
 it('retries a provider 503 and persists the candidate through real Dex', async () => {
   const dexAddress = process.env.DEX_FLOW_SERVICE_ADDRESS;
   if (!dexAddress) throw new Error('set DEX_FLOW_SERVICE_ADDRESS to a running dexcli dev service');
@@ -23,6 +26,16 @@ it('retries a provider 503 and persists the candidate through real Dex', async (
     if (request.headers.authorization !== 'Bearer sample-access-token') { response.writeHead(401).end(); return; }
     if (!request.url?.startsWith('/v3/candidates?')) { response.writeHead(404).end(); return; }
     const query = new URL(request.url, 'http://localhost').searchParams;
+    if (!query.has('ids')) {
+      if (query.has('cursor')) {
+        expect(Object.fromEntries(query)).toEqual({cursor: 'a+/='});
+        response.writeHead(200).end('[]');
+        return;
+      }
+      expect(Object.fromEntries(query)).toEqual({fields: 'id,first_name,last_name', per_page: '2'});
+      response.writeHead(200, {Link: `<http://${request.headers.host}/v3/candidates?cursor=a%2B%2F%3D>; rel="next"`}).end('[{"id":7}]');
+      return;
+    }
     expect(Object.fromEntries(query)).toEqual({ fields: 'id,first_name,last_name', ids: String(candidateId), per_page: '1' });
     attempts++;
     if (attempts === 1) { response.writeHead(503).end(); return; }
@@ -38,7 +51,8 @@ it('retries a provider 503 and persists the candidate through real Dex', async (
   const provider = new GreenhouseClient({ baseUrl: `http://127.0.0.1:${address.port}/v3` }, new StaticCredentialProvider([[{ provider: 'greenhouse', name: ConnectionName }, credentials]]));
   const connection = newConnection(provider, { provider: 'greenhouse', name: ConnectionName });
   const flow = new CandidateInspectionFlow(connection);
-  const registry = new Registry([flow]);
+  const pageFlow = new CandidateListFlow(connection);
+  const registry = new Registry([flow, pageFlow]);
   const worker = new Worker(registry, cache, { serverAddress: dexAddress });
   const client = new Client(registry, cache, { serverAddress: dexAddress });
   try {
@@ -51,6 +65,17 @@ it('retries a provider 503 and persists the candidate through real Dex', async (
     expect(result.singleOutput<CandidateProfile>().id).toBe(candidateId);
     expect(result.singleOutput<CandidateProfile>()).toEqual({ id: candidateId, firstName: 'Sample', lastName: 'Candidate' });
     expect(attempts).toBe(2);
+    const pageId = `greenhouse-list-${randomUUID()}`;
+    await client.startFlow(pageFlow, pageId, {pageSize: 2});
+    const first = await client.waitForFlow(pageId, 30_000);
+    expect(first.status, first.errorMessage).toBe('completed');
+    const page = first.singleOutput<CandidateProfilesPage>();
+    expect(page).toEqual({candidates: [{id: 7, firstName: '', lastName: ''}], nextCursor: 'a+/='});
+    const lastId = `greenhouse-last-${randomUUID()}`;
+    await client.startFlow(pageFlow, lastId, {cursor: page.nextCursor});
+    const last = await client.waitForFlow(lastId, 30_000);
+    expect(last.status, last.errorMessage).toBe('completed');
+    expect(last.singleOutput<CandidateProfilesPage>()).toEqual({candidates: []});
   } finally {
     await client.close(); await worker.close(); cache.close();
     await rm(directory, { recursive: true, force: true });

@@ -4,14 +4,13 @@
 
 import { branchCase, retryCase, type Case, newQuery, type MockQuery } from '@superdurable/connectors-sdk/connectormock';
 import type { Failure } from '@superdurable/connectors-sdk';
-import type { GetCandidateInput, CandidateProfile } from './models.js';
-import { GetCandidateInputSchema, CandidateProfileSchema } from './models.js';
-import { ProviderID, GetCandidateDefinition } from './definitions.js';
+import type { ListCandidatesInput, CandidateProfile, CandidateProfilesPage, GetCandidateInput } from './models.js';
+import { ListCandidatesInputSchema, CandidateProfileSchema, CandidateProfilesPageSchema, GetCandidateInputSchema } from './models.js';
+import { ProviderID, ListCandidatesDefinition, GetCandidateDefinition } from './definitions.js';
 import { newConnectionWithOperations, type Connection, type Operations } from './connection.js';
 
-/** Go zero value for GetCandidateInput in scripted cases. */
-export const emptyGetCandidateInput: GetCandidateInput = GetCandidateInputSchema.parse({
-  "candidateId": 0,
+/** Go zero value for ListCandidatesInput in scripted cases. */
+export const emptyListCandidatesInput: ListCandidatesInput = ListCandidatesInputSchema.parse({
 });
 /** Go zero value for CandidateProfile in scripted cases. */
 export const emptyCandidateProfile: CandidateProfile = CandidateProfileSchema.parse({
@@ -19,6 +18,32 @@ export const emptyCandidateProfile: CandidateProfile = CandidateProfileSchema.pa
   "firstName": '',
   "lastName": '',
 });
+/** Go zero value for CandidateProfilesPage in scripted cases. */
+export const emptyCandidateProfilesPage: CandidateProfilesPage = CandidateProfilesPageSchema.parse({
+  "candidates": [],
+});
+/** Go zero value for GetCandidateInput in scripted cases. */
+export const emptyGetCandidateInput: GetCandidateInput = GetCandidateInputSchema.parse({
+  "candidateId": 0,
+});
+
+/** Script the listed branch. */
+export function listCandidatesListed(value: CandidateProfilesPage, failure?: Failure): Case<CandidateProfilesPage> { return branchCase("listed", value, failure); }
+/** Script the providerRejected branch. */
+export function listCandidatesProviderRejected(value: CandidateProfilesPage, failure?: Failure): Case<CandidateProfilesPage> { return branchCase("providerRejected", value, failure); }
+/** Script the invalidResponse branch. */
+export function listCandidatesInvalidResponse(value: CandidateProfilesPage, failure?: Failure): Case<CandidateProfilesPage> { return branchCase("invalidResponse", value, failure); }
+/** Script the defect branch. */
+export function listCandidatesDefect(value: CandidateProfilesPage, failure?: Failure): Case<CandidateProfilesPage> { return branchCase("defect", value, failure); }
+/** Script a safe retry of listCandidates. */
+export function listCandidatesRetry(failure: Failure, retryAfterMs = 0): Case<CandidateProfilesPage> { return retryCase(failure, retryAfterMs); }
+/** Manifest scenario listedDefault for listCandidates. */
+export function listCandidatesListedDefault(): Case<CandidateProfilesPage> {
+  const value = CandidateProfilesPageSchema.parse({"candidates":[{"firstName":"Sample","id":53883394,"lastName":"Candidate"}],"nextCursor":""});
+  return branchCase("listed", value);
+}
+/** Default listCandidates scenario. */
+export function listCandidatesDefault(): Case<CandidateProfilesPage> { return listCandidatesListedDefault(); }
 
 /** Script the found branch. */
 export function getCandidateFound(value: CandidateProfile, failure?: Failure): Case<CandidateProfile> { return branchCase("found", value, failure); }
@@ -42,17 +67,21 @@ export function getCandidateDefault(): Case<CandidateProfile> { return getCandid
 
 /** Scripted operations and manifest defaults for this connector. */
 export class GeneratedMock implements Operations {
+  readonly #listCandidates: MockQuery<ListCandidatesInput, CandidateProfilesPage>;
   readonly #getCandidate: MockQuery<GetCandidateInput, CandidateProfile>;
   readonly #connection: Connection;
 
   constructor(connectionName: string) {
+    this.#listCandidates = newQuery<ListCandidatesInput, CandidateProfilesPage>(ListCandidatesDefinition).default(listCandidatesDefault());
     this.#getCandidate = newQuery<GetCandidateInput, CandidateProfile>(GetCandidateDefinition).default(getCandidateDefault());
     this.#connection = newConnectionWithOperations(this, { provider: ProviderID, name: connectionName });
   }
 
   connection(): Connection { return this.#connection; }
+  listCandidates(): MockQuery<ListCandidatesInput, CandidateProfilesPage> { return this.#listCandidates; }
   getCandidate(): MockQuery<GetCandidateInput, CandidateProfile> { return this.#getCandidate; }
   assertNoFailures(): void {
+    this.#listCandidates.assertNoFailures();
     this.#getCandidate.assertNoFailures();
   }
 }

@@ -15,14 +15,17 @@ from dex_connectors.sdk import ConnectionRef, SecretString, StaticCredentialProv
 
 from dex_connectors.greenhouse import (
     CandidateProfile,
+    CandidateProfilesPage,
     Client,
     Config,
     Credentials,
     GetCandidateInput,
+    ListCandidatesInput,
     new_connection,
 )
 
 from .flow import CONNECTION_NAME, CandidateInspectionFlow
+from .list_flow import CandidateListFlow
 
 
 @pytest.mark.asyncio
@@ -34,6 +37,16 @@ async def test_candidate_inspection_retries_503(tmp_path: Path) -> None:
     def answer(request: httpx.Request) -> httpx.Response:
         requests.append(request)
         assert request.url.path == "/v3/candidates"
+        if "ids" not in request.url.params:
+            if "cursor" in request.url.params:
+                assert dict(request.url.params) == {"cursor": "a+/="}
+                return httpx.Response(200, json=[])
+            assert dict(request.url.params) == {"fields": "id,first_name,last_name", "per_page": "2"}
+            return httpx.Response(
+                200,
+                json=[{"id": 7, "first_name": None}],
+                headers={"Link": '<http://127.0.0.1:12345/v3/candidates?cursor=a%2B%2F%3D>; rel="next"'},
+            )
         assert dict(request.url.params) == {
             "fields": "id,first_name,last_name",
             "ids": "53883394",
@@ -59,7 +72,8 @@ async def test_candidate_inspection_retries_503(tmp_path: Path) -> None:
         )
         connection = new_connection(provider, reference)
         flow = CandidateInspectionFlow(connection)
-        registry = dex.Registry([flow], allow_async_handlers=True)
+        page_flow = CandidateListFlow(connection)
+        registry = dex.Registry([flow, page_flow], allow_async_handlers=True)
         cache = dex.open_blob_cache(dex.BlobCacheConfig(str(tmp_path / "blobs"), 1 << 24))
         worker = dex.AsyncWorker(registry, cache, dex.WorkerOptions(server_address=address))
         worker_task = asyncio.create_task(worker.start())
@@ -74,6 +88,18 @@ async def test_candidate_inspection_retries_503(tmp_path: Path) -> None:
                     53883394, "Sample", "Candidate"
                 )
                 assert len(requests) == 2
+                page_id = f"greenhouse-list-{uuid4().hex}"
+                await client.start_flow(page_flow, page_id, ListCandidatesInput(page_size=2))
+                first = await asyncio.wait_for(client.wait_for_flow(page_id, timedelta(seconds=25)), 30)
+                assert first.status == dex.FlowStatus.COMPLETED, first.error_message
+                page = first.single_output(CandidateProfilesPage)
+                assert page.next_cursor == "a+/="
+                assert page.candidates[0].id == 7
+                last_id = f"greenhouse-last-{uuid4().hex}"
+                await client.start_flow(page_flow, last_id, ListCandidatesInput(cursor=page.next_cursor))
+                last = await asyncio.wait_for(client.wait_for_flow(last_id, timedelta(seconds=25)), 30)
+                assert last.status == dex.FlowStatus.COMPLETED, last.error_message
+                assert last.single_output(CandidateProfilesPage) == CandidateProfilesPage()
         finally:
             await worker.stop()
             await worker_task

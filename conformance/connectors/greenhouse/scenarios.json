@@ -704,6 +704,107 @@
       "input": {},
       "name": "listCandidates-transportFailure",
       "operation": "listCandidates"
+    },
+    {
+      "callId": "dd3603b7-528a-5c9f-a54d-dee7225c01ab",
+      "exchanges": [
+        {
+          "body": "[{\"id\":7,\"first_name\":null}]",
+          "headers": {
+            "Link": "\u003chttp://127.0.0.1:12345/v3/candidates?cursor=a%2B%2F%3D\u003e; rel=\"next\""
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/candidates",
+          "query": {
+            "fields": [
+              "id,first_name,last_name"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "candidates": [
+            {
+              "firstName": "",
+              "id": 7,
+              "lastName": ""
+            }
+          ],
+          "nextCursor": "a+/="
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2
+      },
+      "name": "listCandidates-next-cursor",
+      "operation": "listCandidates"
+    },
+    {
+      "callId": "4d02ec95-b3bb-555d-98df-8ef7738d46b4",
+      "exchanges": [
+        {
+          "body": "[{\"id\":7,\"first_name\":null}]",
+          "headers": {
+            "Link": "\u003chttps://unrelated.example/v3/candidates?cursor=a%2B%2F%3D\u003e; rel=\"next\""
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/candidates",
+          "query": {
+            "fields": [
+              "id,first_name,last_name"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "candidates": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2
+      },
+      "name": "listCandidates-unexpected-next-url",
+      "operation": "listCandidates"
     }
   ],
   "schemaVersion": 1

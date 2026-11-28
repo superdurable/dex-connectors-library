@@ -175,6 +175,28 @@ An entry that cites a sampled comment also includes that comment's permalink.
 The application builds these links from API records. The model returns IDs and
 text, and cannot supply citation URLs.
 
+## Read a public feed with Java or Rust
+
+The [Java Worker](java/examples/io/superdurable/dexconnectors/hackernews/StoryFeedWorker.java)
+and [Rust Worker](rust/examples/story_feed.rs) each run a Flow that reads two IDs
+from the top Hacker News feed using `listStoryIDs`. This is the first operation
+available in these language packages. The public feed requires no credentials.
+
+Start Dex with `dexcli dev -open=false`. From the connector's `java/` or
+`rust/` directory, run the corresponding command. Set
+`DEX_FLOW_SERVICE_ADDRESS` when Dex uses an address other than `127.0.0.1:8801`.
+
+```sh
+# java/
+./gradlew storyFeedWorker --args=--read
+
+# rust/
+cargo run --example story_feed -- --read
+```
+
+Each command prints the story IDs, whether the feed contains more IDs, and
+the UTC observation time. Omit `--read` to leave the Worker serving Flows.
+
 ## Verification
 
 Run checks from the repository root:

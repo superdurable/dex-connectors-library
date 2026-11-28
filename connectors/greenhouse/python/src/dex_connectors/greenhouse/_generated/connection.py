@@ -11,30 +11,37 @@ from dex_connectors.sdk.projectconfig.provider import RefreshingCredentialProvid
 from dex_connectors.sdk.oauthtoken import ManifestCredentialRefreshDriver
 
 from ..client import Client, Config, Credentials
-from .definitions import CONNECTOR_ID, GET_CANDIDATE_DEFINITION
+from .definitions import CONNECTOR_ID, GET_CANDIDATE_DEFINITION, LIST_CANDIDATES_DEFINITION
 from .refresh import AUTHORIZATION, CREDENTIAL_FIELDS
-from ..models import CandidateProfile, GetCandidateInput
+from ..models import CandidateProfile, CandidateProfilesPage, GetCandidateInput, ListCandidatesInput
 
 class Connection:
 
-    __slots__ = ('_get_candidate', '_client', 'reference')
+    __slots__ = ('_get_candidate', '_list_candidates', '_client', 'reference')
 
     def __init__(self,
         reference: ConnectionRef,
         get_candidate: Query[GetCandidateInput, CandidateProfile],
+        list_candidates: Query[ListCandidatesInput, CandidateProfilesPage],
         client: Client | None = None,
     ) -> None:
         reference.validate()
-        if reference.provider != CONNECTOR_ID or get_candidate is None:
+        if reference.provider != CONNECTOR_ID or get_candidate is None or list_candidates is None:
             raise ValueError("Greenhouse connection provider and operations are required")
         if get_candidate.definition().operation != GET_CANDIDATE_DEFINITION.operation:
             raise ValueError("Greenhouse connection operation identity differs")
+        if list_candidates.definition().operation != LIST_CANDIDATES_DEFINITION.operation:
+            raise ValueError("Greenhouse connection operation identity differs")
         self.reference = reference
         self._get_candidate = get_candidate
+        self._list_candidates = list_candidates
         self._client = client
 
     def get_candidate(self) -> Query[GetCandidateInput, CandidateProfile]:
         return self._get_candidate
+
+    def list_candidates(self) -> Query[ListCandidatesInput, CandidateProfilesPage]:
+        return self._list_candidates
 
     async def aclose(self) -> None:
         if self._client is not None:
@@ -52,16 +59,17 @@ setattr(Connection, '__module__', 'dex_connectors.greenhouse.connection')
 def new_connection(client: Client, reference: ConnectionRef) -> Connection:
     if client is None:
         raise ValueError("Greenhouse client is required")
-    return Connection(reference, client.get_candidate(), client)
+    return Connection(reference, client.get_candidate(), client.list_candidates(), client)
 
 setattr(new_connection, '__module__', 'dex_connectors.greenhouse.connection')
 
 
 def new_connection_with_operations(
     get_candidate: Query[GetCandidateInput, CandidateProfile],
+    list_candidates: Query[ListCandidatesInput, CandidateProfilesPage],
     reference: ConnectionRef,
 ) -> Connection:
-    return Connection(reference, get_candidate)
+    return Connection(reference, get_candidate, list_candidates)
 
 setattr(new_connection_with_operations, '__module__', 'dex_connectors.greenhouse.connection')
 

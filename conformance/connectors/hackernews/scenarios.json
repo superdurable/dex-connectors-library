@@ -260,6 +260,47 @@
       "operation": "listStoryIDs"
     },
     {
+      "callId": "c0a2cb9f-10ec-5c62-b6ac-e37488f741e5",
+      "exchanges": [
+        {
+          "body": "[101,102,0]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/showstories.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-hacker-news-daily/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "hasMore": false,
+          "ids": [],
+          "observedAt": "0001-01-01T00:00:00Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-10-26T12:00:00Z",
+      "input": {
+        "feed": "show",
+        "limit": 2
+      },
+      "name": "listStoryIDs-invalid-id-after-limit",
+      "operation": "listStoryIDs"
+    },
+    {
       "callId": "71040e57-74d4-5538-a241-d02d60f2dad9",
       "exchanges": [
         {
