@@ -27,7 +27,7 @@ it('retries a 503 through a real Dex Worker and persists exact CNY decimal text'
   const address = server.address(); if (!address || typeof address === 'string') throw new Error('fixture port unavailable');
   const directory = await mkdtemp(join(tmpdir(), 'dex-dieyuyun-ts-integration-'));
   const cache = openBlobCache({ directory, maxBytes: 64 * 1024 * 1024 });
-  const provider = new DieyuyunClient({ baseUrl: `http://127.0.0.1:${address.port}` }, { resolve: async () => ({ apiKey: new SecretString('private-test-key') }) });
+  const provider = new DieyuyunClient({ baseUrl: `http://127.0.0.1:${address.port}/` }, { resolve: async () => ({ apiKey: new SecretString('private-test-key') }) });
   const flow = new DieyuyunBalanceFlow(newConnection(provider, { provider: 'dieyuyun', name: ConnectionName }));
   const registry = new Registry([flow]);
   const worker = new Worker(registry, cache, { serverAddress: dexAddress });

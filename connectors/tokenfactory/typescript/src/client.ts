@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { SecretString, newQueryBranch, newQueryRetry, type Call, type CredentialProvider, type Failure, type Query, type QueryAttempt, type QueryDefinition } from '@superdurable/connectors-sdk';
-import { BodyTooLargeError, parseRetryAfter, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { validateBaseURL, BodyTooLargeError, parseRetryAfter, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { GetBalanceDefinition } from './generated/definitions.js';
 import type { Config, Credentials, GetBalanceInput, Balance } from './generated/models.js';
 
@@ -18,7 +18,7 @@ export class TokenFactoryClient {
   /** Validate connector settings without contacting the provider. */
   constructor(config: Config, private readonly credentials: CredentialProvider<Credentials>, options: TokenFactoryClientOptions = {}) {
     if (!config || !credentials) throw new TypeError('TokenFactory configuration and credential source are required');
-    const origin = new URL(config.baseUrl ?? 'https://api.tokenfactory.cn'); if (origin.protocol !== 'https:' || origin.username || origin.password || origin.search || origin.hash) throw new TypeError('TokenFactory base URL is invalid'); this.baseUrl = origin.origin;
+    this.baseUrl = validateBaseURL(config.baseUrl || 'https://api.tokenfactory.cn');
     this.timeoutMs = config.timeoutMs ?? 15_000;
     this.maxResponseBytes = config.maxResponseBytes ?? 65_536;
     if (!Number.isSafeInteger(this.timeoutMs) || this.timeoutMs <= 0 || !Number.isSafeInteger(this.maxResponseBytes) || this.maxResponseBytes <= 0 || this.maxResponseBytes > (16 << 20)) throw new TypeError('TokenFactory request limits are invalid');
@@ -32,7 +32,7 @@ export class TokenFactoryClient {
     catch { return { error: 'credential', retryAfterMs: 0 }; }
     const key = credentials.apiKey instanceof SecretString ? credentials.apiKey.reveal() : '';
     if (!key || key.length > 2048 || !/^[!-~]+$/.test(key) || /^bearer /i.test(key)) return { error: 'credential', retryAfterMs: 0 };
-    const request: ProviderRequest = { url: `${this.baseUrl}/v1/user/balance`, method: 'GET', headers: { Accept: 'application/json', Authorization: `Bearer ${key}` }, timeoutMs: this.timeoutMs, maxResponseBytes: this.maxResponseBytes, addressPolicy: 'publicHTTPS', signal: call.context.cancellationSignal };
+    const request: ProviderRequest = { url: `${this.baseUrl}/v1/user/balance`, method: 'GET', headers: { Accept: 'application/json', Authorization: `Bearer ${key}` }, timeoutMs: this.timeoutMs, maxResponseBytes: this.maxResponseBytes, addressPolicy: this.baseUrl.toLowerCase().startsWith('http://') ? 'privateNetworkHTTP' : 'publicHTTPS', signal: call.context.cancellationSignal };
     let response: ProviderResponse;
     try { response = await this.send(request); }
     catch (error) {
@@ -61,8 +61,10 @@ export class GetBalanceOperation implements Query<GetBalanceInput, Balance> {
     if (status !== 200) return branch('providerRejected', status === 401 ? 'AUTHENTICATION' : status === 403 ? 'AUTHORIZATION' : [400,404,405].includes(status) ? 'VALIDATION' : 'PROVIDER_REJECTION');
     let document: unknown;
     try { document = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(body)) as unknown; } catch { return branch('invalidResponse', 'PROTOCOL'); }
-    if (!isRecord(document) || typeof document.balance !== 'number' || !Number.isFinite(document.balance) || typeof document.is_active !== 'boolean' || document.unit !== 'CNY') return branch('invalidResponse', 'PROTOCOL');
-    return newQueryBranch('retrieved', { balanceYuan: document.balance, isActive: document.is_active, unit: document.unit });
+    if (!isRecord(document)) return branch('invalidResponse', 'PROTOCOL');
+    const fields: Record<string, unknown> = Object.fromEntries(Object.entries(document).map(([name, field]) => [name.toLowerCase(), field]));
+    if (typeof fields.balance !== 'number' || !Number.isFinite(fields.balance) || typeof fields.is_active !== 'boolean' || fields.unit !== 'CNY') return branch('invalidResponse', 'PROTOCOL');
+    return newQueryBranch('retrieved', { balanceYuan: fields.balance, isActive: fields.is_active, unit: fields.unit });
   }
 }
 function isRecord(value: unknown): value is Record<string, unknown> { return typeof value === 'object' && value !== null && !Array.isArray(value); }

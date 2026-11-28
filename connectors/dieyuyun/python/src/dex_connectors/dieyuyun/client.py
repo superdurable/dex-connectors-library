@@ -57,7 +57,7 @@ class Client:
             raise ValueError("Dieyuyun configuration and credential source are required")
         self.base_url = validate_base_url(config.base_url)
         if httpx.URL(self.base_url).path not in ("", "/"):
-            raise ValueError("Dieyuyun API URL must be a host root")
+            raise ValueError("Balance API URL must be a host root")
         if config.timeout_seconds <= 0 or config.max_response_bytes <= 0:
             raise ValueError("Dieyuyun timeout and response limit must be positive")
         self.max_response_bytes = config.max_response_bytes
@@ -150,7 +150,13 @@ def _valid_api_key(value: object) -> bool:
 
 def _decode_balance(body: bytes) -> str | None:
     try:
-        wire: Any = json.loads(body.decode("utf-8"), parse_int=str, parse_float=str)
+        wire: Any = json.loads(
+            body.decode("utf-8"),
+            parse_int=str,
+            parse_float=str,
+            object_hook=lambda fields: {name.lower(): value for name, value in fields.items()},
+            parse_constant=lambda _: (_ for _ in ()).throw(ValueError("invalid number")),
+        )
     except (UnicodeDecodeError, ValueError):
         return None
     if not isinstance(wire, dict) or wire.get("object") != "balance" or wire.get("currency") != "CNY":

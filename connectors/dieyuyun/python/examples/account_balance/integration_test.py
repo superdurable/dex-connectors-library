@@ -48,7 +48,7 @@ async def test_account_balance_retries_503(tmp_path: Path) -> None:
     credentials = Credentials(SecretString("private-test-key"))
     async with httpx.AsyncClient(transport=httpx.MockTransport(answer)) as http_client:
         provider = Client(
-            Config(base_url="http://127.0.0.1:12345"),
+            Config(base_url="http://127.0.0.1:12345/"),
             StaticCredentialProvider({reference: credentials}),
             http_client,
         )

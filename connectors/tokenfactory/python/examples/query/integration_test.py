@@ -32,6 +32,7 @@ async def test_query_retries_503_and_persists_result(tmp_path: Path) -> None:
     requests: list[httpx.Request] = []
 
     def answer(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/gateway/v1/user/balance"
         requests.append(request)
         if len(requests) == 1:
             return httpx.Response(503)
@@ -43,7 +44,11 @@ async def test_query_retries_503_and_persists_result(tmp_path: Path) -> None:
     reference = ConnectionRef("tokenfactory", CONNECTION_NAME)
     credentials = Credentials(SecretString("sk-test-secret"))
     async with httpx.AsyncClient(transport=httpx.MockTransport(answer)) as http_client:
-        provider = Client(Config(), StaticCredentialProvider({reference: credentials}), http_client)
+        provider = Client(
+            Config(base_url="http://127.0.0.1:12345/gateway/"),
+            StaticCredentialProvider({reference: credentials}),
+            http_client,
+        )
         connection = new_connection(provider, reference)
         flow = TokenFactoryGetBalanceFlow(connection)
         registry = dex.Registry([flow], allow_async_handlers=True)

@@ -239,6 +239,735 @@
       "input": {},
       "name": "getAccountBalance-defect",
       "operation": "getAccountBalance"
+    },
+    {
+      "callId": "00cee458-b9a3-59aa-9f90-d68d09e7279e",
+      "exchanges": [
+        {
+          "body": "{\"available_balance\":8,\"CODE\":200,\"DATA\":{\"Available_Balance\":-1.230000E+004,\"PAY_TYPE\":2}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user/finance/balance",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Ti-App-Id": [
+              "test-app-id"
+            ],
+            "X-Ti-Secret-Code": [
+              "secret-test-code"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "fetched",
+        "failureKind": "",
+        "output": {
+          "availableTCoins": "-1.230000E+004",
+          "payType": 2
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-exactExponent",
+      "operation": "getAccountBalance"
+    },
+    {
+      "callId": "efd4a339-2ee9-584a-beca-4cbf0a3fbac8",
+      "exchanges": [
+        {
+          "body": "{\"code\":200,\"data\":{\"available_balance\":\"0.100000000000000000010\",\"pay_type\":1}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user/finance/balance",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Ti-App-Id": [
+              "test-app-id"
+            ],
+            "X-Ti-Secret-Code": [
+              "secret-test-code"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "fetched",
+        "failureKind": "",
+        "output": {
+          "availableTCoins": "0.100000000000000000010",
+          "payType": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-quotedDecimal",
+      "operation": "getAccountBalance"
+    },
+    {
+      "callId": "5fa872ba-eca4-5805-9142-7924aa5591ca",
+      "exchanges": [
+        {
+          "body": "{\"code\":200,\"data\":{\"available_balance\":-0,\"pay_type\":1}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user/finance/balance",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Ti-App-Id": [
+              "test-app-id"
+            ],
+            "X-Ti-Secret-Code": [
+              "secret-test-code"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "fetched",
+        "failureKind": "",
+        "output": {
+          "availableTCoins": "-0",
+          "payType": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-negativeZero",
+      "operation": "getAccountBalance"
+    },
+    {
+      "callId": "58a1ed10-a7a8-514a-b05e-16084c695e71",
+      "exchanges": [
+        {
+          "body": "{\"code\":200,\"data\":{\"available_balance\":1,\"pay_type\":3}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user/finance/balance",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Ti-App-Id": [
+              "test-app-id"
+            ],
+            "X-Ti-Secret-Code": [
+              "secret-test-code"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "availableTCoins": "",
+          "payType": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-malformedPayment",
+      "operation": "getAccountBalance"
+    },
+    {
+      "callId": "5adb994f-7f47-5e00-b684-264945e21f86",
+      "exchanges": [
+        {
+          "body": "{\"code\":200,\"data\":{\"available_balance\":\"11111111111111111111111111111111111111111111111111111111111111111\",\"pay_type\":2}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user/finance/balance",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Ti-App-Id": [
+              "test-app-id"
+            ],
+            "X-Ti-Secret-Code": [
+              "secret-test-code"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "availableTCoins": "",
+          "payType": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-longAmount",
+      "operation": "getAccountBalance"
+    },
+    {
+      "callId": "a807e7cd-9815-5080-b294-739eaefd1e0c",
+      "exchanges": [
+        {
+          "body": "{\"code\":500}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user/finance/balance",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Ti-App-Id": [
+              "test-app-id"
+            ],
+            "X-Ti-Secret-Code": [
+              "secret-test-code"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-businessTemporary",
+      "operation": "getAccountBalance"
+    },
+    {
+      "callId": "ac4460e8-141c-5bf6-8fff-7ae92146968b",
+      "exchanges": [
+        {
+          "body": "{\"code\":40101}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user/finance/balance",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Ti-App-Id": [
+              "test-app-id"
+            ],
+            "X-Ti-Secret-Code": [
+              "secret-test-code"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "availableTCoins": "",
+          "payType": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-badCredentials",
+      "operation": "getAccountBalance"
+    },
+    {
+      "callId": "add90ef1-b943-5508-a83e-6ea5922d82d4",
+      "exchanges": [
+        {
+          "body": "{\"code\":40102}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user/finance/balance",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Ti-App-Id": [
+              "test-app-id"
+            ],
+            "X-Ti-Secret-Code": [
+              "secret-test-code"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "availableTCoins": "",
+          "payType": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-missingCredentials",
+      "operation": "getAccountBalance"
+    },
+    {
+      "callId": "f7a708bc-b468-5857-a4b8-c1e728db29c8",
+      "exchanges": [
+        {
+          "body": "{\"code\":99}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user/finance/balance",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Ti-App-Id": [
+              "test-app-id"
+            ],
+            "X-Ti-Secret-Code": [
+              "secret-test-code"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "availableTCoins": "",
+          "payType": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-businessRejection",
+      "operation": "getAccountBalance"
+    },
+    {
+      "callId": "27f38128-d564-5432-93e3-32f839f2d8dc",
+      "exchanges": [
+        {
+          "body": "{\"code\":500,\"data\":{\"pay_type\":true}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user/finance/balance",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Ti-App-Id": [
+              "test-app-id"
+            ],
+            "X-Ti-Secret-Code": [
+              "secret-test-code"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "availableTCoins": "",
+          "payType": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-typedBeforeBusiness",
+      "operation": "getAccountBalance"
+    },
+    {
+      "callId": "70e264b3-295c-577d-8bc8-df3b4a54839f",
+      "exchanges": [
+        {
+          "body": "{\"code\":200.0,\"data\":{\"available_balance\":1,\"pay_type\":2}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user/finance/balance",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Ti-App-Id": [
+              "test-app-id"
+            ],
+            "X-Ti-Secret-Code": [
+              "secret-test-code"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "availableTCoins": "",
+          "payType": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-fractionalCode",
+      "operation": "getAccountBalance"
+    },
+    {
+      "callId": "394fd480-b6a2-5ea4-94b7-084cce55a3bc",
+      "exchanges": [
+        {
+          "body": "{\"code\":500} {}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user/finance/balance",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Ti-App-Id": [
+              "test-app-id"
+            ],
+            "X-Ti-Secret-Code": [
+              "secret-test-code"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "availableTCoins": "",
+          "payType": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-extraJson",
+      "operation": "getAccountBalance"
+    },
+    {
+      "callId": "7e50f4e1-fdf1-554c-b457-43a20bee80e6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user/finance/balance",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Ti-App-Id": [
+              "test-app-id"
+            ],
+            "X-Ti-Secret-Code": [
+              "secret-test-code"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "availableTCoins": "",
+          "payType": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-status400",
+      "operation": "getAccountBalance"
+    },
+    {
+      "callId": "8e2109c1-2635-57f2-8320-8bbee6dde3eb",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user/finance/balance",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Ti-App-Id": [
+              "test-app-id"
+            ],
+            "X-Ti-Secret-Code": [
+              "secret-test-code"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "availableTCoins": "",
+          "payType": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-status401",
+      "operation": "getAccountBalance"
+    },
+    {
+      "callId": "5d266915-3637-55f0-b907-77b1e7db612b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user/finance/balance",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Ti-App-Id": [
+              "test-app-id"
+            ],
+            "X-Ti-Secret-Code": [
+              "secret-test-code"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "availableTCoins": "",
+          "payType": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-status403",
+      "operation": "getAccountBalance"
+    },
+    {
+      "callId": "df6d97cc-48aa-5ee2-a2f4-2e650e645adb",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user/finance/balance",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Ti-App-Id": [
+              "test-app-id"
+            ],
+            "X-Ti-Secret-Code": [
+              "secret-test-code"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "availableTCoins": "",
+          "payType": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-status404",
+      "operation": "getAccountBalance"
+    },
+    {
+      "callId": "60511c9c-3f87-5072-b296-99081d90722b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user/finance/balance",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Ti-App-Id": [
+              "test-app-id"
+            ],
+            "X-Ti-Secret-Code": [
+              "secret-test-code"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "availableTCoins": "",
+          "payType": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-status405",
+      "operation": "getAccountBalance"
+    },
+    {
+      "callId": "62f1cdeb-2cae-53a2-a954-f44e79df2da3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user/finance/balance",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Ti-App-Id": [
+              "test-app-id"
+            ],
+            "X-Ti-Secret-Code": [
+              "secret-test-code"
+            ]
+          },
+          "status": 408
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-status408",
+      "operation": "getAccountBalance"
+    },
+    {
+      "callId": "3c813705-c204-539f-82aa-3b598b264913",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user/finance/balance",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Ti-App-Id": [
+              "test-app-id"
+            ],
+            "X-Ti-Secret-Code": [
+              "secret-test-code"
+            ]
+          },
+          "status": 502
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-status502",
+      "operation": "getAccountBalance"
     }
   ],
   "schemaVersion": 1

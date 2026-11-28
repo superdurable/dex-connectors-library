@@ -1,0 +1,42 @@
+{
+  "getAccountBalance": {
+    "branches": [
+      {
+        "description": "Wuliang AI returned the available balance.",
+        "id": "fetched",
+        "optional": false
+      },
+      {
+        "description": "Wuliang AI rejected the API Key or account access.",
+        "id": "providerRejected",
+        "optional": true
+      },
+      {
+        "description": "Wuliang AI returned malformed or oversized data.",
+        "id": "invalidResponse",
+        "optional": true
+      },
+      {
+        "description": "Local credentials or connection configuration are invalid.",
+        "id": "defect",
+        "optional": true
+      }
+    ],
+    "operation": {
+      "connectorId": "dieyuyun",
+      "operationId": "getAccountBalance"
+    },
+    "stepDefaults": {
+      "executeDurability": 2,
+      "executeMethodTimeout": 30000000000,
+      "executeRetry": {
+        "BackoffCoefficient": 2,
+        "InitialInterval": 1000000000,
+        "MaximumAttempts": 0,
+        "MaximumInterval": 300000000000,
+        "TotalDuration": 3600000000000
+      },
+      "heartbeatTimeout": 0
+    }
+  }
+}

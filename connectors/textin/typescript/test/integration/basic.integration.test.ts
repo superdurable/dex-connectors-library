@@ -18,7 +18,8 @@ it('retries a provider 503 and persists the result through real Dex', async () =
   const dexAddress = process.env.DEX_FLOW_SERVICE_ADDRESS;
   if (!dexAddress) throw new Error('set DEX_FLOW_SERVICE_ADDRESS to a running dexcli dev service');
   let attempts = 0;
-  const server = createServer((_request, response) => {
+  const server = createServer((request, response) => {
+    if (request.url !== '/user/finance/balance') { response.writeHead(404).end(); return; }
     attempts++;
     if (attempts === 1) { response.writeHead(503).end(); return; }
     response.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify({ code: 200, data: { available_balance: 83.712, pay_type: 1 } }));
@@ -30,7 +31,7 @@ it('retries a provider 503 and persists the result through real Dex', async () =
   const directory = await mkdtemp(join(tmpdir(), 'dex-textin-ts-integration-'));
   const cache = openBlobCache({ directory, maxBytes: 64 * 1024 * 1024 });
   const credentials: Credentials = { appId: 'test-app-id', secretCode: new SecretString('secret-test-code') };
-  const provider = new TextinClient({}, { resolve: async () => credentials }, { send: async request => { const reply = await fetch(`http://127.0.0.1:${address.port}`, { method: request.method, headers: request.headers, body: request.body ? Buffer.from(request.body) : undefined }); return { status: reply.status, headers: Object.fromEntries(reply.headers), body: new Uint8Array(await reply.arrayBuffer()) }; } });
+  const provider = new TextinClient({ baseUrl: `http://127.0.0.1:${address.port}/` }, { resolve: async () => credentials });
   const connection = newConnection(provider, { provider: 'textin', name: ConnectionName });
   const flow = new TextInInspectionFlow(connection);
   const registry = new Registry([flow]);

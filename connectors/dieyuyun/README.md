@@ -17,3 +17,14 @@ The [Python account balance Flow](python/examples/account_balance/) uses the sam
 ## TypeScript
 
 The [TypeScript balance Flow](typescript/examples/balance/) is a runnable Worker and Client using the same static `dieyuyun` connection. It preserves the provider decimal balance text without floating-point conversion and persists only `availableCNY`.
+
+## Java and Rust
+
+The [Java Worker](java/examples/io/superdurable/dexconnectors/dieyuyun/AccountBalanceWorker.java) and [Rust Worker](rust/examples/get_account_balance.rs) execute `getAccountBalance` through the static `dieyuyun` connection. The result retains the exact decimal representation, including trailing zeroes and exponent notation. Set `DEX_FLOW_SERVICE_ADDRESS` and `DIEYUYUN_API_KEY` in the Worker process environment.
+
+Run `./gradlew accountBalanceWorker` from `java/` or `cargo run --example get_account_balance` from `rust/`. With a local Dex server running, use `./gradlew build dexDevTest` and `cargo test --all-targets` to verify provider outcomes and the Worker retry path. Generate the Flow graphs from the connector directory:
+
+```sh
+dexcli visualize java/examples/io/superdurable/dexconnectors/dieyuyun/AccountBalanceWorker.java --schema-version 2.0 --lint app --open=false
+dexcli visualize rust/examples/get_account_balance.rs --schema-version 2.0 --lint app --open=false
+```

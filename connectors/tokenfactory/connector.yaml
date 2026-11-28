@@ -10,8 +10,10 @@ metadata:
 spec:
   provider: tokenfactory
   languages:
-    python: {version: v0.1.0, operations: [getBalance], triggers: []}
-    typescript: {version: v0.1.0, operations: [getBalance], triggers: []}
+    java: {version: v0.1.0, operations: [getBalance], triggers: []}
+    rust: {version: v0.1.0, operations: [getBalance], triggers: []}
+    python: {version: v0.1.1, operations: [getBalance], triggers: []}
+    typescript: {version: v0.1.1, operations: [getBalance], triggers: []}
   codegen:
     go:
       package: tokenfactory

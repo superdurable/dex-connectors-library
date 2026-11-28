@@ -37,6 +37,17 @@ class _ExactJSONDecimal(str):
     """Preserve the provider number spelling for Go-compatible T-coin output."""
 
 
+def _integer_code(value: object) -> int | None:
+    if (
+        not isinstance(value, _ExactJSONDecimal)
+        or len(value) > 20
+        or not re.fullmatch(r"-?(?:0|[1-9][0-9]*)", value)
+    ):
+        return None
+    result = int(value)
+    return result if -(2**63) <= result < 2**63 else None
+
+
 def _branch(branch: str, kind: FailureKind, message: str) -> QueryAttempt[GetAccountBalanceOutput]:
     return QueryAttempt.branch_result(
         branch, GetAccountBalanceOutput(), Receipt(), Failure(kind, "textin", "getAccountBalance", message)
@@ -60,6 +71,9 @@ class Client:
             raise ValueError("textin configuration and credentials are required")
         if config.timeout_seconds <= 0 or not 0 < config.max_response_bytes <= 16 << 20:
             raise ValueError("textin timeout or response limit is invalid")
+        self.base_url = validate_base_url(config.base_url)
+        if httpx.URL(self.base_url).path not in ("", "/"):
+            raise ValueError("Balance API URL must be a host root")
         self.config = config
         self.credentials = credentials
         self.max_response_bytes = config.max_response_bytes
@@ -137,17 +151,26 @@ class GetAccountBalanceOperation:
             )
             return _branch("providerRejected", kind, f"textin rejected request with HTTP {status}")
         try:
-            document: Any = json.loads(body, parse_float=_ExactJSONDecimal)
+            document: Any = json.loads(
+                body,
+                parse_int=_ExactJSONDecimal,
+                parse_float=_ExactJSONDecimal,
+                object_hook=lambda fields: {name.lower(): value for name, value in fields.items()},
+                parse_constant=lambda _: (_ for _ in ()).throw(ValueError("invalid JSON number")),
+            )
         except (ValueError, UnicodeDecodeError):
             return _branch("invalidResponse", FailureKind.PROTOCOL, "textin returned invalid JSON")
         return self._decode(input, document)
 
     def _build_request(self, input: GetAccountBalanceInput, credentials: Credentials) -> httpx.Request:
-        if not credentials.app_id or not credentials.secret_code.reveal():
+        if not all(
+            re.fullmatch(r"[!-~]{1,512}", field)
+            for field in (credentials.app_id, credentials.secret_code.reveal())
+        ):
             raise ValueError("missing credentials")
         return self.client.http_client.build_request(
             "GET",
-            validate_base_url(self.client.config.base_url) + "/user/finance/balance",
+            self.client.base_url + "/user/finance/balance",
             headers={
                 "Accept": "application/json",
                 "x-ti-app-id": credentials.app_id,
@@ -156,31 +179,35 @@ class GetAccountBalanceOperation:
         )
 
     def _decode(self, input: GetAccountBalanceInput, document: Any) -> QueryAttempt[GetAccountBalanceOutput]:
-        if not isinstance(document, dict) or type(document.get("code")) is not int:
+        if not isinstance(document, dict):
             return _branch("invalidResponse", FailureKind.PROTOCOL, "invalid balance response")
-        code = document["code"]
-        if code == 500:
-            return _retry(FailureKind.AVAILABILITY, "balance service unavailable")
-        if code in (40101, 40102):
-            return _branch("providerRejected", FailureKind.AUTHENTICATION, "credentials rejected")
-        if code != 200:
-            return _branch("providerRejected", FailureKind.PROVIDER_REJECTION, "balance request rejected")
+        code = _integer_code(document.get("code"))
         data = document.get("data")
-        if (
-            not isinstance(data, dict)
-            or type(data.get("pay_type")) is not int
-            or data["pay_type"] not in (1, 2)
-            or type(data.get("available_balance")) not in (int, _ExactJSONDecimal)
+        if code is None or (data is not None and not isinstance(data, dict)):
+            return _branch("invalidResponse", FailureKind.PROTOCOL, "invalid balance response")
+        payment = data.get("pay_type") if data else None
+        pay_type = _integer_code(payment)
+        balance = data.get("available_balance") if data else None
+        if (payment is not None and pay_type is None) or (
+            balance is not None
+            and (
+                not isinstance(balance, str)
+                or not re.fullmatch(r"-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?", balance)
+            )
         ):
             return _branch("invalidResponse", FailureKind.PROTOCOL, "invalid balance data")
-        balance = str(data["available_balance"])
-        if (
-            len(balance) > 64
-            or re.fullmatch(r"-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?", balance) is None
-        ):
-            return _branch("invalidResponse", FailureKind.PROTOCOL, "invalid balance decimal")
+        if code == 500:
+            return _retry(FailureKind.AVAILABILITY, "balance service unavailable")
+        if code != 200:
+            return _branch(
+                "providerRejected",
+                FailureKind.AUTHENTICATION if code in (40101, 40102) else FailureKind.PROVIDER_REJECTION,
+                "balance request rejected",
+            )
+        if balance is None or len(balance) > 64 or pay_type not in (1, 2):
+            return _branch("invalidResponse", FailureKind.PROTOCOL, "invalid balance data")
         return QueryAttempt.branch_result(
             "fetched",
-            GetAccountBalanceOutput(available_t_coins=balance, pay_type=data["pay_type"]),
+            GetAccountBalanceOutput(available_t_coins=balance, pay_type=pay_type),
             Receipt(),
         )

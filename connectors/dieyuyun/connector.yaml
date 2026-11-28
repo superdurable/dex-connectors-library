@@ -10,13 +10,15 @@ metadata:
 spec:
   provider: dieyuyun
   languages:
+    java: {version: v0.1.0, operations: [getAccountBalance], triggers: []}
+    rust: {version: v0.1.0, operations: [getAccountBalance], triggers: []}
     python:
-      version: v0.1.0
+      version: v0.1.1
       package: dex-connector-dieyuyun
       operations: [getAccountBalance]
       triggers: []
     typescript:
-      version: v0.1.0
+      version: v0.1.1
       package: "@superdurable/connector-dieyuyun"
       operations: [getAccountBalance]
       triggers: []

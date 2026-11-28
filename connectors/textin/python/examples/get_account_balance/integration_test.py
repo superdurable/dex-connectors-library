@@ -35,6 +35,7 @@ async def test_get_account_balance_through_dex(tmp_path: Path) -> None:
     requests: list[httpx.Request] = []
 
     def answer(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/user/finance/balance"
         requests.append(request)
         status, body = responses[len(requests) - 1]
         return httpx.Response(status, content=body.encode())
@@ -42,7 +43,11 @@ async def test_get_account_balance_through_dex(tmp_path: Path) -> None:
     reference = ConnectionRef("textin", CONNECTION_NAME)
     credentials = Credentials("test-app-id", SecretString("secret-test-code"))
     async with httpx.AsyncClient(transport=httpx.MockTransport(answer)) as http_client:
-        provider_client = Client(Config(), StaticCredentialProvider({reference: credentials}), http_client)
+        provider_client = Client(
+            Config(base_url="http://127.0.0.1:12345/"),
+            StaticCredentialProvider({reference: credentials}),
+            http_client,
+        )
         connection = new_connection(provider_client, reference)
         flow = GetAccountBalanceFlow(connection)
         registry = dex.Registry([flow], allow_async_handlers=True)

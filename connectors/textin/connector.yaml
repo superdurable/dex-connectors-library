@@ -50,12 +50,14 @@ spec:
         - Keep secret_code private and rotate it in Developer Information if compromised. Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults.
         - This operation reads only available T-coin balance and payment type; it does not submit documents or spend T-coins.
   languages:
+    java: {version: v0.1.0, operations: [getAccountBalance], triggers: []}
+    rust: {version: v0.1.0, operations: [getAccountBalance], triggers: []}
     typescript:
-      version: v0.1.0
+      version: v0.1.1
       package: "@superdurable/connector-textin"
       operations: [getAccountBalance]
       triggers: []
-    python: {version: v0.1.0, operations: [getAccountBalance], triggers: []}
+    python: {version: v0.1.1, operations: [getAccountBalance], triggers: []}
   operations:
     - name: getAccountBalance
       goName: GetAccountBalance

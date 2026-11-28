@@ -11,3 +11,14 @@ Sign in to [TextIn](https://www.textin.com/), open **Workbench > Account Setting
 The [account balance Flow](go/examples/account-balance/) is a runnable Worker with static Dex Web connection name `textin`. `fetched` completes the Flow. Unwired optional branches fail it. HTTP 408, 429, and 5xx and provider code 500 retry safely because the operation only reads the account. The mock integration test uses synthetic sample data and a real Dex Worker and Client. No live credentials are bundled; live authorization and balance values remain unverified.
 
 The [TypeScript package and runnable Flow](typescript/) replay the Go provider scenarios for `getAccountBalance`.
+
+## Java and Rust
+
+The [Java Worker](java/examples/io/superdurable/dexconnectors/textin/AccountBalanceWorker.java) and [Rust Worker](rust/examples/get_account_balance.rs) execute `getAccountBalance` through the static `textin` connection. The result retains the exact decimal representation, including trailing zeroes and exponent notation. Set `DEX_FLOW_SERVICE_ADDRESS` and the TextIn connection variables `TEXTIN_APP_ID` and `TEXTIN_SECRET_CODE` in the Worker process environment.
+
+Run `./gradlew accountBalanceWorker` from `java/` or `cargo run --example get_account_balance` from `rust/`. With a local Dex server running, use `./gradlew build dexDevTest` and `cargo test --all-targets` to verify provider outcomes and the Worker retry path. Generate the Flow graphs from the connector directory:
+
+```sh
+dexcli visualize java/examples/io/superdurable/dexconnectors/textin/AccountBalanceWorker.java --schema-version 2.0 --lint app --open=false
+dexcli visualize rust/examples/get_account_balance.rs --schema-version 2.0 --lint app --open=false
+```

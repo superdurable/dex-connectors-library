@@ -1,8 +1,9 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
+import { exactAmount, parseBalanceResponse } from './decimal-response.js';
 import { SecretString, newQueryBranch, newQueryRetry, type Call, type CredentialProvider, type Failure, type Query, type QueryAttempt, type QueryDefinition } from '@superdurable/connectors-sdk';
-import { BodyTooLargeError, parseRetryAfter, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { validateBaseURL, BodyTooLargeError, parseRetryAfter, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { GetAccountBalanceDefinition } from './generated/definitions.js';
 import type { Config, Credentials, GetAccountBalanceInput, GetAccountBalanceOutput } from './generated/models.js';
 
@@ -22,9 +23,8 @@ export class DieyuyunClient {
   /** Validate the HTTPS origin and bounded request settings. */
   constructor(config: Config, private readonly credentials: CredentialProvider<Credentials>, options: DieyuyunClientOptions = {}) {
     if (!config || !credentials) throw new TypeError('Dieyuyun configuration and credentials are required');
-    this.baseUrl = (config.baseUrl || productionOrigin).replace(/\/$/, '');
-    const parsed = new URL(this.baseUrl);
-    if ((parsed.protocol !== 'https:' && !(parsed.protocol === 'http:' && ['127.0.0.1', 'localhost'].includes(parsed.hostname))) || parsed.username || parsed.password || parsed.search || parsed.hash || parsed.pathname !== '/') throw new TypeError('Dieyuyun API URL must be a trusted host root');
+    this.baseUrl = validateBaseURL(config.baseUrl || productionOrigin);
+    if (new URL(this.baseUrl).pathname !== '/') throw new TypeError('Balance API base URL must be a host root');
     this.timeoutMs = config.timeoutMs ?? 10_000;
     this.maxResponseBytes = config.maxResponseBytes ?? 65_536;
     if (!Number.isSafeInteger(this.timeoutMs) || this.timeoutMs <= 0 || !Number.isSafeInteger(this.maxResponseBytes) || this.maxResponseBytes <= 0) throw new TypeError('Dieyuyun request limits must be positive integers');
@@ -68,45 +68,15 @@ export class GetAccountBalanceOperation implements Query<GetAccountBalanceInput,
     if ('failure' in exchange) return exchange.retry ? newQueryRetry(exchange.failure, exchange.retryAfterMs ?? 0) : newQueryBranch(exchange.branch!, emptyOutput(), {}, exchange.failure);
     const response = exchange.response;
     if (response.status !== 200) return terminal('providerRejected', response.status === 401 ? 'AUTHENTICATION' : response.status === 403 ? 'AUTHORIZATION' : 'PROVIDER_REJECTION', `Wuliang AI rejected the request with HTTP ${response.status}`);
-    let raw: string; let parsed: unknown;
-    try { raw = new TextDecoder('utf-8', { fatal: true }).decode(response.body); parsed = JSON.parse(raw) as unknown; }
+    let parsed: unknown;
+    try { parsed = parseBalanceResponse(response.body); }
     catch { return terminal('invalidResponse', 'PROTOCOL', 'Wuliang AI returned invalid balance data'); }
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return terminal('invalidResponse', 'PROTOCOL', 'Wuliang AI returned invalid balance data');
     const fields = parsed as Record<string, unknown>;
-    const balance = typeof fields.balance === 'string' ? fields.balance : topLevelBalanceNumber(raw);
-    if (fields.object !== 'balance' || fields.currency !== 'CNY' || !balance || balance.length > 64 || !/^-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?$/.test(balance)) return terminal('invalidResponse', 'PROTOCOL', 'Wuliang AI returned invalid balance data');
+    const balance = exactAmount(fields.balance);
+    if (fields.object !== 'balance' || fields.currency !== 'CNY' || !balance || balance.length > 64) return terminal('invalidResponse', 'PROTOCOL', 'Wuliang AI returned invalid balance data');
     return newQueryBranch('fetched', { availableCNY: balance });
   }
-}
-function topLevelBalanceNumber(raw: string): string | undefined {
-  let depth = 0;
-  let lastBalance: string | undefined;
-  for (let index = 0; index < raw.length; index++) {
-    const character = raw[index];
-    if (character === '"') {
-      const start = index;
-      index++;
-      while (index < raw.length) {
-        if (raw[index] === '\\') { index += 2; continue; }
-        if (raw[index] === '"') break;
-        index++;
-      }
-      if (depth !== 1) continue;
-      const key = JSON.parse(raw.slice(start, index + 1)) as string;
-      let valueStart = index + 1;
-      while (/\s/.test(raw[valueStart] ?? '')) valueStart++;
-      if (raw[valueStart] !== ':' || key !== 'balance') continue;
-      valueStart++;
-      while (/\s/.test(raw[valueStart] ?? '')) valueStart++;
-      const match = /^-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?/.exec(raw.slice(valueStart));
-      const end = valueStart + (match?.[0].length ?? 0);
-      lastBalance = match && /[,}\s]/.test(raw[end] ?? '') ? match[0] : undefined;
-      continue;
-    }
-    if (character === '{' || character === '[') depth++;
-    else if (character === '}' || character === ']') depth--;
-  }
-  return lastBalance;
 }
 function validAPIKey(value: string): boolean { return value.length > 0 && value.length <= 512 && /^[!-~]+$/.test(value); }
 function failure(kind: Failure['kind'], message: string): Failure { return { kind, provider: 'dieyuyun', operation: 'getAccountBalance', message }; }

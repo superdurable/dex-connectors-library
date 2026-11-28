@@ -1,0 +1,52 @@
+{
+  "connectorId": "tokenfactory",
+  "releaseTag": "connectors/tokenfactory/go/v0.1.0",
+  "package": {
+    "ecosystem": "cargo",
+    "name": "dex-connector-tokenfactory",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_get_balance_step",
+      "kind": "query",
+      "operationId": "getBalance",
+      "inputType": "GetBalanceInput",
+      "description": "Read the current CNY account balance and API Key active status without billing or usage writes.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "retrieved",
+          "field": "retrieved",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetBalanceInput requires no selector; the API Key identifies the account.",
+        "properties": {},
+        "type": "object"
+      }
+    }
+  ]
+}

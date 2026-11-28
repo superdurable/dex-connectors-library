@@ -3,6 +3,7 @@
 """tokenfactory provider Query and Go-compatible outcome classification."""
 
 import json
+import math
 from datetime import UTC, datetime
 from typing import Any
 
@@ -23,6 +24,7 @@ from dex_connectors.sdk.providerhttp import (
     parse_retry_after,
     read_bounded_body,
     send_traced,
+    validate_base_url,
 )
 
 from ._generated.config import Config as Config
@@ -59,7 +61,7 @@ class Client:
             raise ValueError("tokenfactory configuration and credentials are invalid")
         self.credentials = credentials
         self.max_response_bytes = config.max_response_bytes
-        self.endpoint = config.base_url.rstrip("/") + "/v1/user/balance"
+        self.endpoint = validate_base_url(config.base_url) + "/v1/user/balance"
         self.http_client = http_client or new_provider_http_client(config.timeout_seconds)
         self._owns_client = http_client is None
 
@@ -121,19 +123,6 @@ class GetBalanceOperation:
                 return _retry(FailureKind.RATE_LIMIT, "provider rate limited the request", delay)
             if response.status_code == 408 or response.status_code >= 500:
                 return _retry(FailureKind.AVAILABILITY, "provider temporarily unavailable", delay)
-            if response.status_code != 200:
-                kind = (
-                    FailureKind.AUTHENTICATION
-                    if response.status_code == 401
-                    else FailureKind.AUTHORIZATION
-                    if response.status_code == 403
-                    else FailureKind.PROVIDER_REJECTION
-                )
-                return _branch(
-                    "providerRejected",
-                    kind,
-                    f"provider rejected the request with HTTP {response.status_code}",
-                )
             try:
                 body = await read_bounded_body(response, self.client.max_response_bytes)
             except BodyTooLargeError:
@@ -144,9 +133,26 @@ class GetBalanceOperation:
                 )
             except ProviderTransportError:
                 return _retry(FailureKind.AVAILABILITY, "provider response was interrupted")
+            if response.status_code != 200:
+                kind = (
+                    FailureKind.AUTHENTICATION
+                    if response.status_code == 401
+                    else FailureKind.AUTHORIZATION
+                    if response.status_code == 403
+                    else FailureKind.VALIDATION
+                    if response.status_code in (400, 404, 405)
+                    else FailureKind.PROVIDER_REJECTION
+                )
+                return _branch(
+                    "providerRejected",
+                    kind,
+                    f"provider rejected the request with HTTP {response.status_code}",
+                )
             try:
                 data: Any = json.loads(
-                    body, parse_constant=lambda _: (_ for _ in ()).throw(ValueError("invalid JSON number"))
+                    body,
+                    object_hook=lambda fields: {name.lower(): value for name, value in fields.items()},
+                    parse_constant=lambda _: (_ for _ in ()).throw(ValueError("invalid JSON number")),
                 )
             except (ValueError, UnicodeDecodeError):
                 return _branch("invalidResponse", FailureKind.PROTOCOL, "provider returned invalid JSON")
@@ -165,6 +171,7 @@ def _decode(data: Any, delay: float) -> QueryAttempt[Balance]:
 
     if (
         type(data.get("balance")) not in (int, float)
+        or not math.isfinite(float(data["balance"]))
         or type(data.get("is_active")) is not bool
         or data.get("unit") != "CNY"
     ):
