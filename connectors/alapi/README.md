@@ -9,3 +9,18 @@ Run the [example Flow](go/examples/lookup-ip-location/) with its generated mock 
 The [Python package](python/) implements the same `lookupIPLocation` Query and includes a [runnable Flow](python/examples/ip_location/) with a Worker entrypoint. Its Go-recorded conformance scenarios cover success, rejected credentials or quota, malformed responses, invalid input, 429, 503, and transport failure. The Python integration test ran against a local Dex stack with a fake provider; live ALAPI authorization and quota consumption remain unverified.
 
 The [TypeScript package](typescript/README.md) implements the same `lookupIPLocation` Query with Go-recorded conformance scenarios and a runnable Dex Flow.
+
+Java and Rust also implement `lookupIPLocation`. The [Java Worker](java/examples/io/superdurable/dexconnectors/alapi/IPLocationWorker.java) and [Rust Worker](rust/examples/lookup_ip_location.rs) register the static `alapi` connection and wire the `found` branch. Both take an object with the `ipAddress` field. Both canonicalize IPv4-mapped addresses before dispatch. Optional location fields default to empty strings.
+
+Run these commands from this connector directory. With `dexcli dev -open=false` running, set `DEX_FLOW_SERVICE_ADDRESS` to its Dex Server address. The integration tests supply their own token and transport, return HTTP 503 once, and verify the Worker retries and completes the Flow.
+
+```sh
+(cd java && ./gradlew build dexDevTest)
+(cd rust && cargo test --locked --all-targets)
+dexcli visualize java/examples/io/superdurable/dexconnectors/alapi/IPLocationWorker.java --schema-version 2.0 --lint app --json --open=false --out /tmp/alapi-java
+dexcli visualize rust/examples/lookup_ip_location.rs --schema-version 2.0 --lint app --json --open=false --out /tmp/alapi-rust
+```
+
+The Java graph is partial because the analyzer requires the inherited `QueryStep.execute` method and the input definition in the example source. The Rust analyzer also warns about the SDK-defined `QueryStep`. The integration tests exercise both Steps through a registered Worker.
+
+For a provider-backed Worker, supply the provider token to the process as `ALAPI_TOKEN` and run `./gradlew ipLocationWorker` in `java/` or `cargo run --locked --example lookup_ip_location` in `rust/`. An actual lookup can consume provider quota.

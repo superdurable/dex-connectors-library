@@ -1,6 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
+import { isIP } from 'node:net';
 import { SecretString, newQueryBranch, newQueryRetry, type Call, type CredentialProvider, type Failure, type Query, type QueryAttempt, type QueryDefinition } from '@superdurable/connectors-sdk';
 import { BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { LookupIPLocationDefinition } from './generated/definitions.js';
@@ -49,7 +50,8 @@ export class LookupIPLocationOperation implements Query<LookupIPLocationInput, L
 
   /** Send one provider request and classify its result. */
   async invoke(call: Call, input: LookupIPLocationInput): Promise<QueryAttempt<LookupIPLocationOutput>> {
-    if (!isPublicIPv4(input.ipAddress)) return branch('defect', 'VALIDATION', 'ALAPI requires one public IPv4 address');
+    const address = publicIPv4(input.ipAddress);
+    if (!address) return branch('defect', 'VALIDATION', 'ALAPI requires one public IPv4 address');
     let token: string;
     try {
       const resolved = await this.client.credentials.resolve(call, call.context.cancellationSignal);
@@ -62,7 +64,7 @@ export class LookupIPLocationOperation implements Query<LookupIPLocationInput, L
     try {
       response = await this.client.send({
         url: endpoint, method: 'POST', headers: { Accept: 'application/json', 'Content-Type': 'application/json', token },
-        body: Buffer.from(JSON.stringify({ ip: input.ipAddress }), 'utf8'),
+        body: Buffer.from(JSON.stringify({ ip: address }), 'utf8'),
         maxResponseBytes: this.client.maxResponseBytes, maxErrorResponseBytes: 4096,
         timeoutMs: this.client.timeoutMs, addressPolicy: 'publicHTTPS', signal: call.context.cancellationSignal,
       });
@@ -76,31 +78,45 @@ export class LookupIPLocationOperation implements Query<LookupIPLocationInput, L
     if (response.status === 408 || response.status >= 500) return retry('AVAILABILITY', 'ALAPI lookup service is temporarily unavailable', retryAfterMs);
     if (response.status !== 200) return branch('providerRejected', response.status === 401 ? 'AUTHENTICATION' : response.status === 403 ? 'AUTHORIZATION' : 'PROVIDER_REJECTION', `ALAPI rejected lookup with HTTP ${response.status}`);
     let document: unknown;
-    try { document = JSON.parse(Buffer.from(response.body).toString('utf8')) as unknown; }
+    try { document = lowercaseFields(JSON.parse(Buffer.from(response.body).toString('utf8'))); }
     catch { return branch('invalidResponse', 'PROTOCOL', 'ALAPI returned invalid lookup data'); }
     if (!isRecord(document) || !Number.isInteger(document.code) || typeof document.success !== 'boolean') return branch('invalidResponse', 'PROTOCOL', 'ALAPI returned invalid lookup data');
+    const data = lowercaseFields(document.data);
+    if (data != null && (!isRecord(data) || ['country', 'province', 'city', 'district', 'isp'].some(field => data[field] != null && typeof data[field] !== 'string'))) {
+      return branch('invalidResponse', 'PROTOCOL', 'ALAPI returned invalid lookup data');
+    }
     const code = document.code as number;
     if (code === 429) return retry('RATE_LIMIT', 'ALAPI rate limited the lookup', retryAfterMs);
     if (code !== 200 || !document.success) {
       const kind: Failure['kind'] = [10001, 10002, 10008].includes(code) ? 'AUTHENTICATION' : [10004, 10009].includes(code) ? 'AUTHORIZATION' : [10005, 10010].includes(code) ? 'QUOTA_EXHAUSTED' : 'PROVIDER_REJECTION';
       return branch('providerRejected', kind, `ALAPI rejected lookup with code ${code}`);
     }
-    const data = document.data;
-    if (!isRecord(data) || !['country', 'province', 'city', 'district', 'isp'].every(field => typeof data[field] === 'string') || !(data.country as string).trim() || !(data.city as string).trim()) {
+    if (!isRecord(data) || typeof data.country !== 'string' || !data.country.trim() || typeof data.city !== 'string' || !data.city.trim()) {
       return branch('invalidResponse', 'PROTOCOL', 'ALAPI returned incomplete location data');
     }
-    return newQueryBranch('found', { country: data.country as string, province: data.province as string, city: data.city as string, district: data.district as string, operator: data.isp as string });
+    return newQueryBranch('found', { country: data.country, province: String(data.province ?? ''), city: data.city, district: String(data.district ?? ''), operator: String(data.isp ?? '') });
   }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> { return typeof value === 'object' && value !== null && !Array.isArray(value); }
-function isPublicIPv4(value: unknown): value is string {
-  if (typeof value !== 'string') return false;
-  const parts = value.split('.');
-  if (parts.length !== 4 || parts.some(part => !/^(0|[1-9]\d{0,2})$/.test(part) || Number(part) > 255)) return false;
+function lowercaseFields(value: unknown): unknown {
+  return isRecord(value) ? Object.fromEntries(Object.entries(value).map(([key, field]) => [key.toLowerCase(), field])) : value;
+}
+function publicIPv4(value: unknown): string | undefined {
+  if (typeof value !== 'string' || value.includes('%')) return undefined;
+  const version = isIP(value);
+  let address = value;
+  if (version === 6) {
+    const mapped = /^\[::ffff:([a-f0-9]+):([a-f0-9]+)\]$/.exec(new URL('http://[' + value + ']').hostname);
+    if (!mapped) return undefined;
+    const high = parseInt(mapped[1]!, 16);
+    const low = parseInt(mapped[2]!, 16);
+    address = [high >>> 8, high & 255, low >>> 8, low & 255].join('.');
+  } else if (version !== 4) return undefined;
+  const parts = address.split('.');
   const first = Number(parts[0]);
   const second = Number(parts[1]);
-  return !(parts.every(part => part === '0')) && first !== 10 && first !== 127 && !(first >= 224 && first <= 239) && !(first === 169 && second === 254) && !(first === 172 && second >= 16 && second <= 31) && !(first === 192 && second === 168);
+  return !(parts.every(part => part === '0')) && first !== 10 && first !== 127 && !(first >= 224 && first <= 239) && !(first === 169 && second === 254) && !(first === 172 && second >= 16 && second <= 31) && !(first === 192 && second === 168) ? address : undefined;
 }
 function failure(kind: Failure['kind'], message: string): Failure { return { provider: 'alapi', operation: 'lookupIPLocation', kind, message }; }
 function branch(id: string, kind: Failure['kind'], message: string): QueryAttempt<LookupIPLocationOutput> { return newQueryBranch(id, emptyOutput, {}, failure(kind, message)); }

@@ -377,6 +377,976 @@
       },
       "name": "lookupIPLocation-oversized",
       "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "ef69d20c-aed3-5bde-9d24-9b4f747ae712",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"code\":200,\"data\":{\"country\":\"US\",\"city\":\"Mountain View\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/ip",
+          "requestBody": {
+            "ip": "8.8.8.8"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "city": "Mountain View",
+          "country": "US",
+          "district": "",
+          "operator": "",
+          "province": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "::ffff:8.8.8.8"
+      },
+      "name": "lookupIPLocation-mappedDotted",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "f960c649-baf2-596f-a59b-318592ec59d5",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"code\":200,\"data\":{\"country\":\"US\",\"city\":\"Mountain View\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/ip",
+          "requestBody": {
+            "ip": "8.8.8.8"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "city": "Mountain View",
+          "country": "US",
+          "district": "",
+          "operator": "",
+          "province": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "0:0:0:0:0:ffff:808:808"
+      },
+      "name": "lookupIPLocation-mappedHex",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "9830fdd5-5a53-5984-8a6f-97f93aec5069",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "city": "",
+          "country": "",
+          "district": "",
+          "operator": "",
+          "province": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "10.0.1.1"
+      },
+      "name": "lookupIPLocation-private",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "55627e67-010e-5404-9f94-7f3709e6a52a",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "city": "",
+          "country": "",
+          "district": "",
+          "operator": "",
+          "province": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "169.254.0.1"
+      },
+      "name": "lookupIPLocation-linkLocal",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "b96b1870-0b4d-54c7-909a-e18a2b26eb56",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "city": "",
+          "country": "",
+          "district": "",
+          "operator": "",
+          "province": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "239.1.2.3"
+      },
+      "name": "lookupIPLocation-multicast",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "c89576f0-849b-557b-89c5-9b6295690891",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "city": "",
+          "country": "",
+          "district": "",
+          "operator": "",
+          "province": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.008.8.8"
+      },
+      "name": "lookupIPLocation-lookalike",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "ef7f2e6b-8cf9-5c68-9147-e6c9caed7adc",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "city": "",
+          "country": "",
+          "district": "",
+          "operator": "",
+          "province": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8/32"
+      },
+      "name": "lookupIPLocation-cidr",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "e5d45c96-eb13-5e56-aea6-633e05dd3b95",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "city": "",
+          "country": "",
+          "district": "",
+          "operator": "",
+          "province": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "::ffff:192.168.1.1"
+      },
+      "name": "lookupIPLocation-privateMapped",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "09088083-1e4c-5cba-8fb3-b0de3f7c4db3",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "city": "",
+          "country": "",
+          "district": "",
+          "operator": "",
+          "province": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "dns.google"
+      },
+      "name": "lookupIPLocation-hostname",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "fa00e5f3-6f13-52d7-8062-587c068b0d48",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "city": "",
+          "country": "",
+          "district": "",
+          "operator": "",
+          "province": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "2001:db8::1"
+      },
+      "name": "lookupIPLocation-ipv6",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "0d034949-c429-50cd-b25a-11d48b52dc0e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "city": "",
+          "country": "",
+          "district": "",
+          "operator": "",
+          "province": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "::ffff:8.8.8.8%eth0"
+      },
+      "name": "lookupIPLocation-scoped",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "91865055-3224-54c6-8203-2828f48a5a37",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"code\":200,\"data\":{\"country\":\"US\",\"city\":\"Mountain View\"}}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/ip",
+          "requestBody": {
+            "ip": "8.8.8.8"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Token": [
+              "test-token"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "city": "",
+          "country": "",
+          "district": "",
+          "operator": "",
+          "province": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-http401",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "4f1fda9d-4b49-5963-8582-b0b7b000de09",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"code\":200,\"data\":{\"country\":\"US\",\"city\":\"Mountain View\"}}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/ip",
+          "requestBody": {
+            "ip": "8.8.8.8"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Token": [
+              "test-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "city": "",
+          "country": "",
+          "district": "",
+          "operator": "",
+          "province": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-http403",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "19d2d9b6-ca2d-5613-8fc7-36ccf4042d94",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"code\":200,\"data\":{\"country\":\"US\",\"city\":\"Mountain View\"}}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/ip",
+          "requestBody": {
+            "ip": "8.8.8.8"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Token": [
+              "test-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "city": "",
+          "country": "",
+          "district": "",
+          "operator": "",
+          "province": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-http404",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "bc9e94a1-352d-5602-a68c-8dda78a5b8d6",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"code\":200,\"data\":{\"country\":\"US\",\"city\":\"Mountain View\"}}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/ip",
+          "requestBody": {
+            "ip": "8.8.8.8"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Token": [
+              "test-token"
+            ]
+          },
+          "status": 408
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 7000,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-http408",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "ff56b10a-d23e-58cf-963b-b5382e42ea17",
+      "exchanges": [
+        {
+          "body": "{\"code\":429,\"success\":false}",
+          "headers": {
+            "Retry-After": "3"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/ip",
+          "requestBody": {
+            "ip": "8.8.8.8"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 3000,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-code429",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "9bc11943-bf70-581e-ae34-155ec518e18f",
+      "exchanges": [
+        {
+          "body": "{\"code\":10004,\"success\":false}",
+          "headers": {
+            "Retry-After": "3"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/ip",
+          "requestBody": {
+            "ip": "8.8.8.8"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "city": "",
+          "country": "",
+          "district": "",
+          "operator": "",
+          "province": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-code10004",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "32d15d50-bde2-57d8-b8be-d6cacf6bfdbb",
+      "exchanges": [
+        {
+          "body": "{\"code\":10009,\"success\":false}",
+          "headers": {
+            "Retry-After": "3"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/ip",
+          "requestBody": {
+            "ip": "8.8.8.8"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "city": "",
+          "country": "",
+          "district": "",
+          "operator": "",
+          "province": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-code10009",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "53e0444a-32e7-5294-8a52-1d790f5e2885",
+      "exchanges": [
+        {
+          "body": "{\"code\":10123,\"success\":false}",
+          "headers": {
+            "Retry-After": "3"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/ip",
+          "requestBody": {
+            "ip": "8.8.8.8"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "city": "",
+          "country": "",
+          "district": "",
+          "operator": "",
+          "province": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-code10123",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "e7071767-5cdc-5ca7-926c-4c28ab4652fa",
+      "exchanges": [
+        {
+          "body": "{\"code\":200,\"success\":true,\"data\":{\"country\":\"US\",\"city\":\"Mountain View\",\"district\":null,\"extra\":\"omit me\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/ip",
+          "requestBody": {
+            "ip": "8.8.8.8"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "city": "Mountain View",
+          "country": "US",
+          "district": "",
+          "operator": "",
+          "province": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-optionalNull",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "b6c991be-aa01-5a82-99f1-0325d52e1677",
+      "exchanges": [
+        {
+          "body": "{\"CODE\":200,\"Success\":true,\"Data\":{\"Country\":\"US\",\"CITY\":\"Mountain View\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/ip",
+          "requestBody": {
+            "ip": "8.8.8.8"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "city": "Mountain View",
+          "country": "US",
+          "district": "",
+          "operator": "",
+          "province": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-caseInsensitive",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "adce3e4a-0f53-546a-8fd7-4c8c693e25b3",
+      "exchanges": [
+        {
+          "body": "{\"code\":10004,\"success\":false,\"data\":{\"city\":123}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/ip",
+          "requestBody": {
+            "ip": "8.8.8.8"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "city": "",
+          "country": "",
+          "district": "",
+          "operator": "",
+          "province": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-badRejectionData",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "854c1a9a-fe8c-54f2-aaed-584e369e3dc2",
+      "exchanges": [
+        {
+          "body": "{\"code\":200,\"success\":true,\"data\":{\"country\":\"US\",\"city\":\" \"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/ip",
+          "requestBody": {
+            "ip": "8.8.8.8"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "city": "",
+          "country": "",
+          "district": "",
+          "operator": "",
+          "province": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-blankCity",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "204981fc-6445-56ff-bd59-6dc998d3cecb",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"data\":{}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/ip",
+          "requestBody": {
+            "ip": "8.8.8.8"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "city": "",
+          "country": "",
+          "district": "",
+          "operator": "",
+          "province": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-missingCode",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "ccfdcfec-56d9-5621-9c6b-bcad8dbde64e",
+      "exchanges": [
+        {
+          "body": "{\"code\":200,\"success\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/ip",
+          "requestBody": {
+            "ip": "8.8.8.8"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "city": "",
+          "country": "",
+          "district": "",
+          "operator": "",
+          "province": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-missingResult",
+      "operation": "lookupIPLocation"
     }
   ],
   "schemaVersion": 1

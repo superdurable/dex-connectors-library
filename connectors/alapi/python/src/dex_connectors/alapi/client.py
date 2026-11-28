@@ -48,10 +48,11 @@ def _retry(kind: FailureKind, message: str, retry_after: float = 0) -> QueryAtte
 
 
 def _public_ipv4(value: object) -> str | None:
-    if not isinstance(value, str):
+    if not isinstance(value, str) or "%" in value:
         return None
     try:
-        address = ipaddress.ip_address(value)
+        parsed = ipaddress.ip_address(value)
+        address = parsed.ipv4_mapped if isinstance(parsed, ipaddress.IPv6Address) else parsed
     except ValueError:
         return None
     if (
@@ -169,10 +170,24 @@ def _decode_response(body: bytes, retry_after: float) -> QueryAttempt[LookupIPLo
         document: Any = json.loads(body)
     except (ValueError, UnicodeDecodeError):
         return _branch("invalidResponse", FailureKind.PROTOCOL, "ALAPI returned invalid lookup data")
+    if isinstance(document, dict):
+        document = {key.lower(): value for key, value in document.items()}
     if (
         not isinstance(document, dict)
         or type(document.get("code")) is not int
+        or not -(1 << 63) <= document["code"] < (1 << 63)
         or type(document.get("success")) is not bool
+    ):
+        return _branch("invalidResponse", FailureKind.PROTOCOL, "ALAPI returned invalid lookup data")
+    data = document.get("data")
+    if isinstance(data, dict):
+        data = {key.lower(): value for key, value in data.items()}
+    if data is not None and (
+        not isinstance(data, dict)
+        or any(
+            data.get(field) is not None and not isinstance(data[field], str)
+            for field in ("country", "province", "city", "district", "isp")
+        )
     ):
         return _branch("invalidResponse", FailureKind.PROTOCOL, "ALAPI returned invalid lookup data")
     code = document["code"]
@@ -187,13 +202,8 @@ def _decode_response(body: bytes, retry_after: float) -> QueryAttempt[LookupIPLo
         elif code in (10005, 10010):
             kind = FailureKind.QUOTA_EXHAUSTED
         return _branch("providerRejected", kind, f"ALAPI rejected lookup with code {code}")
-    data = document.get("data")
     if (
         not isinstance(data, dict)
-        or any(
-            field in data and data[field] is not None and not isinstance(data[field], str)
-            for field in ("country", "province", "city", "district", "isp")
-        )
         or not isinstance(data.get("country"), str)
         or not isinstance(data.get("city"), str)
         or not data["country"].strip()
