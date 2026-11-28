@@ -21,16 +21,17 @@ use sdk::{
 };
 use serde::{Deserialize, Serialize};
 
-const ENDPOINT: &str = [[.EndpointLiteral]];
-
+[[if .BaseURLLiteral]]const BASE_URL: &str = [[.BaseURLLiteral]];
+[[else]]const ENDPOINT: &str = [[.EndpointLiteral]];
+[[end]]
 /// The model-list query takes no application input.
 #[derive(Clone, Default, Deserialize, Serialize)]
 pub struct ListModelsInput {}
 
-[[if .ConnectorResponse]]pub use crate::model_response::ListModelsOutput;
+[[if .ConnectorResponse]]pub use crate::model_response::[[.OutputType]];
 [[else]]/// Size of the provider catalog and its first fifty model IDs.
 #[derive(Clone, Default, Deserialize, Serialize)]
-pub struct ListModelsOutput {
+pub struct [[.OutputType]] {
     /// Number of entries in the complete provider response.
     pub total: usize,
     /// Up to fifty validated IDs in provider order.
@@ -40,16 +41,19 @@ pub struct ListModelsOutput {
 [[end]]
 /// Settings for a single provider request.
 pub struct Config {
-    /// Timeout per attempt. Uses the manifest default.
+[[if .BaseURLLiteral]]    /// Base URL of the provider API. Defaults to the public provider endpoint.
+    pub base_url: String,
+[[end]]    /// Timeout per attempt. Uses the manifest default.
     pub timeout: Duration,
-    /// Maximum response size in bytes. Uses the manifest default, up to sixteen MiB.
+    /// Maximum response size in bytes. Uses the manifest default[[if not .BaseURLLiteral]], up to sixteen MiB[[end]].
     pub max_response_bytes: usize,
 }
 
 impl Default for Config {
     fn default() -> Self {
         Self {
-            timeout: Duration::from_nanos([[.TimeoutNanos]]),
+[[if .BaseURLLiteral]]            base_url: BASE_URL.to_owned(),
+[[end]]            timeout: Duration::from_nanos([[.TimeoutNanos]]),
             max_response_bytes: [[.MaxResponseBytes]],
         }
     }
@@ -59,14 +63,21 @@ impl Default for Config {
 #[derive(Clone)]
 pub struct Credentials {
     /// Provider-issued bearer credential, never stored in the result.
-    pub api_key: SecretString,
+    pub [[.CredentialField]]: SecretString,
+}
+
+impl From<SecretString> for Credentials {
+    fn from(credential: SecretString) -> Self {
+        Self { [[.CredentialField]]: credential }
+    }
 }
 
 /// Bound catalog query. Construct once and share the HTTP client across calls.
 pub struct ListModelsOperation {
     credentials: Arc<dyn CredentialProvider<Credentials>>,
     http: ProviderHttpClient,
-    max_response_bytes: usize,
+[[if .BaseURLLiteral]]    endpoint: String,
+[[end]]    max_response_bytes: usize,
 }
 
 impl ListModelsOperation {
@@ -75,9 +86,16 @@ impl ListModelsOperation {
         config: Config,
         credentials: Arc<dyn CredentialProvider<Credentials>>,
     ) -> Result<Self, ValidationError> {
-        let http = ProviderHttpClient::new(config.timeout, AddressPolicy::PublicHttps)?;
+[[if .BaseURLLiteral]]        let policy = if config.base_url.get(..7).is_some_and(|scheme| scheme.eq_ignore_ascii_case("http://")) {
+            AddressPolicy::PrivateNetworkHttp
+        } else {
+            AddressPolicy::PublicHttps
+        };
+        let http = ProviderHttpClient::new(config.timeout, policy)?;
+        Self::with_base_url(credentials, http, config.max_response_bytes, &config.base_url)
+[[else]]        let http = ProviderHttpClient::new(config.timeout, AddressPolicy::PublicHttps)?;
         Self::with_http_client(credentials, http, config.max_response_bytes)
-    }
+[[end]]    }
 
     /// Supply the transport used for each request and its response size limit in bytes.
     pub fn with_http_client(
@@ -85,14 +103,28 @@ impl ListModelsOperation {
         http: ProviderHttpClient,
         max_response_bytes: usize,
     ) -> Result<Self, ValidationError> {
-        if !(1..=(16 << 20)).contains(&max_response_bytes) {
-            return Err(ValidationError::new(
-                "[[.ProviderLabel]] response size limit must be between one byte and sixteen MiB",
+[[if .BaseURLLiteral]]        Self::with_base_url(credentials, http, max_response_bytes, BASE_URL)
+    }
+
+    /// Bind a configured provider base URL, explicit transport and positive response limit in bytes.
+    pub fn with_base_url(
+        credentials: Arc<dyn CredentialProvider<Credentials>>,
+        http: ProviderHttpClient,
+        max_response_bytes: usize,
+        base_url: &str,
+    ) -> Result<Self, ValidationError> {
+        let base = if base_url.is_empty() { BASE_URL } else { base_url };
+        let endpoint = sdk::providerhttp::validate_base_url(base)? + [[.PathLiteral]];
+        if max_response_bytes == 0 {
+[[else]]        if !(1..=(16 << 20)).contains(&max_response_bytes) {
+[[end]]            return Err(ValidationError::new(
+                "[[.ProviderLabel]] response size limit must be [[if .BaseURLLiteral]]positive[[else]]between one byte and sixteen MiB[[end]]",
             ));
         }
         Ok(Self {
             credentials,
-            http,
+[[if .BaseURLLiteral]]            endpoint,
+[[end]]            http,
             max_response_bytes,
         })
     }
@@ -100,7 +132,7 @@ impl ListModelsOperation {
 
 impl Query for ListModelsOperation {
     type Input = ListModelsInput;
-    type Output = ListModelsOutput;
+    type Output = [[.OutputType]];
 
     fn definition(&self) -> QueryDefinition {
         generated_definitions::ListModels::definition()
@@ -108,7 +140,7 @@ impl Query for ListModelsOperation {
 
     fn invoke(&self, call: &Call<'_>, _: &Self::Input) -> QueryAttempt<Self::Output> {
         let credentials = match self.credentials.resolve(call) {
-            Ok(credentials) if valid_key(credentials.api_key.reveal()) => credentials,
+            Ok(credentials) if valid_key(credentials.[[.CredentialField]].reveal()) => credentials,
             _ => {
                 return rejected(
                     "defect",
@@ -117,10 +149,10 @@ impl Query for ListModelsOperation {
                 );
             }
         };
-        let request = ProviderHttpRequest::new("GET", ENDPOINT)
+        let request = ProviderHttpRequest::new("GET", [[if .BaseURLLiteral]]&self.endpoint[[else]]ENDPOINT[[end]])
             .header(
                 "Authorization",
-                format!("Bearer {}", credentials.api_key.reveal()),
+                format!("Bearer {}", credentials.[[.CredentialField]].reveal()),
             )
             .header("Accept", "application/json")[[if .JSONContentType]]
             .header("Content-Type", "application/json")[[end]];
@@ -132,7 +164,7 @@ impl Query for ListModelsOperation {
             );
         };
         let status = response.status();
-        if status != 200 {
+        if [[if .ReadRejectedBody]]matches!(status, 408 | 429 | 500..)[[else]]status != 200[[end]] {
             let delay = parse_retry_after(
                 response.headers().get("Retry-After").unwrap_or(""),
                 SystemTime::now(),
@@ -143,24 +175,35 @@ impl Query for ListModelsOperation {
                     "[[.ProviderLabel]] rate limited the model request",
                     delay,
                 ),
-                408 | 500.. => retry(
+                [[if .ReadRejectedBody]]_[[else]]408 | 500..[[end]] => retry(
                     FailureKind::Availability,
                     "[[.ProviderLabel]] API is temporarily unavailable",
                     delay,
                 ),
-                _ => rejected(
+[[if not .ReadRejectedBody]]                _ => rejected(
                     "providerRejected",
                     match status {
                         401 => FailureKind::Authentication,
                         403 => FailureKind::Authorization,
-                        _ => FailureKind::ProviderRejection,
+[[range .ValidationStatuses]]                        [[.]] => FailureKind::Validation,
+[[end]]                        _ => FailureKind::ProviderRejection,
                     },
                     &format!("[[.ProviderLabel]] rejected model request with HTTP {status}"),
                 ),
-            };
+[[end]]            };
         }
         match read_bounded_body(&mut response, self.max_response_bytes) {
-            Ok(body) => decode_models(&body[[if .ConnectorResponse]], &credentials.api_key[[end]]),
+[[if .ReadRejectedBody]]            Ok(_) if status != 200 => rejected(
+                "providerRejected",
+                match status {
+                    401 => FailureKind::Authentication,
+                    403 => FailureKind::Authorization,
+[[range .ValidationStatuses]]                    [[.]] => FailureKind::Validation,
+[[end]]                    _ => FailureKind::ProviderRejection,
+                },
+                &format!("[[.ProviderLabel]] rejected model request with HTTP {status}"),
+            ),
+[[end]]            Ok(body) => decode_models(&body[[if .ConnectorResponse]], &credentials.[[.CredentialField]][[end]]),
             Err(ProviderHttpError::BodyTooLarge(_)) => rejected(
                 "invalidResponse",
                 FailureKind::ResponseTooLarge,
@@ -188,15 +231,15 @@ pub fn new_list_models_step<Input>(
 }
 
 fn valid_key(key: &str) -> bool {
-    [[if .KeyPrefixLiteral]]key.starts_with([[.KeyPrefixLiteral]]) && [[end]]!key.is_empty() && key.len() <= 1024 && key.bytes().all(|byte| byte.is_ascii_graphic())
+    [[if .KeyPrefixLiteral]]key.starts_with([[.KeyPrefixLiteral]]) && [[end]]!key.is_empty() && key.len() <= [[.MaxKeyBytes]] && key.bytes().all(|byte| byte.is_ascii_graphic())
 }
 
-[[if .ConnectorResponse]]fn decode_models(body: &[u8], credential: &SecretString) -> QueryAttempt<ListModelsOutput> {
+[[if .ConnectorResponse]]fn decode_models(body: &[u8], credential: &SecretString) -> QueryAttempt<[[.OutputType]]> {
     let output = serde_json::from_slice::<serde_json::Value>(body).ok().and_then(|catalog| {
 [[if .ListTag]]        if catalog.get("object")?.as_str()? != "[[.ListTag]]" {
             return None;
         }
-[[end]]        ListModelsOutput::from_provider_models(catalog.get("data")?.as_array()?, |value| value.contains(credential.reveal()))
+[[end]]        [[.OutputType]]::from_provider_models(catalog.get("data")?.as_array()?, |value| value.contains(credential.reveal()))
     });
     match output {
         Some(value) => QueryAttempt::branch([[.SuccessBranchLiteral]], value, Receipt::default(), None),
@@ -218,7 +261,7 @@ struct Model {
 [[end]]
 }
 
-fn decode_models(body: &[u8]) -> QueryAttempt<ListModelsOutput> {
+fn decode_models(body: &[u8]) -> QueryAttempt<[[.OutputType]]> {
     let catalog = match serde_json::from_slice::<Catalog>(body) {
         Ok(catalog)[[if .ListTag]] if catalog.object == "[[.ListTag]]"[[end]] => catalog,
         _ => {
@@ -249,21 +292,21 @@ fn decode_models(body: &[u8]) -> QueryAttempt<ListModelsOutput> {
     }
     QueryAttempt::branch(
         [[.SuccessBranchLiteral]],
-        ListModelsOutput { total, model_ids },
+        [[.OutputType]] { total, model_ids },
         Receipt::default(),
         None,
     )
 }
 
-[[end]]fn rejected(branch: &str, kind: FailureKind, message: &str) -> QueryAttempt<ListModelsOutput> {
+[[end]]fn rejected(branch: &str, kind: FailureKind, message: &str) -> QueryAttempt<[[.OutputType]]> {
     QueryAttempt::branch(
         branch,
-        ListModelsOutput::default(),
+        [[.OutputType]]::default(),
         Receipt::default(),
         Some(Failure::new(kind, [[.ConnectorLiteral]], "listModels", message)),
     )
 }
 
-fn retry(kind: FailureKind, message: &str, delay: f64) -> QueryAttempt<ListModelsOutput> {
+fn retry(kind: FailureKind, message: &str, delay: f64) -> QueryAttempt<[[.OutputType]]> {
     QueryAttempt::retry(Failure::new(kind, [[.ConnectorLiteral]], "listModels", message), delay)
 }

@@ -57,13 +57,21 @@ export class ListModelsOperation implements Query<ListModelsInput, ListModelsOut
     const { status, body } = exchange.response;
     if (status === 429) return retry('RATE_LIMIT', exchange.retryAfterMs);
     if (status === 408 || status >= 500) return retry('AVAILABILITY', exchange.retryAfterMs);
-    if (exchange.error === 'tooLarge') return branch('invalidResponse', 'RESPONSE_TOO_LARGE');
     if (status !== 200) return branch('providerRejected', status === 401 ? 'AUTHENTICATION' : status === 403 ? 'AUTHORIZATION' : 'PROVIDER_REJECTION');
+    if (exchange.error === 'tooLarge') return branch('invalidResponse', 'RESPONSE_TOO_LARGE');
     let document: unknown;
     try { document = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(body)) as unknown; } catch { return branch('invalidResponse', 'PROTOCOL'); }
     if (!isRecord(document) || !Array.isArray(document.data) || document.data.length > 10_000) return branch('invalidResponse', 'PROTOCOL');
-    const seen = new Set<string>(); const models: NonNullable<ListModelsOutput['models']> = [];
-    for (const item of document.data) { if (!isRecord(item) || typeof item.id !== 'string' || !item.id || item.id.length > 512 || seen.has(item.id)) return branch('invalidResponse', 'PROTOCOL'); seen.add(item.id); models.push({ id: item.id, ...(typeof item.object === 'string' ? { object: item.object } : {}) }); }
+    const seen = new Set<string>();
+    const models: NonNullable<ListModelsOutput['models']> = [];
+    for (const item of document.data) {
+      if (!isRecord(item) || typeof item.id !== 'string' || !item.id || Buffer.byteLength(item.id) > 512 ||
+          seen.has(item.id) || (item.object != null && typeof item.object !== 'string')) {
+        return branch('invalidResponse', 'PROTOCOL');
+      }
+      seen.add(item.id);
+      models.push(item.object ? { id: item.id, object: item.object } : { id: item.id });
+    }
     return newQueryBranch('listed', { models });
   }
 }

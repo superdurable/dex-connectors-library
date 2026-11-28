@@ -145,21 +145,20 @@ class ListModelsOperation:
                 return self._retry(FailureKind.RATE_LIMIT, delay)
             if status == 408 or status >= 500:
                 return self._retry(FailureKind.AVAILABILITY, delay)
-            if status != 200:
-                kind = (
-                    FailureKind.AUTHENTICATION
-                    if status == 401
-                    else FailureKind.AUTHORIZATION
-                    if status == 403
-                    else FailureKind.PROVIDER_REJECTION
-                )
-                return self._branch("providerRejected", kind)
             try:
                 body = await read_bounded_body(response, self.client.config.max_response_bytes)
             except BodyTooLargeError:
                 return self._branch("invalidResponse", FailureKind.RESPONSE_TOO_LARGE)
             except ProviderTransportError:
                 return self._retry(FailureKind.AVAILABILITY)
+            if status != 200:
+                kind = {
+                    400: FailureKind.VALIDATION,
+                    401: FailureKind.AUTHENTICATION,
+                    403: FailureKind.AUTHORIZATION,
+                    404: FailureKind.VALIDATION,
+                }.get(status, FailureKind.PROVIDER_REJECTION)
+                return self._branch("providerRejected", kind)
         finally:
             await response.aclose()
         try:

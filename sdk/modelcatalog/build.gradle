@@ -61,7 +61,11 @@ tasks.register('modelCatalogWorker', JavaExec) {
     mainClass = "io.superdurable.dexconnectors.${modelCatalogPackage}.ModelCatalogWorker"
 }
 
-test { useJUnitPlatform { excludeTags 'dex-dev' } }
+test {
+    inputs.file(providers.environmentVariable('CONNECTOR_CONFORMANCE_FIXTURE')
+            .orElse("../../../conformance/connectors/${projectDir.parentFile.name}/scenarios.json".toString()))
+    useJUnitPlatform { excludeTags 'dex-dev' }
+}
 tasks.register('dexDevTest', Test) {
     useJUnitPlatform { includeTags 'dex-dev' }
     outputs.upToDateWhen { false }

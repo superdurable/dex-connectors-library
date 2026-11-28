@@ -27,12 +27,18 @@ async def test_list_models_retries_503(tmp_path: Path) -> None:
 
     def answer(request: httpx.Request) -> httpx.Response:
         requests.append(request)
-        return httpx.Response(503) if len(requests) == 1 else httpx.Response(200, text=response_body)
+        if len(requests) == 1:
+            return httpx.Response(503)
+        if len(requests) == 2:
+            return httpx.Response(200, text=response_body)
+        return httpx.Response(403, content=b"x" * 129)
 
     reference = ConnectionRef("moxin", CONNECTION_NAME)
     credentials = Credentials(SecretString("sk-test-token"))
     async with httpx.AsyncClient(transport=httpx.MockTransport(answer)) as http_client:
-        provider_client = Client(Config(), StaticCredentialProvider({reference: credentials}), http_client)
+        provider_client = Client(
+            Config(max_response_bytes=128), StaticCredentialProvider({reference: credentials}), http_client
+        )
         connection = new_connection(provider_client, reference)
         flow = ListModelsFlow(connection)
         registry = dex.Registry([flow], allow_async_handlers=True)
@@ -49,6 +55,14 @@ async def test_list_models_retries_503(tmp_path: Path) -> None:
                 output = result.single_output(ModelPage)
                 assert output != ModelPage()
                 assert len(requests) == 2
+                rejected_id = f"moxin-rejected-{uuid4().hex}"
+                await client.start_flow(flow, rejected_id, ListModelsInput())
+                rejected = await asyncio.wait_for(
+                    client.wait_for_flow(rejected_id, timedelta(seconds=40)), 45
+                )
+                assert rejected.status == dex.FlowStatus.FAILED
+                assert "invalidResponse" in str(rejected.error_message)
+                assert len(requests) == 3
         finally:
             await worker.stop()
             await worker_task

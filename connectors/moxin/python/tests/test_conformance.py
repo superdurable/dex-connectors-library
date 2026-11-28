@@ -26,9 +26,12 @@ def create_client(http_client: object, recorder: conformance.ExchangeRecorder) -
         and recorder.scenario["expected"]["failureKind"] == "AUTHENTICATION"
     ):
         credential = connector.Credentials(sdk.SecretString(""))
-    return connector.Client(
-        connector.Config(), conformance.static_credentials(CONNECTION, credential), http_client
+    config = (
+        connector.Config(max_response_bytes=16)
+        if recorder.scenario["name"] == "listModels-oversized"
+        else connector.Config()
     )
+    return connector.Client(config, conformance.static_credentials(CONNECTION, credential), http_client)
 
 
 ADAPTER = conformance.PythonOperationAdapter("moxin", CONNECTION, connector, create_client)

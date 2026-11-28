@@ -1,0 +1,42 @@
+{
+  "listModels": {
+    "branches": [
+      {
+        "description": "SiliconFlow returned zero or more models.",
+        "id": "listed",
+        "optional": false
+      },
+      {
+        "description": "SiliconFlow rejected the key or permissions.",
+        "id": "providerRejected",
+        "optional": true
+      },
+      {
+        "description": "SiliconFlow returned malformed or oversized data.",
+        "id": "invalidResponse",
+        "optional": true
+      },
+      {
+        "description": "Connection configuration or credentials are invalid.",
+        "id": "defect",
+        "optional": true
+      }
+    ],
+    "operation": {
+      "connectorId": "siliconflow",
+      "operationId": "listModels"
+    },
+    "stepDefaults": {
+      "executeDurability": 2,
+      "executeMethodTimeout": 30000000000,
+      "executeRetry": {
+        "BackoffCoefficient": 2,
+        "InitialInterval": 1000000000,
+        "MaximumAttempts": 0,
+        "MaximumInterval": 300000000000,
+        "TotalDuration": 3600000000000
+      },
+      "heartbeatTimeout": 0
+    }
+  }
+}

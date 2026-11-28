@@ -37,7 +37,7 @@ async def test_query_retries_503_and_persists_result(tmp_path: Path) -> None:
             return httpx.Response(503)
         return httpx.Response(
             200,
-            content='{"object":"list","data":[{"id":"qwen3.8-max"}]}',
+            content='{"object":"list","data":[{"id":"qwen3.8-max"},{"id":"qwen3.8-max"}]}',
         )
 
     reference = ConnectionRef("tokengp", CONNECTION_NAME)
@@ -59,7 +59,10 @@ async def test_query_retries_503_and_persists_result(tmp_path: Path) -> None:
                 await client.start_flow(flow, flow_id, ListModelsInput())
                 result = await asyncio.wait_for(client.wait_for_flow(flow_id, timedelta(seconds=25)), 30)
                 assert result.status == dex.FlowStatus.COMPLETED, result.error_message
-                assert isinstance(result.single_output(ListModelsOutput), ListModelsOutput)
+                assert [model.id for model in result.single_output(ListModelsOutput).models] == [
+                    "qwen3.8-max",
+                    "qwen3.8-max",
+                ]
                 assert len(requests) == 2
         finally:
             await worker.stop()

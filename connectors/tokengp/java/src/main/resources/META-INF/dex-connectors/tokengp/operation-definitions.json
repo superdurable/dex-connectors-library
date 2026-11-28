@@ -1,0 +1,42 @@
+{
+  "listModels": {
+    "branches": [
+      {
+        "description": "TokenGP returned accessible model IDs.",
+        "id": "listed",
+        "optional": false
+      },
+      {
+        "description": "TokenGP rejected the API key or account access.",
+        "id": "providerRejected",
+        "optional": true
+      },
+      {
+        "description": "TokenGP returned malformed or oversized data.",
+        "id": "invalidResponse",
+        "optional": true
+      },
+      {
+        "description": "Local credentials or connection configuration are invalid.",
+        "id": "defect",
+        "optional": true
+      }
+    ],
+    "operation": {
+      "connectorId": "tokengp",
+      "operationId": "listModels"
+    },
+    "stepDefaults": {
+      "executeDurability": 2,
+      "executeMethodTimeout": 30000000000,
+      "executeRetry": {
+        "BackoffCoefficient": 2,
+        "InitialInterval": 1000000000,
+        "MaximumAttempts": 0,
+        "MaximumInterval": 300000000000,
+        "TotalDuration": 3600000000000
+      },
+      "heartbeatTimeout": 0
+    }
+  }
+}

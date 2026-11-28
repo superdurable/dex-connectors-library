@@ -10,9 +10,18 @@ metadata:
 spec:
   provider: tokengp
   languages:
-    python: {version: v0.1.0, operations: [listModels], triggers: []}
-    typescript: {version: v0.1.0, operations: [listModels], triggers: []}
+    java: {version: v0.1.0, operations: [listModels], triggers: []}
+    rust: {version: v0.1.0, operations: [listModels], triggers: []}
+    python: {version: v0.1.1, operations: [listModels], triggers: []}
+    typescript: {version: v0.1.1, operations: [listModels], triggers: []}
   codegen:
+    modelCatalog:
+      endpoint: https://api.tokengp.com/v1/models
+      providerLabel: TokenGP
+      connectorResponse: true
+      maxKeyBytes: 512
+      objectTags: absent
+      readRejectedBody: true
     go:
       package: tokengp
   configuration:

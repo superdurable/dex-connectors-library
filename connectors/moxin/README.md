@@ -8,3 +8,12 @@ The [runnable Dex Flow](go/examples/model-list/README.md) shows connection setup
 
 The [Python package](python/README.md) implements the same Query with a checked-in Dex Worker and Client example. Its Go-recorded provider scenarios and local Dex retry path are verified; live provider authorization remains unverified.
 The [TypeScript package](typescript/README.md) exposes `listModels` and includes a runnable Dex Flow, Go scenario replay, and a local provider integration test.
+
+The [Java Worker](java/examples/io/superdurable/dexconnectors/moxin/ModelCatalogWorker.java) and
+[Rust Worker](rust/examples/list_models.rs) serve the same model-list Query.
+Both examples read the key from `MOXIN_PLATFORM_TOKEN` in the Worker environment and use
+the static connection name `moxin`. Start Dex locally with `dexcli dev -open=false`,
+then run `./gradlew modelCatalogWorker` from `java/` or `cargo run --example list_models`
+from `rust/`. Start `JavaMoxinModelCatalog` with an empty JSON string or `RustMoxinModelCatalog` with `{}`.
+Run `./gradlew check dexDevTest` and `cargo test --all-targets` in those directories
+to replay Go scenarios and exercise retry through a real Worker and Client.

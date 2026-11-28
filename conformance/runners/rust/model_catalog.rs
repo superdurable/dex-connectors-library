@@ -101,9 +101,7 @@ fn replay_go_model_catalog() {
         let key = if name == MISSING_KEY_CASE { "" } else { KEY };
         let credentials = StaticCredentialProvider::new(HashMap::from([(
             connection.clone(),
-            Credentials {
-                api_key: SecretString::new(key),
-            },
+            Credentials::from(SecretString::new(key)),
         )]));
         let limit = if name == SMALL_BODY_CASE { 16 } else { 1 << 20 };
         let http =

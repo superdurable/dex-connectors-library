@@ -17,3 +17,12 @@ The [Python package](python/) exposes the same Query and branch contract as Go. 
 ## TypeScript
 
 `@superdurable/connector-tokengp` provides the `listModels` Query and a [runnable TypeScript Dex example](typescript/examples/basic/README.md). The package replays Go-recorded provider scenarios with `npm run check`, and `npm run test:integration` verifies retry and persistence against `dexcli dev -open=false`. Real provider credentials and live API behavior have not been verified.
+
+The [Java Worker](java/examples/io/superdurable/dexconnectors/tokengp/ModelCatalogWorker.java) and
+[Rust Worker](rust/examples/list_models.rs) serve the same model-list Query.
+Both examples read the key from `TOKENGP_API_KEY` in the Worker environment and use
+the static connection name `tokengp`. Start Dex locally with `dexcli dev -open=false`,
+then run `./gradlew modelCatalogWorker` from `java/` or `cargo run --example list_models`
+from `rust/`. Start `JavaTokengpModelCatalog` with an empty JSON string or `RustTokengpModelCatalog` with `{}`.
+Run `./gradlew check dexDevTest` and `cargo test --all-targets` in those directories
+to replay Go scenarios and exercise retry through a real Worker and Client.

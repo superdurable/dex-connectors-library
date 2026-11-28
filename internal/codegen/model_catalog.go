@@ -8,6 +8,8 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
+	"go/token"
+	"regexp"
 	"strconv"
 	"strings"
 	"text/template"
@@ -24,10 +26,16 @@ var modelCatalogTemplates = template.Must(template.New("catalog").Delims("[[", "
 // GenerateModelCatalogClient renders a native provider client for the explicitly selected model-list protocol.
 func GenerateModelCatalogClient(manifest schema.Manifest, directory, language string) ([]byte, error) {
 	protocol := manifest.Spec.Codegen.ModelCatalog
+	var baseURL string
 	var timeout time.Duration
 	var maxResponseBytes int
 	for _, field := range manifest.Spec.Configuration.Fields {
 		switch field.Name {
+		case "baseUrl":
+			baseURL = strings.TrimRight(fmt.Sprint(field.Default), "/")
+			if !strings.HasPrefix(protocol.Endpoint, baseURL+"/") || !strings.HasPrefix(baseURL, "https://") {
+				return nil, fmt.Errorf("model catalog endpoint must be below its default baseUrl")
+			}
 		case "timeout":
 			value, err := time.ParseDuration(fmt.Sprint(field.Default))
 			if err != nil {
@@ -63,10 +71,28 @@ func GenerateModelCatalogClient(manifest schema.Manifest, directory, language st
 	case "absent":
 		listTag, modelTag = "", ""
 	}
-	successBranch := ""
+	maxKeyBytes := protocol.MaxKeyBytes
+	if maxKeyBytes == 0 {
+		maxKeyBytes = 1024
+	}
+	if len(manifest.Spec.Auth.Fields) != 1 {
+		return nil, fmt.Errorf("model catalog requires one bearer credential")
+	}
+	credentialField := manifest.Spec.Auth.Fields[0].Name
+	if credentialField == "apiKey" {
+		credentialField = "api_key"
+	}
+	if !regexp.MustCompile(`^[a-z][a-z0-9_]*$`).MatchString(credentialField) {
+		return nil, fmt.Errorf("model catalog credential must have a snake_case field name")
+	}
+	successBranch, outputType := "", ""
 	for _, operation := range manifest.Spec.Operations {
 		if operation.Name != "listModels" {
 			continue
+		}
+		outputType = operation.OutputType
+		if !token.IsIdentifier(outputType) || !token.IsExported(outputType) {
+			return nil, fmt.Errorf("model catalog requires a named public output type")
 		}
 		for _, branch := range operation.Branches {
 			if !branch.Optional {
@@ -81,13 +107,32 @@ func GenerateModelCatalogClient(manifest schema.Manifest, directory, language st
 		return nil, fmt.Errorf("model catalog requires a listModels happy-path branch")
 	}
 	values := struct {
-		JSONContentType                                                                                             bool
-		SuccessBranchLiteral                                                                                        string
-		GoPackage, ConnectorLiteral, EndpointLiteral, ProviderLabel, Directory, KeyPrefixLiteral, ListTag, ModelTag string
-		ConnectorResponse                                                                                           bool
-		TimeoutNanos                                                                                                int64
-		MaxResponseBytes                                                                                            int
+		BaseURLLiteral       string
+		PathLiteral          string
+		OutputType           string
+		CredentialField      string
+		MaxKeyBytes          int
+		ValidationStatuses   []int
+		ReadRejectedBody     bool
+		JSONContentType      bool
+		SuccessBranchLiteral string
+		GoPackage            string
+		ConnectorLiteral     string
+		EndpointLiteral      string
+		ProviderLabel        string
+		Directory            string
+		KeyPrefixLiteral     string
+		ListTag              string
+		ModelTag             string
+		ConnectorResponse    bool
+		TimeoutNanos         int64
+		MaxResponseBytes     int
 	}{
+		OutputType:           outputType,
+		CredentialField:      credentialField,
+		MaxKeyBytes:          maxKeyBytes,
+		ValidationStatuses:   protocol.ValidationStatuses,
+		ReadRejectedBody:     protocol.ReadRejectedBody,
 		JSONContentType:      protocol.JSONContentType,
 		SuccessBranchLiteral: strconv.Quote(successBranch),
 		GoPackage:            manifest.Spec.Codegen.Go.Package,
@@ -101,6 +146,10 @@ func GenerateModelCatalogClient(manifest schema.Manifest, directory, language st
 		ConnectorResponse:    protocol.ConnectorResponse,
 		TimeoutNanos:         timeout.Nanoseconds(),
 		MaxResponseBytes:     maxResponseBytes,
+	}
+	if baseURL != "" {
+		values.BaseURLLiteral = literal(baseURL)
+		values.PathLiteral = literal(strings.TrimPrefix(protocol.Endpoint, baseURL))
 	}
 	var output bytes.Buffer
 	if err := modelCatalogTemplates.ExecuteTemplate(&output, templateName, values); err != nil {

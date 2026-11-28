@@ -9,13 +9,21 @@ metadata:
   version: v0.1.0
 spec:
   languages:
+    java: {version: v0.1.0, operations: [listModels], triggers: []}
+    rust: {version: v0.1.0, operations: [listModels], triggers: []}
     python:
-      version: v0.1.0
+      version: v0.1.1
       operations: [listModels]
       triggers: []
-    typescript: {version: v0.1.0, operations: [listModels], triggers: []}
+    typescript: {version: v0.1.1, operations: [listModels], triggers: []}
   provider: siliconflow
   codegen:
+    modelCatalog:
+      endpoint: https://api.siliconflow.cn/v1/models
+      providerLabel: SiliconFlow
+      connectorResponse: true
+      maxKeyBytes: 512
+      objectTags: absent
     go:
       package: siliconflow
   configuration:

@@ -139,11 +139,18 @@ Java packages load `operation-definitions.json` beside the embedded connector de
 Rust packages import `src/generated_definitions.rs`.
 
 For providers exposing a bearer-authenticated model list, `spec.codegen.modelCatalog`
-can generate the Java and Rust `listModels` clients. Set the fixed HTTPS `endpoint`
+can generate the Java and Rust `listModels` clients. Set the default HTTPS `endpoint`
 and `providerLabel`, along with `keyPrefix` when the provider requires one.
-For a provider-specific output, set `connectorResponse: true`. Implement
-`ListModelsOutput.fromProviderModels` in the Java package and
-`model_response::ListModelsOutput::from_provider_models` in Rust.
+When the manifest declares a configurable `baseUrl`, the endpoint must begin with
+that default URL and a slash. Java and Rust preserve the remaining request path
+when the application supplies a trusted base URL. `maxKeyBytes` sets the maximum
+bearer credential length in bytes (1024 by default). Set `readRejectedBody` when
+the Go implementation bounds a definitive HTTP error body before classifying its
+status. List provider-specific validation responses in `validationStatuses`.
+
+For a provider-specific output, set `connectorResponse: true`. The type named
+by the operation's `outputType` supplies `fromProviderModels` in Java and
+`from_provider_models` in Rust's `model_response` module.
 Each decoder receives the provider data array and a predicate that detects
 credential echoes when the provider contract requires rejection. It returns the typed output,
 or signals invalid provider data with Java `null` or Rust `None`.

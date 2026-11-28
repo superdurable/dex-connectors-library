@@ -15,7 +15,8 @@ async function invokeTokenGP(scenario: Scenario, recorder: ExchangeRecorder) {
   if (scenario.operation !== 'listModels') throw new Error(`unknown TokenGP operation ${scenario.operation}`);
   const isDefect = scenario.name.endsWith('-defect');
   const credentials = new StaticCredentialProvider([[connection, { apiKey: new SecretString(isDefect ? '' : 'sk-test-secret') }]]);
-  const client = new TokenGPClient({}, credentials, { send: request => answerRecordedRequest(recorder, request, before => new ProviderTransportError(before)) });
+  const config = scenario.name === 'listModels-oversized' ? { maxResponseBytes: 16 } : {};
+  const client = new TokenGPClient(config, credentials, { send: request => answerRecordedRequest(recorder, request, before => new ProviderTransportError(before)) });
   const call: Call = {
     context: { flowId: 'tokengp-conformance', cancellationSignal: new AbortController().signal } as Call['context'],
     id: scenario.callId, connection, operation: { connectorId: 'tokengp', operationId: scenario.operation },

@@ -122,6 +122,16 @@ class ListModelsOperation:
                 return _retry(FailureKind.RATE_LIMIT, "provider rate limited the request", delay)
             if response.status_code == 408 or response.status_code >= 500:
                 return _retry(FailureKind.AVAILABILITY, "provider temporarily unavailable", delay)
+            try:
+                body = await read_bounded_body(response, self.client.max_response_bytes)
+            except BodyTooLargeError:
+                return _branch(
+                    "invalidResponse",
+                    FailureKind.RESPONSE_TOO_LARGE,
+                    "provider response exceeded the configured limit",
+                )
+            except ProviderTransportError:
+                return _retry(FailureKind.AVAILABILITY, "provider response was interrupted")
             if response.status_code != 200:
                 kind = (
                     FailureKind.AUTHENTICATION
@@ -135,16 +145,6 @@ class ListModelsOperation:
                     kind,
                     f"provider rejected the request with HTTP {response.status_code}",
                 )
-            try:
-                body = await read_bounded_body(response, self.client.max_response_bytes)
-            except BodyTooLargeError:
-                return _branch(
-                    "invalidResponse",
-                    FailureKind.RESPONSE_TOO_LARGE,
-                    "provider response exceeded the configured limit",
-                )
-            except ProviderTransportError:
-                return _retry(FailureKind.AVAILABILITY, "provider response was interrupted")
             try:
                 data: Any = json.loads(
                     body, parse_constant=lambda _: (_ for _ in ()).throw(ValueError("invalid JSON number"))
@@ -173,9 +173,13 @@ def _decode(data: Any, delay: float) -> QueryAttempt[ListModelsOutput]:
             not isinstance(item, dict)
             or not isinstance(item.get("id"), str)
             or not item["id"]
-            or len(item["id"]) > 256
-            or item["id"] != item["id"].strip()
+            or len(item["id"].encode("utf-8")) > 256
+            or _has_edge_space(item["id"])
         ):
             raise ValueError("invalid model ID")
         parsed.append(Model(id=item["id"]))
     return QueryAttempt.branch_result("listed", ListModelsOutput(models=tuple(parsed)), Receipt())
+
+
+def _has_edge_space(model_id: str) -> bool:
+    return any(char.isspace() and not 0x1C <= ord(char) <= 0x1F for char in (model_id[0], model_id[-1]))

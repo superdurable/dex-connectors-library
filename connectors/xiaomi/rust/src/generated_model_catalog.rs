@@ -61,6 +61,12 @@ pub struct Credentials {
     pub api_key: SecretString,
 }
 
+impl From<SecretString> for Credentials {
+    fn from(credential: SecretString) -> Self {
+        Self { api_key: credential }
+    }
+}
+
 /// Bound catalog query. Construct once and share the HTTP client across calls.
 pub struct ListModelsOperation {
     credentials: Arc<dyn CredentialProvider<Credentials>>,

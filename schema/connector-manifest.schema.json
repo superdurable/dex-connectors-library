@@ -62,6 +62,9 @@
               "properties": {
                 "endpoint": { "type": "string", "format": "uri", "pattern": "^https://" },
                 "keyPrefix": { "type": "string", "pattern": "^[A-Za-z0-9._-]*$" },
+                "maxKeyBytes": { "type": "integer", "minimum": 0, "maximum": 8192 },
+                "readRejectedBody": { "type": "boolean" },
+                "validationStatuses": { "type": "array", "uniqueItems": true, "items": { "type": "integer", "minimum": 400, "maximum": 499, "not": { "enum": [401, 403, 408, 429] } } },
                 "jsonContentType": { "type": "boolean" },
                 "connectorResponse": { "type": "boolean" },
                 "objectTags": { "enum": ["lowercase", "uppercase", "absent"] },

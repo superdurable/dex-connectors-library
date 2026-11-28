@@ -253,7 +253,13 @@ type ModelCatalogCodegen struct {
 	ConnectorResponse bool `yaml:"connectorResponse,omitempty" json:"connectorResponse,omitempty"`
 	// ObjectTags specifies the list and model type tags: lowercase (default), uppercase, or absent.
 	ObjectTags string `yaml:"objectTags,omitempty" json:"objectTags,omitempty"`
-	// Endpoint is the fixed HTTPS model-list URL.
+	// MaxKeyBytes bounds the bearer credential in bytes. Zero uses 1024.
+	MaxKeyBytes int `yaml:"maxKeyBytes,omitempty" json:"maxKeyBytes,omitempty"`
+	// ReadRejectedBody applies the response size limit before classifying a definitive HTTP rejection.
+	ReadRejectedBody bool `yaml:"readRejectedBody,omitempty" json:"readRejectedBody,omitempty"`
+	// ValidationStatuses identifies definitive provider HTTP rejections classified as input validation failures.
+	ValidationStatuses []int `yaml:"validationStatuses,omitempty" json:"validationStatuses,omitempty"`
+	// Endpoint is the default HTTPS model-list URL.
 	Endpoint string `yaml:"endpoint" json:"endpoint"`
 	// KeyPrefix is the required API key prefix, or empty for any nonempty visible ASCII key.
 	KeyPrefix string `yaml:"keyPrefix,omitempty" json:"keyPrefix,omitempty"`
@@ -876,6 +882,16 @@ func (manifest Manifest) Validate() error {
 	if protocol := manifest.Spec.Codegen.ModelCatalog; protocol != nil {
 		if !slices.Contains([]string{"", "lowercase", "uppercase", "absent"}, protocol.ObjectTags) {
 			problems = append(problems, "spec.codegen.modelCatalog.objectTags must be lowercase, uppercase, or absent")
+		}
+		if protocol.MaxKeyBytes < 0 || protocol.MaxKeyBytes > 8192 {
+			problems = append(problems, "spec.codegen.modelCatalog.maxKeyBytes must be between zero and 8192")
+		}
+		seenStatuses := map[int]bool{}
+		for _, status := range protocol.ValidationStatuses {
+			if status < 400 || status > 499 || slices.Contains([]int{401, 403, 408, 429}, status) || seenStatuses[status] {
+				problems = append(problems, "spec.codegen.modelCatalog.validationStatuses requires unique definitive 4xx statuses other than 401 and 403")
+			}
+			seenStatuses[status] = true
 		}
 		endpoint, err := url.Parse(protocol.Endpoint)
 		if err != nil || endpoint.Scheme != "https" || endpoint.Hostname() == "" || endpoint.Path == "" || endpoint.User != nil || endpoint.RawQuery != "" || endpoint.Fragment != "" {

@@ -27,8 +27,9 @@ import java.util.function.Function;
 public final class ModelCatalog {
     private static final String CONNECTOR = [[.ConnectorLiteral]];
     private static final String OPERATION = "listModels";
-    private static final String ENDPOINT = [[.EndpointLiteral]];
-    private static final ObjectMapper JSON = new ObjectMapper()
+[[if .BaseURLLiteral]]    private static final String BASE_URL = [[.BaseURLLiteral]];
+[[else]]    private static final String ENDPOINT = [[.EndpointLiteral]];
+[[end]]    private static final ObjectMapper JSON = new ObjectMapper()
             .enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS);
     private static final QueryDefinition DEFINITION = loadDefinition();
 
@@ -38,14 +39,14 @@ public final class ModelCatalog {
     public static final class ListModelsInput {}
 
 [[if not .ConnectorResponse]]    /** Catalog size and validated model IDs in provider order. */
-    public static final class ListModelsOutput {
+    public static final class [[.OutputType]] {
         /** Number of models in the complete provider response. */
         public final int total;
         /** First fifty model identifiers in provider order. */
         public final List<String> modelIDs;
 
         /** Construct a wire result from the count and visible model IDs. */
-        @JsonCreator public ListModelsOutput(@JsonProperty("total") int total,
+        @JsonCreator public [[.OutputType]](@JsonProperty("total") int total,
                                              @JsonProperty("modelIDs") List<String> modelIDs) {
             this.total = total;
             this.modelIDs = Collections.unmodifiableList(new ArrayList<>(modelIDs));
@@ -53,19 +54,19 @@ public final class ModelCatalog {
     }
 
 [[end]]    /** Concrete Dex Step input for a catalog result. */
-    public static final class ListModelsResult extends QueryResult<ListModelsOutput> {
+    public static final class ListModelsResult extends QueryResult<[[.OutputType]]> {
         /** Restore the selected branch and its receipt from Dex. */
         @JsonCreator public ListModelsResult(@JsonProperty("branch") String branch,
-                @JsonProperty("value") ListModelsOutput value, @JsonProperty("receipt") Receipt receipt,
+                @JsonProperty("value") [[.OutputType]] value, @JsonProperty("receipt") Receipt receipt,
                 @JsonProperty("failure") Failure failure) {
             super(branch, value, receipt, failure);
         }
     }
 
     /** Bind the model query to a named connection and configure its branch targets. */
-    public static <I> QueryStep.ConfigBuilder<I, ListModelsInput, ListModelsOutput, ListModelsResult>
+    public static <I> QueryStep.ConfigBuilder<I, ListModelsInput, [[.OutputType]], ListModelsResult>
             newListModelsStep(String stepType, Class<I> inputType, StepAnnotations annotations,
-                              Query<ListModelsInput, ListModelsOutput> operation, ConnectionRef connection,
+                              Query<ListModelsInput, [[.OutputType]]> operation, ConnectionRef connection,
                               Function<I, ListModelsInput> mapInput) {
         if (!CONNECTOR.equals(connection.getProvider())) {
             throw new IllegalArgumentException("[[.ProviderLabel]] connection provider is invalid");
@@ -75,30 +76,38 @@ public final class ModelCatalog {
     }
 
     /** Performs one bounded, redirect-safe provider request per Execute attempt. */
-    public static final class ListModelsOperation implements Query<ListModelsInput, ListModelsOutput> {
+    public static final class ListModelsOperation implements Query<ListModelsInput, [[.OutputType]]> {
         private final CredentialProvider<SecretString> credentials;
         private final ProviderHttpTransport transport;
-        private final int maxResponseBytes;
+[[if .BaseURLLiteral]]        private final String endpoint;
+[[end]]        private final int maxResponseBytes;
 
         /** Use the HTTP timeout and response size limit declared in the manifest. */
         public ListModelsOperation(CredentialProvider<SecretString> credentials) {
             this(credentials, new ProviderHttpClient(Duration.ofNanos([[.TimeoutNanos]]L), AddressPolicy.PUBLIC_HTTPS), [[.MaxResponseBytes]]);
         }
 
-        /** Bind a call-time credential source, configured transport, and response limit (one byte to sixteen MiB). */
+        /** Bind a call-time credential source, configured transport, and response limit ([[if .BaseURLLiteral]]positive bytes[[else]]one byte to sixteen MiB[[end]]). */
         public ListModelsOperation(CredentialProvider<SecretString> credentials,
                                    ProviderHttpTransport transport, int maxResponseBytes) {
-            this.credentials = Objects.requireNonNull(credentials);
+[[if .BaseURLLiteral]]            this(credentials, BASE_URL, transport, maxResponseBytes);
+        }
+
+        /** Use a configured provider base URL, transport and positive response size limit. */
+        public ListModelsOperation(CredentialProvider<SecretString> credentials, String baseUrl,
+                                   ProviderHttpTransport transport, int maxResponseBytes) {
+            this.endpoint = ProviderHttp.validateBaseUrl(baseUrl == null || baseUrl.isEmpty() ? BASE_URL : baseUrl) + [[.PathLiteral]];
+[[end]]            this.credentials = Objects.requireNonNull(credentials);
             this.transport = Objects.requireNonNull(transport);
-            if (maxResponseBytes <= 0 || maxResponseBytes > 16 << 20) {
-                throw new IllegalArgumentException("[[.ProviderLabel]] response limit must be between one byte and sixteen MiB");
+            if (maxResponseBytes <= 0[[if not .BaseURLLiteral]] || maxResponseBytes > 16 << 20[[end]]) {
+                throw new IllegalArgumentException("[[.ProviderLabel]] response limit must be [[if .BaseURLLiteral]]positive[[else]]between one byte and sixteen MiB[[end]]");
             }
             this.maxResponseBytes = maxResponseBytes;
         }
 
         @Override public QueryDefinition definition() { return DEFINITION; }
 
-        @Override public QueryAttempt<ListModelsOutput> invoke(Call call, ListModelsInput input)
+        @Override public QueryAttempt<[[.OutputType]]> invoke(Call call, ListModelsInput input)
                 throws InterruptedException {
             SecretString key;
             try {
@@ -106,14 +115,16 @@ public final class ModelCatalog {
             } catch (IOException error) {
                 key = null;
             }
-            if (key == null || [[if .KeyPrefixLiteral]]!key.reveal().startsWith([[.KeyPrefixLiteral]]) || [[end]]!key.reveal().matches("[!-~]{1,1024}")) {
+            if (key == null || [[if .KeyPrefixLiteral]]!key.reveal().startsWith([[.KeyPrefixLiteral]]) || [[end]]!key.reveal().matches("[!-~]{1,[[.MaxKeyBytes]]}")) {
                 return failed("defect", FailureKind.AUTHENTICATION, "[[.ProviderLabel]] API Key is unavailable or invalid");
             }
-            ProviderHttpRequest request = ProviderHttpRequest.newBuilder("GET", ENDPOINT)
+            ProviderHttpRequest request = ProviderHttpRequest.newBuilder("GET", [[if .BaseURLLiteral]]endpoint[[else]]ENDPOINT[[end]])
                     .header("Authorization", "Bearer " + key.reveal()).header("Accept", "application/json")[[if .JSONContentType]].header("Content-Type", "application/json")[[end]].build();
             try (ProviderHttpResponse response = transport.send(request)) {
-                if (response.getStatusCode() != 200) {
-                    return classifyStatus(response);
+[[if .ReadRejectedBody]]                int status = response.getStatusCode();
+                if (status == 408 || status == 429 || status >= 500) {
+[[else]]                if (response.getStatusCode() != 200) {
+[[end]]                    return classifyStatus(response);
                 }
                 byte[] body;
                 try {
@@ -123,7 +134,8 @@ public final class ModelCatalog {
                 } catch (IOException error) {
                     return retry(FailureKind.AVAILABILITY, "[[.ProviderLabel]] response was interrupted", Duration.ZERO);
                 }
-                return decodeModels(body[[if .ConnectorResponse]], key[[end]]);
+[[if .ReadRejectedBody]]                if (status != 200) return classifyStatus(response);
+[[end]]                return decodeModels(body[[if .ConnectorResponse]], key[[end]]);
             } catch (IOException error) {
                 return retry(FailureKind.AVAILABILITY, "[[.ProviderLabel]] model request failed", Duration.ZERO);
             }
@@ -142,7 +154,7 @@ public final class ModelCatalog {
         }
     }
 
-    private static QueryAttempt<ListModelsOutput> classifyStatus(ProviderHttpResponse response) {
+    private static QueryAttempt<[[.OutputType]]> classifyStatus(ProviderHttpResponse response) {
         int status = response.getStatusCode();
         Duration delay = ProviderHttp.parseRetryAfter(response.getHeaders().first("Retry-After"), Instant.now());
         if (status == 429) return retry(FailureKind.RATE_LIMIT, "[[.ProviderLabel]] rate limited the model request", delay);
@@ -150,10 +162,11 @@ public final class ModelCatalog {
         FailureKind kind = FailureKind.PROVIDER_REJECTION;
         if (status == 401) kind = FailureKind.AUTHENTICATION;
         if (status == 403) kind = FailureKind.AUTHORIZATION;
-        return failed("providerRejected", kind, "[[.ProviderLabel]] rejected model request with HTTP " + status);
+[[range .ValidationStatuses]]        if (status == [[.]]) kind = FailureKind.VALIDATION;
+[[end]]        return failed("providerRejected", kind, "[[.ProviderLabel]] rejected model request with HTTP " + status);
     }
 
-    private static QueryAttempt<ListModelsOutput> decodeModels(byte[] body[[if .ConnectorResponse]], SecretString credential[[end]]) {
+    private static QueryAttempt<[[.OutputType]]> decodeModels(byte[] body[[if .ConnectorResponse]], SecretString credential[[end]]) {
         JsonNode catalog;
         try {
             catalog = JSON.readTree(body);
@@ -163,7 +176,7 @@ public final class ModelCatalog {
         if (catalog == null || [[if .ListTag]]!"[[.ListTag]]".equals(catalog.path("object").textValue()) || [[end]]!catalog.path("data").isArray()) {
             return failed("invalidResponse", FailureKind.PROTOCOL, "[[.ProviderLabel]] returned invalid model data");
         }
-[[if .ConnectorResponse]]        ListModelsOutput output = ListModelsOutput.fromProviderModels(catalog.get("data"), value -> value.contains(credential.reveal()));
+[[if .ConnectorResponse]]        [[.OutputType]] output = [[.OutputType]].fromProviderModels(catalog.get("data"), value -> value.contains(credential.reveal()));
         if (output == null) return failed("invalidResponse", FailureKind.PROTOCOL, "[[.ProviderLabel]] returned invalid model data");
         return QueryAttempt.branch([[.SuccessBranchLiteral]], output, Receipt.empty());
 [[else]]        List<String> ids = new ArrayList<>();
@@ -176,15 +189,15 @@ public final class ModelCatalog {
             }
             if (ids.size() < 50) ids.add(id);
         }
-        return QueryAttempt.branch([[.SuccessBranchLiteral]], new ListModelsOutput(catalog.get("data").size(), ids), Receipt.empty());
+        return QueryAttempt.branch([[.SuccessBranchLiteral]], new [[.OutputType]](catalog.get("data").size(), ids), Receipt.empty());
 [[end]]    }
 
-    private static QueryAttempt<ListModelsOutput> failed(String branch, FailureKind kind, String message) {
-        return QueryAttempt.branch(branch, [[if .ConnectorResponse]]ListModelsOutput.empty()[[else]]new ListModelsOutput(0, Collections.emptyList())[[end]], Receipt.empty(),
+    private static QueryAttempt<[[.OutputType]]> failed(String branch, FailureKind kind, String message) {
+        return QueryAttempt.branch(branch, [[if .ConnectorResponse]][[.OutputType]].empty()[[else]]new [[.OutputType]](0, Collections.emptyList())[[end]], Receipt.empty(),
                 new Failure(kind, CONNECTOR, OPERATION, message));
     }
 
-    private static QueryAttempt<ListModelsOutput> retry(FailureKind kind, String message, Duration delay) {
+    private static QueryAttempt<[[.OutputType]]> retry(FailureKind kind, String message, Duration delay) {
         return QueryAttempt.retry(new Failure(kind, CONNECTOR, OPERATION, message), delay);
     }
 }

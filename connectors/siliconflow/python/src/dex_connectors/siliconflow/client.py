@@ -150,14 +150,6 @@ class ListModelsOperation:
                 return _retry(FailureKind.RATE_LIMIT, "provider rate limited the request", delay)
             if response.status_code == 408 or response.status_code >= 500:
                 return _retry(FailureKind.AVAILABILITY, "provider is temporarily unavailable", delay)
-            try:
-                body = await read_bounded_body(response, self.client.max_response_bytes)
-            except BodyTooLargeError:
-                return _branch(
-                    "invalidResponse", FailureKind.RESPONSE_TOO_LARGE, "provider response exceeded the limit"
-                )
-            except ProviderTransportError:
-                return _retry(FailureKind.AVAILABILITY, "provider response was interrupted")
             if response.status_code != 200:
                 kind = (
                     FailureKind.AUTHENTICATION
@@ -169,6 +161,14 @@ class ListModelsOperation:
                 return _branch(
                     "providerRejected", kind, "provider rejected HTTP " + str(response.status_code)
                 )
+            try:
+                body = await read_bounded_body(response, self.client.max_response_bytes)
+            except BodyTooLargeError:
+                return _branch(
+                    "invalidResponse", FailureKind.RESPONSE_TOO_LARGE, "provider response exceeded the limit"
+                )
+            except ProviderTransportError:
+                return _retry(FailureKind.AVAILABILITY, "provider response was interrupted")
             try:
                 output = self._parse(body)
             except ProviderRejection as rejection:
@@ -205,10 +205,13 @@ class ListModelsOperation:
                 not isinstance(item, dict)
                 or not isinstance(item.get("id"), str)
                 or not item["id"]
-                or len(item["id"]) > 512
+                or len(item["id"].encode("utf-8")) > 512
                 or item["id"] in seen
             ):
                 raise ValueError("invalid model")
             seen.add(item["id"])
-            models.append(Model(item["id"], item.get("object", "")))
+            tag = item.get("object")
+            if tag is not None and not isinstance(tag, str):
+                raise ValueError("invalid model object")
+            models.append(Model(item["id"], tag or ""))
         return ListModelsOutput(tuple(models))

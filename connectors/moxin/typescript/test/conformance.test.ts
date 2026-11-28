@@ -14,7 +14,8 @@ it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario,
 
 async function invokeMoxin(scenario: Scenario, recorder: ExchangeRecorder) {
   const credentials = new StaticCredentialProvider([[connection, { platformToken: new SecretString(scenario.name.endsWith("defect") ? "" : "sk-test-token") }]]);
-  const client = new MoxinClient({}, credentials, {
+  const config = scenario.name === 'listModels-oversized' ? { maxResponseBytes: 16 } : {};
+  const client = new MoxinClient(config, credentials, {
     send: request => answerRecordedRequest(recorder, request, before => new ProviderTransportError(before)),
   });
   const call: Call = {

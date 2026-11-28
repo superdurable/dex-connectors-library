@@ -549,6 +549,42 @@ func TestLanguageManifestVersionAndPackageValidation(t *testing.T) {
 	}
 }
 
+func TestModelCatalogCredentialAndRejectionLimits(t *testing.T) {
+	manifest, err := schema.Decode(strings.NewReader(readManifestFixture(t, "testdata/google-oauth.yaml")))
+	require.NoError(t, err)
+	for _, testCase := range []struct {
+		name     string
+		limit    int
+		statuses []int
+		problem  string
+	}{
+		{"default", 0, nil, ""},
+		{"definitive responses", 2048, []int{400, 404}, ""},
+		{"negative credential length", -1, nil, "maxKeyBytes"},
+		{"excessive credential length", 8193, nil, "maxKeyBytes"},
+		{"invalid HTTP status", 512, []int{399}, "validationStatuses"},
+		{"authentication", 512, []int{401}, "validationStatuses"},
+		{"authorization", 512, []int{403}, "validationStatuses"},
+		{"timeout", 512, []int{408}, "validationStatuses"},
+		{"rate limit", 512, []int{429}, "validationStatuses"},
+		{"server error", 512, []int{500}, "validationStatuses"},
+		{"duplicate", 512, []int{400, 400}, "validationStatuses"},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			manifest.Spec.Codegen.ModelCatalog = &schema.ModelCatalogCodegen{
+				Endpoint: "https://example.com/v1/models", ProviderLabel: "Example",
+				MaxKeyBytes: testCase.limit, ValidationStatuses: testCase.statuses,
+			}
+			err := manifest.Validate()
+			if testCase.problem == "" {
+				require.NoError(t, err)
+			} else {
+				require.ErrorContains(t, err, testCase.problem)
+			}
+		})
+	}
+}
+
 func TestJavaAndRustLanguageManifestValidation(t *testing.T) {
 	fixture, err := os.ReadFile("testdata/google-oauth.yaml")
 	require.NoError(t, err)

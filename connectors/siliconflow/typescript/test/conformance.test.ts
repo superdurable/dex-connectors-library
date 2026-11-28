@@ -15,7 +15,8 @@ async function invokeSiliconFlow(scenario: Scenario, recorder: ExchangeRecorder)
   if (scenario.operation !== 'listModels') throw new Error(`unknown SiliconFlow operation ${scenario.operation}`);
   const isDefect = scenario.name.endsWith('-defect');
   const credentials = new StaticCredentialProvider([[connection, { apiKey: new SecretString(isDefect ? '' : 'test-siliconflow-key-123') }]]);
-  const client = new SiliconFlowClient({}, credentials, { send: request => answerRecordedRequest(recorder, request, before => new ProviderTransportError(before)) });
+  const config = scenario.name === 'listModels-oversized' ? { maxResponseBytes: 16 } : {};
+  const client = new SiliconFlowClient(config, credentials, { send: request => answerRecordedRequest(recorder, request, before => new ProviderTransportError(before)) });
   const call: Call = {
     context: { flowId: 'siliconflow-conformance', cancellationSignal: new AbortController().signal } as Call['context'],
     id: scenario.callId, connection, operation: { connectorId: 'siliconflow', operationId: scenario.operation },

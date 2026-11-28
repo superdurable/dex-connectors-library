@@ -21,7 +21,11 @@ CONNECTION = sdk.ConnectionRef("siliconflow", "siliconflow")
 def make_client(client: object, recorder: conformance.ExchangeRecorder) -> connector.Client:
     """Build the Query using synthetic recorded credentials."""
     name = recorder.scenario["name"]
-    config = connector.Config()
+    config = (
+        connector.Config(max_response_bytes=16)
+        if recorder.scenario["name"] == "listModels-oversized"
+        else connector.Config()
+    )
     credentials = connector.Credentials(
         sdk.SecretString("x" * 513 if name.endswith("-defect") else "test-siliconflow-key-123")
     )

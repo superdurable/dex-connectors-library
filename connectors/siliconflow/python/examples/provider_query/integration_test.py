@@ -17,7 +17,7 @@ import dex_connectors.siliconflow as connector
 
 from .flow import CONNECTION_NAME, ProviderQueryFlow
 
-SUCCESS_BODY = '{"object":"list","data":[{"id":"deepseek-ai/DeepSeek-V4-Flash","object":"model"}]}'
+SUCCESS_BODY = '{"object":"list","data":[{"id":"deepseek-ai/DeepSeek-V4-Flash","object":null}]}'
 
 
 @pytest.mark.asyncio
@@ -56,7 +56,9 @@ async def test_provider_query_retries_503(tmp_path: Path) -> None:
                 result = await asyncio.wait_for(client.wait_for_flow(flow_id, timedelta(seconds=25)), 30)
                 assert result.status == dex.FlowStatus.COMPLETED, result.error_message
                 output = result.single_output(connector.ListModelsOutput)
-                assert output.models
+                assert [(model.id, model.object) for model in output.models] == [
+                    ("deepseek-ai/DeepSeek-V4-Flash", "")
+                ]
                 assert len(requests) == 2
         finally:
             await worker.stop()

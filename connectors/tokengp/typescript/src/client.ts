@@ -62,8 +62,12 @@ export class ListModelsOperation implements Query<ListModelsInput, ListModelsOut
     let document: unknown;
     try { document = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(body)) as unknown; } catch { return branch('invalidResponse', 'PROTOCOL'); }
     if (!isRecord(document) || !Array.isArray(document.data) || document.data.length > 10_000) return branch('invalidResponse', 'PROTOCOL');
-    const seen = new Set<string>(); const models: NonNullable<ListModelsOutput['models']> = [];
-    for (const item of document.data) { if (!isRecord(item) || typeof item.id !== 'string' || !item.id || Buffer.byteLength(item.id, 'utf8') > 256 || item.id.trim() !== item.id || seen.has(item.id)) return branch('invalidResponse', 'PROTOCOL'); seen.add(item.id); models.push({ id: item.id }); }
+    const models: NonNullable<ListModelsOutput['models']> = [];
+    for (const item of document.data) {
+      if (!isRecord(item) || typeof item.id !== 'string' || !item.id || Buffer.byteLength(item.id) > 256 ||
+          /^\p{White_Space}|\p{White_Space}$/u.test(item.id)) return branch('invalidResponse', 'PROTOCOL');
+      models.push({ id: item.id });
+    }
     return newQueryBranch('listed', { models });
   }
 }

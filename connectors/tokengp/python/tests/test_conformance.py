@@ -27,9 +27,12 @@ def create_client(http_client: object, recorder: conformance.ExchangeRecorder) -
     credentials = provider.Credentials(
         *((sdk.SecretString(""),) if is_defect else (sdk.SecretString("sk-test-secret"),))
     )
-    return provider.Client(
-        provider.Config(), conformance.static_credentials(CONNECTION, credentials), http_client
+    config = (
+        provider.Config(max_response_bytes=16)
+        if recorder.scenario["name"] == "listModels-oversized"
+        else provider.Config()
     )
+    return provider.Client(config, conformance.static_credentials(CONNECTION, credentials), http_client)
 
 
 ADAPTER = conformance.PythonOperationAdapter("tokengp", CONNECTION, provider, create_client)
