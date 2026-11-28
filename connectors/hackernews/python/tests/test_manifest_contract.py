@@ -7,12 +7,14 @@ import json
 import tomllib
 from datetime import timedelta
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
+from uuid import uuid4
 
 import dex
 import pytest
 import yaml
-from dex_connectors.sdk import RetryPolicy, default_connector_step_execute_retry_policy
+from dex_connectors.sdk import Call, CallID, RetryPolicy, default_connector_step_execute_retry_policy
 from dex_connectors.sdk.connectormock import Case
 
 import dex_connectors.hackernews as package
@@ -21,6 +23,8 @@ from dex_connectors.hackernews import (
     GET_ITEM_DEFINITION,
     GET_USER_DEFINITION,
     LIST_STORY_IDS_DEFINITION,
+    SEARCH_ITEMS_DEFINITION,
+    SEARCH_STORIES_DEFINITION,
     Item,
     StoryIDs,
 )
@@ -136,6 +140,44 @@ def test_existing_two_operation_bindings_still_register_the_top_story_flow() -> 
         connection.get_article_thread()
 
 
+@pytest.mark.parametrize("operation_name", ["searchItems", "searchStories"])
+async def test_search_mock_pages_and_custom_defaults_match_manifest(operation_name: str) -> None:
+    manifest = yaml.safe_load((CONNECTOR_DIRECTORY / "connector.yaml").read_text())
+    operation = next(entry for entry in manifest["spec"]["operations"] if entry["name"] == operation_name)
+    mock = Mock()
+    script: Any
+    input_type: Any
+    if operation_name == "searchItems":
+        script, input_type, output_type = (
+            mock.search_items_script,
+            package.SearchItemsInput,
+            package.ItemSearchPage,
+        )
+    else:
+        script, input_type, output_type = (
+            mock.search_stories_script,
+            package.SearchStoriesInput,
+            package.StorySearchPage,
+        )
+    codec = dex.CodecRegistry().resolve(output_type)
+
+    def call() -> Call:
+        return Call(
+            CallID(str(uuid4())),
+            mock.connection().reference,
+            script.definition().operation,
+            context=SimpleNamespace(flow_id="search-test"),
+        )
+
+    for index, expected in enumerate(operation["mocks"][0]["pages"]):
+        case = await script.invoke(call(), input_type(page=index))
+        assert case.branch == "searched"
+        assert json.loads(codec.encode(case.value).data) == expected
+    script.default(Case.branch_result("searched", output_type(page=77)))
+    assert (await script.invoke(call(), input_type(page=1))).value.page == 77
+    script.assert_no_failures()
+
+
 def test_factory_parameters_match_declared_branch_fields() -> None:
     document = json.loads((Path(package.__file__).parent / "dex-connector.json").read_text())
     common = {
@@ -166,6 +208,8 @@ def test_identity_and_agent_metadata_match_manifest() -> None:
         GET_ITEM_DEFINITION,
         GET_USER_DEFINITION,
         GET_ARTICLE_THREAD_DEFINITION,
+        SEARCH_ITEMS_DEFINITION,
+        SEARCH_STORIES_DEFINITION,
     ):
         operation_id = definition.operation.operation_id
         assert definition.operation.connector_id == document["connectorId"]

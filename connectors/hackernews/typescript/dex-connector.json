@@ -70,6 +70,84 @@
       }
     },
     {
+      "name": "newSearchItemsStep",
+      "kind": "query",
+      "operationId": "searchItems",
+      "inputType": "SearchItemsInput",
+      "description": "Search public Hacker News stories, comments, polls, or poll options by keyword. Choose type story, comment, poll, or pollopt, relevance or date ordering, and a zero-based page with 1 to 100 hits. Blank type searches all public items.",
+      "agent": {
+        "exposed": true,
+        "branches": {
+          "defect": "rejected",
+          "providerRejected": "rejected"
+        }
+      },
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "searched",
+          "field": "searched",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "SearchItemsInput selects one page of public Hacker News items.",
+        "properties": {
+          "createdAfter": {
+            "description": "CreatedAfter keeps items created strictly after this UTC time; zero sets no lower bound.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "hitsPerPage": {
+            "description": "HitsPerPage is 1 through 100; zero selects 20.",
+            "type": "integer"
+          },
+          "page": {
+            "description": "Page is zero-based; Page times HitsPerPage must stay below 1000.",
+            "type": "integer"
+          },
+          "query": {
+            "description": "Query is the full-text query, at most 512 bytes; blank matches all items of the selected type.",
+            "type": "string"
+          },
+          "sortBy": {
+            "description": "SortBy is relevance or date; blank selects relevance.",
+            "enum": [
+              "date",
+              "relevance"
+            ],
+            "type": "string"
+          },
+          "type": {
+            "description": "Type is story, comment, poll, or pollopt; blank searches all indexed types.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    {
       "name": "newGetUserStep",
       "kind": "query",
       "operationId": "getUser",

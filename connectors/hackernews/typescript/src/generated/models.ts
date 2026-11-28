@@ -131,6 +131,59 @@ export interface ArticleThread {
   /** Comments are the indexed public comments in their nested order. */
   "comments": Array<ArticleComment> | null;
 }
+/** SearchItemsInput selects one page of public Hacker News items. */
+export interface SearchItemsInput {
+  /** Query is the full-text query, at most 512 bytes; blank matches all items of the selected type. */
+  "query"?: string | undefined;
+  /** Type is story, comment, poll, or pollopt; blank searches all indexed types. */
+  "type"?: string | undefined;
+  /** SortBy is relevance or date; blank selects relevance. */
+  "sortBy"?: "date" | "relevance" | (string & {}) | undefined;
+  /** Page is zero-based; Page times HitsPerPage must stay below 1000. */
+  "page"?: number | undefined;
+  /** HitsPerPage is 1 through 100; zero selects 20. */
+  "hitsPerPage"?: number | undefined;
+  /** CreatedAfter keeps items created strictly after this UTC time; zero sets no lower bound. */
+  "createdAfter"?: string | undefined;
+}
+/** ItemSearchHit is public indexed metadata; Title and Text are untrusted provider content. */
+export interface ItemSearchHit {
+  /** ID is the positive Hacker News item ID. */
+  "id": number;
+  /** Type is story, comment, poll, or pollopt. */
+  "type": string;
+  /** Title is the story or poll title, when present. */
+  "title"?: string | undefined;
+  /** Text is plain submitted or comment text, bounded to 2000 characters. */
+  "text"?: string | undefined;
+  /** URL is the story's external source URL, when present. */
+  "url"?: string | undefined;
+  /** Author is the public username, when present. */
+  "author"?: string | undefined;
+  /** CreatedAt is the item creation time in UTC. */
+  "createdAt": string;
+  /** ParentID is a comment's direct parent item ID, when indexed. */
+  "parentId"?: number | undefined;
+  /** StoryID is the associated story ID for a comment, when indexed. */
+  "storyId"?: number | undefined;
+  /** DiscussionURL links directly to this item. */
+  "discussionUrl": string;
+}
+/** ItemSearchPage contains one page of public search results. */
+export interface ItemSearchPage {
+  /** Items appear in the Search API's requested order. */
+  "items": Array<ItemSearchHit> | null;
+  /** Page is this zero-based page number. */
+  "page": number;
+  /** Pages is the number of readable pages. */
+  "pages": number;
+  /** TotalHits is the Search API's approximate total result count. */
+  "totalHits": number;
+  /** HitsPerPage is the requested page size. */
+  "hitsPerPage": number;
+  /** NextPage is the next page number, or zero after the last page. */
+  "nextPage": number;
+}
 /** GetUserInput identifies a public Hacker News user by case-sensitive username. */
 export interface GetUserInput {
   /** ID is the username shown on the Hacker News profile page. */
@@ -296,6 +349,40 @@ export const ArticleThreadSchema = z.strictObject({
   "discussionUrl": z.string(),
   "comments": z.array(ArticleCommentSchema).nullable(),
 }) satisfies z.ZodType<ArticleThread>;
+
+/** Runtime validator for SearchItemsInput. */
+export const SearchItemsInputSchema = z.strictObject({
+  "query": z.string().optional(),
+  "type": z.string().optional(),
+  "sortBy": z.string().optional(),
+  "page": z.number().int().optional(),
+  "hitsPerPage": z.number().int().optional(),
+  "createdAfter": GoTimeJSONSchema.optional(),
+}) satisfies z.ZodType<SearchItemsInput>;
+
+/** Runtime validator for ItemSearchHit. */
+export const ItemSearchHitSchema = z.strictObject({
+  "id": z.number().int(),
+  "type": z.string(),
+  "title": z.string().optional(),
+  "text": z.string().optional(),
+  "url": z.string().optional(),
+  "author": z.string().optional(),
+  "createdAt": GoTimeJSONSchema,
+  "parentId": z.number().int().optional(),
+  "storyId": z.number().int().optional(),
+  "discussionUrl": z.string(),
+}) satisfies z.ZodType<ItemSearchHit>;
+
+/** Runtime validator for ItemSearchPage. */
+export const ItemSearchPageSchema = z.strictObject({
+  "items": z.array(ItemSearchHitSchema).nullable(),
+  "page": z.number().int(),
+  "pages": z.number().int(),
+  "totalHits": z.number().int(),
+  "hitsPerPage": z.number().int(),
+  "nextPage": z.number().int(),
+}) satisfies z.ZodType<ItemSearchPage>;
 
 /** Runtime validator for GetUserInput. */
 export const GetUserInputSchema = z.strictObject({

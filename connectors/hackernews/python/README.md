@@ -2,7 +2,7 @@
 
 Install with `pip install dex-connector-hackernews==0.4.0`. The package
 requires `dex-connectors-sdk>=0.8.0,<1` and `dex-python-sdk>=1.28.0`, and
-implements the manifest Queries `listStoryIDs`, `getItem`, `getUser`, and `getArticleThread` with the same
+implements all six manifest Queries with the same
 branches, defaults, and failure classification as the Go module. The public
 API needs no credentials.
 
@@ -18,6 +18,8 @@ open a Dex Web connection; 0.2.0 changes that identity (breaking).
 | --- | --- | --- | --- |
 | `listStoryIDs` | `new_list_story_ids_step` | `listed` | `providerRejected`, `invalidResponse`, `defect` |
 | `getItem` | `new_get_item_step` | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
+| `searchItems` | `new_search_items_step` | `searched` | `providerRejected`, `invalidResponse`, `defect` |
+| `searchStories` | `new_search_stories_step` | `searched` | `providerRejected`, `invalidResponse`, `defect` |
 | `getArticleThread` | `new_get_article_thread_step` | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
 | `getUser` | `new_get_user_step` | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
 
@@ -32,10 +34,9 @@ HTML.
 
 ## Agent tools
 
-All four Queries set `agent.exposed` in the package's `dex-connector.json`, so an
-agent host can offer `client.list_story_ids()`, `client.get_item()`, `client.get_user()`, and `client.get_article_thread()` as read
-tools. Every optional branch except `invalidResponse` is classified `rejected`:
-a read changes nothing. `invalidResponse` is a provider malfunction the model
+All six Queries set `agent.exposed` in the package's `dex-connector.json`.
+Agent hosts can expose them as read tools. The manifest classifies optional
+business branches as `rejected` because a read changes nothing. `invalidResponse` is a provider malfunction the model
 cannot fix, so it stays unlisted and agent hosts record it as a failure.
 
 ## Example
@@ -72,8 +73,25 @@ Append `8863` to read the public article and print its discussion URL and top-le
 Generate the graph with
 `dexcli visualize examples/top_story/article_flow.py --schema-version 2.0 --lint app --json --open=false --python .venv/bin/python --out /tmp/hackernews-python-thread`.
 
+The Worker also registers `HackerNewsStorySearchPython` and `HackerNewsItemSearchPython`.
+Start either with `{"query":"compiler","page":0}`. Story search filters for stories.
+Item search includes indexed comments, polls and poll options. Each Flow reads one
+page with two hits. The result carries the next page number. Both Queries accept
+timezone-aware Python datetimes for creation bounds at microsecond precision.
+[Story search Flow](examples/top_story/story_search_flow.py) · [Item search Flow](examples/top_story/item_search_flow.py)
+
+With Dex running, `uv run python -m examples.top_story.search_integration` checks a
+503 followed by a successful page for each Flow. Append `compiler` for public reads.
+Generate the two graphs from this package.
+
+```sh
+for kind in story item; do
+  dexcli visualize "examples/top_story/${kind}_search_flow.py" --schema-version 2.0 --lint app --json --open=false --python .venv/bin/python --out "/tmp/hackernews-${kind}-python"
+done
+```
+
 ## Tests
 
-`hackernewsmock.Mock` scripts all four Queries and defaults to the manifest
+`hackernewsmock.Mock` scripts all six Queries and defaults to the manifest
 answers. Run `uv run pytest tests` for provider parity and manifest contract
 checks.

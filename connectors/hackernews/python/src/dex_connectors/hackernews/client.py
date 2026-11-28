@@ -32,6 +32,7 @@ from dex_connectors.sdk.providerhttp import (
 )
 from dex_connectors.sdk.retry_policy import RetryPolicy as RetryPolicy
 
+from . import _search
 from ._generated import definitions as _generated_definitions
 from ._generated.config import Config as _GeneratedConfig
 from ._generated.definitions import DEFECT as DEFECT
@@ -49,8 +50,12 @@ from .models import (
     GetItemInput,
     GetUserInput,
     Item,
+    ItemSearchPage,
     ListStoryIDsInput,
+    SearchItemsInput,
+    SearchStoriesInput,
     StoryIDs,
+    StorySearchPage,
     User,
 )
 
@@ -67,6 +72,10 @@ LIST_STORY_IDS_DEFINITION: QueryDefinition = _generated_definitions.LIST_STORY_I
 GET_USER_DEFINITION: QueryDefinition = _generated_definitions.GET_USER_DEFINITION
 GET_ARTICLE_THREAD_DEFINITION: QueryDefinition = _generated_definitions.GET_ARTICLE_THREAD_DEFINITION
 GET_ITEM_DEFINITION: QueryDefinition = _generated_definitions.GET_ITEM_DEFINITION
+
+SEARCH_ITEMS_DEFINITION: QueryDefinition = _generated_definitions.SEARCH_ITEMS_DEFINITION
+
+SEARCH_STORIES_DEFINITION: QueryDefinition = _generated_definitions.SEARCH_STORIES_DEFINITION
 
 Output = TypeVar("Output")
 
@@ -104,6 +113,14 @@ class Client:
         """Bind the indexed article and public comment tree Query."""
         return GetArticleThreadOperation(self)
 
+    def search_items(self) -> "SearchItemsOperation":
+        """Bind the Query that searches indexed items."""
+        return SearchItemsOperation(self)
+
+    def search_stories(self) -> "SearchStoriesOperation":
+        """Bind the Query that searches indexed stories."""
+        return SearchStoriesOperation(self)
+
     def get_user(self) -> "GetUserOperation":
         """Bind the public user profile Query to this client."""
         return GetUserOperation(self)
@@ -119,7 +136,12 @@ class Client:
         try:
             request = self.http_client.build_request(
                 "GET",
-                (self.search_base_url if operation == "getArticleThread" else self.base_url) + path,
+                (
+                    self.search_base_url
+                    if operation in ("getArticleThread", "searchItems", "searchStories")
+                    else self.base_url
+                )
+                + path,
                 headers={"Accept": "application/json", "User-Agent": "superdurable-hacker-news-daily/0.1"},
             )
         except (httpx.HTTPError, ValueError):
@@ -266,6 +288,76 @@ class GetArticleThreadOperation:
             ArticleThread(),
             lambda body: _decode_article_thread(body, input.id),
         )
+
+
+class SearchItemsOperation:
+    """Read one bounded Search API page of indexed items."""
+
+    def __init__(self, client: Client) -> None:
+        if client is None:
+            raise ValueError("Hacker News client is required")
+        self.client = client
+
+    def definition(self) -> QueryDefinition:
+        """Return the search Query identity, branches, and retry defaults."""
+        return SEARCH_ITEMS_DEFINITION
+
+    async def invoke(self, call: Call, input: SearchItemsInput) -> QueryAttempt[ItemSearchPage]:
+        """Validate the filters, fetch one page and preserve provider result order."""
+        try:
+            request = _search.item_search_request(input)
+        except (ValueError, TypeError) as error:
+            return _failed("searchItems", DEFECT, ItemSearchPage(), FailureKind.VALIDATION, str(error))
+
+        def decode(body: bytes) -> QueryAttempt[ItemSearchPage]:
+            try:
+                page = _search.item_search_page(body, request, input.type)
+            except (ValueError, RecursionError):
+                return _failed(
+                    "searchItems",
+                    INVALID_RESPONSE,
+                    ItemSearchPage(),
+                    FailureKind.PROTOCOL,
+                    "Hacker News Search returned a malformed item result page",
+                )
+            return QueryAttempt.branch_result("searched", page, Receipt())
+
+        return await self.client.get_json("searchItems", request.path, ItemSearchPage(), decode)
+
+
+class SearchStoriesOperation:
+    """Read one bounded Search API page of indexed stories."""
+
+    def __init__(self, client: Client) -> None:
+        if client is None:
+            raise ValueError("Hacker News client is required")
+        self.client = client
+
+    def definition(self) -> QueryDefinition:
+        """Return the search Query identity, branches, and retry defaults."""
+        return SEARCH_STORIES_DEFINITION
+
+    async def invoke(self, call: Call, input: SearchStoriesInput) -> QueryAttempt[StorySearchPage]:
+        """Validate the filters, fetch one page and preserve provider result order."""
+        try:
+            request = _search.story_search_request(input)
+        except (ValueError, TypeError) as error:
+            return _failed("searchStories", DEFECT, StorySearchPage(), FailureKind.VALIDATION, str(error))
+
+        def decode(body: bytes) -> QueryAttempt[StorySearchPage]:
+            try:
+                page = _search.story_search_page(body, request)
+            except (ValueError, RecursionError):
+                return _failed(
+                    "searchStories",
+                    INVALID_RESPONSE,
+                    StorySearchPage(),
+                    FailureKind.PROTOCOL,
+                    "Hacker News Search returned a malformed story result page",
+                )
+            return QueryAttempt.branch_result("searched", page, Receipt())
+
+        return await self.client.get_json("searchStories", request.path, StorySearchPage(), decode)
 
 
 class GetUserOperation:

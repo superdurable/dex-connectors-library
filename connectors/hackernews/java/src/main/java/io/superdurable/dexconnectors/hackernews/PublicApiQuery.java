@@ -58,7 +58,7 @@ abstract class PublicApiQuery<I, O> implements Query<I, O> {
                 return retry(kind, "Hacker News is temporarily unavailable",
                         ProviderHttp.parseRetryAfter(response.getHeaders().first("Retry-After"), clock.instant()));
             }
-            if (status == 404 && !operation.equals("listStoryIDs")) return failed("notFound", FailureKind.NOT_FOUND, "Hacker News resource was not found");
+            if (status == 404 && (operation.equals("getItem") || operation.equals("getUser") || operation.equals("getArticleThread"))) return failed("notFound", FailureKind.NOT_FOUND, "Hacker News resource was not found");
             if (status != 200) return failed("providerRejected", FailureKind.PROVIDER_REJECTION, "Hacker News rejected the request");
             byte[] body;
             try { body = response.readBoundedBody(maxResponseBytes); }

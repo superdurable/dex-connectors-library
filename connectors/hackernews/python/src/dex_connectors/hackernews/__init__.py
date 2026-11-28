@@ -16,12 +16,16 @@ from .client import (
     NOT_FOUND,
     PROVIDER,
     PROVIDER_REJECTED,
+    SEARCH_ITEMS_DEFINITION,
+    SEARCH_STORIES_DEFINITION,
     Client,
     Config,
     GetArticleThreadOperation,
     GetItemOperation,
     GetUserOperation,
     ListStoryIDsOperation,
+    SearchItemsOperation,
+    SearchStoriesOperation,
 )
 from .connection import Connection, new_connection, new_connection_with_operations, new_project_connection
 from .models import (
@@ -31,11 +35,24 @@ from .models import (
     GetItemInput,
     GetUserInput,
     Item,
+    ItemSearchHit,
+    ItemSearchPage,
     ListStoryIDsInput,
+    SearchItemsInput,
+    SearchStoriesInput,
     StoryIDs,
+    StorySearchHit,
+    StorySearchPage,
     User,
 )
-from .steps import new_get_article_thread_step, new_get_item_step, new_get_user_step, new_list_story_ids_step
+from .steps import (
+    new_get_article_thread_step,
+    new_get_item_step,
+    new_get_user_step,
+    new_list_story_ids_step,
+    new_search_items_step,
+    new_search_stories_step,
+)
 
 __all__ = [
     "ArticleComment",
@@ -44,6 +61,18 @@ __all__ = [
     "GetArticleThreadOperation",
     "GET_ARTICLE_THREAD_DEFINITION",
     "new_get_article_thread_step",
+    "SearchItemsInput",
+    "ItemSearchPage",
+    "ItemSearchHit",
+    "SearchItemsOperation",
+    "SEARCH_ITEMS_DEFINITION",
+    "new_search_items_step",
+    "SearchStoriesInput",
+    "StorySearchPage",
+    "StorySearchHit",
+    "SearchStoriesOperation",
+    "SEARCH_STORIES_DEFINITION",
+    "new_search_stories_step",
     "Client",
     "Config",
     "Connection",

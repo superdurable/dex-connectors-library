@@ -5,11 +5,10 @@ import { it } from 'vitest';
 import { type Call } from '@superdurable/connectors-sdk';
 import { ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
 import { HackerNewsClient } from '../src/client.js';
-import { GetArticleThreadInputSchema, GetUserInputSchema, GetItemInputSchema, ListStoryIDsInputSchema, SearchStoriesInputSchema } from '../src/generated/models.js';
+import { SearchItemsInputSchema, GetArticleThreadInputSchema, GetUserInputSchema, GetItemInputSchema, ListStoryIDsInputSchema, SearchStoriesInputSchema } from '../src/generated/models.js';
 import { answerRecordedRequest, ExchangeRecorder, loadScenarios, replay, scenarioCall, withScenarioHTTPServer, type Scenario } from '../../../../conformance/runners/typescript/connector_scenarios.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/hackernews/scenarios.json', import.meta.url))
-  .filter(scenario => ['listStoryIDs', 'getItem', 'searchStories', 'getUser', 'getArticleThread'].includes(scenario.operation));
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/hackernews/scenarios.json', import.meta.url));
 const connection = { provider: 'hacker-news', name: 'public' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeHackerNews));
 
@@ -30,6 +29,7 @@ async function invokeAtBaseUrl(scenario: Scenario, baseUrl: string, send?: (requ
     if (scenario.operation === 'getArticleThread') return client.getArticleThread().invoke(call, GetArticleThreadInputSchema.parse(scenario.input));
     if (scenario.operation === 'getUser') return client.getUser().invoke(call, GetUserInputSchema.parse(scenario.input));
     if (scenario.operation === 'getItem') return client.getItem().invoke(call, GetItemInputSchema.parse(scenario.input));
+    if (scenario.operation === 'searchItems') return client.searchItems().invoke(call, SearchItemsInputSchema.parse(scenario.input));
     if (scenario.operation === 'searchStories') return client.searchStories().invoke(call, SearchStoriesInputSchema.parse(scenario.input));
     throw new Error(`unknown operation ${scenario.operation}`);
 }

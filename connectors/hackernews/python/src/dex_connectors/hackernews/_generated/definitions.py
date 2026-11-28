@@ -20,12 +20,15 @@ LIST_STORY_IDS_OPERATION_ID = "listStoryIDs"
 GET_ITEM_OPERATION_ID = "getItem"
 GET_USER_OPERATION_ID = "getUser"
 GET_ARTICLE_THREAD_OPERATION_ID = "getArticleThread"
+SEARCH_STORIES_OPERATION_ID = "searchStories"
+SEARCH_ITEMS_OPERATION_ID = "searchItems"
 DEFECT = "defect"
 FOUND = "found"
 INVALID_RESPONSE = "invalidResponse"
 LISTED = "listed"
 NOT_FOUND = "notFound"
 PROVIDER_REJECTED = "providerRejected"
+SEARCHED = "searched"
 
 LIST_STORY_IDS_DEFINITION = QueryDefinition(
     OperationRef(CONNECTOR_ID, LIST_STORY_IDS_OPERATION_ID),
@@ -82,6 +85,36 @@ GET_ARTICLE_THREAD_DEFINITION = QueryDefinition(
         BranchDefinition(PROVIDER_REJECTED, "Hacker News Search rejected the article read.", True),
         BranchDefinition(INVALID_RESPONSE, "Hacker News Search returned malformed or oversized thread data.", True),
         BranchDefinition(DEFECT, "The article ID or connection configuration is invalid.", True),
+    ),
+    StepDefaults(
+        timedelta(seconds=30),
+        2,
+        execute_retry=default_connector_step_execute_retry_policy(),
+    ),
+)
+
+SEARCH_STORIES_DEFINITION = QueryDefinition(
+    OperationRef(CONNECTOR_ID, SEARCH_STORIES_OPERATION_ID),
+    (
+        BranchDefinition(SEARCHED, "One page of matching stories was read; it can be empty.", False),
+        BranchDefinition(PROVIDER_REJECTED, "Hacker News Search rejected the request.", True),
+        BranchDefinition(INVALID_RESPONSE, "Hacker News Search returned malformed or oversized data.", True),
+        BranchDefinition(DEFECT, "Local input or connection configuration is invalid.", True),
+    ),
+    StepDefaults(
+        timedelta(seconds=30),
+        2,
+        execute_retry=RetryPolicy(timedelta(seconds=1), 2, timedelta(seconds=30), 0, timedelta(seconds=3900)),
+    ),
+)
+
+SEARCH_ITEMS_DEFINITION = QueryDefinition(
+    OperationRef(CONNECTOR_ID, SEARCH_ITEMS_OPERATION_ID),
+    (
+        BranchDefinition(SEARCHED, "One page of public items was read; it can be empty.", False),
+        BranchDefinition(PROVIDER_REJECTED, "Hacker News Search rejected the request.", True),
+        BranchDefinition(INVALID_RESPONSE, "Hacker News Search returned malformed or oversized items.", True),
+        BranchDefinition(DEFECT, "Search filters or connection configuration are invalid.", True),
     ),
     StepDefaults(
         timedelta(seconds=30),

@@ -9,8 +9,14 @@ from ._generated.models import ArticleThread as ArticleThread
 from ._generated.models import GetArticleThreadInput as GetArticleThreadInput
 from ._generated.models import GetItemInput as GetItemInput
 from ._generated.models import GetUserInput as GetUserInput
+from ._generated.models import ItemSearchHit as ItemSearchHit
+from ._generated.models import ItemSearchPage as ItemSearchPage
 from ._generated.models import ListStoryIDsInput as ListStoryIDsInput
+from ._generated.models import SearchItemsInput as SearchItemsInput
+from ._generated.models import SearchStoriesInput as SearchStoriesInput
 from ._generated.models import StoryIDs as StoryIDs
+from ._generated.models import StorySearchHit as StorySearchHit
+from ._generated.models import StorySearchPage as StorySearchPage
 from ._generated.models import User as User
 
 

@@ -42,6 +42,35 @@ export const GetArticleThreadDefinition: QueryDefinition = {
 /** Manifest metadata for getArticleThread. */
 export const GetArticleThreadMetadata = { kind: "query", idempotency: "none", authorization: "none" } as const;
 
+/** Branch IDs for searchItems. */
+export const SearchItemsBranch = {
+  Searched: "searched",
+  ProviderRejected: "providerRejected",
+  InvalidResponse: "invalidResponse",
+  Defect: "defect",
+} as const;
+/** One page of public items was read; it can be empty. */
+export const SearchItemsBranchSearched = SearchItemsBranch.Searched;
+/** Hacker News Search rejected the request. */
+export const SearchItemsBranchProviderRejected = SearchItemsBranch.ProviderRejected;
+/** Hacker News Search returned malformed or oversized items. */
+export const SearchItemsBranchInvalidResponse = SearchItemsBranch.InvalidResponse;
+/** Search filters or connection configuration are invalid. */
+export const SearchItemsBranchDefect = SearchItemsBranch.Defect;
+/** Manifest definition for searchItems. */
+export const SearchItemsDefinition: QueryDefinition = {
+  operation: { connectorId: ConnectorID, operationId: "searchItems" },
+  branches: [
+    { id: "searched", description: "One page of public items was read; it can be empty." },
+    { id: "providerRejected", description: "Hacker News Search rejected the request.", optional: true },
+    { id: "invalidResponse", description: "Hacker News Search returned malformed or oversized items.", optional: true },
+    { id: "defect", description: "Search filters or connection configuration are invalid.", optional: true },
+  ],
+  stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
+};
+/** Manifest metadata for searchItems. */
+export const SearchItemsMetadata = { kind: "query", idempotency: "none", authorization: "none" } as const;
+
 /** Branch IDs for getUser. */
 export const GetUserBranch = {
   Found: "found",

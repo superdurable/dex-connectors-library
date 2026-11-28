@@ -10,16 +10,16 @@ metadata:
 spec:
   provider: hacker-news
   languages:
-    java: {version: v0.1.0, operations: [listStoryIDs, getItem, getUser, getArticleThread], triggers: []}
-    rust: {version: v0.1.0, operations: [listStoryIDs, getItem, getUser, getArticleThread], triggers: []}
+    java: {version: v0.1.0, operations: [listStoryIDs, getItem, getUser, getArticleThread, searchStories, searchItems], triggers: []}
+    rust: {version: v0.1.0, operations: [listStoryIDs, getItem, getUser, getArticleThread, searchStories, searchItems], triggers: []}
     python:
       version: v0.4.0
-      operations: [listStoryIDs, getItem, getUser, getArticleThread]
+      operations: [listStoryIDs, getItem, getUser, getArticleThread, searchStories, searchItems]
       triggers: []
     typescript:
       version: v0.5.0
       package: '@superdurable/connector-hackernews'
-      operations: [listStoryIDs, getItem, searchStories, getUser, getArticleThread]
+      operations: [listStoryIDs, getItem, searchStories, getUser, getArticleThread, searchItems]
       triggers: []
   codegen:
     go:

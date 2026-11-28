@@ -9,6 +9,7 @@ plugins {
 repositories { mavenCentral() }
 
 dependencies {
+    implementation 'nu.validator:htmlparser:1.4.16'
     api "io.superdurable:dex-connectors-sdk:${dexConnectorsSdkVersion}"
     testImplementation 'org.junit.jupiter:junit-jupiter:5.11.4'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.11.4'
@@ -58,6 +59,16 @@ sourceSets {
 tasks.register('storyFeedWorker', JavaExec) {
     classpath = sourceSets.example.runtimeClasspath
     mainClass = 'io.superdurable.dexconnectors.hackernews.StoryFeedWorker'
+}
+
+tasks.register('storySearchWorker', JavaExec) {
+    classpath = sourceSets.example.runtimeClasspath
+    mainClass = 'io.superdurable.dexconnectors.hackernews.StorySearchWorker'
+}
+
+tasks.register('itemSearchWorker', JavaExec) {
+    classpath = sourceSets.example.runtimeClasspath
+    mainClass = 'io.superdurable.dexconnectors.hackernews.ItemSearchWorker'
 }
 
 tasks.register('articleThreadWorker', JavaExec) {

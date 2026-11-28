@@ -10,6 +10,12 @@ pub use article_thread::{
     ArticleComment, ArticleThread, GetArticleThreadInput, GetArticleThreadOperation,
     new_get_article_thread_step,
 };
+mod search;
+pub use search::{
+    ItemSearchHit, ItemSearchPage, MAX_STORY_TEXT_CHARACTERS, SearchItemsInput,
+    SearchItemsOperation, SearchStoriesInput, SearchStoriesOperation, StorySearchHit,
+    StorySearchPage, new_search_items_step, new_search_stories_step,
+};
 mod resources;
 pub use resources::{
     GetItemInput, GetItemOperation, GetUserInput, GetUserOperation, Item, User, new_get_item_step,

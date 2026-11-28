@@ -8,6 +8,7 @@ import { loadFromEnvironment } from '@superdurable/connectors-sdk/projectconfig'
 import { newProjectConnection } from '../../src/index.js';
 import { ConnectionName, TopStoryFlow } from './flow.js';
 
+import { ItemSearchFlow } from './item-search-flow.js';
 import { ArticleThreadFlow } from './article-flow.js';
 import { ProfileFlow } from './profile-flow.js';
 
@@ -19,7 +20,7 @@ try {
   const project = await loadFromEnvironment();
   const connection = newProjectConnection(project, ConnectionName);
   const cache = openBlobCache({ directory: process.env.DEX_BLOB_CACHE_DIR || join(tmpdir(), 'dex-hackernews-top-story'), maxBytes: 1 << 30 });
-  const worker = new Worker(new Registry([new TopStoryFlow(connection), new ProfileFlow(connection), new ArticleThreadFlow(connection)]), cache, { serverAddress: process.env.DEX_FLOW_SERVICE_ADDRESS || '127.0.0.1:8801' });
+  const worker = new Worker(new Registry([new TopStoryFlow(connection), new ProfileFlow(connection), new ArticleThreadFlow(connection), new ItemSearchFlow(connection)]), cache, { serverAddress: process.env.DEX_FLOW_SERVICE_ADDRESS || '127.0.0.1:8801' });
   try {
     await worker.start();
     await worker.waitPullRegistered({ timeoutMs: 10_000, signal: shutdown.signal });

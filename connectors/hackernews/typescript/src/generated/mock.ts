@@ -4,9 +4,9 @@
 
 import { branchCase, retryCase, type Case, newQuery, type MockQuery } from '@superdurable/connectors-sdk/connectormock';
 import type { Failure } from '@superdurable/connectors-sdk';
-import type { GetArticleThreadInput, ArticleComment, ArticleThread, GetUserInput, User, ListStoryIDsInput, StoryIDs, GetItemInput, Item, SearchStoriesInput, StorySearchHit, StorySearchPage } from './models.js';
-import { GetArticleThreadInputSchema, ArticleCommentSchema, ArticleThreadSchema, GetUserInputSchema, UserSchema, ListStoryIDsInputSchema, StoryIDsSchema, GetItemInputSchema, ItemSchema, SearchStoriesInputSchema, StorySearchHitSchema, StorySearchPageSchema } from './models.js';
-import { ProviderID, ConnectorID, GetArticleThreadDefinition, GetUserDefinition, ListStoryIDsDefinition, GetItemDefinition, SearchStoriesDefinition } from './definitions.js';
+import type { GetArticleThreadInput, ArticleComment, ArticleThread, SearchItemsInput, ItemSearchHit, ItemSearchPage, GetUserInput, User, ListStoryIDsInput, StoryIDs, GetItemInput, Item, SearchStoriesInput, StorySearchHit, StorySearchPage } from './models.js';
+import { GetArticleThreadInputSchema, ArticleCommentSchema, ArticleThreadSchema, SearchItemsInputSchema, ItemSearchHitSchema, ItemSearchPageSchema, GetUserInputSchema, UserSchema, ListStoryIDsInputSchema, StoryIDsSchema, GetItemInputSchema, ItemSchema, SearchStoriesInputSchema, StorySearchHitSchema, StorySearchPageSchema } from './models.js';
+import { ProviderID, ConnectorID, GetArticleThreadDefinition, SearchItemsDefinition, GetUserDefinition, ListStoryIDsDefinition, GetItemDefinition, SearchStoriesDefinition } from './definitions.js';
 import { newConnectionWithOperations, type Connection, type Operations } from './connection.js';
 
 /** Go zero value for GetArticleThreadInput in scripted cases. */
@@ -24,6 +24,25 @@ export const emptyArticleThread: ArticleThread = ArticleThreadSchema.parse({
   "title": '',
   "discussionUrl": '',
   "comments": [],
+});
+/** Go zero value for SearchItemsInput in scripted cases. */
+export const emptySearchItemsInput: SearchItemsInput = SearchItemsInputSchema.parse({
+});
+/** Go zero value for ItemSearchHit in scripted cases. */
+export const emptyItemSearchHit: ItemSearchHit = ItemSearchHitSchema.parse({
+  "id": 0,
+  "type": '',
+  "createdAt": '0001-01-01T00:00:00Z',
+  "discussionUrl": '',
+});
+/** Go zero value for ItemSearchPage in scripted cases. */
+export const emptyItemSearchPage: ItemSearchPage = ItemSearchPageSchema.parse({
+  "items": [],
+  "page": 0,
+  "pages": 0,
+  "totalHits": 0,
+  "hitsPerPage": 0,
+  "nextPage": 0,
 });
 /** Go zero value for GetUserInput in scripted cases. */
 export const emptyGetUserInput: GetUserInput = GetUserInputSchema.parse({
@@ -98,6 +117,24 @@ export function getArticleThreadCompilerThread(): Case<ArticleThread> {
 }
 /** Default getArticleThread scenario. */
 export function getArticleThreadDefault(): Case<ArticleThread> { return getArticleThreadCompilerThread(); }
+
+/** Script the searched branch. */
+export function searchItemsSearched(value: ItemSearchPage, failure?: Failure): Case<ItemSearchPage> { return branchCase("searched", value, failure); }
+/** Script the providerRejected branch. */
+export function searchItemsProviderRejected(value: ItemSearchPage, failure?: Failure): Case<ItemSearchPage> { return branchCase("providerRejected", value, failure); }
+/** Script the invalidResponse branch. */
+export function searchItemsInvalidResponse(value: ItemSearchPage, failure?: Failure): Case<ItemSearchPage> { return branchCase("invalidResponse", value, failure); }
+/** Script the defect branch. */
+export function searchItemsDefect(value: ItemSearchPage, failure?: Failure): Case<ItemSearchPage> { return branchCase("defect", value, failure); }
+/** Script a safe retry of searchItems. */
+export function searchItemsRetry(failure: Failure, retryAfterMs = 0): Case<ItemSearchPage> { return retryCase(failure, retryAfterMs); }
+/** Manifest scenario publicItems for searchItems. */
+export function searchItemsPublicItems(): Case<ItemSearchPage> {
+  const value = emptyItemSearchPage;
+  return branchCase("searched", value);
+}
+/** Default searchItems scenario. */
+export function searchItemsDefault(): Case<ItemSearchPage> { return searchItemsPublicItems(); }
 
 /** Script the found branch. */
 export function getUserFound(value: User, failure?: Failure): Case<User> { return branchCase("found", value, failure); }
@@ -198,6 +235,7 @@ export function searchStoriesSearchRejected(): Case<StorySearchPage> {
 /** Scripted operations and manifest defaults for this connector. */
 export class GeneratedMock implements Operations {
   readonly #getArticleThread: MockQuery<GetArticleThreadInput, ArticleThread>;
+  readonly #searchItems: MockQuery<SearchItemsInput, ItemSearchPage>;
   readonly #getUser: MockQuery<GetUserInput, User>;
   readonly #listStoryIDs: MockQuery<ListStoryIDsInput, StoryIDs>;
   readonly #getItem: MockQuery<GetItemInput, Item>;
@@ -206,6 +244,7 @@ export class GeneratedMock implements Operations {
 
   constructor(connectionName: string) {
     this.#getArticleThread = newQuery<GetArticleThreadInput, ArticleThread>(GetArticleThreadDefinition).default(getArticleThreadDefault());
+    this.#searchItems = newQuery<SearchItemsInput, ItemSearchPage>(SearchItemsDefinition).default(searchItemsDefault());
     this.#getUser = newQuery<GetUserInput, User>(GetUserDefinition).default(getUserDefault());
     this.#listStoryIDs = newQuery<ListStoryIDsInput, StoryIDs>(ListStoryIDsDefinition).default(listStoryIDsDefault());
     this.#getItem = newQuery<GetItemInput, Item>(GetItemDefinition).default(getItemDefault());
@@ -215,12 +254,14 @@ export class GeneratedMock implements Operations {
 
   connection(): Connection { return this.#connection; }
   getArticleThread(): MockQuery<GetArticleThreadInput, ArticleThread> { return this.#getArticleThread; }
+  searchItems(): MockQuery<SearchItemsInput, ItemSearchPage> { return this.#searchItems; }
   getUser(): MockQuery<GetUserInput, User> { return this.#getUser; }
   listStoryIDs(): MockQuery<ListStoryIDsInput, StoryIDs> { return this.#listStoryIDs; }
   getItem(): MockQuery<GetItemInput, Item> { return this.#getItem; }
   searchStories(): MockQuery<SearchStoriesInput, StorySearchPage> { return this.#searchStories; }
   assertNoFailures(): void {
     this.#getArticleThread.assertNoFailures();
+    this.#searchItems.assertNoFailures();
     this.#getUser.assertNoFailures();
     this.#listStoryIDs.assertNoFailures();
     this.#getItem.assertNoFailures();

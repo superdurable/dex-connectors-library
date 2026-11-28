@@ -14,7 +14,9 @@ from dex_connectors.hackernews import new_project_connection
 
 from .article_flow import ArticleThreadFlow
 from .flow import CONNECTION_NAME, TopStoryFlow
+from .item_search_flow import ItemSearchFlow
 from .profile_flow import ProfileFlow
+from .story_search_flow import StorySearchFlow
 
 
 async def run_worker() -> None:
@@ -25,7 +27,13 @@ async def run_worker() -> None:
     try:
         connection = new_project_connection(project, CONNECTION_NAME)
         registry = dex.Registry(
-            [TopStoryFlow(connection), ProfileFlow(connection), ArticleThreadFlow(connection)],
+            [
+                TopStoryFlow(connection),
+                ProfileFlow(connection),
+                ArticleThreadFlow(connection),
+                ItemSearchFlow(connection),
+                StorySearchFlow(connection),
+            ],
             allow_async_handlers=True,
         )
         cache_directory = os.environ.get(

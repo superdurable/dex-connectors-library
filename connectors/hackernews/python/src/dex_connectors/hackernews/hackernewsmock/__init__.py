@@ -4,8 +4,9 @@
 """Manifest-backed Hacker News scripts for consuming Flow tests."""
 
 from datetime import UTC, datetime
+from typing import TypeVar
 
-from dex_connectors.sdk import ConnectionRef, Failure, FailureKind
+from dex_connectors.sdk import Call, ConnectionRef, Failure, FailureKind
 from dex_connectors.sdk.connectormock import Case, Query
 
 from ..client import (
@@ -19,6 +20,8 @@ from ..client import (
     NOT_FOUND,
     PROVIDER,
     PROVIDER_REJECTED,
+    SEARCH_ITEMS_DEFINITION,
+    SEARCH_STORIES_DEFINITION,
 )
 from ..connection import Connection, new_connection_with_operations
 from ..models import (
@@ -28,8 +31,14 @@ from ..models import (
     GetItemInput,
     GetUserInput,
     Item,
+    ItemSearchHit,
+    ItemSearchPage,
     ListStoryIDsInput,
+    SearchItemsInput,
+    SearchStoriesInput,
     StoryIDs,
+    StorySearchHit,
+    StorySearchPage,
     User,
 )
 
@@ -145,6 +154,189 @@ def get_article_thread_compiler_thread() -> Case[ArticleThread]:
     )
 
 
+_PUBLIC_ITEMS_PAGES = (
+    ItemSearchPage(
+        items=(
+            ItemSearchHit(
+                id=42001,
+                type="story",
+                title="A compiler release",
+                author="compilerdev",
+                created_at=datetime.fromisoformat("2026-10-26T11:00:00Z"),
+                discussion_url="https://news.ycombinator.com/item?id=42001",
+            ),
+        ),
+        page=0,
+        pages=3,
+        total_hits=3,
+        hits_per_page=1,
+        next_page=1,
+    ),
+    ItemSearchPage(
+        items=(
+            ItemSearchHit(
+                id=42002,
+                type="comment",
+                text="A useful compiler note",
+                author="reviewer",
+                created_at=datetime.fromisoformat("2026-10-26T11:01:00Z"),
+                discussion_url="https://news.ycombinator.com/item?id=42002",
+            ),
+        ),
+        page=1,
+        pages=3,
+        total_hits=3,
+        hits_per_page=1,
+        next_page=2,
+    ),
+    ItemSearchPage(
+        items=(
+            ItemSearchHit(
+                id=42003,
+                type="poll",
+                title="Compiler poll",
+                author="compilerdev",
+                created_at=datetime.fromisoformat("2026-10-26T11:02:00Z"),
+                discussion_url="https://news.ycombinator.com/item?id=42003",
+            ),
+        ),
+        page=2,
+        pages=3,
+        total_hits=3,
+        hits_per_page=1,
+        next_page=0,
+    ),
+)
+
+
+def search_items_public_items(page: int = 0) -> Case[ItemSearchPage]:
+    """Return a zero-based page from the manifest's publicItems answer."""
+    if not 0 <= page < len(_PUBLIC_ITEMS_PAGES):
+        raise ValueError("page outside the manifest mock")
+    return Case.branch_result("searched", _PUBLIC_ITEMS_PAGES[page])
+
+
+_COMPILER_STORIES_PAGES = (
+    StorySearchPage(
+        stories=(
+            StorySearchHit(
+                id=42003,
+                title="Show HN: A compiler explorer for small languages",
+                url="https://example.com/explorer",
+                discussion_url="https://news.ycombinator.com/item?id=42003",
+                author="langtools",
+                points=12,
+                comment_count=3,
+                created_at=datetime.fromisoformat("2026-10-26T11:50:00Z"),
+                tags=("story", "show_hn"),
+            ),
+            StorySearchHit(
+                id=42001,
+                title="A compiler release",
+                url="https://example.com/compiler",
+                discussion_url="https://news.ycombinator.com/item?id=42001",
+                author="compilerdev",
+                points=100,
+                comment_count=40,
+                created_at=datetime.fromisoformat("2026-10-26T11:00:00Z"),
+                tags=("story", "front_page"),
+            ),
+        ),
+        page=0,
+        pages=3,
+        total_hits=5,
+        hits_per_page=2,
+        next_page=1,
+    ),
+    StorySearchPage(
+        stories=(
+            StorySearchHit(
+                id=42001,
+                title="A compiler release",
+                url="https://example.com/compiler",
+                discussion_url="https://news.ycombinator.com/item?id=42001",
+                author="compilerdev",
+                points=100,
+                comment_count=40,
+                created_at=datetime.fromisoformat("2026-10-26T11:00:00Z"),
+                tags=("story", "front_page"),
+            ),
+            StorySearchHit(
+                id=41990,
+                title="Ask HN: How do you test a compiler?",
+                discussion_url="https://news.ycombinator.com/item?id=41990",
+                author="testwriter",
+                points=8,
+                comment_count=5,
+                created_at=datetime.fromisoformat("2026-10-26T09:30:00Z"),
+                tags=("story", "ask_hn"),
+                story_text="We fuzz the parser.\n\nWhat else catches miscompilations early?",
+            ),
+        ),
+        page=1,
+        pages=3,
+        total_hits=5,
+        hits_per_page=2,
+        next_page=2,
+    ),
+    StorySearchPage(
+        stories=(
+            StorySearchHit(
+                id=41980,
+                title="Notes on compiler passes",
+                url="https://example.com/passes",
+                discussion_url="https://news.ycombinator.com/item?id=41980",
+                author="notetaker",
+                points=1,
+                comment_count=0,
+                created_at=datetime.fromisoformat("2026-10-26T08:15:00Z"),
+                tags=("story",),
+            ),
+        ),
+        page=2,
+        pages=3,
+        total_hits=5,
+        hits_per_page=2,
+        next_page=0,
+    ),
+)
+
+
+def search_stories_compiler_stories(page: int = 0) -> Case[StorySearchPage]:
+    """Return a zero-based page from the manifest's compilerStories answer."""
+    if not 0 <= page < len(_COMPILER_STORIES_PAGES):
+        raise ValueError("page outside the manifest mock")
+    return Case.branch_result("searched", _COMPILER_STORIES_PAGES[page])
+
+
+_SearchInput = TypeVar("_SearchInput", SearchItemsInput, SearchStoriesInput)
+_SearchPage = TypeVar("_SearchPage", ItemSearchPage, StorySearchPage)
+
+
+def search_stories_search_rejected() -> Case[StorySearchPage]:
+    """Return the manifest's searchRejected answer."""
+    return Case.branch_result(
+        PROVIDER_REJECTED,
+        StorySearchPage(),
+        Failure(
+            FailureKind.PROVIDER_REJECTION,
+            PROVIDER,
+            "searchStories",
+            "Hacker News Search rejected the story search.",
+        ),
+    )
+
+
+class _SearchQuery(Query[_SearchInput, _SearchPage]):
+    def _answer(self, call: Call, input: _SearchInput, idempotency_key: str = "") -> Case[_SearchPage]:
+        if call.context is None:
+            raise ValueError("connector mock requires a live Dex Step context")
+        # The SDK selects a one-based mock page; the Hacker News API numbers pages from zero.
+        return self._scripted.answer(
+            call.context.flow_id, call.id, call.connection, input, idempotency_key, input.page + 1
+        )
+
+
 class Mock:
     """Script Hacker News Queries, defaulting to their manifest answers."""
 
@@ -159,10 +351,20 @@ class Mock:
             GET_ARTICLE_THREAD_DEFINITION
         )
         self.get_article_thread_script.default(get_article_thread_compiler_thread())
+        self.search_items_script: Query[SearchItemsInput, ItemSearchPage] = _SearchQuery(
+            SEARCH_ITEMS_DEFINITION
+        )
+        self.search_items_script.default(Case.paged("searched", _PUBLIC_ITEMS_PAGES))
+        self.search_stories_script: Query[SearchStoriesInput, StorySearchPage] = _SearchQuery(
+            SEARCH_STORIES_DEFINITION
+        )
+        self.search_stories_script.default(Case.paged("searched", _COMPILER_STORIES_PAGES))
         self._connection = new_connection_with_operations(
             self.list_story_ids_script,
             self.get_item_script,
             ConnectionRef(PROVIDER, connection_name),
+            search_items=self.search_items_script,
+            search_stories=self.search_stories_script,
             get_user=self.get_user_script,
             get_article_thread=self.get_article_thread_script,
         )
@@ -173,6 +375,9 @@ class Mock:
 
 
 __all__ = [
+    "search_items_public_items",
+    "search_stories_compiler_stories",
+    "search_stories_search_rejected",
     "Mock",
     "get_article_thread_compiler_thread",
     "get_article_thread_found",

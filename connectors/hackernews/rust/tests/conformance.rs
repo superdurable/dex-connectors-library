@@ -7,6 +7,7 @@ use std::time::Duration;
 
 use dex_connector_hackernews::{
     GetArticleThreadOperation, GetItemOperation, GetUserOperation, ListStoryIDsOperation,
+    SearchItemsOperation, SearchStoriesOperation,
 };
 use dex_connectors_sdk::Rfc3339NanoTimestamp;
 const ORIGIN: &str = "https://hacker-news.firebaseio.com/v0";
@@ -40,9 +41,23 @@ impl ProviderHttpTransport for RecordedProvider {
             .expect(&self.scenario);
         assert_eq!(exchange["keyMode"], "absent", "{}", self.scenario);
         assert_eq!(exchange["method"], request.method, "{}", self.scenario);
+        let (endpoint, query) = request.url.split_once('?').unwrap_or((&request.url, ""));
         assert_eq!(
-            request.url,
+            endpoint,
             format!("{}{}", self.origin, exchange["path"].as_str().unwrap()),
+            "{}",
+            self.scenario
+        );
+        let mut parameters: BTreeMap<String, Vec<String>> = BTreeMap::new();
+        for (key, value) in form_urlencoded::parse(query.as_bytes()) {
+            parameters
+                .entry(key.into_owned())
+                .or_default()
+                .push(value.into_owned());
+        }
+        assert_eq!(
+            json!(parameters),
+            exchange.get("query").cloned().unwrap_or(json!({})),
             "{}",
             self.scenario
         );
@@ -89,17 +104,7 @@ impl ProviderHttpTransport for RecordedProvider {
 fn replay_go_public_queries() {
     let fixture = std::env::var("CONNECTOR_CONFORMANCE_FIXTURE").unwrap_or_else(|_| FIXTURE.into());
     let document: Value = serde_json::from_slice(&std::fs::read(fixture).unwrap()).unwrap();
-    let scenarios: Vec<_> = document["scenarios"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .filter(|s| {
-            matches!(
-                s["operation"].as_str(),
-                Some("listStoryIDs" | "getItem" | "getUser" | "getArticleThread")
-            )
-        })
-        .collect();
+    let scenarios: Vec<_> = document["scenarios"].as_array().unwrap().iter().collect();
     assert!(!scenarios.is_empty());
     for scenario in scenarios {
         let name = scenario["name"].as_str().unwrap();
@@ -107,7 +112,10 @@ fn replay_go_public_queries() {
 
         let recorded = Arc::new(RecordedProvider {
             scenario: name.into(),
-            origin: if scenario["operation"] == "getArticleThread" {
+            origin: if matches!(
+                scenario["operation"].as_str(),
+                Some("searchStories" | "searchItems" | "getArticleThread")
+            ) {
                 SEARCH_ORIGIN
             } else {
                 ORIGIN
@@ -137,6 +145,16 @@ fn replay_go_public_queries() {
         match operation {
             "listStoryIDs" => replay(
                 ListStoryIDsOperation::with_client(ORIGIN, 1 << 20, http, clock).unwrap(),
+                &call,
+                scenario,
+            ),
+            "searchItems" => replay(
+                SearchItemsOperation::with_client(SEARCH_ORIGIN, 1 << 20, http, clock).unwrap(),
+                &call,
+                scenario,
+            ),
+            "searchStories" => replay(
+                SearchStoriesOperation::with_client(SEARCH_ORIGIN, 1 << 20, http, clock).unwrap(),
                 &call,
                 scenario,
             ),

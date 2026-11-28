@@ -1,14 +1,13 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { newQueryBranch, newQueryRetry, type Call, type Failure, type Query, type QueryAttempt } from '@superdurable/connectors-sdk';
+import { newQueryBranch, newQueryRetry, type Call, type Query, type QueryAttempt } from '@superdurable/connectors-sdk';
 import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
-import { Parser } from 'htmlparser2';
-import { GetArticleThreadDefinition, GetUserDefinition, GetItemDefinition, ListStoryIDsDefinition, SearchStoriesDefinition } from './generated/definitions.js';
-import type { ArticleComment, ArticleThread, GetArticleThreadInput, Config, GetUserInput, User, GetItemInput, Item, ListStoryIDsInput, SearchStoriesInput, StoryIDs, StorySearchHit, StorySearchPage } from './generated/models.js';
-
-/** Maximum Unicode code points kept in StorySearchHit.storyText. */
-export const MaxStoryTextCharacters = 2000;
+import { parseProviderJSON, strictInteger, fieldError, goTimestamp, failure, failed } from './provider-response.js';
+import { SearchItemsOperation, SearchStoriesOperation } from './search.js';
+export { MaxStoryTextCharacters, SearchItemsOperation, SearchStoriesOperation } from './search.js';
+import { GetArticleThreadDefinition, GetUserDefinition, GetItemDefinition, ListStoryIDsDefinition } from './generated/definitions.js';
+import type { ArticleComment, ArticleThread, GetArticleThreadInput, Config, GetUserInput, User, GetItemInput, Item, ListStoryIDsInput, StoryIDs } from './generated/models.js';
 
 const defaultBaseUrl = 'https://hacker-news.firebaseio.com/v0';
 const defaultSearchBaseUrl = 'https://hn.algolia.com/api/v1';
@@ -19,21 +18,6 @@ const zeroThread: ArticleThread = { id: 0, title: '', discussionUrl: '', comment
 const zeroItem: Item = { id: 0, type: '', discussionUrl: '' };
 const validFeeds = new Set(['top', 'best', 'new', 'ask', 'show']);
 const validItemTypes = new Set(['story', 'comment', 'job', 'poll', 'pollopt']);
-const zeroStorySearchPage: StorySearchPage = { stories: [], page: 0, pages: 0, totalHits: 0, hitsPerPage: 0, nextPage: 0 };
-// Accepted tags in StorySearchHit.tags order, independent of the provider's order.
-const knownStoryTags = ['story', 'show_hn', 'ask_hn', 'front_page'] as const;
-// The Search API rejects longer queries with HTTP 400.
-const maxSearchQueryBytes = 512;
-const maxStorySearchHitsPerPage = 100;
-const defaultStorySearchHitsPerPage = 20;
-// The Search API serves only this many leading hits of one query across pages.
-const reachableStorySearchHits = 1000;
-const paragraphTags = new Set(['p', 'pre', 'br', 'div', 'li', 'blockquote']);
-// Go unicode.IsSpace, which strings.Fields splits on; JavaScript \s differs at U+0085 and U+FEFF.
-const goWhitespace = /[\t\n\v\f\r \u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]+/u;
-const goTimePattern = /^(\d{4})-(\d{2})-(\d{2})T(\d{1,2}):(\d{2}):(\d{2})(?:[.,](\d+))?(Z|([+-])(\d{2}):(\d{2}))$/;
-const goZeroTimeSeconds = -62_135_596_800;
-
 /** Injectable HTTP sender and clock for deterministic provider replay. */
 export interface HackerNewsClientOptions {
   /** Send one bounded request without redirect following. */
@@ -73,6 +57,8 @@ export class HackerNewsClient {
   getArticleThread(): GetArticleThreadOperation { return new GetArticleThreadOperation(this); }
   /** Bind the public user profile Query. */
   getUser(): GetUserOperation { return new GetUserOperation(this); }
+  /** Bind the mixed public item search Query. */
+  searchItems(): SearchItemsOperation { return new SearchItemsOperation(this); }
   /** Bind the story search Query. */
   searchStories(): SearchStoriesOperation { return new SearchStoriesOperation(this); }
 
@@ -306,173 +292,6 @@ function decodeUser(document: unknown): User {
   return user;
 }
 
-/** Search stories through the Hacker News Search API with one HTTP request. */
-export class SearchStoriesOperation implements Query<SearchStoriesInput, StorySearchPage> {
-  /** Bind the owning client. */ constructor(private readonly client: HackerNewsClient) {}
-  /** Return manifest operation metadata. */ definition() { return SearchStoriesDefinition; }
-  /** Validate the search, then decode one result page. Invalid input selects defect before a request is sent. */
-  invoke(call: Call, input: SearchStoriesInput): Promise<QueryAttempt<StorySearchPage>> {
-    let request: StorySearchRequest;
-    try { request = resolveStorySearchRequest(input); } catch (error) {
-      return Promise.resolve(failed('searchStories', 'defect', zeroStorySearchPage, 'VALIDATION', fieldError(error)));
-    }
-    return this.client.getSearchJSON(call, 'searchStories', `${request.path}?${request.parameters}`, zeroStorySearchPage, body => decodeStorySearchPage(body, request));
-  }
-}
-
-/** A validated SearchStoriesInput resolved to its Search API request. */
-interface StorySearchRequest { path: string; parameters: string; page: number; hitsPerPage: number }
-
-/** Search API hit fields that searchStories returns; JSON null decodes as zero, as in Go. */
-interface StorySearchResponseHit { objectID: string; title: string; url: string; author: string; points: number; commentCount: number; createdAt: number; storyHTML: string; tags: string[] }
-
-function resolveStorySearchRequest(input: SearchStoriesInput): StorySearchRequest {
-  let path: string;
-  switch (input.sortBy ?? '') {
-    case '': case 'relevance': path = '/search'; break;
-    case 'date': path = '/search_by_date'; break;
-    default: throw new TypeError('sortBy must be relevance or date');
-  }
-  const query = input.query ?? '';
-  if (Buffer.byteLength(query, 'utf8') > maxSearchQueryBytes) throw new TypeError(`query must be at most ${maxSearchQueryBytes} bytes`);
-  const tags: string[] = ['story'];
-  for (const tag of input.tags ?? []) {
-    if (!(knownStoryTags as readonly string[]).includes(tag)) throw new TypeError('tags must be story, show_hn, ask_hn, or front_page');
-    if (!tags.includes(tag)) tags.push(tag);
-  }
-  const minPoints = input.minPoints ?? 0;
-  if (!Number.isSafeInteger(minPoints) || minPoints < 0) throw new TypeError('minPoints cannot be negative');
-  const createdAfter = goTimeInstant(input.createdAfter);
-  const createdBefore = goTimeInstant(input.createdBefore);
-  if (createdAfter && createdBefore && !isLaterInstant(createdBefore, createdAfter)) throw new TypeError('createdBefore must be later than createdAfter');
-  const hitsPerPage = input.hitsPerPage || defaultStorySearchHitsPerPage;
-  if (!Number.isSafeInteger(hitsPerPage) || hitsPerPage < 1 || hitsPerPage > maxStorySearchHitsPerPage) throw new TypeError(`hitsPerPage must be from 1 through ${maxStorySearchHitsPerPage}`);
-  const page = input.page ?? 0;
-  if (!Number.isSafeInteger(page) || page < 0) throw new TypeError('page cannot be negative');
-  if (page >= reachableStorySearchHits || page * hitsPerPage >= reachableStorySearchHits) {
-    throw new TypeError(`page times hitsPerPage must be below ${reachableStorySearchHits}, the hits the Search API serves for one query`);
-  }
-  // Go url.Values.Encode sorts keys; Go omits an empty query.
-  const parameters = new URLSearchParams();
-  parameters.set('hitsPerPage', String(hitsPerPage));
-  const numericFilters: string[] = [];
-  if (createdAfter) numericFilters.push(`created_at_i>${createdAfter.seconds}`);
-  if (createdBefore) numericFilters.push(`created_at_i<${createdBefore.seconds + (createdBefore.nanoseconds > 0 ? 1 : 0)}`);
-  if (minPoints > 0) numericFilters.push(`points>=${minPoints}`);
-  if (numericFilters.length) parameters.set('numericFilters', numericFilters.join(','));
-  parameters.set('page', String(page));
-  if (query) parameters.set('query', query);
-  parameters.set('tags', tags.join(','));
-  return { path, parameters: parameters.toString(), page, hitsPerPage };
-}
-
-/** Decode a Go time.Time JSON string to Unix seconds and nanoseconds; undefined and the zero time are unset. */
-function goTimeInstant(value: string | undefined): { seconds: number; nanoseconds: number } | undefined {
-  if (value === undefined) return undefined;
-  const match = goTimePattern.exec(value);
-  if (!match) throw new TypeError('creation time bounds must be RFC 3339 timestamps');
-  const [, year, month, day, hour, minute, second, fraction, zone, sign, zoneHour, zoneMinute] = match;
-  const offsetSeconds = zone === 'Z' ? 0 : (Number(zoneHour) * 3600 + Number(zoneMinute) * 60) * (sign === '+' ? 1 : -1);
-  const seconds = daysFromCivil(Number(year), Number(month), Number(day)) * 86_400 + Number(hour) * 3600 + Number(minute) * 60 + Number(second) - offsetSeconds;
-  const nanoseconds = Number((fraction ?? '').slice(0, 9).padEnd(9, '0'));
-  return seconds === goZeroTimeSeconds && nanoseconds === 0 ? undefined : { seconds, nanoseconds };
-}
-
-function isLaterInstant(later: { seconds: number; nanoseconds: number }, earlier: { seconds: number; nanoseconds: number }): boolean {
-  return later.seconds > earlier.seconds || (later.seconds === earlier.seconds && later.nanoseconds > earlier.nanoseconds);
-}
-
-// Days since 1970-01-01 in the proleptic Gregorian calendar, valid for every four-digit year.
-function daysFromCivil(year: number, month: number, day: number): number {
-  const shiftedYear = month <= 2 ? year - 1 : year;
-  const era = Math.floor(shiftedYear / 400);
-  const yearOfEra = shiftedYear - era * 400;
-  const dayOfYear = Math.floor((153 * (month + (month > 2 ? -3 : 9)) + 2) / 5) + day - 1;
-  const dayOfEra = yearOfEra * 365 + Math.floor(yearOfEra / 4) - Math.floor(yearOfEra / 100) + dayOfYear;
-  return era * 146_097 + dayOfEra - 719_468;
-}
-
-function decodeStorySearchPage(body: Uint8Array, request: StorySearchRequest): QueryAttempt<StorySearchPage> {
-  let response: { hits: StorySearchResponseHit[]; page: number; pages: number; totalHits: number } | undefined;
-  try { response = decodeStorySearchResponse(parseProviderJSON(body)); } catch { response = undefined; }
-  if (!response) return failed('searchStories', 'invalidResponse', zeroStorySearchPage, 'PROTOCOL', 'Hacker News Search returned a malformed result page');
-  if (response.page !== request.page || response.hits.length > request.hitsPerPage || response.pages < 0 || response.totalHits < 0) {
-    return failed('searchStories', 'invalidResponse', zeroStorySearchPage, 'PROTOCOL', 'Hacker News Search returned an inconsistent result page');
-  }
-  const stories: StorySearchHit[] = [];
-  for (const hit of response.hits) {
-    // Go strconv.ParseInt accepts an optional sign and leading zeros in base 10.
-    const id = /^[+-]?\d+$/.test(hit.objectID) ? Number(hit.objectID) : Number.NaN;
-    if (!Number.isSafeInteger(id) || id <= 0) return failed('searchStories', 'invalidResponse', zeroStorySearchPage, 'PROTOCOL', 'Hacker News Search returned an invalid story ID');
-    if (hit.createdAt <= 0) return failed('searchStories', 'invalidResponse', zeroStorySearchPage, 'PROTOCOL', 'Hacker News Search returned an invalid creation time');
-    const story: StorySearchHit = {
-      id, title: hit.title, discussionUrl: `https://news.ycombinator.com/item?id=${id}`, author: hit.author, points: hit.points,
-      commentCount: hit.commentCount, createdAt: goTimestamp(new Date(hit.createdAt * 1000)), tags: knownStoryTags.filter(tag => hit.tags.includes(tag)),
-    };
-    if (hit.url) story.url = hit.url;
-    const storyText = Array.from(plainTextFromStoryHTML(hit.storyHTML));
-    if (storyText.length) story.storyText = storyText.slice(0, MaxStoryTextCharacters).join('');
-    if (storyText.length > MaxStoryTextCharacters) story.isStoryTextTruncated = true;
-    stories.push(story);
-  }
-  return newQueryBranch('searched', {
-    stories, page: request.page, pages: response.pages, totalHits: response.totalHits, hitsPerPage: request.hitsPerPage,
-    nextPage: request.page + 1 < response.pages ? request.page + 1 : 0,
-  }, {});
-}
-
-/** Apply Go encoding/json rules to the result page; undefined means Go would report a malformed page. */
-function decodeStorySearchResponse(value: unknown): { hits: StorySearchResponseHit[]; page: number; pages: number; totalHits: number } | undefined {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
-  const document = value as Record<string, unknown>;
-  if (!Array.isArray(document.hits) || [document.page, document.nbPages, document.nbHits].some(field => field === undefined || field === null)) return undefined;
-  const hits = document.hits.map(decodeStorySearchResponseHit);
-  return { hits, page: strictInteger(document.page, 'page'), pages: strictInteger(document.nbPages, 'nbPages'), totalHits: strictInteger(document.nbHits, 'nbHits') };
-}
-
-function decodeStorySearchResponseHit(value: unknown): StorySearchResponseHit {
-  if (value !== null && (typeof value !== 'object' || Array.isArray(value))) throw new TypeError('hit must be an object');
-  const document = (value ?? {}) as Record<string, unknown>;
-  const string = (name: string) => { const field = document[name]; if (field === undefined || field === null) return ''; if (typeof field !== 'string') throw new TypeError(name); return field; };
-  const integer = (name: string) => { const field = document[name]; if (field === undefined || field === null) return 0; return strictInteger(field, name); };
-  const tags = document._tags;
-  if (tags !== undefined && tags !== null && !Array.isArray(tags)) throw new TypeError('_tags');
-  const tagNames = Array.isArray(tags) ? tags.map(tag => { if (tag === null) return ''; if (typeof tag !== 'string') throw new TypeError('_tags'); return tag; }) : [];
-  return {
-    objectID: string('objectID'), title: string('title'), url: string('url'), author: string('author'), points: integer('points'),
-    commentCount: integer('num_comments'), createdAt: integer('created_at_i'), storyHTML: string('story_text'), tags: tagNames,
-  };
-}
-
-/** Keep the visible text of Hacker News story HTML, with a blank line between paragraphs. */
-function plainTextFromStoryHTML(storyHTML: string): string {
-  if (!storyHTML) return '';
-  const text = new StoryTextBuilder();
-  const parser = new Parser({
-    ontext(value) { text.writeText(value); },
-    onopentag(name) { if (paragraphTags.has(name)) text.endParagraph(); },
-    onclosetag(name) { if (paragraphTags.has(name)) text.endParagraph(); },
-  }, { decodeEntities: true });
-  parser.write(storyHTML);
-  parser.end();
-  text.endParagraph();
-  return text.paragraphs.join('\n\n');
-}
-
-/** Collects paragraphs; Hacker News separates them with <p> and seldom closes it. */
-class StoryTextBuilder {
-  readonly paragraphs: string[] = [];
-  private current = '';
-  /** Append decoded text to the current paragraph. */
-  writeText(value: string): void { this.current += value; }
-  /** Collapse whitespace runs in the current paragraph and keep it when it has text. */
-  endParagraph(): void {
-    const paragraph = this.current.split(goWhitespace).filter(Boolean).join(' ');
-    this.current = '';
-    if (paragraph) this.paragraphs.push(paragraph);
-  }
-}
-
 function decodeItem(value: unknown): Item {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('item must be an object');
   const document = value as Record<string, unknown>;
@@ -490,30 +309,4 @@ function decodeItem(value: unknown): Item {
   if (boolean('deleted')) item.deleted = true;
   if (boolean('dead')) item.dead = true;
   return item;
-}
-
-function parseProviderJSON(body: Uint8Array): unknown {
-  const exactJSON = JSON as typeof JSON & { rawJSON(source: string): { rawJSON: string } };
-  return exactJSON.parse(Buffer.from(body).toString('utf8'), (_key, value: unknown, context?: { source?: string }) =>
-    typeof value === 'number' && context?.source ? exactJSON.rawJSON(context.source) : value) as unknown;
-}
-
-function strictInteger(value: unknown, name: string): number {
-  const exactJSON = JSON as typeof JSON & { isRawJSON(input: unknown): input is { rawJSON: string } };
-  const source = exactJSON.isRawJSON(value) ? value.rawJSON : '';
-  if (!/^-?(?:0|[1-9]\d*)$/.test(source)) throw new TypeError(name);
-  const integer = Number(source);
-  if (!Number.isSafeInteger(integer)) throw new TypeError(name);
-  return integer;
-}
-
-function fieldError(error: unknown): string { return error instanceof Error ? error.message : 'unknown field'; }
-
-function goTimestamp(time: Date): string {
-  return time.toISOString().replace(/\.000Z$/, 'Z').replace(/(\.\d*?[1-9])0+Z$/, '$1Z');
-}
-
-function failure(operation: string, kind: Failure['kind'], message: string): Failure { return { kind, provider: 'hacker-news', operation, message }; }
-function failed<Output>(operation: string, branch: string, zero: Output, kind: Failure['kind'], message: string): QueryAttempt<Output> {
-  return newQueryBranch(branch, zero, {}, failure(operation, kind, message));
 }

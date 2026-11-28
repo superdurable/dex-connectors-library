@@ -5,7 +5,7 @@
 import { goToBranch, newQueryStep, type Query, type QueryResult, type QueryStep, type QueryStepConfig } from '@superdurable/connectors-sdk';
 import type { StepTarget } from '@superdurable/dex';
 import type { Connection } from './connection.js';
-import type { GetArticleThreadInput, ArticleThread, GetUserInput, User, ListStoryIDsInput, StoryIDs, GetItemInput, Item, SearchStoriesInput, StorySearchPage } from './models.js';
+import type { GetArticleThreadInput, ArticleThread, SearchItemsInput, ItemSearchPage, GetUserInput, User, ListStoryIDsInput, StoryIDs, GetItemInput, Item, SearchStoriesInput, StorySearchPage } from './models.js';
 
 /** Configuration for the getArticleThread connector Step. */
 export interface GetArticleThreadStepConfig<StepInput, OperationInput = GetArticleThreadInput, OperationOutput = ArticleThread> extends Omit<QueryStepConfig<StepInput, OperationInput, OperationOutput>, 'operation' | 'connection' | 'branches'> {
@@ -32,6 +32,34 @@ export function newGetArticleThreadStep<StepInput, OperationInput = GetArticleTh
   return newQueryStep({ ...stepConfiguration, operation: connection.operations.getArticleThread(), connection: connection.reference, branches: [
     goToBranch("found", found),
     ...(notFound ? [goToBranch("notFound", notFound)] : []),
+    ...(providerRejected ? [goToBranch("providerRejected", providerRejected)] : []),
+    ...(invalidResponse ? [goToBranch("invalidResponse", invalidResponse)] : []),
+    ...(defect ? [goToBranch("defect", defect)] : []),
+  ] });
+}
+
+/** Configuration for the searchItems connector Step. */
+export interface SearchItemsStepConfig<StepInput, OperationInput = SearchItemsInput, OperationOutput = ItemSearchPage> extends Omit<QueryStepConfig<StepInput, OperationInput, OperationOutput>, 'operation' | 'connection' | 'branches'> {
+  /** Named connection supplying this operation. */
+  connection: Connection<{ searchItems(): Query<OperationInput, OperationOutput> }>;
+  /** Name matching the bound connection. */
+  connectionName: string;
+  /** One page of public items was read; it can be empty. */
+  searched: StepTarget<QueryResult<OperationOutput>>;
+  /** Hacker News Search rejected the request. */
+  providerRejected?: StepTarget<QueryResult<OperationOutput>>;
+  /** Hacker News Search returned malformed or oversized items. */
+  invalidResponse?: StepTarget<QueryResult<OperationOutput>>;
+  /** Search filters or connection configuration are invalid. */
+  defect?: StepTarget<QueryResult<OperationOutput>>;
+}
+
+/** Build the searchItems Step from a named connection. */
+export function newSearchItemsStep<StepInput, OperationInput = SearchItemsInput, OperationOutput = ItemSearchPage>(configuration: SearchItemsStepConfig<StepInput, OperationInput, OperationOutput>): QueryStep<StepInput, OperationInput, OperationOutput> {
+  const { connection, connectionName, searched, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
+  if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
+  return newQueryStep({ ...stepConfiguration, operation: connection.operations.searchItems(), connection: connection.reference, branches: [
+    goToBranch("searched", searched),
     ...(providerRejected ? [goToBranch("providerRejected", providerRejected)] : []),
     ...(invalidResponse ? [goToBranch("invalidResponse", invalidResponse)] : []),
     ...(defect ? [goToBranch("defect", defect)] : []),

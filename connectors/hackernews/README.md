@@ -23,9 +23,8 @@ The Python package is [`dex-connector-hackernews`](python/README.md), imported a
 The TypeScript package is [`@superdurable/connector-hackernews`](typescript/README.md).
 Its [top-story Flow](typescript/examples/top-story/README.md) binds the static
 `hackernews-public` connection and uses the generated feed and item Query Step factories.
-Python, TypeScript, Java, and Rust all implement `listStoryIDs`, `getItem`,
-`getUser`, and `getArticleThread`. TypeScript also implements `searchStories`. Each package replays the
-Go-recorded provider scenarios for its supported operations.
+Go, Python, TypeScript, Java, and Rust implement all six Queries below.
+Each language package replays the Go-recorded requests, branches, and search results.
 
 ## Operations
 
@@ -239,6 +238,37 @@ writes the graph with an unresolved Query Step type warning.
 ```sh
 dexcli visualize java/examples/io/superdurable/dexconnectors/hackernews/ArticleThreadWorker.java --schema-version 2.0 --lint app --json --open=false --out /tmp/hackernews-thread-java
 dexcli visualize rust/examples/article_thread.rs --schema-version 2.0 --lint app --json --open=false --out /tmp/hackernews-thread-rust
+```
+
+### Keyword searches in Java and Rust
+
+The keyword search Workers read a two-hit page. Story search always applies
+the story tag. Item search includes stories, comments, polls, and poll options.
+The Flow result includes the hits and the next page number. With Dex running,
+run from the respective language package.
+
+```sh
+# java/
+./gradlew storySearchWorker --args='--read compiler'
+./gradlew itemSearchWorker --args='--read compiler'
+
+# rust/
+cargo run --example story_search -- --read compiler
+cargo run --example item_search -- --read compiler
+```
+
+Omit the read arguments to serve the named Worker. Generate the FDG 2.0 files
+from the connector directory with the following commands. The Java and Rust
+analyzers report the same inherited handler and Query Step type diagnostics
+described above.
+
+```sh
+for kind in Story Item; do
+  dexcli visualize "java/examples/io/superdurable/dexconnectors/hackernews/${kind}SearchWorker.java" --schema-version 2.0 --lint app --json --open=false --out "/tmp/hackernews-${kind}-java"
+done
+for kind in story item; do
+  dexcli visualize "rust/examples/${kind}_search.rs" --schema-version 2.0 --lint app --json --open=false --out "/tmp/hackernews-${kind}-rust"
+done
 ```
 
 ## Verification

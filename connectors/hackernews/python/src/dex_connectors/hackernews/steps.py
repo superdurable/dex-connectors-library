@@ -23,6 +23,8 @@ from ._generated.steps import new_get_user_step as new_get_user_step
 from ._generated.steps import (
     new_list_story_ids_step as new_list_story_ids_step,
 )
+from ._generated.steps import new_search_items_step as new_search_items_step
+from ._generated.steps import new_search_stories_step as new_search_stories_step
 from .connection import Connection as Connection
 from .models import GetItemInput as GetItemInput
 from .models import Item as Item

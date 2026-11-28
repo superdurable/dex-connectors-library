@@ -4,13 +4,15 @@
 
 import { ConnectionRefSchema, type ConnectionRef, type Query } from '@superdurable/connectors-sdk';
 import type { LoadedProject } from '@superdurable/connectors-sdk/projectconfig';
-import type { GetArticleThreadInput, ArticleThread, GetUserInput, User, ListStoryIDsInput, StoryIDs, GetItemInput, Item, SearchStoriesInput, StorySearchPage } from './models.js';
+import type { GetArticleThreadInput, ArticleThread, SearchItemsInput, ItemSearchPage, GetUserInput, User, ListStoryIDsInput, StoryIDs, GetItemInput, Item, SearchStoriesInput, StorySearchPage } from './models.js';
 import { ConnectorID, ProviderID } from './definitions.js';
 
 /** Typed operations supplied by a client or mock. */
 export interface Operations {
   /** Invoke getArticleThread through this connection. */
   getArticleThread(): Query<GetArticleThreadInput, ArticleThread>;
+  /** Invoke searchItems through this connection. */
+  searchItems(): Query<SearchItemsInput, ItemSearchPage>;
   /** Invoke getUser through this connection. */
   getUser(): Query<GetUserInput, User>;
   /** Invoke listStoryIDs through this connection. */

@@ -4,6 +4,7 @@
 package io.superdurable.dexconnectors.hackernews;
 
 import io.superdurable.dexconnectors.hackernews.PublicResources.*;
+import io.superdurable.dexconnectors.hackernews.SearchQueries.*;
 import io.superdurable.dexconnectors.hackernews.ArticleThreads.*;
 import java.time.Clock;
 import java.time.Instant;
@@ -37,7 +38,6 @@ class ConnectorConformanceTest {
         assertTrue(scenarios.size() > 0);
         List<DynamicTest> tests = new java.util.ArrayList<>();
         for (JsonNode scenario : scenarios) {
-            if (!java.util.Arrays.asList("listStoryIDs", "getItem", "getUser", "getArticleThread").contains(scenario.get("operation").asText())) continue;
             tests.add(DynamicTest.dynamicTest(scenario.get("name").asText(), () -> replay(scenario)));
         }
         assertFalse(tests.isEmpty());
@@ -48,7 +48,7 @@ class ConnectorConformanceTest {
         String name = scenario.get("name").asText();
         assertFalse(scenario.has("pending"), name + " is pending");
         String operation = scenario.get("operation").asText();
-        RecordedProvider provider = new RecordedProvider(scenario.get("exchanges"), operation.equals("getArticleThread") ? SEARCH_ORIGIN : ORIGIN);
+        RecordedProvider provider = new RecordedProvider(scenario.get("exchanges"), (operation.equals("getArticleThread") || operation.startsWith("search")) ? SEARCH_ORIGIN : ORIGIN);
         Call call = Call.create(CallId.of(scenario.get("callId").asText()), new ConnectionRef("hacker-news", "hacker-news-public"),
                 new OperationRef("hacker-news-daily", operation), null, 1);
         Clock clock = Clock.fixed(Instant.parse(scenario.path("fixedClock").asText("2026-01-01T00:00:00Z")), ZoneOffset.UTC);
@@ -57,6 +57,12 @@ class ConnectorConformanceTest {
         switch (operation) {
             case "listStoryIDs":
                 attempt = new ListStoryIDsOperation(ORIGIN, provider, 1 << 20, clock).invoke(call, JSON.treeToValue(input, ListStoryIDsInput.class));
+                break;
+            case "searchItems":
+                attempt = new SearchItemsOperation(SEARCH_ORIGIN, provider, 1 << 20, clock).invoke(call, JSON.treeToValue(input, SearchItemsInput.class));
+                break;
+            case "searchStories":
+                attempt = new SearchStoriesOperation(SEARCH_ORIGIN, provider, 1 << 20, clock).invoke(call, JSON.treeToValue(input, SearchStoriesInput.class));
                 break;
             case "getArticleThread":
                 attempt = new GetArticleThreadOperation(SEARCH_ORIGIN, provider, 1 << 20, clock).invoke(call, JSON.treeToValue(input, GetArticleThreadInput.class));
@@ -92,7 +98,17 @@ class ConnectorConformanceTest {
             assertNotNull(exchange, "unexpected request");
             assertEquals("absent", exchange.get("keyMode").asText());
             assertEquals(exchange.get("method").asText(), request.getMethod());
-            assertEquals(origin + exchange.get("path").asText(), request.getUrl());
+            String[] url = request.getUrl().split("\\?", 2);
+            assertEquals(origin + exchange.get("path").asText(), url[0]);
+            Map<String, List<String>> parameters = new LinkedHashMap<>();
+            if (url.length == 2) {
+                for (String pair : url[1].split("&")) {
+                    String[] parts = pair.split("=", 2);
+                    String key = java.net.URLDecoder.decode(parts[0], "UTF-8");
+                    parameters.computeIfAbsent(key, ignored -> new java.util.ArrayList<>()).add(java.net.URLDecoder.decode(parts[1], "UTF-8"));
+                }
+            }
+            assertEquals(exchange.has("query") ? exchange.get("query") : JSON.createObjectNode(), JSON.valueToTree(parameters));
             Map<String, List<String>> headers = new LinkedHashMap<>();
             request.getHeaders().forEach((name, value) -> headers.put(name, Collections.singletonList(value)));
             assertEquals(exchange.get("requestHeaders"), JSON.valueToTree(headers));
