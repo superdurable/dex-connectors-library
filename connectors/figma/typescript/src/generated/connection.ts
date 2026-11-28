@@ -4,7 +4,7 @@
 
 import { ConnectionRefSchema, type ConnectionRef, type Query } from '@superdurable/connectors-sdk';
 import type { LoadedProject } from '@superdurable/connectors-sdk/projectconfig';
-import type { GetFileInput, File, GetFileCommentsInput, FileComments } from './models.js';
+import type { GetFileInput, File, GetFileCommentsInput, FileComments, GetFileNodesInput, FileNodes } from './models.js';
 import { ConnectorID, ProviderID } from './definitions.js';
 
 /** Typed operations supplied by a client or mock. */
@@ -13,6 +13,8 @@ export interface Operations {
   getFile(): Query<GetFileInput, File>;
   /** Invoke getFileComments through this connection. */
   getFileComments(): Query<GetFileCommentsInput, FileComments>;
+  /** Invoke getFileNodes through this connection. */
+  getFileNodes(): Query<GetFileNodesInput, FileNodes>;
 }
 
 /** Named connector connection kept outside Flow state. */

@@ -4,9 +4,9 @@
 
 import { branchCase, retryCase, type Case, newQuery, type MockQuery } from '@superdurable/connectors-sdk/connectormock';
 import type { Failure } from '@superdurable/connectors-sdk';
-import type { GetFileInput, File, GetFileCommentsInput, FileComment, FileComments } from './models.js';
-import { GetFileInputSchema, FileSchema, GetFileCommentsInputSchema, FileCommentSchema, FileCommentsSchema } from './models.js';
-import { ProviderID, ConnectorID, GetFileDefinition, GetFileCommentsDefinition } from './definitions.js';
+import type { GetFileInput, File, GetFileCommentsInput, FileComment, FileComments, GetFileNodesInput, FileNode, FileNodes } from './models.js';
+import { GetFileInputSchema, FileSchema, GetFileCommentsInputSchema, FileCommentSchema, FileCommentsSchema, GetFileNodesInputSchema, FileNodeSchema, FileNodesSchema } from './models.js';
+import { ProviderID, ConnectorID, GetFileDefinition, GetFileCommentsDefinition, GetFileNodesDefinition } from './definitions.js';
 import { newConnectionWithOperations, type Connection, type Operations } from './connection.js';
 
 /** Go zero value for GetFileInput in scripted cases. */
@@ -31,6 +31,21 @@ export const emptyFileComment: FileComment = FileCommentSchema.parse({
 /** Go zero value for FileComments in scripted cases. */
 export const emptyFileComments: FileComments = FileCommentsSchema.parse({
   "comments": [],
+});
+/** Go zero value for GetFileNodesInput in scripted cases. */
+export const emptyGetFileNodesInput: GetFileNodesInput = GetFileNodesInputSchema.parse({
+  "fileKey": '',
+  "nodeIds": [],
+});
+/** Go zero value for FileNode in scripted cases. */
+export const emptyFileNode: FileNode = FileNodeSchema.parse({
+  "document": null,
+});
+/** Go zero value for FileNodes in scripted cases. */
+export const emptyFileNodes: FileNodes = FileNodesSchema.parse({
+  "name": '',
+  "lastModified": '',
+  "nodes": {},
 });
 
 /** Script the found branch. */
@@ -83,23 +98,47 @@ export function getFileCommentsInvalidKey(): Case<FileComments> {
   return branchCase("providerRejected", value, { kind: "AUTHENTICATION", provider: ConnectorID, operation: "getFileComments", message: "Figma rejected the token." });
 }
 
+/** Script the found branch. */
+export function getFileNodesFound(value: FileNodes, failure?: Failure): Case<FileNodes> { return branchCase("found", value, failure); }
+/** Script the notFound branch. */
+export function getFileNodesNotFound(value: FileNodes, failure?: Failure): Case<FileNodes> { return branchCase("notFound", value, failure); }
+/** Script the providerRejected branch. */
+export function getFileNodesProviderRejected(value: FileNodes, failure?: Failure): Case<FileNodes> { return branchCase("providerRejected", value, failure); }
+/** Script the invalidResponse branch. */
+export function getFileNodesInvalidResponse(value: FileNodes, failure?: Failure): Case<FileNodes> { return branchCase("invalidResponse", value, failure); }
+/** Script the defect branch. */
+export function getFileNodesDefect(value: FileNodes, failure?: Failure): Case<FileNodes> { return branchCase("defect", value, failure); }
+/** Script a safe retry of getFileNodes. */
+export function getFileNodesRetry(failure: Failure, retryAfterMs = 0): Case<FileNodes> { return retryCase(failure, retryAfterMs); }
+/** Manifest scenario foundDefault for getFileNodes. */
+export function getFileNodesFoundDefault(): Case<FileNodes> {
+  const value = FileNodesSchema.parse({"lastModified":"2026-10-28T12:00:00Z","name":"Meridian Design","nodes":{"0:1":{"document":{"id":"0:1","name":"Home","type":"CANVAS"}}}});
+  return branchCase("found", value);
+}
+/** Default getFileNodes scenario. */
+export function getFileNodesDefault(): Case<FileNodes> { return getFileNodesFoundDefault(); }
+
 /** Scripted operations and manifest defaults for this connector. */
 export class GeneratedMock implements Operations {
   readonly #getFile: MockQuery<GetFileInput, File>;
   readonly #getFileComments: MockQuery<GetFileCommentsInput, FileComments>;
+  readonly #getFileNodes: MockQuery<GetFileNodesInput, FileNodes>;
   readonly #connection: Connection;
 
   constructor(connectionName: string) {
     this.#getFile = newQuery<GetFileInput, File>(GetFileDefinition).default(getFileDefault());
     this.#getFileComments = newQuery<GetFileCommentsInput, FileComments>(GetFileCommentsDefinition).default(getFileCommentsDefault());
+    this.#getFileNodes = newQuery<GetFileNodesInput, FileNodes>(GetFileNodesDefinition).default(getFileNodesDefault());
     this.#connection = newConnectionWithOperations(this, { provider: ProviderID, name: connectionName });
   }
 
   connection(): Connection { return this.#connection; }
   getFile(): MockQuery<GetFileInput, File> { return this.#getFile; }
   getFileComments(): MockQuery<GetFileCommentsInput, FileComments> { return this.#getFileComments; }
+  getFileNodes(): MockQuery<GetFileNodesInput, FileNodes> { return this.#getFileNodes; }
   assertNoFailures(): void {
     this.#getFile.assertNoFailures();
     this.#getFileComments.assertNoFailures();
+    this.#getFileNodes.assertNoFailures();
   }
 }

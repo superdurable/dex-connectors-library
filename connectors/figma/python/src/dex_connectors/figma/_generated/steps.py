@@ -14,7 +14,7 @@ from dex_connectors.sdk import (
 )
 
 from ..connection import Connection
-from ..models import File, FileComments, GetFileCommentsInput, GetFileInput
+from ..models import File, FileComments, FileNodes, GetFileCommentsInput, GetFileInput, GetFileNodesInput
 
 StepInput = TypeVar("StepInput")
 
@@ -123,6 +123,59 @@ def new_get_file_comments_step(
     )
 
 setattr(new_get_file_comments_step, '__module__', 'dex_connectors.figma.steps')
+
+def new_get_file_nodes_step(
+    *,
+    step_type: str,
+    step_input_type: type[StepInput],
+    annotations: StepAnnotations | Mapping[str, str],
+    connection: Connection,
+    connection_name: str,
+    map_to_operation_input: Callable[[StepInput], GetFileNodesInput],
+    found: dex.StepTarget[QueryResult[FileNodes]],
+    not_found: dex.StepTarget[QueryResult[FileNodes]] | None = None,
+    provider_rejected: dex.StepTarget[QueryResult[FileNodes]] | None = None,
+    invalid_response: dex.StepTarget[QueryResult[FileNodes]] | None = None,
+    defect: dex.StepTarget[QueryResult[FileNodes]] | None = None,
+    result_attribute: dex.Attribute[QueryResult[FileNodes]] | None = None,
+    step_options_override: dex.StepOptions | None = None,
+) -> QueryStep[StepInput, GetFileNodesInput, FileNodes]:
+    if connection is None or connection.reference.name != connection_name:
+        raise ValueError("Figma Step connection name must match its connection reference")
+    if isinstance(annotations, StepAnnotations):
+        step_annotations = annotations
+    else:
+        if not isinstance(annotations, Mapping) or set(annotations) != {"groupId", "groupLabel", "explanation"}:
+            raise ValueError("Figma Step annotations require groupId, groupLabel, and explanation")
+        if any(not isinstance(value, str) for value in annotations.values()):
+            raise ValueError("Figma Step annotations must be strings")
+        step_annotations = StepAnnotations(annotations["groupId"], annotations["groupLabel"], annotations["explanation"])
+    branches = {
+        "found": found,
+    }
+    if not_found is not None:
+        branches["notFound"] = not_found
+    if provider_rejected is not None:
+        branches["providerRejected"] = provider_rejected
+    if invalid_response is not None:
+        branches["invalidResponse"] = invalid_response
+    if defect is not None:
+        branches["defect"] = defect
+    return QueryStep(
+        QueryStepConfig(
+            step_type=step_type,
+            step_input_type=step_input_type,
+            annotations=step_annotations,
+            operation=_bound_operation(connection, "get_file_nodes"),
+            connection=connection.reference,
+            map_to_operation_input=map_to_operation_input,
+            branches=branches,
+            result_attribute=result_attribute,
+            step_options_override=step_options_override,
+        )
+    )
+
+setattr(new_get_file_nodes_step, '__module__', 'dex_connectors.figma.steps')
 
 
 def _bound_operation(connection: Connection, operation_name: str) -> Any:

@@ -11,13 +11,13 @@ spec:
   provider: figma
   languages:
     python:
-      version: v0.1.0
-      operations: [getFile, getFileComments]
+      version: v0.2.0
+      operations: [getFile, getFileComments, getFileNodes]
       triggers: []
     typescript:
-      version: v0.1.1
+      version: v0.2.0
       package: '@superdurable/connector-figma'
-      operations: [getFile, getFileComments]
+      operations: [getFile, getFileComments, getFileNodes]
       triggers: []
   codegen:
     go:

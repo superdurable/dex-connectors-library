@@ -4,7 +4,7 @@
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-figma",
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   "factories": [
     {
@@ -111,6 +111,69 @@
         },
         "required": [
           "fileKey"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "new_get_file_nodes_step",
+      "kind": "query",
+      "operationId": "getFileNodes",
+      "inputType": "GetFileNodesInput",
+      "description": "Read selected nodes of a Figma file by node IDs.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "not_found",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetFileNodesInput selects up to 100 node IDs from a file or branch key.",
+        "properties": {
+          "fileKey": {
+            "type": "string"
+          },
+          "nodeIds": {
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "fileKey",
+          "nodeIds"
         ],
         "type": "object"
       }

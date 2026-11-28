@@ -8,8 +8,8 @@ from dex_connectors.sdk import ConnectionRef, Failure, FailureKind
 from dex_connectors.sdk.connectormock import Case, Query
 
 from ..connection import Connection, new_connection_with_operations
-from ..models import File, FileComment, FileComments, GetFileCommentsInput, GetFileInput
-from .definitions import CONNECTOR_ID, DEFECT, FOUND, GET_FILE_COMMENTS_DEFINITION, GET_FILE_DEFINITION, INVALID_RESPONSE, LISTED, NOT_FOUND, PROVIDER_REJECTED
+from ..models import File, FileComment, FileComments, FileNode, FileNodes, GetFileCommentsInput, GetFileInput, GetFileNodesInput
+from .definitions import CONNECTOR_ID, DEFECT, FOUND, GET_FILE_COMMENTS_DEFINITION, GET_FILE_DEFINITION, GET_FILE_NODES_DEFINITION, INVALID_RESPONSE, LISTED, NOT_FOUND, PROVIDER_REJECTED
 
 def get_file_found(value: File, failure: Failure | None = None) -> Case[File]:
     return Case.branch_result(FOUND, value, failure)
@@ -91,6 +91,41 @@ def get_file_comments_invalid_key() -> Case[FileComments]:
 
 setattr(get_file_comments_invalid_key, '__module__', "dex_connectors.figma.figmamock")
 
+def get_file_nodes_found(value: FileNodes, failure: Failure | None = None) -> Case[FileNodes]:
+    return Case.branch_result(FOUND, value, failure)
+
+setattr(get_file_nodes_found, '__module__', "dex_connectors.figma.figmamock")
+
+def get_file_nodes_not_found(value: FileNodes, failure: Failure | None = None) -> Case[FileNodes]:
+    return Case.branch_result(NOT_FOUND, value, failure)
+
+setattr(get_file_nodes_not_found, '__module__', "dex_connectors.figma.figmamock")
+
+def get_file_nodes_provider_rejected(value: FileNodes, failure: Failure | None = None) -> Case[FileNodes]:
+    return Case.branch_result(PROVIDER_REJECTED, value, failure)
+
+setattr(get_file_nodes_provider_rejected, '__module__', "dex_connectors.figma.figmamock")
+
+def get_file_nodes_invalid_response(value: FileNodes, failure: Failure | None = None) -> Case[FileNodes]:
+    return Case.branch_result(INVALID_RESPONSE, value, failure)
+
+setattr(get_file_nodes_invalid_response, '__module__', "dex_connectors.figma.figmamock")
+
+def get_file_nodes_defect(value: FileNodes, failure: Failure | None = None) -> Case[FileNodes]:
+    return Case.branch_result(DEFECT, value, failure)
+
+setattr(get_file_nodes_defect, '__module__', "dex_connectors.figma.figmamock")
+
+def get_file_nodes_retry(failure: Failure, after_seconds: float = 0) -> Case[FileNodes]:
+    return Case.retry(failure, after_seconds)
+
+setattr(get_file_nodes_retry, '__module__', "dex_connectors.figma.figmamock")
+
+def get_file_nodes_found_default() -> Case[FileNodes]:
+    return Case.branch_result(FOUND, FileNodes(name='Meridian Design', last_modified='2026-10-28T12:00:00Z', nodes={'0:1': FileNode(document={'id': '0:1', 'type': 'CANVAS', 'name': 'Home'})}))
+
+setattr(get_file_nodes_found_default, '__module__', "dex_connectors.figma.figmamock")
+
 
 class Mock:
 
@@ -99,9 +134,12 @@ class Mock:
         self.get_file_script.default(get_file_default_answer())
         self.get_file_comments_script: Query[GetFileCommentsInput, FileComments] = Query(GET_FILE_COMMENTS_DEFINITION)
         self.get_file_comments_script.default(get_file_comments_default_answer())
+        self.get_file_nodes_script: Query[GetFileNodesInput, FileNodes] = Query(GET_FILE_NODES_DEFINITION)
+        self.get_file_nodes_script.default(get_file_nodes_found_default())
         self._connection = new_connection_with_operations(
             get_file=self.get_file_script,
             get_file_comments=self.get_file_comments_script,
+            get_file_nodes=self.get_file_nodes_script,
             reference=ConnectionRef(CONNECTOR_ID, connection_name),
         )
 
@@ -128,4 +166,11 @@ __all__ = [
     "get_file_comments_retry",
     "get_file_comments_default_answer",
     "get_file_comments_invalid_key",
+    "get_file_nodes_found",
+    "get_file_nodes_not_found",
+    "get_file_nodes_provider_rejected",
+    "get_file_nodes_invalid_response",
+    "get_file_nodes_defect",
+    "get_file_nodes_retry",
+    "get_file_nodes_found_default",
 ]

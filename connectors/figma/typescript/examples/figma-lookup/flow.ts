@@ -3,7 +3,7 @@
 
 import { Attribute, StepList, StepRef, forceFail, goTo, gracefulComplete, jsonCodec, type Context, type Flow, type PersistenceSchema, type Step, type StepDecision } from '@superdurable/dex';
 import type { QueryResult } from '@superdurable/connectors-sdk';
-import { newGetFileStep, newGetFileCommentsStep, type Connection, type File, type FileComments, type GetFileInput } from '@superdurable/connector-figma';
+import { newGetFileNodesStep, type FileNodes, type GetFileNodesInput, newGetFileStep, newGetFileCommentsStep, type Connection, type File, type FileComments, type GetFileInput } from '@superdurable/connector-figma';
 
 /** Static Dex Web connection used by this example. */
 export const ConnectionName = 'figma';
@@ -39,6 +39,12 @@ export class FigmaLookupFlow implements Flow<FigmaLookupRequest> {
         found: new StepRef('FigmaFileRead'),
       }),
       this.fileRead,
+      newGetFileNodesStep<GetFileNodesInput>({
+        stepType: 'ReadFigmaNodes', annotations: { groupId: 'figma-lookup', groupLabel: 'Figma lookup', explanation: 'Read the selected Figma root node.' },
+        connection: this.connection, connectionName: ConnectionName, mapToOperationInput: selection => selection,
+        found: new StepRef('AfterFigmaNodes'),
+      }),
+      new AfterNodes(),
       newGetFileCommentsStep<GetFileInput>({
         stepType: 'ReadFigmaComments', annotations: { groupId: 'figma-lookup', groupLabel: 'Figma lookup', explanation: 'Read comments on the file.' },
         connection: this.connection, connectionName: ConnectionName, mapToOperationInput: request => request,
@@ -69,6 +75,17 @@ class ReturnFile implements Step<QueryResult<File>> {
   /** Persist the name and proceed to comments. */
   execute(context: Context, result: QueryResult<File>): StepDecision {
     context.setAttribute(fileName, result.value.name);
+    const root = result.value.document;
+    if (!root || typeof root !== 'object' || !('id' in root) || typeof root.id !== 'string' || !root.id) return forceFail('file root ID is missing');
+    return goTo(new StepRef('ReadFigmaNodes'), { fileKey: context.getAttribute(fileKey), nodeIds: [root.id] });
+  }
+}
+
+// dex:group group-id:figma-lookup group-label:"Figma lookup"
+// dex:explanation text:"Read comments after retrieving the root node."
+class AfterNodes implements Step<QueryResult<FileNodes>> {
+  getStepType(): string { return 'AfterFigmaNodes'; }
+  execute(context: Context): StepDecision {
     return goTo(new StepRef('ReadFigmaComments'), { fileKey: context.getAttribute(fileKey) });
   }
 }

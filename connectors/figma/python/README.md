@@ -1,8 +1,8 @@
 # Figma connector for Python
 
-Install with `pip install dex-connector-figma==0.1.0`. The package requires
+Install with `pip install dex-connector-figma==0.2.0`. The package requires
 `dex-connectors-sdk==0.1.0` and `dex-python-sdk>=1.28.0`, and implements the
-manifest Queries `getFile` and `getFileComments` with the same branches,
+manifest Queries `getFile`, `getFileNodes`, and `getFileComments` with the same branches,
 defaults, and failure classification as the Go module.
 
 ## Operations
@@ -11,8 +11,10 @@ defaults, and failure classification as the Go module.
 | --- | --- | --- | --- |
 | `getFile` | `new_get_file_step` | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
 | `getFileComments` | `new_get_file_comments_step` | `listed` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
+| `getFileNodes` | `new_get_file_nodes_step` | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
 
-Both take a file key of 1 to 128 letters, digits, `_`, or `-`. `getFile`
+`getFileNodes` takes one to 100 node IDs such as `1:2` and returns their document subtrees.
+All three queries take a file key of 1 to 128 letters, digits, `_`, or `-`. `getFile`
 returns the file name, last-modified text, and the document node tree as
 JSON. Integral number values retain their exact integer value; a number that
 Dex JSON encoding would round selects `invalidResponse` and names its document
@@ -35,5 +37,5 @@ project containing the `figma` connection.
 
 ## Tests
 
-`figmamock.Mock` scripts both Queries and defaults to the manifest answers.
+`figmamock.Mock` scripts all three Queries and defaults to the manifest answers.
 Run `uv run pytest tests` for provider parity and manifest contract checks.

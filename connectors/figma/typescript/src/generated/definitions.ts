@@ -74,3 +74,36 @@ export const GetFileCommentsDefinition: QueryDefinition = {
 };
 /** Manifest metadata for getFileComments. */
 export const GetFileCommentsMetadata = { kind: "query", idempotency: "none", authorization: "required" } as const;
+
+/** Branch IDs for getFileNodes. */
+export const GetFileNodesBranch = {
+  Found: "found",
+  NotFound: "notFound",
+  ProviderRejected: "providerRejected",
+  InvalidResponse: "invalidResponse",
+  Defect: "defect",
+} as const;
+/** Figma returned the selected nodes. */
+export const GetFileNodesBranchFound = GetFileNodesBranch.Found;
+/** Figma did not find the file. */
+export const GetFileNodesBranchNotFound = GetFileNodesBranch.NotFound;
+/** Figma conclusively rejected the read. */
+export const GetFileNodesBranchProviderRejected = GetFileNodesBranch.ProviderRejected;
+/** Figma returned malformed or oversized JSON. */
+export const GetFileNodesBranchInvalidResponse = GetFileNodesBranch.InvalidResponse;
+/** Local input or connection credentials are invalid. */
+export const GetFileNodesBranchDefect = GetFileNodesBranch.Defect;
+/** Manifest definition for getFileNodes. */
+export const GetFileNodesDefinition: QueryDefinition = {
+  operation: { connectorId: ConnectorID, operationId: "getFileNodes" },
+  branches: [
+    { id: "found", description: "Figma returned the selected nodes." },
+    { id: "notFound", description: "Figma did not find the file.", optional: true },
+    { id: "providerRejected", description: "Figma conclusively rejected the read.", optional: true },
+    { id: "invalidResponse", description: "Figma returned malformed or oversized JSON.", optional: true },
+    { id: "defect", description: "Local input or connection credentials are invalid.", optional: true },
+  ],
+  stepDefaults: { executeMethodTimeoutMs: 45000, executeDurability: "async" },
+};
+/** Manifest metadata for getFileNodes. */
+export const GetFileNodesMetadata = { kind: "query", idempotency: "none", authorization: "required" } as const;

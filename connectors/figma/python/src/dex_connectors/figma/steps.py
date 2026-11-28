@@ -18,6 +18,7 @@ from ._generated.steps import (
 from ._generated.steps import (
     new_get_file_comments_step as new_get_file_comments_step,
 )
+from ._generated.steps import new_get_file_nodes_step as new_get_file_nodes_step
 from ._generated.steps import (
     new_get_file_step as new_get_file_step,
 )

@@ -3,13 +3,14 @@
 
 import { newQueryBranch, newQueryRetry, SecretString, type Call, type CredentialProvider, type Failure, type Query, type QueryAttempt } from '@superdurable/connectors-sdk';
 import { BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
-import { GetFileDefinition, GetFileCommentsDefinition } from './generated/definitions.js';
-import type { Config, Credentials, File, FileComments, GetFileInput, GetFileCommentsInput } from './generated/models.js';
-import { emptyFile, emptyFileComments } from './generated/mock.js';
+import { GetFileDefinition, GetFileCommentsDefinition, GetFileNodesDefinition } from './generated/definitions.js';
+import type { Config, Credentials, File, FileComments, FileNode, FileNodes, GetFileNodesInput, GetFileInput, GetFileCommentsInput } from './generated/models.js';
+import { emptyFile, emptyFileComments, emptyFileNodes } from './generated/mock.js';
 
 const defaultBaseURL = 'https://api.figma.com/v1';
 const defaultTimeoutMs = 30_000;
 const defaultMaxResponseBytes = 8_388_608;
+const nodeIdPattern = /^[0-9]+:[0-9]+$/;
 const safeFileKey = /^[A-Za-z0-9_-]{1,128}$/;
 
 /** One injectable, bounded Figma HTTP sender. */
@@ -45,6 +46,9 @@ export class FigmaClient {
 
   /** Bind the file query. */ getFile(): GetFileOperation { return new GetFileOperation(this); }
   /** Bind the comments query. */ getFileComments(): GetFileCommentsOperation { return new GetFileCommentsOperation(this); }
+
+  /** Bind the selected file nodes query. */
+  getFileNodes(): GetFileNodesOperation { return new GetFileNodesOperation(this); }
 
   /** Resolve private credentials, read once, and classify the provider result. */
   async invokeGet<Output>(call: Call, operation: string, path: string, empty: Output, successBranch: string, decode: (body: Uint8Array) => Output): Promise<QueryAttempt<Output>> {
@@ -107,6 +111,27 @@ export class GetFileCommentsOperation implements Query<GetFileCommentsInput, Fil
   }
 }
 
+/** Read the selected document nodes of a Figma file. */
+export class GetFileNodesOperation implements Query<GetFileNodesInput, FileNodes> {
+  /** Bind the provider client. */
+  constructor(private readonly client: FigmaClient) {}
+
+  /** Return the manifest contract. */
+  definition() { return GetFileNodesDefinition; }
+
+  /** Read up to one hundred nodes in a single request. */
+  async invoke(call: Call, input: GetFileNodesInput): Promise<QueryAttempt<FileNodes>> {
+    if (!safeFileKey.test(input.fileKey) || !input.nodeIds?.length || input.nodeIds.length > 100) {
+      return failed('getFileNodes', 'defect', 'VALIDATION', 'fileKey or nodeIds is invalid', emptyFileNodes);
+    }
+    if (!input.nodeIds.every(id => nodeIdPattern.test(id))) {
+      return failed('getFileNodes', 'defect', 'VALIDATION', 'nodeIds contains an invalid ID', emptyFileNodes);
+    }
+    const query = new URLSearchParams({ ids: input.nodeIds.join(',') });
+    return this.client.invokeGet(call, 'getFileNodes', `/files/${input.fileKey}/nodes?${query}`, emptyFileNodes, 'found', decodeFileNodes);
+  }
+}
+
 function failure(operation: string, kind: Failure['kind'], message: string): Failure { return { kind, provider: 'figma', operation, message }; }
 function failed<Output>(operation: string, branch: string, kind: Failure['kind'], message: string, empty: Output): QueryAttempt<Output> {
   return newQueryBranch(branch, empty, {}, failure(operation, kind, message));
@@ -116,18 +141,35 @@ function objectBody(body: Uint8Array): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('invalid object');
   return value as Record<string, unknown>;
 }
-function decodeFile(body: Uint8Array): File {
+function documentBody(body: Uint8Array): Record<string, unknown> {
   // Raw number fragments survive JSON encoding; object whitespace and string escape spellings remain canonicalized.
   const parseWithSource = JSON.parse as (source: string, reviver: (key: string, value: unknown, context: { source?: string }) => unknown) => unknown;
   const rawJSON = (JSON as typeof JSON & { rawJSON(source: string): unknown }).rawJSON;
   const value = parseWithSource(Buffer.from(body).toString('utf8'), (_key, parsed, context) =>
     typeof parsed === 'number' && context.source ? rawJSON(context.source) : parsed) as Record<string, unknown>;
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('invalid object');
+  return value;
+}
+function decodeFile(body: Uint8Array): File {
+  const value = documentBody(body);
   if (value.name != null && typeof value.name !== 'string' || value.lastModified != null && typeof value.lastModified !== 'string') throw new TypeError('invalid file');
   const name = typeof value.name === 'string' ? value.name : '';
   const lastModified = typeof value.lastModified === 'string' ? value.lastModified : '';
   if (!name || value.document === undefined || value.document === null) throw new TypeError('incomplete file');
   return { name, lastModified, document: value.document };
+}
+function decodeFileNodes(body: Uint8Array): FileNodes {
+  const value = documentBody(body);
+  if (typeof value.name !== 'string' || !value.name || (value.lastModified != null && typeof value.lastModified !== 'string')
+      || !value.nodes || typeof value.nodes !== 'object' || Array.isArray(value.nodes)) throw new TypeError('invalid nodes');
+  const nodes: Record<string, FileNode> = {};
+  for (const [id, node] of Object.entries(value.nodes)) {
+    if (!nodeIdPattern.test(id) || !node || typeof node !== 'object' || !('document' in node) || node.document == null) {
+      throw new TypeError('invalid node');
+    }
+    nodes[id] = { document: node.document };
+  }
+  return { name: value.name, lastModified: value.lastModified ?? '', nodes };
 }
 function decodeComments(body: Uint8Array): FileComments {
   const value = objectBody(body);

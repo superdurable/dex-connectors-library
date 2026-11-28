@@ -72,3 +72,38 @@ class FileComments:
 FileComments.__annotations__['comments'] = tuple[FileComment, ...] | None
 FileComments.__dataclass_fields__['comments'].type = tuple[FileComment, ...] | None
 setattr(FileComments, '__module__', 'dex_connectors.figma.models')
+
+
+# GetFileNodesInput selects up to 100 node IDs from a file or branch key.
+@dataclass(frozen=True, slots=True)
+class GetFileNodesInput:
+    file_key: str = _dataclass_field(default='', metadata={'dex_json_name': 'fileKey'})
+    node_ids: tuple[str, ...] = _dataclass_field(default=(), metadata={'dex_json_name': 'nodeIds'})
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, 'node_ids', _replace_nil_slices(self.node_ids, 1))
+
+
+GetFileNodesInput.__annotations__['node_ids'] = tuple[str, ...] | None
+GetFileNodesInput.__dataclass_fields__['node_ids'].type = tuple[str, ...] | None
+setattr(GetFileNodesInput, '__module__', 'dex_connectors.figma.models')
+
+
+# FileNode contains one selected Figma document node.
+@dataclass(frozen=True, slots=True)
+class FileNode:
+    document: Any = None
+
+
+setattr(FileNode, '__module__', 'dex_connectors.figma.models')
+
+
+# FileNodes contains the selected node subtrees and file metadata.
+@dataclass(frozen=True, slots=True)
+class FileNodes:
+    name: str = ''
+    last_modified: str = _dataclass_field(default='', metadata={'dex_json_name': 'lastModified'})
+    nodes: dict[str, FileNode] | None = None
+
+
+setattr(FileNodes, '__module__', 'dex_connectors.figma.models')

@@ -11,6 +11,7 @@ from datetime import UTC, datetime
 from datetime import timedelta as timedelta
 from decimal import Decimal
 from typing import Any, TypeVar
+from urllib.parse import urlencode
 
 import httpx
 from dex_connectors.sdk import BranchDefinition as BranchDefinition
@@ -65,6 +66,8 @@ from ._generated.definitions import (
 from ._generated.definitions import (
     GET_FILE_DEFINITION as GET_FILE_DEFINITION,
 )
+from ._generated.definitions import GET_FILE_NODES_DEFINITION as GET_FILE_NODES_DEFINITION
+from ._generated.definitions import GET_FILE_NODES_OPERATION_ID
 from ._generated.definitions import (
     GET_FILE_OPERATION_ID as GET_FILE_OPERATION_ID,
 )
@@ -80,12 +83,23 @@ from ._generated.definitions import (
 from ._generated.definitions import (
     PROVIDER_REJECTED as PROVIDER_REJECTED,
 )
-from .models import File, FileComment, FileComments, GetFileCommentsInput, GetFileInput
+from .models import (
+    File,
+    FileComment,
+    FileComments,
+    FileNode,
+    FileNodes,
+    GetFileCommentsInput,
+    GetFileInput,
+    GetFileNodesInput,
+)
 
 _DEFAULT_BASE_URL = "https://api.figma.com/v1"
 _DEFAULT_TIMEOUT_SECONDS = 30
 _DEFAULT_MAX_RESPONSE_BYTES = 8_388_608
 _SAFE_KEY = re.compile(r"[A-Za-z0-9_-]{1,128}")
+
+_NODE_ID = re.compile(r"[0-9]+:[0-9]+")
 
 Output = TypeVar("Output")
 
@@ -119,6 +133,10 @@ class Client:
     def get_file_comments(self) -> "GetFileCommentsOperation":
         """Bind the file comments Query to this client."""
         return GetFileCommentsOperation(self)
+
+    def get_file_nodes(self) -> "GetFileNodesOperation":
+        """Bind the selected nodes query to this client."""
+        return GetFileNodesOperation(self)
 
     async def aclose(self) -> None:
         """Close the owned provider HTTP client after application shutdown."""
@@ -274,7 +292,56 @@ class GetFileCommentsOperation:
         )
 
 
-def _is_safe_key(input: object, input_type: type[GetFileInput] | type[GetFileCommentsInput]) -> bool:
+class GetFileNodesOperation:
+    """Read selected document subtrees in one bounded request."""
+
+    def __init__(self, client: Client) -> None:
+        self.client = client
+
+    def definition(self) -> QueryDefinition:
+        """Return the selected nodes query contract."""
+        return GET_FILE_NODES_DEFINITION
+
+    async def invoke(self, call: Call, input: GetFileNodesInput) -> QueryAttempt[FileNodes]:
+        """Read between one and one hundred selected nodes."""
+        operation = GET_FILE_NODES_OPERATION_ID
+        empty = FileNodes(nodes={})
+        if not _is_safe_key(input, GetFileNodesInput) or not input.node_ids or len(input.node_ids) > 100:
+            return _failed(
+                operation, DEFECT, empty, FailureKind.VALIDATION, "fileKey or nodeIds is invalid"
+            )
+        if not all(isinstance(node, str) and _NODE_ID.fullmatch(node) for node in input.node_ids):
+            return _failed(
+                operation, DEFECT, empty, FailureKind.VALIDATION, "nodeIds contains an invalid ID"
+            )
+        query = urlencode({"ids": ",".join(input.node_ids)})
+        return await self.client.invoke_get(
+            call,
+            operation,
+            f"/files/{input.file_key}/nodes?{query}",
+            empty,
+            FOUND,
+            NOT_FOUND,
+            _decode_file_nodes,
+        )
+
+
+def _decode_file_nodes(value: Any) -> FileNodes:
+    if not isinstance(value, dict) or not _string(value, "name") or not isinstance(value.get("nodes"), dict):
+        raise ValueError
+    nodes = {}
+    for node_id, node in value["nodes"].items():
+        if not _NODE_ID.fullmatch(node_id) or not isinstance(node, dict) or node.get("document") is None:
+            raise ValueError
+        nodes[node_id] = FileNode(
+            _encode_exact_document_numbers(node["document"], f"nodes.{node_id}.document")
+        )
+    return FileNodes(value["name"], _string(value, "lastModified"), nodes)
+
+
+def _is_safe_key(
+    input: object, input_type: type[GetFileInput] | type[GetFileCommentsInput] | type[GetFileNodesInput]
+) -> bool:
     file_key = getattr(input, "file_key", None)
     return (
         isinstance(input, input_type)
@@ -315,14 +382,10 @@ class _UnencodableDocumentNumber(ValueError):
 
 def _encode_exact_document_numbers(value: Any, field: str) -> Any:
     if isinstance(value, dict):
-        return {
-            key: _encode_exact_document_numbers(child, f"{field}.{key}")
-            for key, child in value.items()
-        }
+        return {key: _encode_exact_document_numbers(child, f"{field}.{key}") for key, child in value.items()}
     if isinstance(value, list):
         return [
-            _encode_exact_document_numbers(child, f"{field}[{index}]")
-            for index, child in enumerate(value)
+            _encode_exact_document_numbers(child, f"{field}[{index}]") for index, child in enumerate(value)
         ]
     if isinstance(value, Decimal):
         try:

@@ -6,10 +6,9 @@ import { SecretString, type Call } from '@superdurable/connectors-sdk';
 import { ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
 import { answerRecordedRequest, ExchangeRecorder, loadScenarios, replay, scenarioCall, type Scenario } from '../../../../conformance/runners/typescript/connector_scenarios.js';
 import { FigmaClient } from '../src/client.js';
-import { GetFileInputSchema, GetFileCommentsInputSchema } from '../src/generated/models.js';
+import { GetFileInputSchema, GetFileCommentsInputSchema, GetFileNodesInputSchema } from '../src/generated/models.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/figma/scenarios.json', import.meta.url))
-  .filter(scenario => scenario.operation === 'getFile' || scenario.operation === 'getFileComments');
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/figma/scenarios.json', import.meta.url));
 
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeFigma));
 
@@ -23,5 +22,6 @@ async function invokeFigma(scenario: Scenario, recorder: ExchangeRecorder) {
   }, { reportProgress() {}, writeText() {}, hasProgressStream: () => false, hasTextStream: () => false }) as Call;
   if (scenario.operation === 'getFile') return client.getFile().invoke(call, GetFileInputSchema.parse(scenario.input));
   if (scenario.operation === 'getFileComments') return client.getFileComments().invoke(call, GetFileCommentsInputSchema.parse(scenario.input));
+  if (scenario.operation === 'getFileNodes') return client.getFileNodes().invoke(call, GetFileNodesInputSchema.parse(scenario.input));
   throw new Error(`unknown Figma operation ${scenario.operation}`);
 }

@@ -9,12 +9,15 @@ from ._generated.models import (
     FileComment as FileComment,
 )
 from ._generated.models import FileComments as FileComments
+from ._generated.models import FileNode as FileNode
+from ._generated.models import FileNodes as FileNodes
 from ._generated.models import (
     GetFileCommentsInput as GetFileCommentsInput,
 )
 from ._generated.models import (
     GetFileInput as GetFileInput,
 )
+from ._generated.models import GetFileNodesInput as GetFileNodesInput
 
 FileComments.__doc__ = "All comments Figma returned for the file."
 

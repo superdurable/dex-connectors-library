@@ -9,29 +9,33 @@ from dex_connectors.sdk import ConnectionRef, Query, Call, SecretString
 from dex_connectors.sdk.projectconfig import ConnectionKey, LoadedProject
 
 from ..client import Client, Config, Credentials
-from .definitions import CONNECTOR_ID, GET_FILE_COMMENTS_DEFINITION, GET_FILE_DEFINITION
-from ..models import File, FileComments, GetFileCommentsInput, GetFileInput
+from .definitions import CONNECTOR_ID, GET_FILE_COMMENTS_DEFINITION, GET_FILE_DEFINITION, GET_FILE_NODES_DEFINITION
+from ..models import File, FileComments, FileNodes, GetFileCommentsInput, GetFileInput, GetFileNodesInput
 
 class Connection:
 
-    __slots__ = ('_get_file', '_get_file_comments', '_client', 'reference')
+    __slots__ = ('_get_file', '_get_file_comments', '_get_file_nodes', '_client', 'reference')
 
     def __init__(self,
         reference: ConnectionRef,
         get_file: Query[GetFileInput, File],
         get_file_comments: Query[GetFileCommentsInput, FileComments],
+        get_file_nodes: Query[GetFileNodesInput, FileNodes],
         client: Client | None = None,
     ) -> None:
         reference.validate()
-        if reference.provider != CONNECTOR_ID or get_file is None or get_file_comments is None:
+        if reference.provider != CONNECTOR_ID or get_file is None or get_file_comments is None or get_file_nodes is None:
             raise ValueError("Figma connection provider and operations are required")
         if get_file.definition().operation != GET_FILE_DEFINITION.operation:
             raise ValueError("Figma connection operation identity differs")
         if get_file_comments.definition().operation != GET_FILE_COMMENTS_DEFINITION.operation:
             raise ValueError("Figma connection operation identity differs")
+        if get_file_nodes.definition().operation != GET_FILE_NODES_DEFINITION.operation:
+            raise ValueError("Figma connection operation identity differs")
         self.reference = reference
         self._get_file = get_file
         self._get_file_comments = get_file_comments
+        self._get_file_nodes = get_file_nodes
         self._client = client
 
     def get_file(self) -> Query[GetFileInput, File]:
@@ -39,6 +43,9 @@ class Connection:
 
     def get_file_comments(self) -> Query[GetFileCommentsInput, FileComments]:
         return self._get_file_comments
+
+    def get_file_nodes(self) -> Query[GetFileNodesInput, FileNodes]:
+        return self._get_file_nodes
 
     async def aclose(self) -> None:
         if self._client is not None:
@@ -56,7 +63,7 @@ setattr(Connection, '__module__', 'dex_connectors.figma.connection')
 def new_connection(client: Client, reference: ConnectionRef) -> Connection:
     if client is None:
         raise ValueError("Figma client is required")
-    return Connection(reference, client.get_file(), client.get_file_comments(), client)
+    return Connection(reference, client.get_file(), client.get_file_comments(), client.get_file_nodes(), client)
 
 setattr(new_connection, '__module__', 'dex_connectors.figma.connection')
 
@@ -64,9 +71,10 @@ setattr(new_connection, '__module__', 'dex_connectors.figma.connection')
 def new_connection_with_operations(
     get_file: Query[GetFileInput, File],
     get_file_comments: Query[GetFileCommentsInput, FileComments],
+    get_file_nodes: Query[GetFileNodesInput, FileNodes],
     reference: ConnectionRef,
 ) -> Connection:
-    return Connection(reference, get_file, get_file_comments)
+    return Connection(reference, get_file, get_file_comments, get_file_nodes)
 
 setattr(new_connection_with_operations, '__module__', 'dex_connectors.figma.connection')
 

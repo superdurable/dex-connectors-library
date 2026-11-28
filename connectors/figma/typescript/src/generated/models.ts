@@ -95,6 +95,21 @@ export interface FileComments {
   /** Comments contains comments returned for the file. */
   "comments": Array<FileComment> | null;
 }
+/** GetFileNodesInput selects up to 100 node IDs from a file or branch key. */
+export interface GetFileNodesInput {
+  "fileKey": string;
+  "nodeIds": Array<string> | null;
+}
+/** FileNode contains one selected Figma document node. */
+export interface FileNode {
+  "document": unknown | null;
+}
+/** FileNodes contains the selected node subtrees and file metadata. */
+export interface FileNodes {
+  "name": string;
+  "lastModified": string;
+  "nodes": { [key: string]: FileNode } | null;
+}
 
 /** Runtime validator for GetFileInput. */
 export const GetFileInputSchema = z.strictObject({
@@ -123,3 +138,21 @@ export const FileCommentSchema = z.strictObject({
 export const FileCommentsSchema = z.strictObject({
   "comments": z.array(FileCommentSchema).nullable(),
 }) satisfies z.ZodType<FileComments>;
+
+/** Runtime validator for GetFileNodesInput. */
+export const GetFileNodesInputSchema = z.strictObject({
+  "fileKey": z.string(),
+  "nodeIds": z.array(z.string()).nullable(),
+}) satisfies z.ZodType<GetFileNodesInput>;
+
+/** Runtime validator for FileNode. */
+export const FileNodeSchema = z.strictObject({
+  "document": z.unknown().nullable(),
+}) satisfies z.ZodType<FileNode>;
+
+/** Runtime validator for FileNodes. */
+export const FileNodesSchema = z.strictObject({
+  "name": z.string(),
+  "lastModified": z.string(),
+  "nodes": z.record(z.string(), FileNodeSchema).nullable(),
+}) satisfies z.ZodType<FileNodes>;

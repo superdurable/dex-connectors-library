@@ -1,7 +1,7 @@
 # Figma TypeScript connector
 
-`@superdurable/connector-figma` v0.1.0 provides the `getFile` and
-`getFileComments` Dex Query operations. Import `newGetFileStep` and
+`@superdurable/connector-figma` v0.2.0 provides the `getFile`, `getFileNodes`, and
+`getFileComments` Dex Query operations. Import `newGetFileStep`, `newGetFileNodesStep`, and
 `newGetFileCommentsStep` from the package and bind them to a static `figma`
 connection. The generated models, branches, definitions, connection helpers,
 and mock answers come from `connector.yaml`.
@@ -16,7 +16,8 @@ secret `api_key` field. Leave `baseUrl`, `timeout`, and `maxResponseBytes`
 blank for their displayed defaults. The client resolves the secret for each
 call and keeps it out of Flow state and errors.
 
-Both reads Retry 408, 409, 429, 5xx, and interrupted transport. A 404 selects
+`getFileNodes` accepts one to 100 node IDs such as `1:2` and returns their document subtrees.
+All three reads retry 408, 409, 429, 5xx, and interrupted transport. A 404 selects
 `notFound`; other final 4xx responses select `providerRejected`; malformed or
 oversized JSON selects `invalidResponse`. Invalid file keys and unavailable
 credentials select `defect` before a provider request.

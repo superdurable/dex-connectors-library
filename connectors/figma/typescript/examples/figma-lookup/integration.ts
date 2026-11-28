@@ -31,6 +31,7 @@ export async function verifyFigmaLookup(serverAddress: string): Promise<void> {
     assert.equal(outcome.name, 'Meridian Design');
     assert.equal(outcome.comments?.[0]?.message, 'Review the header.');
     assert.equal(mock.getFile().calls().length, 1);
+    assert.equal(mock.getFileNodes().calls().length, 1);
     assert.equal(mock.getFileComments().calls().length, 1);
 
     const retryId = `figma-retry-${randomUUID()}`;

@@ -12,9 +12,12 @@ from dex_connectors.figma import (
     File,
     FileComment,
     FileComments,
+    FileNodes,
     GetFileCommentsInput,
     GetFileInput,
+    GetFileNodesInput,
     new_get_file_comments_step,
+    new_get_file_nodes_step,
     new_get_file_step,
 )
 
@@ -64,12 +67,27 @@ class _StartRequest(dex.Step[FigmaLookupRequest]):
 
 
 # dex:group group-id:figma-lookup group-label:"Figma lookup"
-# dex:explanation text:"Continue from the file to its comments."
+# dex:explanation text:"Continue from the file to its root node."
 class _AfterFirst(dex.Step[QueryResult[File]]):
     def get_step_type(self) -> str:
         return "AfterFigmaFirst"
 
     def execute(self, context: dex.Context, input: QueryResult[File]) -> dex.StepDecision:
+        document = input.value.document
+        if not isinstance(document, dict) or not isinstance(document.get("id"), str) or not document["id"]:
+            return dex.force_fail("file root ID is missing")
+        return dex.go_to(
+            dex.StepRef("ReadFigmaNodes"), GetFileNodesInput(_FILE_KEY.get(context), (document["id"],))
+        )
+
+
+# dex:group group-id:figma-lookup group-label:"Figma lookup"
+# dex:explanation text:"Read comments after retrieving the root node."
+class _AfterNodes(dex.Step[QueryResult[FileNodes]]):
+    def get_step_type(self) -> str:
+        return "AfterFigmaNodes"
+
+    def execute(self, context: dex.Context, input: QueryResult[FileNodes]) -> dex.StepDecision:
         return dex.go_to(dex.StepRef(_SECOND_STEP_TYPE), GetFileCommentsInput(_FILE_KEY.get(context)))
 
 
@@ -101,6 +119,16 @@ class FigmaLookupFlow(dex.Flow[FigmaLookupRequest]):
             map_to_operation_input=map_to_get_file_input,
             found=self._after_first,
         )
+        self._after_nodes = _AfterNodes()
+        self._nodes = new_get_file_nodes_step(
+            step_type="ReadFigmaNodes",
+            step_input_type=GetFileNodesInput,
+            annotations={**_ANNOTATION_GROUP, "explanation": "Read the selected Figma root node."},
+            connection=connection,
+            connection_name=CONNECTION_NAME,
+            map_to_operation_input=lambda selection: selection,
+            found=self._after_nodes,
+        )
         self._comments = new_get_file_comments_step(
             step_type=_SECOND_STEP_TYPE,
             step_input_type=GetFileCommentsInput,
@@ -116,11 +144,11 @@ class FigmaLookupFlow(dex.Flow[FigmaLookupRequest]):
         return FLOW_TYPE
 
     def get_steps(self) -> dex.StepList[FigmaLookupRequest]:
-        """Register the start, both Figma reads, and their result Steps."""
+        """Register the start, the three Figma reads, and their result Steps."""
         return dex.StepList.start_step(self._start).other_steps(
-            self._file, self._after_first, self._comments, self._complete
+            self._file, self._after_first, self._nodes, self._after_nodes, self._comments, self._complete
         )
 
     def get_persistence_schema(self) -> dex.PersistenceSchema:
-        """Persist the requested file key between the two reads."""
+        """Persist the requested file key between reads."""
         return dex.PersistenceSchema.of(_FILE_KEY)
