@@ -13,8 +13,9 @@ const connection = { provider: 'juhe', name: 'juhe' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeJuhe, ''));
 
 async function invokeJuhe(scenario: Scenario, recorder: ExchangeRecorder) {
-  const credentials: Array<[typeof connection, { apiKey: SecretString }]> = [[connection, { apiKey: new SecretString(scenario.name.endsWith('-defect') ? '' : 'test-juhe-api-key') }]];
-  const client = new JuheClient({ baseUrl: 'http://127.0.0.1:12345', maxResponseBytes: 1_048_576 }, new StaticCredentialProvider(credentials), {
+  const smallLimit = scenario.name.endsWith('-smallLimit') || scenario.name.endsWith('-oversized');
+  const credentials: Array<[typeof connection, { apiKey: SecretString }]> = [[connection, { apiKey: new SecretString(scenario.name === 'getCurrentWeather-missingCredential' ? '' : 'test-juhe-api-key') }]];
+  const client = new JuheClient({ baseUrl: 'http://127.0.0.1:12345', maxResponseBytes: smallLimit ? 16 : 524_288 }, new StaticCredentialProvider(credentials), {
     send: request => answerRecordedRequest(recorder, request, before => new ProviderTransportError(before)),
   });
   const call: Call = {

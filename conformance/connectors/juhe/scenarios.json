@@ -307,6 +307,2238 @@
       },
       "name": "getCurrentWeather-transport",
       "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "16338d6c-af6a-5605-b962-92dd9854415d",
+      "exchanges": [
+        {
+          "body": "{\"reason\":\"查询成功\",\"error_code\":0,\"result\":{\"city\":\"北京\",\"realtime\":{\"info\":\"晴\",\"wid\":\"00\",\"temperature\":\"20\",\"humidity\":\"45\",\"direct\":\"北风\",\"power\":\"2级\",\"aqi\":\"50\"}}}",
+          "form": {
+            "city": [
+              "北京"
+            ],
+            "key": [
+              "test-juhe-api-key"
+            ]
+          },
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/simpleWeather/query",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "airQualityIndex": "",
+          "city": "",
+          "humidityPercent": "",
+          "temperatureCelsius": "",
+          "weatherCode": "",
+          "weatherText": "",
+          "windDirection": "",
+          "windPower": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "city": "北京"
+      },
+      "name": "getCurrentWeather-http401",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "fdf8591c-aeaa-5ac1-bd94-89a068949cb9",
+      "exchanges": [
+        {
+          "body": "{\"reason\":\"查询成功\",\"error_code\":0,\"result\":{\"city\":\"北京\",\"realtime\":{\"info\":\"晴\",\"wid\":\"00\",\"temperature\":\"20\",\"humidity\":\"45\",\"direct\":\"北风\",\"power\":\"2级\",\"aqi\":\"50\"}}}",
+          "form": {
+            "city": [
+              "北京"
+            ],
+            "key": [
+              "test-juhe-api-key"
+            ]
+          },
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/simpleWeather/query",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "airQualityIndex": "",
+          "city": "",
+          "humidityPercent": "",
+          "temperatureCelsius": "",
+          "weatherCode": "",
+          "weatherText": "",
+          "windDirection": "",
+          "windPower": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "city": "北京"
+      },
+      "name": "getCurrentWeather-http403",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "a909cfb9-5919-5b9e-88b9-3a893232f134",
+      "exchanges": [
+        {
+          "body": "{\"reason\":\"查询成功\",\"error_code\":0,\"result\":{\"city\":\"北京\",\"realtime\":{\"info\":\"晴\",\"wid\":\"00\",\"temperature\":\"20\",\"humidity\":\"45\",\"direct\":\"北风\",\"power\":\"2级\",\"aqi\":\"50\"}}}",
+          "form": {
+            "city": [
+              "北京"
+            ],
+            "key": [
+              "test-juhe-api-key"
+            ]
+          },
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/simpleWeather/query",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "airQualityIndex": "",
+          "city": "",
+          "humidityPercent": "",
+          "temperatureCelsius": "",
+          "weatherCode": "",
+          "weatherText": "",
+          "windDirection": "",
+          "windPower": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "city": "北京"
+      },
+      "name": "getCurrentWeather-http404",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "ee5ab82f-673c-51a6-bc7b-5cc7068f17f5",
+      "exchanges": [
+        {
+          "body": "{\"reason\":\"查询成功\",\"error_code\":0,\"result\":{\"city\":\"北京\",\"realtime\":{\"info\":\"晴\",\"wid\":\"00\",\"temperature\":\"20\",\"humidity\":\"45\",\"direct\":\"北风\",\"power\":\"2级\",\"aqi\":\"50\"}}}",
+          "form": {
+            "city": [
+              "北京"
+            ],
+            "key": [
+              "test-juhe-api-key"
+            ]
+          },
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/simpleWeather/query",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 408
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 7000,
+        "uncertain": false
+      },
+      "input": {
+        "city": "北京"
+      },
+      "name": "getCurrentWeather-http408",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "e9ad4a27-0a10-51c7-b0af-b59444d98a15",
+      "exchanges": [
+        {
+          "body": "{\"reason\":\"查询成功\",\"error_code\":0,\"result\":{\"city\":\"北京\",\"realtime\":{\"info\":\"晴\",\"wid\":\"00\",\"temperature\":\"20\",\"humidity\":\"45\",\"direct\":\"北风\",\"power\":\"2级\",\"aqi\":\"50\"}}}",
+          "form": {
+            "city": [
+              "北京"
+            ],
+            "key": [
+              "test-juhe-api-key"
+            ]
+          },
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/simpleWeather/query",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 7000,
+        "uncertain": false
+      },
+      "input": {
+        "city": "北京"
+      },
+      "name": "getCurrentWeather-http429",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "e9e78fcb-04a8-5893-b8bf-1b951449af64",
+      "exchanges": [
+        {
+          "body": "{\"reason\":\"查询成功\",\"error_code\":0,\"result\":{\"city\":\"北京\",\"realtime\":{\"info\":\"晴\",\"wid\":\"00\",\"temperature\":\"20\",\"humidity\":\"45\",\"direct\":\"北风\",\"power\":\"2级\",\"aqi\":\"50\"}}}",
+          "form": {
+            "city": [
+              "北京"
+            ],
+            "key": [
+              "test-juhe-api-key"
+            ]
+          },
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/simpleWeather/query",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 7000,
+        "uncertain": false
+      },
+      "input": {
+        "city": "北京"
+      },
+      "name": "getCurrentWeather-http503",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "d196f0b0-1a9d-57e0-abf9-f3190fcd0b53",
+      "exchanges": [
+        {
+          "body": "{\"reason\":\"查询成功\",\"error_code\":0,\"result\":{\"city\":\"北京\",\"realtime\":{\"info\":\"晴\",\"wid\":\"00\",\"temperature\":\"20\",\"humidity\":\"45\",\"direct\":\"北风\",\"power\":\"2级\",\"aqi\":\"50\"}}}",
+          "form": {
+            "city": [
+              "北京"
+            ],
+            "key": [
+              "test-juhe-api-key"
+            ]
+          },
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/simpleWeather/query",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "airQualityIndex": "",
+          "city": "",
+          "humidityPercent": "",
+          "temperatureCelsius": "",
+          "weatherCode": "",
+          "weatherText": "",
+          "windDirection": "",
+          "windPower": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "city": "北京"
+      },
+      "name": "getCurrentWeather-http401-smallLimit",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "0c9638e4-7849-5ae2-be98-ddb7703c4590",
+      "exchanges": [
+        {
+          "body": "{\"reason\":\"查询成功\",\"error_code\":0,\"result\":{\"city\":\"北京\",\"realtime\":{\"info\":\"晴\",\"wid\":\"00\",\"temperature\":\"20\",\"humidity\":\"45\",\"direct\":\"北风\",\"power\":\"2级\",\"aqi\":\"50\"}}}",
+          "form": {
+            "city": [
+              "北京"
+            ],
+            "key": [
+              "test-juhe-api-key"
+            ]
+          },
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/simpleWeather/query",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 7000,
+        "uncertain": false
+      },
+      "input": {
+        "city": "北京"
+      },
+      "name": "getCurrentWeather-http429-smallLimit",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "b9f27cfb-483a-5c2d-8af7-919c6d87f97e",
+      "exchanges": [
+        {
+          "body": "{\"reason\":\"查询成功\",\"error_code\":0,\"result\":{\"city\":\"北京\",\"realtime\":{\"info\":\"晴\",\"wid\":\"00\",\"temperature\":\"20\",\"humidity\":\"45\",\"direct\":\"北风\",\"power\":\"2级\",\"aqi\":\"50\"}}}",
+          "form": {
+            "city": [
+              "北京"
+            ],
+            "key": [
+              "test-juhe-api-key"
+            ]
+          },
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/simpleWeather/query",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 7000,
+        "uncertain": false
+      },
+      "input": {
+        "city": "北京"
+      },
+      "name": "getCurrentWeather-http503-smallLimit",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "d10d9f74-f8e5-5918-bfba-b2c391139db0",
+      "exchanges": [
+        {
+          "body": "{\"reason\":\"查询成功\",\"error_code\":0,\"result\":{\"city\":\"北京\",\"realtime\":{\"info\":\"晴\",\"wid\":\"00\",\"temperature\":\"20\",\"humidity\":\"45\",\"direct\":\"北风\",\"power\":\"2级\",\"aqi\":\"50\"}}}",
+          "form": {
+            "city": [
+              "北京"
+            ],
+            "key": [
+              "test-juhe-api-key"
+            ]
+          },
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/simpleWeather/query",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "airQualityIndex": "",
+          "city": "",
+          "humidityPercent": "",
+          "temperatureCelsius": "",
+          "weatherCode": "",
+          "weatherText": "",
+          "windDirection": "",
+          "windPower": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "city": "北京"
+      },
+      "name": "getCurrentWeather-oversized",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "7accaf9b-4a3c-5b47-a09f-fc4b405a4de8",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "airQualityIndex": "",
+          "city": "",
+          "humidityPercent": "",
+          "temperatureCelsius": "",
+          "weatherCode": "",
+          "weatherText": "",
+          "windDirection": "",
+          "windPower": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "city": "北京"
+      },
+      "name": "getCurrentWeather-missingCredential",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "9905d2f0-2afb-5b9d-ab60-e838c2518fc3",
+      "exchanges": [
+        {
+          "body": "{\"REASON\":\"查询成功\",\"ERROR_CODE\":0,\"RESULT\":{\"CITY\":\"北京\",\"REALTIME\":{\"INFO\":\"晴\",\"WID\":\"00\",\"TEMPERATURE\":\"20\",\"HUMIDITY\":\"45\",\"DIRECT\":\"北风\",\"POWER\":\"2级\",\"AQI\":\"50\"}}}",
+          "form": {
+            "city": [
+              "北京"
+            ],
+            "key": [
+              "test-juhe-api-key"
+            ]
+          },
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/simpleWeather/query",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "fetched",
+        "failureKind": "",
+        "output": {
+          "airQualityIndex": "50",
+          "city": "北京",
+          "humidityPercent": "45",
+          "temperatureCelsius": "20",
+          "weatherCode": "00",
+          "weatherText": "晴",
+          "windDirection": "北风",
+          "windPower": "2级"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "city": "北京"
+      },
+      "name": "getCurrentWeather-mixedCase",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "2e77d128-8ad5-5d39-ac22-f63f324d6a39",
+      "exchanges": [
+        {
+          "body": "{\"reason\": \"\\u67e5\\u8be2\\u6210\\u529f\", \"error_code\": 0, \"result\": {\"city\": \"\\u5317\\u4eac\", \"realtime\": {\"info\": \"\\u6674\", \"wid\": \"00\", \"temperature\": \"20\", \"humidity\": \"45\", \"direct\": \"\\u5317\\u98ce\", \"power\": \"2\\u7ea7\", \"aqi\": \"50\"}}}{}",
+          "form": {
+            "city": [
+              "北京"
+            ],
+            "key": [
+              "test-juhe-api-key"
+            ]
+          },
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/simpleWeather/query",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "airQualityIndex": "",
+          "city": "",
+          "humidityPercent": "",
+          "temperatureCelsius": "",
+          "weatherCode": "",
+          "weatherText": "",
+          "windDirection": "",
+          "windPower": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "city": "北京"
+      },
+      "name": "getCurrentWeather-trailing",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "be2196b8-18b3-5239-9ce2-e673eac8b464",
+      "exchanges": [
+        {
+          "body": "{\"reason\": \"\\u67e5\\u8be2\\u6210\\u529f\", \"error_code\": 0, \"result\": {\"city\": \"\\u5317\\u4eac\", \"realtime\": {\"info\": \"\\u6674\", \"wid\": \"00\", \"temperature\": \"20\", \"humidity\": \"45\", \"direct\": \"\\u5317\\u98ce\", \"power\": \"2\\u7ea7\", \"aqi\": \"50\"}},\"unrelated\":NaN}",
+          "form": {
+            "city": [
+              "北京"
+            ],
+            "key": [
+              "test-juhe-api-key"
+            ]
+          },
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/simpleWeather/query",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "airQualityIndex": "",
+          "city": "",
+          "humidityPercent": "",
+          "temperatureCelsius": "",
+          "weatherCode": "",
+          "weatherText": "",
+          "windDirection": "",
+          "windPower": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "city": "北京"
+      },
+      "name": "getCurrentWeather-notFinite",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "db3531bd-3342-5349-b27c-81f62d2ee80e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "airQualityIndex": "",
+          "city": "",
+          "humidityPercent": "",
+          "temperatureCelsius": "",
+          "weatherCode": "",
+          "weatherText": "",
+          "windDirection": "",
+          "windPower": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "city": ""
+      },
+      "name": "getCurrentWeather-emptyCity",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "413571bf-4cd5-57c5-8cf1-4aeefa86a8aa",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "airQualityIndex": "",
+          "city": "",
+          "humidityPercent": "",
+          "temperatureCelsius": "",
+          "weatherCode": "",
+          "weatherText": "",
+          "windDirection": "",
+          "windPower": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "city": "北京"
+      },
+      "name": "getCurrentWeather-borderSpace",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "1ea46f27-03e1-5d62-a13c-1f8f4de14a70",
+      "exchanges": [
+        {
+          "body": "{\"reason\":\"查询成功\",\"error_code\":0,\"result\":{\"city\":\"北京\",\"realtime\":{\"info\":\"晴\",\"wid\":\"00\",\"temperature\":\"20\",\"humidity\":\"45\",\"direct\":\"北风\",\"power\":\"2级\",\"aqi\":\"50\"}}}",
+          "form": {
+            "city": [
+              "New York"
+            ],
+            "key": [
+              "test-juhe-api-key"
+            ]
+          },
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/simpleWeather/query",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "fetched",
+        "failureKind": "",
+        "output": {
+          "airQualityIndex": "50",
+          "city": "北京",
+          "humidityPercent": "45",
+          "temperatureCelsius": "20",
+          "weatherCode": "00",
+          "weatherText": "晴",
+          "windDirection": "北风",
+          "windPower": "2级"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "city": "New York"
+      },
+      "name": "getCurrentWeather-internalSpace",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "5a53e01c-3541-52d9-a252-c4ab293b9bfe",
+      "exchanges": [
+        {
+          "body": "{\"reason\":\"查询成功\",\"error_code\":0,\"result\":{\"city\":\"北京\",\"realtime\":{\"info\":\"晴\",\"wid\":\"00\",\"temperature\":\"20\",\"humidity\":\"45\",\"direct\":\"北风\",\"power\":\"2级\",\"aqi\":\"50\"}}}",
+          "form": {
+            "city": [
+              "A+B \u0026 C"
+            ],
+            "key": [
+              "test-juhe-api-key"
+            ]
+          },
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/simpleWeather/query",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "fetched",
+        "failureKind": "",
+        "output": {
+          "airQualityIndex": "50",
+          "city": "北京",
+          "humidityPercent": "45",
+          "temperatureCelsius": "20",
+          "weatherCode": "00",
+          "weatherText": "晴",
+          "windDirection": "北风",
+          "windPower": "2级"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "city": "A+B \u0026 C"
+      },
+      "name": "getCurrentWeather-encodedCity",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "c8a50799-f294-5534-bbcd-9c9744172cd8",
+      "exchanges": [
+        {
+          "body": "{\"reason\":\"查询成功\",\"error_code\":0,\"result\":{\"city\":\"北京\",\"realtime\":{\"info\":\"晴\",\"wid\":\"00\",\"temperature\":\"20\",\"humidity\":\"45\",\"direct\":\"北风\",\"power\":\"2级\",\"aqi\":\"50\"}}}",
+          "form": {
+            "city": [
+              "界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界ab"
+            ],
+            "key": [
+              "test-juhe-api-key"
+            ]
+          },
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/simpleWeather/query",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "fetched",
+        "failureKind": "",
+        "output": {
+          "airQualityIndex": "50",
+          "city": "北京",
+          "humidityPercent": "45",
+          "temperatureCelsius": "20",
+          "weatherCode": "00",
+          "weatherText": "晴",
+          "windDirection": "北风",
+          "windPower": "2级"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "city": "界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界ab"
+      },
+      "name": "getCurrentWeather-maxCity",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "49142bb8-c27e-59ed-8d0e-9c9afddb4c3e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "airQualityIndex": "",
+          "city": "",
+          "humidityPercent": "",
+          "temperatureCelsius": "",
+          "weatherCode": "",
+          "weatherText": "",
+          "windDirection": "",
+          "windPower": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "city": "界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界"
+      },
+      "name": "getCurrentWeather-tooLongCity",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "750f7542-9e7b-53d5-b701-cf105f526182",
+      "exchanges": [
+        {
+          "body": "{\"error_code\":207303}",
+          "form": {
+            "city": [
+              "北京"
+            ],
+            "key": [
+              "test-juhe-api-key"
+            ]
+          },
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/simpleWeather/query",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "city": "北京"
+      },
+      "name": "getCurrentWeather-code207303",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "a9637e94-bc72-564b-a607-f5b6692682d1",
+      "exchanges": [
+        {
+          "body": "{\"error_code\":10014}",
+          "form": {
+            "city": [
+              "北京"
+            ],
+            "key": [
+              "test-juhe-api-key"
+            ]
+          },
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/simpleWeather/query",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "city": "北京"
+      },
+      "name": "getCurrentWeather-code10014",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "57bf4406-516b-5962-88c1-9d6edf28e7ec",
+      "exchanges": [
+        {
+          "body": "{\"error_code\":10020}",
+          "form": {
+            "city": [
+              "北京"
+            ],
+            "key": [
+              "test-juhe-api-key"
+            ]
+          },
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/simpleWeather/query",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "city": "北京"
+      },
+      "name": "getCurrentWeather-code10020",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "04c744d2-c164-50cd-ada1-bd0a58659cb0",
+      "exchanges": [
+        {
+          "body": "{\"error_code\":10011}",
+          "form": {
+            "city": [
+              "北京"
+            ],
+            "key": [
+              "test-juhe-api-key"
+            ]
+          },
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/simpleWeather/query",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "city": "北京"
+      },
+      "name": "getCurrentWeather-code10011",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "d8f9e325-0702-5d6b-b242-5d706c35889d",
+      "exchanges": [
+        {
+          "body": "{\"error_code\":10001}",
+          "form": {
+            "city": [
+              "北京"
+            ],
+            "key": [
+              "test-juhe-api-key"
+            ]
+          },
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/simpleWeather/query",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "airQualityIndex": "",
+          "city": "",
+          "humidityPercent": "",
+          "temperatureCelsius": "",
+          "weatherCode": "",
+          "weatherText": "",
+          "windDirection": "",
+          "windPower": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "city": "北京"
+      },
+      "name": "getCurrentWeather-code10001",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "83b2d791-6649-5581-a4ee-946babc2f68c",
+      "exchanges": [
+        {
+          "body": "{\"error_code\":10003}",
+          "form": {
+            "city": [
+              "北京"
+            ],
+            "key": [
+              "test-juhe-api-key"
+            ]
+          },
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/simpleWeather/query",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "airQualityIndex": "",
+          "city": "",
+          "humidityPercent": "",
+          "temperatureCelsius": "",
+          "weatherCode": "",
+          "weatherText": "",
+          "windDirection": "",
+          "windPower": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "city": "北京"
+      },
+      "name": "getCurrentWeather-code10003",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "ec5b6f9d-2778-5ffc-a454-586dd469ca9c",
+      "exchanges": [
+        {
+          "body": "{\"error_code\":10009}",
+          "form": {
+            "city": [
+              "北京"
+            ],
+            "key": [
+              "test-juhe-api-key"
+            ]
+          },
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/simpleWeather/query",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "airQualityIndex": "",
+          "city": "",
+          "humidityPercent": "",
+          "temperatureCelsius": "",
+          "weatherCode": "",
+          "weatherText": "",
+          "windDirection": "",
+          "windPower": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "city": "北京"
+      },
+      "name": "getCurrentWeather-code10009",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "317a9dbf-e036-5243-a93e-f8ac6d59caa0",
+      "exchanges": [
+        {
+          "body": "{\"error_code\":10002}",
+          "form": {
+            "city": [
+              "北京"
+            ],
+            "key": [
+              "test-juhe-api-key"
+            ]
+          },
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/simpleWeather/query",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "airQualityIndex": "",
+          "city": "",
+          "humidityPercent": "",
+          "temperatureCelsius": "",
+          "weatherCode": "",
+          "weatherText": "",
+          "windDirection": "",
+          "windPower": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "city": "北京"
+      },
+      "name": "getCurrentWeather-code10002",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "c946ea47-3e37-5fa1-b5c4-0d3eb24e4565",
+      "exchanges": [
+        {
+          "body": "{\"error_code\":10005}",
+          "form": {
+            "city": [
+              "北京"
+            ],
+            "key": [
+              "test-juhe-api-key"
+            ]
+          },
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/simpleWeather/query",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "airQualityIndex": "",
+          "city": "",
+          "humidityPercent": "",
+          "temperatureCelsius": "",
+          "weatherCode": "",
+          "weatherText": "",
+          "windDirection": "",
+          "windPower": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "city": "北京"
+      },
+      "name": "getCurrentWeather-code10005",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "3ad1de01-2761-5b24-ac0a-cffb3bebbcf6",
+      "exchanges": [
+        {
+          "body": "{\"error_code\":10007}",
+          "form": {
+            "city": [
+              "北京"
+            ],
+            "key": [
+              "test-juhe-api-key"
+            ]
+          },
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/simpleWeather/query",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "airQualityIndex": "",
+          "city": "",
+          "humidityPercent": "",
+          "temperatureCelsius": "",
+          "weatherCode": "",
+          "weatherText": "",
+          "windDirection": "",
+          "windPower": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "city": "北京"
+      },
+      "name": "getCurrentWeather-code10007",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "23763051-3a3c-5524-94dd-7556cfd04ff4",
+      "exchanges": [
+        {
+          "body": "{\"error_code\":10008}",
+          "form": {
+            "city": [
+              "北京"
+            ],
+            "key": [
+              "test-juhe-api-key"
+            ]
+          },
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/simpleWeather/query",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "airQualityIndex": "",
+          "city": "",
+          "humidityPercent": "",
+          "temperatureCelsius": "",
+          "weatherCode": "",
+          "weatherText": "",
+          "windDirection": "",
+          "windPower": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "city": "北京"
+      },
+      "name": "getCurrentWeather-code10008",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "ac319d84-902b-5de0-85eb-10b55498212d",
+      "exchanges": [
+        {
+          "body": "{\"error_code\":10012}",
+          "form": {
+            "city": [
+              "北京"
+            ],
+            "key": [
+              "test-juhe-api-key"
+            ]
+          },
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/simpleWeather/query",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "QUOTA_EXHAUSTED",
+        "output": {
+          "airQualityIndex": "",
+          "city": "",
+          "humidityPercent": "",
+          "temperatureCelsius": "",
+          "weatherCode": "",
+          "weatherText": "",
+          "windDirection": "",
+          "windPower": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "city": "北京"
+      },
+      "name": "getCurrentWeather-code10012",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "8c9e8c77-e677-558e-80d3-05794c805eaf",
+      "exchanges": [
+        {
+          "body": "{\"error_code\":10013}",
+          "form": {
+            "city": [
+              "北京"
+            ],
+            "key": [
+              "test-juhe-api-key"
+            ]
+          },
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/simpleWeather/query",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "QUOTA_EXHAUSTED",
+        "output": {
+          "airQualityIndex": "",
+          "city": "",
+          "humidityPercent": "",
+          "temperatureCelsius": "",
+          "weatherCode": "",
+          "weatherText": "",
+          "windDirection": "",
+          "windPower": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "city": "北京"
+      },
+      "name": "getCurrentWeather-code10013",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "397214fe-d0e4-5fe0-b077-2b72c4051985",
+      "exchanges": [
+        {
+          "body": "{\"error_code\":207301}",
+          "form": {
+            "city": [
+              "北京"
+            ],
+            "key": [
+              "test-juhe-api-key"
+            ]
+          },
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/simpleWeather/query",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "VALIDATION",
+        "output": {
+          "airQualityIndex": "",
+          "city": "",
+          "humidityPercent": "",
+          "temperatureCelsius": "",
+          "weatherCode": "",
+          "weatherText": "",
+          "windDirection": "",
+          "windPower": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "city": "北京"
+      },
+      "name": "getCurrentWeather-code207301",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "179b56b7-9a7a-5690-8f8b-3d40286c4c48",
+      "exchanges": [
+        {
+          "body": "{\"error_code\":207302}",
+          "form": {
+            "city": [
+              "北京"
+            ],
+            "key": [
+              "test-juhe-api-key"
+            ]
+          },
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/simpleWeather/query",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "VALIDATION",
+        "output": {
+          "airQualityIndex": "",
+          "city": "",
+          "humidityPercent": "",
+          "temperatureCelsius": "",
+          "weatherCode": "",
+          "weatherText": "",
+          "windDirection": "",
+          "windPower": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "city": "北京"
+      },
+      "name": "getCurrentWeather-code207302",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "c1c9b13e-1a45-54c2-9256-bd32f4d17c0d",
+      "exchanges": [
+        {
+          "body": "{\"error_code\":-1}",
+          "form": {
+            "city": [
+              "北京"
+            ],
+            "key": [
+              "test-juhe-api-key"
+            ]
+          },
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/simpleWeather/query",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "airQualityIndex": "",
+          "city": "",
+          "humidityPercent": "",
+          "temperatureCelsius": "",
+          "weatherCode": "",
+          "weatherText": "",
+          "windDirection": "",
+          "windPower": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "city": "北京"
+      },
+      "name": "getCurrentWeather-code-1",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "91f6657b-ae9a-5375-bfaa-48a7f1820f13",
+      "exchanges": [
+        {
+          "body": "{\"error_code\":9223372036854775808}",
+          "form": {
+            "city": [
+              "北京"
+            ],
+            "key": [
+              "test-juhe-api-key"
+            ]
+          },
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/simpleWeather/query",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "airQualityIndex": "",
+          "city": "",
+          "humidityPercent": "",
+          "temperatureCelsius": "",
+          "weatherCode": "",
+          "weatherText": "",
+          "windDirection": "",
+          "windPower": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "city": "北京"
+      },
+      "name": "getCurrentWeather-code9223372036854775808",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "39c4b79d-7f86-52f8-b4e1-c32684d281e0",
+      "exchanges": [
+        {
+          "body": "{\"error_code\":9223372036854775807}",
+          "form": {
+            "city": [
+              "北京"
+            ],
+            "key": [
+              "test-juhe-api-key"
+            ]
+          },
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/simpleWeather/query",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "airQualityIndex": "",
+          "city": "",
+          "humidityPercent": "",
+          "temperatureCelsius": "",
+          "weatherCode": "",
+          "weatherText": "",
+          "windDirection": "",
+          "windPower": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "city": "北京"
+      },
+      "name": "getCurrentWeather-code9223372036854775807",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "63fbe005-5bf1-5e8f-bdb5-3dca7e3ad79c",
+      "exchanges": [
+        {
+          "body": "{\"error_code\":10014,\"result\":{\"realtime\":{\"power\":false}}}",
+          "form": {
+            "city": [
+              "北京"
+            ],
+            "key": [
+              "test-juhe-api-key"
+            ]
+          },
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/simpleWeather/query",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "airQualityIndex": "",
+          "city": "",
+          "humidityPercent": "",
+          "temperatureCelsius": "",
+          "weatherCode": "",
+          "weatherText": "",
+          "windDirection": "",
+          "windPower": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "city": "北京"
+      },
+      "name": "getCurrentWeather-malformedRetry",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "212cbb68-acae-56ca-8a14-a5f38cdb2caf",
+      "exchanges": [
+        {
+          "body": "{\"error_code\":0.0}",
+          "form": {
+            "city": [
+              "北京"
+            ],
+            "key": [
+              "test-juhe-api-key"
+            ]
+          },
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/simpleWeather/query",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "airQualityIndex": "",
+          "city": "",
+          "humidityPercent": "",
+          "temperatureCelsius": "",
+          "weatherCode": "",
+          "weatherText": "",
+          "windDirection": "",
+          "windPower": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "city": "北京"
+      },
+      "name": "getCurrentWeather-scaledCode",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "55f91a5b-ea4a-50be-812a-5c23f527e333",
+      "exchanges": [
+        {
+          "body": "{\"error_code\":0,\"result\":{\"city\":null}}",
+          "form": {
+            "city": [
+              "北京"
+            ],
+            "key": [
+              "test-juhe-api-key"
+            ]
+          },
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/simpleWeather/query",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "airQualityIndex": "",
+          "city": "",
+          "humidityPercent": "",
+          "temperatureCelsius": "",
+          "weatherCode": "",
+          "weatherText": "",
+          "windDirection": "",
+          "windPower": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "city": "北京"
+      },
+      "name": "getCurrentWeather-nullCity",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "5470820b-8af2-5403-a7ba-3cf1a5ff3af3",
+      "exchanges": [
+        {
+          "body": "{\"error_code\":0,\"result\":{\"city\":\"北京\",\"realtime\":{\"info\":\"晴\",\"wid\":\"0\"}}}",
+          "form": {
+            "city": [
+              "北京"
+            ],
+            "key": [
+              "test-juhe-api-key"
+            ]
+          },
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/simpleWeather/query",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "fetched",
+        "failureKind": "",
+        "output": {
+          "airQualityIndex": "",
+          "city": "北京",
+          "humidityPercent": "",
+          "temperatureCelsius": "",
+          "weatherCode": "0",
+          "weatherText": "晴",
+          "windDirection": "",
+          "windPower": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "city": "北京"
+      },
+      "name": "getCurrentWeather-shortObservation",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "13eeb7cd-bbdb-5b3b-b2de-b034e4d4887a",
+      "exchanges": [
+        {
+          "body": "{\"error_code\":0,\"result\":{\"city\":\"北京\",\"realtime\":{\"info\":\"晴\",\"wid\":\"0\",\"humidity\":null}}}",
+          "form": {
+            "city": [
+              "北京"
+            ],
+            "key": [
+              "test-juhe-api-key"
+            ]
+          },
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/simpleWeather/query",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "fetched",
+        "failureKind": "",
+        "output": {
+          "airQualityIndex": "",
+          "city": "北京",
+          "humidityPercent": "",
+          "temperatureCelsius": "",
+          "weatherCode": "0",
+          "weatherText": "晴",
+          "windDirection": "",
+          "windPower": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "city": "北京"
+      },
+      "name": "getCurrentWeather-nullObservations",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "4211ec43-cc3e-5b25-bd3b-a1910f059366",
+      "exchanges": [
+        {
+          "body": "{\"error_code\":10001,\"result\":\"bad\"}",
+          "form": {
+            "city": [
+              "北京"
+            ],
+            "key": [
+              "test-juhe-api-key"
+            ]
+          },
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/simpleWeather/query",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "airQualityIndex": "",
+          "city": "",
+          "humidityPercent": "",
+          "temperatureCelsius": "",
+          "weatherCode": "",
+          "weatherText": "",
+          "windDirection": "",
+          "windPower": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "city": "北京"
+      },
+      "name": "getCurrentWeather-scalarResult",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "107ccc08-a559-56a3-81c3-8f6543c5ee0d",
+      "exchanges": [
+        {
+          "body": "{\"error_code\":10001,\"result\":{\"realtime\":[]}}",
+          "form": {
+            "city": [
+              "北京"
+            ],
+            "key": [
+              "test-juhe-api-key"
+            ]
+          },
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/simpleWeather/query",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "airQualityIndex": "",
+          "city": "",
+          "humidityPercent": "",
+          "temperatureCelsius": "",
+          "weatherCode": "",
+          "weatherText": "",
+          "windDirection": "",
+          "windPower": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "city": "北京"
+      },
+      "name": "getCurrentWeather-scalarRealtime",
+      "operation": "getCurrentWeather"
     }
   ],
   "schemaVersion": 1

@@ -8,5 +8,8 @@ fn scenario_credentials(_: &str) -> connector::Credentials {
     dex_connectors_sdk::SecretString::new("private-test-key").into()
 }
 
-#[path = "support/ip_location.rs"]
-mod ip_location;
+use connector::{LookupIPLocationInput as QueryInput, LookupIPLocationOperation as QueryOperation};
+const OPERATION_ID: &str = "lookupIPLocation";
+
+#[path = "support/http_query.rs"]
+mod http_query;

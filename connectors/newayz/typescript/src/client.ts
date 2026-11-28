@@ -35,7 +35,7 @@ export class NewayzClient {
     let response: ProviderResponse;
     try { response = await this.send(request); }
     catch (error) {
-      if (error instanceof BodyTooLargeError && error.status !== undefined) return { response: { status: error.status, headers: error.headers ?? {}, body: new Uint8Array() }, error: 'tooLarge', retryAfterMs: 0 };
+      if (error instanceof BodyTooLargeError && error.status !== undefined) return { response: { status: error.status, headers: error.headers ?? {}, body: new Uint8Array() }, error: 'tooLarge', retryAfterMs: parseRetryAfter(header(error.headers ?? {}, 'retry-after')) };
       return { error: 'transport', retryAfterMs: 0 };
     }
     return { response, error: response.body.length > this.maxResponseBytes ? 'tooLarge' : undefined, retryAfterMs: parseRetryAfter(header(response.headers, 'retry-after')) };
@@ -57,16 +57,20 @@ export class GetCurrentWeatherOperation implements Query<GetCurrentWeatherInput,
     if (status === 408 || status >= 500) return retry('AVAILABILITY', exchange.retryAfterMs);
     if (status !== 200) return branch('providerRejected', status === 401 ? 'AUTHENTICATION' : status === 403 ? 'AUTHORIZATION' : 'PROVIDER_REJECTION');
     if (exchange.error === 'tooLarge') return branch('invalidResponse', 'RESPONSE_TOO_LARGE');
-    let wire: unknown;
-    try { wire = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(body)) as unknown; } catch { return branch('invalidResponse', 'PROTOCOL'); }
-    if (!wire || typeof wire !== 'object' || Array.isArray(wire)) return branch('invalidResponse', 'PROTOCOL');
-    const record = wire as Record<string, unknown>;
-    if (typeof record.status !== 'string' || !record.status) return branch('invalidResponse', 'PROTOCOL');
-    if (record.status !== '1' || record.infocode !== '10000') return branch('providerRejected', 'PROVIDER_REJECTION');
-    if (!Array.isArray(record.lives) || record.lives.length !== 1 || !record.lives[0] || typeof record.lives[0] !== 'object') return branch('invalidResponse', 'PROTOCOL');
-    const live = record.lives[0] as Record<string, unknown>;
-    if (live.adcode !== cityCode || typeof live.city !== 'string' || !live.city || typeof live.weather !== 'string' || !live.weather || typeof live.temperature !== 'string' || !live.temperature) return branch('invalidResponse', 'PROTOCOL');
-    const string = (key: string): string => typeof live[key] === 'string' ? live[key] as string : '';
+    let data: Record<string, unknown> | undefined;
+    try { data = fieldsByName(JSON.parse(new TextDecoder().decode(body))); } catch { return branch('invalidResponse','PROTOCOL'); }
+    if (!data) return branch('invalidResponse','PROTOCOL');
+    if (typeof data.status !== 'string' || !data.status || (data.infocode != null && typeof data.infocode !== 'string') || (data.lives != null && !Array.isArray(data.lives))) return branch('invalidResponse','PROTOCOL');
+    const observations = (data.lives ?? []) as unknown[];
+    let live: Record<string, unknown> = {};
+    for (const observation of observations) {
+      const fields = observation == null ? {} : fieldsByName(observation);
+      if (!fields || ['province','city','adcode','weather','temperature','winddirection','windpower','humidity','reporttime'].some(name => fields[name] != null && typeof fields[name] !== 'string')) return branch('invalidResponse','PROTOCOL');
+      live = fields;
+    }
+    if (data.status !== '1' || data.infocode !== '10000') return branch('providerRejected','PROVIDER_REJECTION');
+    if (observations.length !== 1 || live.adcode !== cityCode || !live.city || !live.weather || !live.temperature) return branch('invalidResponse','PROTOCOL');
+    const string = (name: string) => String(live[name] ?? '');
     return newQueryBranch('fetched', { province: string('province'), city: string('city'), cityCode, weather: string('weather'), temperatureCelsius: string('temperature'), windDirection: string('winddirection'), windPower: string('windpower'), humidityPercent: string('humidity'), reportTime: string('reporttime') });
   }
 }
@@ -74,3 +78,8 @@ function header(headers: ProviderResponse['headers'], name: string): string { co
 function failure(kind: Failure['kind']): Failure { return { provider: 'newayz', operation: 'getCurrentWeather', kind, message: 'WAYZ current-weather query failed' }; }
 function branch(name: string, kind: Failure['kind']): QueryAttempt<GetCurrentWeatherOutput> { return newQueryBranch(name, empty, {}, failure(kind)); }
 function retry(kind: Failure['kind'], delay = 0): QueryAttempt<GetCurrentWeatherOutput> { return newQueryRetry(failure(kind), delay); }
+
+function fieldsByName(value: unknown): Record<string, unknown> | undefined {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  return Object.fromEntries(Object.entries(value).map(([name, field]) => [name.toLowerCase(), field]));
+}

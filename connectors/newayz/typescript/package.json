@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-newayz",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "license": "MIT",
   "description": "newayz connector for Dex TypeScript applications",
   "repository": {

@@ -20,14 +20,21 @@ CONNECTION = sdk.ConnectionRef("newayz", "newayz")
 
 def create_client(http_client: object, recorder: conformance.ExchangeRecorder) -> connector.Client:
     """Build a credential-safe client for each Go recording."""
-    credential = connector.Credentials(sdk.SecretString("test-newayz-access-key"))
-    if (
-        recorder.scenario["name"] == "getCurrentWeather-defect"
-        and recorder.scenario["expected"]["failureKind"] == "AUTHENTICATION"
-    ):
-        credential = connector.Credentials(sdk.SecretString(""))
+    credential = connector.Credentials(
+        sdk.SecretString(
+            ""
+            if recorder.scenario["name"] == "getCurrentWeather-missingCredential"
+            else "test-newayz-access-key"
+        )
+    )
     return connector.Client(
-        connector.Config(), conformance.static_credentials(CONNECTION, credential), http_client
+        connector.Config(
+            max_response_bytes=16
+            if recorder.scenario["name"].endswith(("-oversized", "-smallLimit"))
+            else 262144
+        ),
+        conformance.static_credentials(CONNECTION, credential),
+        http_client,
     )
 
 

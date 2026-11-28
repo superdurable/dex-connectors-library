@@ -53,7 +53,6 @@ class Client:
             or not 0 < config.max_response_bytes <= 16 << 20
         ):
             raise ValueError("Newayz configuration and credentials are required")
-        pass
         self.config = config
         self.credentials = credentials
         self.http_client = http_client or new_provider_http_client(config.timeout_seconds)
@@ -95,8 +94,6 @@ class GetCurrentWeatherOperation:
     def _request(
         self, input: GetCurrentWeatherInput, credentials: Credentials
     ) -> httpx.Request | QueryAttempt[GetCurrentWeatherOutput]:
-        if not re.fullmatch(r"[0-9]{6}", input.city_code):
-            return self._branch("defect", FailureKind.VALIDATION)
         token = credentials.access_key.reveal()
         if not _opaque(token, 1024):
             return self._branch("defect", FailureKind.AUTHENTICATION)
@@ -108,25 +105,9 @@ class GetCurrentWeatherOperation:
         )
 
     def _decode(
-        self, wire: object, input: GetCurrentWeatherInput, credentials: Credentials
+        self, wire: object, input: GetCurrentWeatherInput
     ) -> GetCurrentWeatherOutput | QueryAttempt[GetCurrentWeatherOutput] | None:
         if not isinstance(wire, dict):
-            return None
-        status = wire.get("status")
-        if not isinstance(status, str) or not status:
-            return None
-        if status != "1" or wire.get("infocode") != "10000":
-            return self._branch("providerRejected", FailureKind.PROVIDER_REJECTION)
-        lives = wire.get("lives")
-        if not isinstance(lives, list) or len(lives) != 1 or not isinstance(lives[0], dict):
-            return None
-        live = lives[0]
-        if (
-            live.get("adcode") != input.city_code
-            or not live.get("city")
-            or not live.get("weather")
-            or not live.get("temperature")
-        ):
             return None
         values = {
             "province": "province",
@@ -139,15 +120,47 @@ class GetCurrentWeatherOperation:
             "humidity_percent": "humidity",
             "report_time": "reporttime",
         }
-        if any(not isinstance(live.get(source, ""), str) for source in values.values()):
+        response = {key.lower(): value for key, value in wire.items()}
+        status = response.get("status")
+        code = response.get("infocode")
+        lives = response.get("lives")
+        if (
+            not isinstance(status, str)
+            or not status
+            or (code is not None and not isinstance(code, str))
+            or (lives is not None and not isinstance(lives, list))
+        ):
             return None
-        return GetCurrentWeatherOutput(**{target: live.get(source, "") for target, source in values.items()})
+        live: dict[str, str] = {}
+        for observation in lives or []:
+            if observation is not None and not isinstance(observation, dict):
+                return None
+            fields = {key.lower(): value for key, value in (observation or {}).items()}
+            for target, source in values.items():
+                value = fields.get(source)
+                if value is not None and not isinstance(value, str):
+                    return None
+                live[target] = value or ""
+        if status != "1" or code != "10000":
+            return self._branch("providerRejected", FailureKind.PROVIDER_REJECTION)
+        if (
+            not lives
+            or len(lives) != 1
+            or live["city_code"] != input.city_code
+            or not live["city"]
+            or not live["weather"]
+            or not live["temperature_celsius"]
+        ):
+            return None
+        return GetCurrentWeatherOutput(**live)
 
     async def invoke(
         self, call: Call, input: GetCurrentWeatherInput
     ) -> QueryAttempt[GetCurrentWeatherOutput]:
         """Read one bounded provider response without persisting secrets."""
         if not isinstance(input, GetCurrentWeatherInput):
+            return self._branch("defect", FailureKind.VALIDATION)
+        if not re.fullmatch(r"[0-9]{6}", input.city_code):
             return self._branch("defect", FailureKind.VALIDATION)
         try:
             credentials = await self.client.credentials.resolve(call)
@@ -185,12 +198,16 @@ class GetCurrentWeatherOperation:
         finally:
             await response.aclose()
         try:
-            wire = json.loads(body)
+            wire = json.loads(body.decode("utf-8", errors="replace"), parse_constant=_reject_nonfinite_number)
         except (ValueError, UnicodeDecodeError):
             return self._branch("invalidResponse", FailureKind.PROTOCOL)
-        result = self._decode(wire, input, credentials)
+        result = self._decode(wire, input)
         if isinstance(result, QueryAttempt):
             return result
         if result is None:
             return self._branch("invalidResponse", FailureKind.PROTOCOL)
         return QueryAttempt.branch_result("fetched", result, Receipt())
+
+
+def _reject_nonfinite_number(value: str) -> None:
+    raise ValueError(f"Invalid JSON number {value}")

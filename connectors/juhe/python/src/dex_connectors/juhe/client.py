@@ -97,7 +97,11 @@ class GetCurrentWeatherOperation:
     ) -> QueryAttempt[GetCurrentWeatherOutput]:
         """Classify transport and provider outcomes without exposing secrets."""
         try:
-            if not input.city or input.city.strip() != input.city or len(input.city.encode("utf-8")) > 128:
+            if (
+                not input.city
+                or any(c.isspace() and c not in "\x1c\x1d\x1e\x1f" for c in (input.city[0], input.city[-1]))
+                or len(input.city.encode("utf-8")) > 128
+            ):
                 return _branch("defect", FailureKind.VALIDATION, "city is invalid")
             credentials = await self.client.credentials.resolve(call)
             key = credentials.api_key.reveal()
@@ -138,19 +142,40 @@ class GetCurrentWeatherOperation:
         finally:
             await response.aclose()
         if status != 200:
-            kind = FailureKind.PROVIDER_REJECTION
-            if status == 401:
-                kind = FailureKind.AUTHENTICATION
-            elif status == 403:
-                kind = FailureKind.AUTHORIZATION
-            return _branch("providerRejected", kind, f"Juhe rejected request with HTTP {status}")
+            return _branch(
+                "providerRejected",
+                FailureKind.PROVIDER_REJECTION,
+                f"Juhe rejected request with HTTP {status}",
+            )
         try:
-            document: Any = json.loads(body)
+            document: Any = json.loads(
+                body.decode("utf-8", errors="replace"), parse_constant=_reject_nonfinite_number
+            )
         except (ValueError, UnicodeDecodeError):
             return _branch("invalidResponse", FailureKind.PROTOCOL, "Juhe returned invalid JSON")
-        if not isinstance(document, dict) or type(document.get("error_code")) is not int:
+        if not isinstance(document, dict):
             return _branch("invalidResponse", FailureKind.PROTOCOL, "Juhe returned an invalid response")
-        code = document["error_code"]
+        envelope = {key.lower(): value for key, value in document.items()}
+        code = envelope.get("error_code")
+        result_value = envelope.get("result")
+        if (
+            type(code) is not int
+            or not -(1 << 63) <= code < (1 << 63)
+            or (result_value is not None and not isinstance(result_value, dict))
+        ):
+            return _branch("invalidResponse", FailureKind.PROTOCOL, "Juhe returned invalid weather data")
+        result = {key.lower(): value for key, value in (result_value or {}).items()}
+        realtime_value = result.get("realtime")
+        if (result.get("city") is not None and not isinstance(result["city"], str)) or (
+            realtime_value is not None and not isinstance(realtime_value, dict)
+        ):
+            return _branch("invalidResponse", FailureKind.PROTOCOL, "Juhe returned invalid weather data")
+        realtime = {key.lower(): value for key, value in (realtime_value or {}).items()}
+        for name in ("info", "wid", "temperature", "humidity", "direct", "power", "aqi"):
+            value = realtime.get(name)
+            if value is not None and not isinstance(value, str):
+                return _branch("invalidResponse", FailureKind.PROTOCOL, "Juhe returned invalid weather data")
+            realtime[name] = value or ""
         if code in (207303, 10014, 10020):
             return _retry(FailureKind.AVAILABILITY, "Juhe weather service is temporarily unavailable")
         if code == 10011:
@@ -166,20 +191,7 @@ class GetCurrentWeatherOperation:
             elif code in (207301, 207302):
                 kind = FailureKind.VALIDATION
             return _branch("providerRejected", kind, "Juhe rejected the weather request")
-        result = document.get("result")
-        realtime = result.get("realtime") if isinstance(result, dict) else None
-        if (
-            not isinstance(result, dict)
-            or not isinstance(realtime, dict)
-            or not all(isinstance(result.get(k), str) for k in ("city",))
-            or not all(
-                isinstance(realtime.get(k, ""), str)
-                for k in ("info", "wid", "temperature", "humidity", "direct", "power", "aqi")
-            )
-            or not result["city"]
-            or not realtime.get("info")
-            or not realtime.get("wid")
-        ):
+        if not result.get("city") or not realtime["info"] or not realtime["wid"]:
             return _branch(
                 "invalidResponse", FailureKind.PROTOCOL, "Juhe response lacks current weather fields"
             )
@@ -197,3 +209,7 @@ class GetCurrentWeatherOperation:
             ),
             Receipt(),
         )
+
+
+def _reject_nonfinite_number(value: str) -> None:
+    raise ValueError(f"Invalid JSON number {value}")

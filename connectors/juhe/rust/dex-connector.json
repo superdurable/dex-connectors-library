@@ -1,0 +1,60 @@
+{
+  "connectorId": "juhe",
+  "releaseTag": "connectors/juhe/go/v0.1.0",
+  "package": {
+    "ecosystem": "cargo",
+    "name": "dex-connector-juhe",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_get_current_weather_step",
+      "kind": "query",
+      "operationId": "getCurrentWeather",
+      "inputType": "GetCurrentWeatherInput",
+      "description": "Read current weather conditions for one Chinese city.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "fetched",
+          "field": "fetched",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetCurrentWeatherInput identifies one supported Chinese city by name or Juhe city ID.",
+        "properties": {
+          "city": {
+            "description": "City is the exact city name or ID from Juhe API 73's supported-city list.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "city"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

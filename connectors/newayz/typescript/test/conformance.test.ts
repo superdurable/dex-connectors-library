@@ -13,8 +13,9 @@ const connection = { provider: 'newayz', name: 'newayz' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeNewayz, ''));
 
 async function invokeNewayz(scenario: Scenario, recorder: ExchangeRecorder) {
-  const credentials = new StaticCredentialProvider([[connection, { accessKey: new SecretString("test-newayz-access-key") }]]);
-  const client = new NewayzClient({}, credentials, {
+  const smallLimit = scenario.name.endsWith('-smallLimit') || scenario.name.endsWith('-oversized');
+  const credentials = new StaticCredentialProvider([[connection, { accessKey: new SecretString(scenario.name === 'getCurrentWeather-missingCredential' ? '' : 'test-newayz-access-key') }]]);
+  const client = new NewayzClient({maxResponseBytes: smallLimit ? 16 : 262_144}, credentials, {
     send: request => answerRecordedRequest(recorder, request, before => new ProviderTransportError(before)),
   });
   const call: Call = {

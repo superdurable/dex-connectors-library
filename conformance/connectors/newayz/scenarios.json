@@ -311,6 +311,1686 @@
       },
       "name": "getCurrentWeather-transport",
       "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "d213709d-2811-505d-9a88-7d944917ed6e",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"1\",\"infocode\":\"10000\",\"lives\":[{\"province\":\"湖北省\",\"city\":\"武汉市\",\"adcode\":\"420100\",\"weather\":\"晴\",\"temperature\":\"20\",\"winddirection\":\"东风\",\"windpower\":\"2\",\"humidity\":\"50\",\"reporttime\":\"2026-01-01 12:00:00\"}]}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/location/scenario/v1/weather",
+          "query": {
+            "access_key": [
+              "test-newayz-access-key"
+            ],
+            "city": [
+              "420100"
+            ],
+            "extensions": [
+              "base"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "city": "",
+          "cityCode": "",
+          "humidityPercent": "",
+          "province": "",
+          "reportTime": "",
+          "temperatureCelsius": "",
+          "weather": "",
+          "windDirection": "",
+          "windPower": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cityCode": "420100"
+      },
+      "name": "getCurrentWeather-http401",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "f641299c-acab-5be9-8f45-5fc86b483fb3",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"1\",\"infocode\":\"10000\",\"lives\":[{\"province\":\"湖北省\",\"city\":\"武汉市\",\"adcode\":\"420100\",\"weather\":\"晴\",\"temperature\":\"20\",\"winddirection\":\"东风\",\"windpower\":\"2\",\"humidity\":\"50\",\"reporttime\":\"2026-01-01 12:00:00\"}]}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/location/scenario/v1/weather",
+          "query": {
+            "access_key": [
+              "test-newayz-access-key"
+            ],
+            "city": [
+              "420100"
+            ],
+            "extensions": [
+              "base"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "city": "",
+          "cityCode": "",
+          "humidityPercent": "",
+          "province": "",
+          "reportTime": "",
+          "temperatureCelsius": "",
+          "weather": "",
+          "windDirection": "",
+          "windPower": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cityCode": "420100"
+      },
+      "name": "getCurrentWeather-http403",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "80ae352d-d179-5285-9652-f8df3ae36e00",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"1\",\"infocode\":\"10000\",\"lives\":[{\"province\":\"湖北省\",\"city\":\"武汉市\",\"adcode\":\"420100\",\"weather\":\"晴\",\"temperature\":\"20\",\"winddirection\":\"东风\",\"windpower\":\"2\",\"humidity\":\"50\",\"reporttime\":\"2026-01-01 12:00:00\"}]}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/location/scenario/v1/weather",
+          "query": {
+            "access_key": [
+              "test-newayz-access-key"
+            ],
+            "city": [
+              "420100"
+            ],
+            "extensions": [
+              "base"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "city": "",
+          "cityCode": "",
+          "humidityPercent": "",
+          "province": "",
+          "reportTime": "",
+          "temperatureCelsius": "",
+          "weather": "",
+          "windDirection": "",
+          "windPower": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cityCode": "420100"
+      },
+      "name": "getCurrentWeather-http404",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "b06abf95-a436-5164-a2c0-113a3ec769bd",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"1\",\"infocode\":\"10000\",\"lives\":[{\"province\":\"湖北省\",\"city\":\"武汉市\",\"adcode\":\"420100\",\"weather\":\"晴\",\"temperature\":\"20\",\"winddirection\":\"东风\",\"windpower\":\"2\",\"humidity\":\"50\",\"reporttime\":\"2026-01-01 12:00:00\"}]}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/location/scenario/v1/weather",
+          "query": {
+            "access_key": [
+              "test-newayz-access-key"
+            ],
+            "city": [
+              "420100"
+            ],
+            "extensions": [
+              "base"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 408
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 7000,
+        "uncertain": false
+      },
+      "input": {
+        "cityCode": "420100"
+      },
+      "name": "getCurrentWeather-http408",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "2b689715-c55f-5d80-99d5-4ed523e09489",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"1\",\"infocode\":\"10000\",\"lives\":[{\"province\":\"湖北省\",\"city\":\"武汉市\",\"adcode\":\"420100\",\"weather\":\"晴\",\"temperature\":\"20\",\"winddirection\":\"东风\",\"windpower\":\"2\",\"humidity\":\"50\",\"reporttime\":\"2026-01-01 12:00:00\"}]}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/location/scenario/v1/weather",
+          "query": {
+            "access_key": [
+              "test-newayz-access-key"
+            ],
+            "city": [
+              "420100"
+            ],
+            "extensions": [
+              "base"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 7000,
+        "uncertain": false
+      },
+      "input": {
+        "cityCode": "420100"
+      },
+      "name": "getCurrentWeather-http429",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "baf7564c-a087-5297-9f4f-d29382a42abf",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"1\",\"infocode\":\"10000\",\"lives\":[{\"province\":\"湖北省\",\"city\":\"武汉市\",\"adcode\":\"420100\",\"weather\":\"晴\",\"temperature\":\"20\",\"winddirection\":\"东风\",\"windpower\":\"2\",\"humidity\":\"50\",\"reporttime\":\"2026-01-01 12:00:00\"}]}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/location/scenario/v1/weather",
+          "query": {
+            "access_key": [
+              "test-newayz-access-key"
+            ],
+            "city": [
+              "420100"
+            ],
+            "extensions": [
+              "base"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 7000,
+        "uncertain": false
+      },
+      "input": {
+        "cityCode": "420100"
+      },
+      "name": "getCurrentWeather-http503",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "24d22214-86a4-508f-a20d-d8f8c46256d5",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"1\",\"infocode\":\"10000\",\"lives\":[{\"province\":\"湖北省\",\"city\":\"武汉市\",\"adcode\":\"420100\",\"weather\":\"晴\",\"temperature\":\"20\",\"winddirection\":\"东风\",\"windpower\":\"2\",\"humidity\":\"50\",\"reporttime\":\"2026-01-01 12:00:00\"}]}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/location/scenario/v1/weather",
+          "query": {
+            "access_key": [
+              "test-newayz-access-key"
+            ],
+            "city": [
+              "420100"
+            ],
+            "extensions": [
+              "base"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "city": "",
+          "cityCode": "",
+          "humidityPercent": "",
+          "province": "",
+          "reportTime": "",
+          "temperatureCelsius": "",
+          "weather": "",
+          "windDirection": "",
+          "windPower": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cityCode": "420100"
+      },
+      "name": "getCurrentWeather-http401-smallLimit",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "570a3c33-0d0b-5c45-9d2f-88d4e17f1382",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"1\",\"infocode\":\"10000\",\"lives\":[{\"province\":\"湖北省\",\"city\":\"武汉市\",\"adcode\":\"420100\",\"weather\":\"晴\",\"temperature\":\"20\",\"winddirection\":\"东风\",\"windpower\":\"2\",\"humidity\":\"50\",\"reporttime\":\"2026-01-01 12:00:00\"}]}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/location/scenario/v1/weather",
+          "query": {
+            "access_key": [
+              "test-newayz-access-key"
+            ],
+            "city": [
+              "420100"
+            ],
+            "extensions": [
+              "base"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 7000,
+        "uncertain": false
+      },
+      "input": {
+        "cityCode": "420100"
+      },
+      "name": "getCurrentWeather-http429-smallLimit",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "5b69b8d4-e62f-55da-b31a-d6bc6b8e0dd0",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"1\",\"infocode\":\"10000\",\"lives\":[{\"province\":\"湖北省\",\"city\":\"武汉市\",\"adcode\":\"420100\",\"weather\":\"晴\",\"temperature\":\"20\",\"winddirection\":\"东风\",\"windpower\":\"2\",\"humidity\":\"50\",\"reporttime\":\"2026-01-01 12:00:00\"}]}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/location/scenario/v1/weather",
+          "query": {
+            "access_key": [
+              "test-newayz-access-key"
+            ],
+            "city": [
+              "420100"
+            ],
+            "extensions": [
+              "base"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 7000,
+        "uncertain": false
+      },
+      "input": {
+        "cityCode": "420100"
+      },
+      "name": "getCurrentWeather-http503-smallLimit",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "bffa7d1d-d397-5448-838f-4acf48e57b39",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"1\",\"infocode\":\"10000\",\"lives\":[{\"province\":\"湖北省\",\"city\":\"武汉市\",\"adcode\":\"420100\",\"weather\":\"晴\",\"temperature\":\"20\",\"winddirection\":\"东风\",\"windpower\":\"2\",\"humidity\":\"50\",\"reporttime\":\"2026-01-01 12:00:00\"}]}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/location/scenario/v1/weather",
+          "query": {
+            "access_key": [
+              "test-newayz-access-key"
+            ],
+            "city": [
+              "420100"
+            ],
+            "extensions": [
+              "base"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "city": "",
+          "cityCode": "",
+          "humidityPercent": "",
+          "province": "",
+          "reportTime": "",
+          "temperatureCelsius": "",
+          "weather": "",
+          "windDirection": "",
+          "windPower": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cityCode": "420100"
+      },
+      "name": "getCurrentWeather-oversized",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "80840bcc-4737-5800-b6c8-49a482246d24",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "city": "",
+          "cityCode": "",
+          "humidityPercent": "",
+          "province": "",
+          "reportTime": "",
+          "temperatureCelsius": "",
+          "weather": "",
+          "windDirection": "",
+          "windPower": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cityCode": "420100"
+      },
+      "name": "getCurrentWeather-missingCredential",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "ed8c118c-9893-5ab3-bc53-752365bb46a5",
+      "exchanges": [
+        {
+          "body": "{\"STATUS\":\"1\",\"INFOCODE\":\"10000\",\"LIVES\":[{\"PROVINCE\":\"湖北省\",\"CITY\":\"武汉市\",\"ADCODE\":\"420100\",\"WEATHER\":\"晴\",\"TEMPERATURE\":\"20\",\"WINDDIRECTION\":\"东风\",\"WINDPOWER\":\"2\",\"HUMIDITY\":\"50\",\"REPORTTIME\":\"2026-01-01 12:00:00\"}]}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/location/scenario/v1/weather",
+          "query": {
+            "access_key": [
+              "test-newayz-access-key"
+            ],
+            "city": [
+              "420100"
+            ],
+            "extensions": [
+              "base"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "fetched",
+        "failureKind": "",
+        "output": {
+          "city": "武汉市",
+          "cityCode": "420100",
+          "humidityPercent": "50",
+          "province": "湖北省",
+          "reportTime": "2026-01-01 12:00:00",
+          "temperatureCelsius": "20",
+          "weather": "晴",
+          "windDirection": "东风",
+          "windPower": "2"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cityCode": "420100"
+      },
+      "name": "getCurrentWeather-mixedCase",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "436eaeb2-82b5-5c51-b88a-22b7cf8e3eab",
+      "exchanges": [
+        {
+          "body": "{\"status\": \"1\", \"infocode\": \"10000\", \"lives\": [{\"province\": \"\\u6e56\\u5317\\u7701\", \"city\": \"\\u6b66\\u6c49\\u5e02\", \"adcode\": \"420100\", \"weather\": \"\\u6674\", \"temperature\": \"20\", \"winddirection\": \"\\u4e1c\\u98ce\", \"windpower\": \"2\", \"humidity\": \"50\", \"reporttime\": \"2026-01-01 12:00:00\"}]}{}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/location/scenario/v1/weather",
+          "query": {
+            "access_key": [
+              "test-newayz-access-key"
+            ],
+            "city": [
+              "420100"
+            ],
+            "extensions": [
+              "base"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "city": "",
+          "cityCode": "",
+          "humidityPercent": "",
+          "province": "",
+          "reportTime": "",
+          "temperatureCelsius": "",
+          "weather": "",
+          "windDirection": "",
+          "windPower": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cityCode": "420100"
+      },
+      "name": "getCurrentWeather-trailing",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "93e48598-db6f-540b-ba52-a5631edc7b18",
+      "exchanges": [
+        {
+          "body": "{\"status\": \"1\", \"infocode\": \"10000\", \"lives\": [{\"province\": \"\\u6e56\\u5317\\u7701\", \"city\": \"\\u6b66\\u6c49\\u5e02\", \"adcode\": \"420100\", \"weather\": \"\\u6674\", \"temperature\": \"20\", \"winddirection\": \"\\u4e1c\\u98ce\", \"windpower\": \"2\", \"humidity\": \"50\", \"reporttime\": \"2026-01-01 12:00:00\"}],\"unrelated\":NaN}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/location/scenario/v1/weather",
+          "query": {
+            "access_key": [
+              "test-newayz-access-key"
+            ],
+            "city": [
+              "420100"
+            ],
+            "extensions": [
+              "base"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "city": "",
+          "cityCode": "",
+          "humidityPercent": "",
+          "province": "",
+          "reportTime": "",
+          "temperatureCelsius": "",
+          "weather": "",
+          "windDirection": "",
+          "windPower": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cityCode": "420100"
+      },
+      "name": "getCurrentWeather-notFinite",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "e2efe76a-955d-5c96-984a-f5d91f19fdc2",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "city": "",
+          "cityCode": "",
+          "humidityPercent": "",
+          "province": "",
+          "reportTime": "",
+          "temperatureCelsius": "",
+          "weather": "",
+          "windDirection": "",
+          "windPower": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cityCode": "４２０１００"
+      },
+      "name": "getCurrentWeather-asciiOnly",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "119d8e6e-cde1-5938-a849-9323830accf1",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "city": "",
+          "cityCode": "",
+          "humidityPercent": "",
+          "province": "",
+          "reportTime": "",
+          "temperatureCelsius": "",
+          "weather": "",
+          "windDirection": "",
+          "windPower": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cityCode": "420100 "
+      },
+      "name": "getCurrentWeather-whitespace",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "7d5c59bf-b757-5702-8705-88bda7b23016",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "city": "",
+          "cityCode": "",
+          "humidityPercent": "",
+          "province": "",
+          "reportTime": "",
+          "temperatureCelsius": "",
+          "weather": "",
+          "windDirection": "",
+          "windPower": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cityCode": "420100\n"
+      },
+      "name": "getCurrentWeather-newline",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "32c4a04e-0956-51a0-8cf5-5f6cf7aaf233",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "city": "",
+          "cityCode": "",
+          "humidityPercent": "",
+          "province": "",
+          "reportTime": "",
+          "temperatureCelsius": "",
+          "weather": "",
+          "windDirection": "",
+          "windPower": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cityCode": "-20100"
+      },
+      "name": "getCurrentWeather-negative",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "c77b9015-b64d-5893-97bd-9b31cfe31c62",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"1\",\"infocode\":\"10000\",\"lives\":[{\"province\":\"湖北省\",\"city\":\"武汉市\",\"adcode\":\"420100\",\"weather\":\"晴\",\"temperature\":\"20\",\"winddirection\":\"东风\",\"windpower\":\"2\",\"humidity\":\"50\",\"reporttime\":\"2026-01-01 12:00:00\"},{\"province\":\"湖北省\",\"city\":\"武汉市\",\"adcode\":\"420100\",\"weather\":\"晴\",\"temperature\":\"20\",\"winddirection\":\"东风\",\"windpower\":\"2\",\"humidity\":\"50\",\"reporttime\":\"2026-01-01 12:00:00\"}]}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/location/scenario/v1/weather",
+          "query": {
+            "access_key": [
+              "test-newayz-access-key"
+            ],
+            "city": [
+              "420100"
+            ],
+            "extensions": [
+              "base"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "city": "",
+          "cityCode": "",
+          "humidityPercent": "",
+          "province": "",
+          "reportTime": "",
+          "temperatureCelsius": "",
+          "weather": "",
+          "windDirection": "",
+          "windPower": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cityCode": "420100"
+      },
+      "name": "getCurrentWeather-secondObservation",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "abc02507-6bbb-50e1-b387-c844bb447847",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"1\",\"infocode\":\"10000\",\"lives\":[]}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/location/scenario/v1/weather",
+          "query": {
+            "access_key": [
+              "test-newayz-access-key"
+            ],
+            "city": [
+              "420100"
+            ],
+            "extensions": [
+              "base"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "city": "",
+          "cityCode": "",
+          "humidityPercent": "",
+          "province": "",
+          "reportTime": "",
+          "temperatureCelsius": "",
+          "weather": "",
+          "windDirection": "",
+          "windPower": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cityCode": "420100"
+      },
+      "name": "getCurrentWeather-noObservations",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "4f67be13-19c9-5af2-91f0-bf1f00d845b1",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"1\",\"infocode\":\"10000\",\"lives\":[null]}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/location/scenario/v1/weather",
+          "query": {
+            "access_key": [
+              "test-newayz-access-key"
+            ],
+            "city": [
+              "420100"
+            ],
+            "extensions": [
+              "base"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "city": "",
+          "cityCode": "",
+          "humidityPercent": "",
+          "province": "",
+          "reportTime": "",
+          "temperatureCelsius": "",
+          "weather": "",
+          "windDirection": "",
+          "windPower": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cityCode": "420100"
+      },
+      "name": "getCurrentWeather-nullObservation",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "6e668c23-1518-5068-bab2-11eb2f89f5c4",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"0\",\"infocode\":\"untrusted-provider-code\"}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/location/scenario/v1/weather",
+          "query": {
+            "access_key": [
+              "test-newayz-access-key"
+            ],
+            "city": [
+              "420100"
+            ],
+            "extensions": [
+              "base"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "city": "",
+          "cityCode": "",
+          "humidityPercent": "",
+          "province": "",
+          "reportTime": "",
+          "temperatureCelsius": "",
+          "weather": "",
+          "windDirection": "",
+          "windPower": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cityCode": "420100"
+      },
+      "name": "getCurrentWeather-opaqueCode",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "89edaef7-1f91-5061-b9c1-592ef51808ef",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"0\",\"infocode\":10000}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/location/scenario/v1/weather",
+          "query": {
+            "access_key": [
+              "test-newayz-access-key"
+            ],
+            "city": [
+              "420100"
+            ],
+            "extensions": [
+              "base"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "city": "",
+          "cityCode": "",
+          "humidityPercent": "",
+          "province": "",
+          "reportTime": "",
+          "temperatureCelsius": "",
+          "weather": "",
+          "windDirection": "",
+          "windPower": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cityCode": "420100"
+      },
+      "name": "getCurrentWeather-wrongCodeType",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "d9a74c24-36e8-5ad7-a3cd-3a2af9da2eb6",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"0\"}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/location/scenario/v1/weather",
+          "query": {
+            "access_key": [
+              "test-newayz-access-key"
+            ],
+            "city": [
+              "420100"
+            ],
+            "extensions": [
+              "base"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "city": "",
+          "cityCode": "",
+          "humidityPercent": "",
+          "province": "",
+          "reportTime": "",
+          "temperatureCelsius": "",
+          "weather": "",
+          "windDirection": "",
+          "windPower": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cityCode": "420100"
+      },
+      "name": "getCurrentWeather-missingCode",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "5dc55a92-6e5b-5ace-a356-e9940b509abd",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"0\",\"lives\":[{\"province\":false}]}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/location/scenario/v1/weather",
+          "query": {
+            "access_key": [
+              "test-newayz-access-key"
+            ],
+            "city": [
+              "420100"
+            ],
+            "extensions": [
+              "base"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "city": "",
+          "cityCode": "",
+          "humidityPercent": "",
+          "province": "",
+          "reportTime": "",
+          "temperatureCelsius": "",
+          "weather": "",
+          "windDirection": "",
+          "windPower": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cityCode": "420100"
+      },
+      "name": "getCurrentWeather-badReject",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "e1017de3-19b9-5768-9bc2-39904548dd6e",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"0\",\"lives\":[{},1]}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/location/scenario/v1/weather",
+          "query": {
+            "access_key": [
+              "test-newayz-access-key"
+            ],
+            "city": [
+              "420100"
+            ],
+            "extensions": [
+              "base"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "city": "",
+          "cityCode": "",
+          "humidityPercent": "",
+          "province": "",
+          "reportTime": "",
+          "temperatureCelsius": "",
+          "weather": "",
+          "windDirection": "",
+          "windPower": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cityCode": "420100"
+      },
+      "name": "getCurrentWeather-badLater",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "b4926132-a620-5bdc-9239-f27cc537930e",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"0\",\"lives\":null}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/location/scenario/v1/weather",
+          "query": {
+            "access_key": [
+              "test-newayz-access-key"
+            ],
+            "city": [
+              "420100"
+            ],
+            "extensions": [
+              "base"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "city": "",
+          "cityCode": "",
+          "humidityPercent": "",
+          "province": "",
+          "reportTime": "",
+          "temperatureCelsius": "",
+          "weather": "",
+          "windDirection": "",
+          "windPower": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cityCode": "420100"
+      },
+      "name": "getCurrentWeather-nullList",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "dd794aee-5943-59f6-959d-0f8a08639728",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"0\",\"lives\":{}}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/location/scenario/v1/weather",
+          "query": {
+            "access_key": [
+              "test-newayz-access-key"
+            ],
+            "city": [
+              "420100"
+            ],
+            "extensions": [
+              "base"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "city": "",
+          "cityCode": "",
+          "humidityPercent": "",
+          "province": "",
+          "reportTime": "",
+          "temperatureCelsius": "",
+          "weather": "",
+          "windDirection": "",
+          "windPower": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cityCode": "420100"
+      },
+      "name": "getCurrentWeather-badList",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "a916039b-6b7c-5bb8-a0a1-be9f3e994f8e",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"1\",\"infocode\":\"10000\",\"lives\":[{\"province\":\"湖北省\",\"city\":\"武汉市\",\"adcode\":\"420101\",\"weather\":\"晴\",\"temperature\":\"20\",\"winddirection\":\"东风\",\"windpower\":\"2\",\"humidity\":\"50\",\"reporttime\":\"2026-01-01 12:00:00\"}]}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/location/scenario/v1/weather",
+          "query": {
+            "access_key": [
+              "test-newayz-access-key"
+            ],
+            "city": [
+              "420100"
+            ],
+            "extensions": [
+              "base"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "city": "",
+          "cityCode": "",
+          "humidityPercent": "",
+          "province": "",
+          "reportTime": "",
+          "temperatureCelsius": "",
+          "weather": "",
+          "windDirection": "",
+          "windPower": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cityCode": "420100"
+      },
+      "name": "getCurrentWeather-differentCity",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "d5e7680f-a26a-56f6-8d25-621d5b006c64",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"1\",\"infocode\":\"10000\",\"lives\":[{\"province\":\"湖北省\",\"city\":\"\",\"adcode\":\"420100\",\"weather\":\"晴\",\"temperature\":\"20\",\"winddirection\":\"东风\",\"windpower\":\"2\",\"humidity\":\"50\",\"reporttime\":\"2026-01-01 12:00:00\"}]}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/location/scenario/v1/weather",
+          "query": {
+            "access_key": [
+              "test-newayz-access-key"
+            ],
+            "city": [
+              "420100"
+            ],
+            "extensions": [
+              "base"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "city": "",
+          "cityCode": "",
+          "humidityPercent": "",
+          "province": "",
+          "reportTime": "",
+          "temperatureCelsius": "",
+          "weather": "",
+          "windDirection": "",
+          "windPower": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cityCode": "420100"
+      },
+      "name": "getCurrentWeather-emptyCity",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "b8a8ddc8-db12-51e4-9e6a-f3ee6c908f05",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"1\",\"infocode\":\"10000\",\"lives\":[{\"province\":\"湖北省\",\"city\":\"武汉市\",\"adcode\":\"420100\",\"weather\":null,\"temperature\":\"20\",\"winddirection\":\"东风\",\"windpower\":\"2\",\"humidity\":\"50\",\"reporttime\":\"2026-01-01 12:00:00\"}]}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/location/scenario/v1/weather",
+          "query": {
+            "access_key": [
+              "test-newayz-access-key"
+            ],
+            "city": [
+              "420100"
+            ],
+            "extensions": [
+              "base"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "city": "",
+          "cityCode": "",
+          "humidityPercent": "",
+          "province": "",
+          "reportTime": "",
+          "temperatureCelsius": "",
+          "weather": "",
+          "windDirection": "",
+          "windPower": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cityCode": "420100"
+      },
+      "name": "getCurrentWeather-missingWeather",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "4806dd7a-63f2-59fa-b92a-c5c01b76313f",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"1\",\"infocode\":\"10000\",\"lives\":[{\"province\":\"湖北省\",\"city\":\"武汉市\",\"adcode\":\"420100\",\"weather\":\"晴\",\"temperature\":20,\"winddirection\":\"东风\",\"windpower\":\"2\",\"humidity\":\"50\",\"reporttime\":\"2026-01-01 12:00:00\"}]}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/location/scenario/v1/weather",
+          "query": {
+            "access_key": [
+              "test-newayz-access-key"
+            ],
+            "city": [
+              "420100"
+            ],
+            "extensions": [
+              "base"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "city": "",
+          "cityCode": "",
+          "humidityPercent": "",
+          "province": "",
+          "reportTime": "",
+          "temperatureCelsius": "",
+          "weather": "",
+          "windDirection": "",
+          "windPower": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cityCode": "420100"
+      },
+      "name": "getCurrentWeather-numericTemp",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "c8b80b1f-fb1d-53fe-8ad0-2aaa8de93171",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"1\",\"infocode\":\"10000\",\"lives\":[{\"province\":null,\"city\":\"武汉市\",\"adcode\":\"420100\",\"weather\":\"晴\",\"temperature\":\"20\",\"winddirection\":\"东风\",\"windpower\":\"2\",\"humidity\":\"50\",\"reporttime\":\"2026-01-01 12:00:00\"}]}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/location/scenario/v1/weather",
+          "query": {
+            "access_key": [
+              "test-newayz-access-key"
+            ],
+            "city": [
+              "420100"
+            ],
+            "extensions": [
+              "base"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "fetched",
+        "failureKind": "",
+        "output": {
+          "city": "武汉市",
+          "cityCode": "420100",
+          "humidityPercent": "50",
+          "province": "",
+          "reportTime": "2026-01-01 12:00:00",
+          "temperatureCelsius": "20",
+          "weather": "晴",
+          "windDirection": "东风",
+          "windPower": "2"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cityCode": "420100"
+      },
+      "name": "getCurrentWeather-nullOptional",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "36721d18-6784-5735-a363-bae0a9266596",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"1\",\"infocode\":\"10000\",\"lives\":[{\"province\":\"湖北省\",\"city\":\"武汉市\",\"adcode\":\"420100\",\"weather\":\"晴\",\"temperature\":\"20\",\"winddirection\":\"东风\",\"windpower\":\"2\",\"humidity\":30,\"reporttime\":\"2026-01-01 12:00:00\"}]}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/location/scenario/v1/weather",
+          "query": {
+            "access_key": [
+              "test-newayz-access-key"
+            ],
+            "city": [
+              "420100"
+            ],
+            "extensions": [
+              "base"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "city": "",
+          "cityCode": "",
+          "humidityPercent": "",
+          "province": "",
+          "reportTime": "",
+          "temperatureCelsius": "",
+          "weather": "",
+          "windDirection": "",
+          "windPower": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cityCode": "420100"
+      },
+      "name": "getCurrentWeather-numericOptional",
+      "operation": "getCurrentWeather"
     }
   ],
   "schemaVersion": 1

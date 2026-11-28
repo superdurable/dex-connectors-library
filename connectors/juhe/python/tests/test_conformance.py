@@ -22,8 +22,21 @@ ADAPTER = conformance.PythonOperationAdapter(
     CONNECTION,
     connector,
     lambda http_client, recorder: connector.Client(
-        connector.Config(),
-        conformance.static_credentials(CONNECTION, connector.Credentials(SecretString("test-juhe-api-key"))),
+        connector.Config(
+            max_response_bytes=16
+            if recorder.scenario["name"].endswith(("-oversized", "-smallLimit"))
+            else 524288
+        ),
+        conformance.static_credentials(
+            CONNECTION,
+            connector.Credentials(
+                SecretString(
+                    ""
+                    if recorder.scenario["name"] == "getCurrentWeather-missingCredential"
+                    else "test-juhe-api-key"
+                )
+            ),
+        ),
         http_client,
     ),
 )

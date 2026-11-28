@@ -5,6 +5,7 @@ package juhe
 
 import (
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -18,7 +19,14 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	t.Helper()
 	credentials := Credentials{APIKey: sdkgo.NewSecretString(testAPIKey)}
 
-	client, err := New(Config{BaseURL: endpoint}, sdkgo.StaticCredentialProvider[Credentials]{testConnection: credentials}, WithHTTPClient(transport))
+	config := Config{BaseURL: endpoint}
+	if scenario.Name == "getCurrentWeather-oversized" || strings.HasSuffix(scenario.Name, "-smallLimit") {
+		config.MaxResponseBytes = 16
+	}
+	if scenario.Name == "getCurrentWeather-missingCredential" {
+		credentials.APIKey = sdkgo.NewSecretString("")
+	}
+	client, err := New(config, sdkgo.StaticCredentialProvider[Credentials]{testConnection: credentials}, WithHTTPClient(transport))
 	require.NoError(t, err)
 	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
 		"getCurrentWeather": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetCurrentWeather(), testConnection),

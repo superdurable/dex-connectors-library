@@ -45,7 +45,7 @@ export class JuheClient {
       const response = await this.send(request);
       return { response, error: response.body.length > this.maxResponseBytes ? 'tooLarge' : undefined, retryAfterMs: parseRetryAfter(header(response.headers, 'retry-after')) };
     } catch (error) {
-      if (error instanceof BodyTooLargeError && error.status !== undefined) return { response: { status: error.status, headers: error.headers ?? {}, body: new Uint8Array() }, error: 'tooLarge', retryAfterMs: 0 };
+      if (error instanceof BodyTooLargeError && error.status !== undefined) return { response: { status: error.status, headers: error.headers ?? {}, body: new Uint8Array() }, error: 'tooLarge', retryAfterMs: parseRetryAfter(header(error.headers ?? {}, 'retry-after')) };
       return { error: 'transport', retryAfterMs: 0 };
     }
   }
@@ -57,7 +57,7 @@ export class GetCurrentWeatherOperation implements Query<GetCurrentWeatherInput,
   /** Return the generated Query definition. */ definition(): QueryDefinition { return GetCurrentWeatherDefinition; }
   /** Classify one provider response using the Go connector contract. */
   async invoke(call: Call, input: GetCurrentWeatherInput): Promise<QueryAttempt<GetCurrentWeatherOutput>> {
-    if (!input || typeof input.city !== 'string' || !input.city.trim() || input.city.trim() !== input.city || new TextEncoder().encode(input.city).length > 128) return branch('defect', 'VALIDATION');
+    if (!input || typeof input.city !== 'string' || !input.city || /^\p{White_Space}|\p{White_Space}$/u.test(input.city) || new TextEncoder().encode(input.city).length > 128) return branch('defect', 'VALIDATION');
     const exchange = await this.client.getWeather(call, input.city);
     if (exchange.error === 'credential') return branch('defect', 'AUTHENTICATION');
     if (exchange.error === 'transport' || !exchange.response) return retry('AVAILABILITY');
@@ -66,18 +66,16 @@ export class GetCurrentWeatherOperation implements Query<GetCurrentWeatherInput,
     if (status === 408 || status >= 500) return retry('AVAILABILITY', exchange.retryAfterMs);
     if (exchange.error === 'tooLarge') return branch('invalidResponse', 'RESPONSE_TOO_LARGE');
     if (status !== 200) return branch('providerRejected', 'PROVIDER_REJECTION');
-    let wire: unknown;
-    try { wire = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(body)) as unknown; } catch { return branch('invalidResponse', 'PROTOCOL'); }
-    if (!wire || typeof wire !== 'object' || Array.isArray(wire)) return branch('invalidResponse', 'PROTOCOL');
-    const data = wire as { error_code?: unknown; result?: unknown };
-    if (!Number.isInteger(data.error_code)) return branch('invalidResponse', 'PROTOCOL');
-    if (data.error_code !== 0) return classifyError(data.error_code as number);
-    if (!data.result || typeof data.result !== 'object' || Array.isArray(data.result)) return branch('invalidResponse', 'PROTOCOL');
-    const result = data.result as { city?: unknown; realtime?: unknown };
-    if (!result.realtime || typeof result.realtime !== 'object' || Array.isArray(result.realtime)) return branch('invalidResponse', 'PROTOCOL');
-    const real = result.realtime as Record<string, unknown>;
-    if (typeof result.city !== 'string' || !result.city || typeof real.info !== 'string' || !real.info || typeof real.wid !== 'string' || !real.wid) return branch('invalidResponse', 'PROTOCOL');
-    for (const key of ['temperature', 'humidity', 'direct', 'power', 'aqi']) if (real[key] != null && typeof real[key] !== 'string') return branch('invalidResponse', 'PROTOCOL');
+    let data: Record<string, unknown> | undefined;
+    try { data = fieldsByName(JSON.parse(new TextDecoder().decode(body), readProviderNumber)); } catch { return branch('invalidResponse','PROTOCOL'); }
+    if (!data) return branch('invalidResponse','PROTOCOL');
+    if (typeof data.error_code !== 'number' || !Number.isInteger(data.error_code)) return branch('invalidResponse','PROTOCOL');
+    const result = data.result == null ? {} : fieldsByName(data.result);
+    if (!result || (result.city != null && typeof result.city !== 'string')) return branch('invalidResponse','PROTOCOL');
+    const real = result.realtime == null ? {} : fieldsByName(result.realtime);
+    if (!real || ['info','wid','temperature','humidity','direct','power','aqi'].some(name => real[name] != null && typeof real[name] !== 'string')) return branch('invalidResponse','PROTOCOL');
+    if (data.error_code !== 0) return classifyError(data.error_code);
+    if (!result.city || typeof result.city !== 'string' || typeof real.info !== 'string' || !real.info || typeof real.wid !== 'string' || !real.wid) return branch('invalidResponse','PROTOCOL');
     return newQueryBranch('fetched', { city: result.city, weatherText: real.info, weatherCode: real.wid, temperatureCelsius: (real.temperature ?? '') as string, humidityPercent: (real.humidity ?? '') as string, windDirection: (real.direct ?? '') as string, windPower: (real.power ?? '') as string, airQualityIndex: (real.aqi ?? '') as string });
   }
 }
@@ -95,3 +93,18 @@ function header(headers: ProviderResponse['headers'], name: string): string { co
 function failure(kind: Failure['kind']): Failure { return { provider: 'juhe', operation: 'getCurrentWeather', kind, message: 'Juhe current weather query failed' }; }
 function branch(name: string, kind: Failure['kind']): QueryAttempt<GetCurrentWeatherOutput> { return newQueryBranch(name, { city: '', weatherText: '', weatherCode: '', temperatureCelsius: '', humidityPercent: '', windDirection: '', windPower: '', airQualityIndex: '' }, {}, failure(kind)); }
 function retry(kind: Failure['kind'], delay = 0): QueryAttempt<GetCurrentWeatherOutput> { return newQueryRetry(failure(kind), delay); }
+
+function fieldsByName(value: unknown): Record<string, unknown> | undefined {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  return Object.fromEntries(Object.entries(value).map(([name, field]) => [name.toLowerCase(), field]));
+}
+
+// Go decodes the result code into int64 before classifying the provider response.
+function readProviderNumber(key: string, value: unknown, context?: { source?: string }): unknown {
+  if (key.toLowerCase() !== 'error_code' || typeof value !== 'number') return value;
+  const source = context?.source;
+  if (source === undefined) return Number.isSafeInteger(value) ? value : null;
+  if (!/^-?\d+$/.test(source) || source.length > 20) return null;
+  const integer = BigInt(source);
+  return integer >= -(1n << 63n) && integer < (1n << 63n) ? value : null;
+}
