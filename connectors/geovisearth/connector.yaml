@@ -6,13 +6,15 @@ metadata:
   description: Read current weather for one Chinese city or coordinate.
   company: GEOVIS Earth
   categories: [data-search]
-  version: v0.1.0
+  version: v0.1.1
 spec:
   provider: geovisearth
   languages:
-    python: {version: v0.1.0, operations: [getCurrentWeather], triggers: []}
+    java: {version: v0.1.0, operations: [getCurrentWeather], triggers: []}
+    rust: {version: v0.1.0, operations: [getCurrentWeather], triggers: []}
+    python: {version: v0.1.1, operations: [getCurrentWeather], triggers: []}
     typescript:
-      version: v0.1.0
+      version: v0.1.1
       package: "@superdurable/connector-geovisearth"
       operations: [getCurrentWeather]
       triggers: []

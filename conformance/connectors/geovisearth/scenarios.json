@@ -293,6 +293,2949 @@
       },
       "name": "getCurrentWeather-transport",
       "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "8a8c7dc3-4aeb-5eb9-a5bc-16cb015bb46b",
+      "exchanges": [
+        {
+          "body": "{\"date\":{\"timeZone\":\"Asia/Shanghai\",\"time\":\"20240911135031\"},\"result\":{\"wd_desc\":\"东北风\",\"prs\":986.7,\"rh\":95,\"ws_desc\":\"3级\",\"wp\":\"阴\",\"tem\":26.7,\"wp_code\":\"02\"},\"location\":{\"path\":\"广西壮族自治区,崇左市,崇左\",\"areaCode\":\"WTX_CH101300201\"},\"version\":\"v1\",\"status\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/cn/area/basic",
+          "query": {
+            "location": [
+              "-180,90"
+            ],
+            "token": [
+              "private-test-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "fetched",
+        "failureKind": "",
+        "output": {
+          "areaCode": "WTX_CH101300201",
+          "observedAt": "20240911135031",
+          "relativeHumidityPercent": 95,
+          "surfacePressureHpa": 986.7,
+          "temperatureCelsius": 26.7,
+          "weather": "阴",
+          "weatherCode": "02",
+          "windDirection": "东北风",
+          "windForce": "3级"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "-180,90"
+      },
+      "name": "getCurrentWeather-poles",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "c1baef66-6a2e-593c-86c7-ac6486fb751f",
+      "exchanges": [
+        {
+          "body": "{\"date\":{\"timeZone\":\"Asia/Shanghai\",\"time\":\"20240911135031\"},\"result\":{\"wd_desc\":\"东北风\",\"prs\":986.7,\"rh\":95,\"ws_desc\":\"3级\",\"wp\":\"阴\",\"tem\":26.7,\"wp_code\":\"02\"},\"location\":{\"path\":\"广西壮族自治区,崇左市,崇左\",\"areaCode\":\"WTX_CH101300201\"},\"version\":\"v1\",\"status\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/cn/area/basic",
+          "query": {
+            "location": [
+              "116.43,39.91"
+            ],
+            "token": [
+              "private-test-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "fetched",
+        "failureKind": "",
+        "output": {
+          "areaCode": "WTX_CH101300201",
+          "observedAt": "20240911135031",
+          "relativeHumidityPercent": 95,
+          "surfacePressureHpa": 986.7,
+          "temperatureCelsius": 26.7,
+          "weather": "阴",
+          "weatherCode": "02",
+          "windDirection": "东北风",
+          "windForce": "3级"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "116.43,39.91"
+      },
+      "name": "getCurrentWeather-coordinate",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "02a5928e-1772-57f0-bc71-33513fcb2946",
+      "exchanges": [
+        {
+          "body": "{\"date\":{\"timeZone\":\"Asia/Shanghai\",\"time\":\"20240911135031\"},\"result\":{\"wd_desc\":\"东北风\",\"prs\":986.7,\"rh\":95,\"ws_desc\":\"3级\",\"wp\":\"阴\",\"tem\":26.7,\"wp_code\":\"02\"},\"location\":{\"path\":\"广西壮族自治区,崇左市,崇左\",\"areaCode\":\"WTX_CH101300201\"},\"version\":\"v1\",\"status\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/cn/area/basic",
+          "query": {
+            "location": [
+              "+1_7.5e+1,-.9e2"
+            ],
+            "token": [
+              "private-test-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "fetched",
+        "failureKind": "",
+        "output": {
+          "areaCode": "WTX_CH101300201",
+          "observedAt": "20240911135031",
+          "relativeHumidityPercent": 95,
+          "surfacePressureHpa": 986.7,
+          "temperatureCelsius": 26.7,
+          "weather": "阴",
+          "weatherCode": "02",
+          "windDirection": "东北风",
+          "windForce": "3级"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "+1_7.5e+1,-.9e2"
+      },
+      "name": "getCurrentWeather-signedDecimal",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "68c10023-7bdc-5268-a000-9cfd8d3772bb",
+      "exchanges": [
+        {
+          "body": "{\"date\":{\"timeZone\":\"Asia/Shanghai\",\"time\":\"20240911135031\"},\"result\":{\"wd_desc\":\"东北风\",\"prs\":986.7,\"rh\":95,\"ws_desc\":\"3级\",\"wp\":\"阴\",\"tem\":26.7,\"wp_code\":\"02\"},\"location\":{\"path\":\"广西壮族自治区,崇左市,崇左\",\"areaCode\":\"WTX_CH101300201\"},\"version\":\"v1\",\"status\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/cn/area/basic",
+          "query": {
+            "location": [
+              "0x_1.68p+7,-0x1.68p6"
+            ],
+            "token": [
+              "private-test-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "fetched",
+        "failureKind": "",
+        "output": {
+          "areaCode": "WTX_CH101300201",
+          "observedAt": "20240911135031",
+          "relativeHumidityPercent": 95,
+          "surfacePressureHpa": 986.7,
+          "temperatureCelsius": 26.7,
+          "weather": "阴",
+          "weatherCode": "02",
+          "windDirection": "东北风",
+          "windForce": "3级"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "0x_1.68p+7,-0x1.68p6"
+      },
+      "name": "getCurrentWeather-hex",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "729ace25-bd7b-5307-b53f-ff1e4b5090a1",
+      "exchanges": [
+        {
+          "body": "{\"date\":{\"timeZone\":\"Asia/Shanghai\",\"time\":\"20240911135031\"},\"result\":{\"wd_desc\":\"东北风\",\"prs\":986.7,\"rh\":95,\"ws_desc\":\"3级\",\"wp\":\"阴\",\"tem\":26.7,\"wp_code\":\"02\"},\"location\":{\"path\":\"广西壮族自治区,崇左市,崇左\",\"areaCode\":\"WTX_CH101300201\"},\"version\":\"v1\",\"status\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/cn/area/basic",
+          "query": {
+            "location": [
+              "0x1.68000000000008p7,0"
+            ],
+            "token": [
+              "private-test-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "fetched",
+        "failureKind": "",
+        "output": {
+          "areaCode": "WTX_CH101300201",
+          "observedAt": "20240911135031",
+          "relativeHumidityPercent": 95,
+          "surfacePressureHpa": 986.7,
+          "temperatureCelsius": 26.7,
+          "weather": "阴",
+          "weatherCode": "02",
+          "windDirection": "东北风",
+          "windForce": "3级"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "0x1.68000000000008p7,0"
+      },
+      "name": "getCurrentWeather-roundedHex",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "74690567-1179-5c0f-bb60-66fe05576a7b",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "areaCode": "",
+          "observedAt": "",
+          "relativeHumidityPercent": 0,
+          "surfacePressureHpa": 0,
+          "temperatureCelsius": 0,
+          "weather": "",
+          "weatherCode": "",
+          "windDirection": "",
+          "windForce": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "0x1.68000000000008001p7,0"
+      },
+      "name": "getCurrentWeather-overRoundedHex",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "d7b95ebb-e3f7-54a5-97be-e9a7d405ef9d",
+      "exchanges": [
+        {
+          "body": "{\"date\":{\"timeZone\":\"Asia/Shanghai\",\"time\":\"20240911135031\"},\"result\":{\"wd_desc\":\"东北风\",\"prs\":986.7,\"rh\":95,\"ws_desc\":\"3级\",\"wp\":\"阴\",\"tem\":26.7,\"wp_code\":\"02\"},\"location\":{\"path\":\"广西壮族自治区,崇左市,崇左\",\"areaCode\":\"WTX_CH101300201\"},\"version\":\"v1\",\"status\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/cn/area/basic",
+          "query": {
+            "location": [
+              "-0x1p-3000,1e-500"
+            ],
+            "token": [
+              "private-test-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "fetched",
+        "failureKind": "",
+        "output": {
+          "areaCode": "WTX_CH101300201",
+          "observedAt": "20240911135031",
+          "relativeHumidityPercent": 95,
+          "surfacePressureHpa": 986.7,
+          "temperatureCelsius": 26.7,
+          "weather": "阴",
+          "weatherCode": "02",
+          "windDirection": "东北风",
+          "windForce": "3级"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "-0x1p-3000,1e-500"
+      },
+      "name": "getCurrentWeather-underflow",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "dd8ebd22-12da-5095-9873-c149699ad318",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "areaCode": "",
+          "observedAt": "",
+          "relativeHumidityPercent": 0,
+          "surfacePressureHpa": 0,
+          "temperatureCelsius": 0,
+          "weather": "",
+          "weatherCode": "",
+          "windDirection": "",
+          "windForce": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "180.01,0"
+      },
+      "name": "getCurrentWeather-range",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "80677ba5-e623-5de2-86e8-3158684849a1",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "areaCode": "",
+          "observedAt": "",
+          "relativeHumidityPercent": 0,
+          "surfacePressureHpa": 0,
+          "temperatureCelsius": 0,
+          "weather": "",
+          "weatherCode": "",
+          "windDirection": "",
+          "windForce": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "15,-91"
+      },
+      "name": "getCurrentWeather-overLat",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "843e25c4-e884-5c67-8694-2cb40b76c25d",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "areaCode": "",
+          "observedAt": "",
+          "relativeHumidityPercent": 0,
+          "surfacePressureHpa": 0,
+          "temperatureCelsius": 0,
+          "weather": "",
+          "weatherCode": "",
+          "windDirection": "",
+          "windForce": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "0x1p+10000,0"
+      },
+      "name": "getCurrentWeather-hexOverflow",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "083a64b3-d254-5d05-9fce-89f745e78904",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "areaCode": "",
+          "observedAt": "",
+          "relativeHumidityPercent": 0,
+          "surfacePressureHpa": 0,
+          "temperatureCelsius": 0,
+          "weather": "",
+          "weatherCode": "",
+          "windDirection": "",
+          "windForce": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "2, 3"
+      },
+      "name": "getCurrentWeather-internalSpace",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "f60f67be-76a0-5018-a2ee-aac718cd484d",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "areaCode": "",
+          "observedAt": "",
+          "relativeHumidityPercent": 0,
+          "surfacePressureHpa": 0,
+          "temperatureCelsius": 0,
+          "weather": "",
+          "weatherCode": "",
+          "windDirection": "",
+          "windForce": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "2,"
+      },
+      "name": "getCurrentWeather-missingPart",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "5008232c-3522-5305-813b-4dc066e30300",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "areaCode": "",
+          "observedAt": "",
+          "relativeHumidityPercent": 0,
+          "surfacePressureHpa": 0,
+          "temperatureCelsius": 0,
+          "weather": "",
+          "weatherCode": "",
+          "windDirection": "",
+          "windForce": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "2,3,4"
+      },
+      "name": "getCurrentWeather-extraPart",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "2cf20394-be38-536d-8705-4ef1c2b3528f",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "areaCode": "",
+          "observedAt": "",
+          "relativeHumidityPercent": 0,
+          "surfacePressureHpa": 0,
+          "temperatureCelsius": 0,
+          "weather": "",
+          "weatherCode": "",
+          "windDirection": "",
+          "windForce": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "NaN,0"
+      },
+      "name": "getCurrentWeather-infinite",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "c35df881-61ef-5951-8861-b661d27470e4",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "areaCode": "",
+          "observedAt": "",
+          "relativeHumidityPercent": 0,
+          "surfacePressureHpa": 0,
+          "temperatureCelsius": 0,
+          "weather": "",
+          "weatherCode": "",
+          "windDirection": "",
+          "windForce": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "WTX_CH123"
+      },
+      "name": "getCurrentWeather-badArea",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "d2902085-dee5-559b-89fb-0213b6ff358b",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "areaCode": "",
+          "observedAt": "",
+          "relativeHumidityPercent": 0,
+          "surfacePressureHpa": 0,
+          "temperatureCelsius": 0,
+          "weather": "",
+          "weatherCode": "",
+          "windDirection": "",
+          "windForce": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "WTX_CH１２３４５６７８９"
+      },
+      "name": "getCurrentWeather-unicodeDigit",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "fde29986-3c06-5176-9420-80a704a47430",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "areaCode": "",
+          "observedAt": "",
+          "relativeHumidityPercent": 0,
+          "surfacePressureHpa": 0,
+          "temperatureCelsius": 0,
+          "weather": "",
+          "weatherCode": "",
+          "windDirection": "",
+          "windForce": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "0b10,3"
+      },
+      "name": "getCurrentWeather-binary",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "e914fede-2f70-5355-b04d-7a42a62d8cb7",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "areaCode": "",
+          "observedAt": "",
+          "relativeHumidityPercent": 0,
+          "surfacePressureHpa": 0,
+          "temperatureCelsius": 0,
+          "weather": "",
+          "weatherCode": "",
+          "windDirection": "",
+          "windForce": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "0x_.9p1,0"
+      },
+      "name": "getCurrentWeather-badUnderscore",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "4cfb1573-2f14-5ee2-9040-ec8de05dd555",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "areaCode": "",
+          "observedAt": "",
+          "relativeHumidityPercent": 0,
+          "surfacePressureHpa": 0,
+          "temperatureCelsius": 0,
+          "weather": "",
+          "weatherCode": "",
+          "windDirection": "",
+          "windForce": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "WTX_CH101300201"
+      },
+      "name": "getCurrentWeather-missingCredential",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "e8768d84-2ca1-5f01-b275-38bff3e0dccd",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {
+            "Retry-After": "9"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/cn/area/basic",
+          "query": {
+            "location": [
+              "WTX_CH101300201"
+            ],
+            "token": [
+              "private-test-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "areaCode": "",
+          "observedAt": "",
+          "relativeHumidityPercent": 0,
+          "surfacePressureHpa": 0,
+          "temperatureCelsius": 0,
+          "weather": "",
+          "weatherCode": "",
+          "windDirection": "",
+          "windForce": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "WTX_CH101300201"
+      },
+      "name": "getCurrentWeather-denied",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "01536e01-d9e3-5cb7-94f0-d1a46e064114",
+      "exchanges": [
+        {
+          "body": "\u003chtml\u003e",
+          "headers": {
+            "Retry-After": "9"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/cn/area/basic",
+          "query": {
+            "location": [
+              "WTX_CH101300201"
+            ],
+            "token": [
+              "private-test-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "areaCode": "",
+          "observedAt": "",
+          "relativeHumidityPercent": 0,
+          "surfacePressureHpa": 0,
+          "temperatureCelsius": 0,
+          "weather": "",
+          "weatherCode": "",
+          "windDirection": "",
+          "windForce": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "WTX_CH101300201"
+      },
+      "name": "getCurrentWeather-otherHTTP",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "38af99c0-ad86-5621-b627-9f47d833488e",
+      "exchanges": [
+        {
+          "body": "{\"date\":{\"timeZone\":\"Asia/Shanghai\",\"time\":\"20240911135031\"},\"result\":{\"wd_desc\":\"东北风\",\"prs\":986.7,\"rh\":95,\"ws_desc\":\"3级\",\"wp\":\"阴\",\"tem\":26.7,\"wp_code\":\"02\"},\"location\":{\"path\":\"广西壮族自治区,崇左市,崇左\",\"areaCode\":\"WTX_CH101300201\"},\"version\":\"v1\",\"status\":0}",
+          "headers": {
+            "Retry-After": "9"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/cn/area/basic",
+          "query": {
+            "location": [
+              "WTX_CH101300201"
+            ],
+            "token": [
+              "private-test-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 408
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 9000,
+        "uncertain": false
+      },
+      "input": {
+        "location": "WTX_CH101300201"
+      },
+      "name": "getCurrentWeather-timeout",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "552631c9-fd70-5022-821b-a12383b5e490",
+      "exchanges": [
+        {
+          "body": "{\"date\":{\"timeZone\":\"Asia/Shanghai\",\"time\":\"20240911135031\"},\"result\":{\"wd_desc\":\"东北风\",\"prs\":986.7,\"rh\":95,\"ws_desc\":\"3级\",\"wp\":\"阴\",\"tem\":26.7,\"wp_code\":\"02\"},\"location\":{\"path\":\"广西壮族自治区,崇左市,崇左\",\"areaCode\":\"WTX_CH101300201\"},\"version\":\"v1\",\"status\":0}",
+          "headers": {
+            "Retry-After": "9"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/cn/area/basic",
+          "query": {
+            "location": [
+              "WTX_CH101300201"
+            ],
+            "token": [
+              "private-test-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 9000,
+        "uncertain": false
+      },
+      "input": {
+        "location": "WTX_CH101300201"
+      },
+      "name": "getCurrentWeather-rate-smallLimit",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "17eade84-ca81-5a37-b402-613fca5cd079",
+      "exchanges": [
+        {
+          "body": "{\"date\":{\"timeZone\":\"Asia/Shanghai\",\"time\":\"20240911135031\"},\"result\":{\"wd_desc\":\"东北风\",\"prs\":986.7,\"rh\":95,\"ws_desc\":\"3级\",\"wp\":\"阴\",\"tem\":26.7,\"wp_code\":\"02\"},\"location\":{\"path\":\"广西壮族自治区,崇左市,崇左\",\"areaCode\":\"WTX_CH101300201\"},\"version\":\"v1\",\"status\":0}",
+          "headers": {
+            "Retry-After": "9"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/cn/area/basic",
+          "query": {
+            "location": [
+              "WTX_CH101300201"
+            ],
+            "token": [
+              "private-test-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 9000,
+        "uncertain": false
+      },
+      "input": {
+        "location": "WTX_CH101300201"
+      },
+      "name": "getCurrentWeather-unavailable-smallLimit",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "89ad3853-372e-5cff-be04-d0f41a598269",
+      "exchanges": [
+        {
+          "body": "{\"date\":{\"timeZone\":\"Asia/Shanghai\",\"time\":\"20240911135031\"},\"result\":{\"wd_desc\":\"东北风\",\"prs\":986.7,\"rh\":95,\"ws_desc\":\"3级\",\"wp\":\"阴\",\"tem\":26.7,\"wp_code\":\"02\"},\"location\":{\"path\":\"广西壮族自治区,崇左市,崇左\",\"areaCode\":\"WTX_CH101300201\"},\"version\":\"v1\",\"status\":0}",
+          "headers": {
+            "Retry-After": "9"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/cn/area/basic",
+          "query": {
+            "location": [
+              "WTX_CH101300201"
+            ],
+            "token": [
+              "private-test-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "areaCode": "",
+          "observedAt": "",
+          "relativeHumidityPercent": 0,
+          "surfacePressureHpa": 0,
+          "temperatureCelsius": 0,
+          "weather": "",
+          "weatherCode": "",
+          "windDirection": "",
+          "windForce": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "WTX_CH101300201"
+      },
+      "name": "getCurrentWeather-error-smallLimit",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "1f1f3559-35ba-583e-b418-5c2bb2c6783c",
+      "exchanges": [
+        {
+          "body": "{\"date\":{\"timeZone\":\"Asia/Shanghai\",\"time\":\"20240911135031\"},\"result\":{\"wd_desc\":\"东北风\",\"prs\":986.7,\"rh\":95,\"ws_desc\":\"3级\",\"wp\":\"阴\",\"tem\":26.7,\"wp_code\":\"02\"},\"location\":{\"path\":\"广西壮族自治区,崇左市,崇左\",\"areaCode\":\"WTX_CH101300201\"},\"version\":\"v1\",\"status\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/cn/area/basic",
+          "query": {
+            "location": [
+              "WTX_CH101300201"
+            ],
+            "token": [
+              "private-test-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "areaCode": "",
+          "observedAt": "",
+          "relativeHumidityPercent": 0,
+          "surfacePressureHpa": 0,
+          "temperatureCelsius": 0,
+          "weather": "",
+          "weatherCode": "",
+          "windDirection": "",
+          "windForce": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "WTX_CH101300201"
+      },
+      "name": "getCurrentWeather-weather-smallLimit",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "a3013cf3-511a-56f8-9f2b-6911ecd08606",
+      "exchanges": [
+        {
+          "body": "{\"status\":7}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/cn/area/basic",
+          "query": {
+            "location": [
+              "WTX_CH101300201"
+            ],
+            "token": [
+              "private-test-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "areaCode": "",
+          "observedAt": "",
+          "relativeHumidityPercent": 0,
+          "surfacePressureHpa": 0,
+          "temperatureCelsius": 0,
+          "weather": "",
+          "weatherCode": "",
+          "windDirection": "",
+          "windForce": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "WTX_CH101300201"
+      },
+      "name": "getCurrentWeather-business",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "bfbcfb89-a21d-5e59-be5b-bd719a6ee627",
+      "exchanges": [
+        {
+          "body": "{\"status\":7,\"result\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/cn/area/basic",
+          "query": {
+            "location": [
+              "WTX_CH101300201"
+            ],
+            "token": [
+              "private-test-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "areaCode": "",
+          "observedAt": "",
+          "relativeHumidityPercent": 0,
+          "surfacePressureHpa": 0,
+          "temperatureCelsius": 0,
+          "weather": "",
+          "weatherCode": "",
+          "windDirection": "",
+          "windForce": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "WTX_CH101300201"
+      },
+      "name": "getCurrentWeather-rejectionWithBadResult",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "189bdc42-5404-5646-ae38-68bfb122a5b6",
+      "exchanges": [
+        {
+          "body": "{\"status\":7,\"result\":{\"wp\":2}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/cn/area/basic",
+          "query": {
+            "location": [
+              "WTX_CH101300201"
+            ],
+            "token": [
+              "private-test-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "areaCode": "",
+          "observedAt": "",
+          "relativeHumidityPercent": 0,
+          "surfacePressureHpa": 0,
+          "temperatureCelsius": 0,
+          "weather": "",
+          "weatherCode": "",
+          "windDirection": "",
+          "windForce": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "WTX_CH101300201"
+      },
+      "name": "getCurrentWeather-rejectionWithWrongField",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "05fc89ae-a9ba-5bc4-b913-570ad3b9540e",
+      "exchanges": [
+        {
+          "body": "{\"status\":7,\"result\":{\"tem\":1e400}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/cn/area/basic",
+          "query": {
+            "location": [
+              "WTX_CH101300201"
+            ],
+            "token": [
+              "private-test-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "areaCode": "",
+          "observedAt": "",
+          "relativeHumidityPercent": 0,
+          "surfacePressureHpa": 0,
+          "temperatureCelsius": 0,
+          "weather": "",
+          "weatherCode": "",
+          "windDirection": "",
+          "windForce": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "WTX_CH101300201"
+      },
+      "name": "getCurrentWeather-rejectionWithWrongFloat",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "0ccc268e-5336-5d97-8670-ba611893037f",
+      "exchanges": [
+        {
+          "body": "{\"status\":7,\"result\":null,\"date\":null,\"location\":null}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/cn/area/basic",
+          "query": {
+            "location": [
+              "WTX_CH101300201"
+            ],
+            "token": [
+              "private-test-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "areaCode": "",
+          "observedAt": "",
+          "relativeHumidityPercent": 0,
+          "surfacePressureHpa": 0,
+          "temperatureCelsius": 0,
+          "weather": "",
+          "weatherCode": "",
+          "windDirection": "",
+          "windForce": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "WTX_CH101300201"
+      },
+      "name": "getCurrentWeather-rejectionNulls",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "3ef18fb6-fead-5bfa-8b91-2c43c9dc2732",
+      "exchanges": [
+        {
+          "body": "{\"status\":9223372036854775808}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/cn/area/basic",
+          "query": {
+            "location": [
+              "WTX_CH101300201"
+            ],
+            "token": [
+              "private-test-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "areaCode": "",
+          "observedAt": "",
+          "relativeHumidityPercent": 0,
+          "surfacePressureHpa": 0,
+          "temperatureCelsius": 0,
+          "weather": "",
+          "weatherCode": "",
+          "windDirection": "",
+          "windForce": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "WTX_CH101300201"
+      },
+      "name": "getCurrentWeather-outOfRangeStatus",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "4d334b48-f172-5a46-8e1b-b603bc8974ee",
+      "exchanges": [
+        {
+          "body": "{\"status\":9223372036854775807}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/cn/area/basic",
+          "query": {
+            "location": [
+              "WTX_CH101300201"
+            ],
+            "token": [
+              "private-test-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "areaCode": "",
+          "observedAt": "",
+          "relativeHumidityPercent": 0,
+          "surfacePressureHpa": 0,
+          "temperatureCelsius": 0,
+          "weather": "",
+          "weatherCode": "",
+          "windDirection": "",
+          "windForce": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "WTX_CH101300201"
+      },
+      "name": "getCurrentWeather-maxStatus",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "58ba0bd1-7c42-54b8-b259-19eb9cfc412a",
+      "exchanges": [
+        {
+          "body": "{\"status\":7.0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/cn/area/basic",
+          "query": {
+            "location": [
+              "WTX_CH101300201"
+            ],
+            "token": [
+              "private-test-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "areaCode": "",
+          "observedAt": "",
+          "relativeHumidityPercent": 0,
+          "surfacePressureHpa": 0,
+          "temperatureCelsius": 0,
+          "weather": "",
+          "weatherCode": "",
+          "windDirection": "",
+          "windForce": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "WTX_CH101300201"
+      },
+      "name": "getCurrentWeather-fractionalStatus",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "89f1caa4-d8ac-5572-b071-98c0a650c2e9",
+      "exchanges": [
+        {
+          "body": "{\"status\":7e0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/cn/area/basic",
+          "query": {
+            "location": [
+              "WTX_CH101300201"
+            ],
+            "token": [
+              "private-test-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "areaCode": "",
+          "observedAt": "",
+          "relativeHumidityPercent": 0,
+          "surfacePressureHpa": 0,
+          "temperatureCelsius": 0,
+          "weather": "",
+          "weatherCode": "",
+          "windDirection": "",
+          "windForce": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "WTX_CH101300201"
+      },
+      "name": "getCurrentWeather-scientificStatus",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "cdb2d4aa-a23d-5d7b-8e76-1c36369fccdf",
+      "exchanges": [
+        {
+          "body": "{\"date\": {\"timeZone\": \"Asia/Shanghai\", \"time\": \"20240911135031\"}, \"result\": {\"wd_desc\": \"\\u4e1c\\u5317\\u98ce\", \"prs\": 986.7, \"rh\": 95, \"ws_desc\": \"3\\u7ea7\", \"wp\": \"\\u9634\", \"tem\": 26.7, \"wp_code\": \"02\"}, \"location\": {\"path\": \"\\u5e7f\\u897f\\u58ee\\u65cf\\u81ea\\u6cbb\\u533a,\\u5d07\\u5de6\\u5e02,\\u5d07\\u5de6\", \"areaCode\": \"WTX_CH101300201\"}, \"version\": \"v1\", \"status\": 0}{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/cn/area/basic",
+          "query": {
+            "location": [
+              "WTX_CH101300201"
+            ],
+            "token": [
+              "private-test-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "areaCode": "",
+          "observedAt": "",
+          "relativeHumidityPercent": 0,
+          "surfacePressureHpa": 0,
+          "temperatureCelsius": 0,
+          "weather": "",
+          "weatherCode": "",
+          "windDirection": "",
+          "windForce": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "WTX_CH101300201"
+      },
+      "name": "getCurrentWeather-trailingJSON",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "a337216a-76c2-5e49-ad68-7e8c02b0c440",
+      "exchanges": [
+        {
+          "body": "﻿{\"date\": {\"timeZone\": \"Asia/Shanghai\", \"time\": \"20240911135031\"}, \"result\": {\"wd_desc\": \"\\u4e1c\\u5317\\u98ce\", \"prs\": 986.7, \"rh\": 95, \"ws_desc\": \"3\\u7ea7\", \"wp\": \"\\u9634\", \"tem\": 26.7, \"wp_code\": \"02\"}, \"location\": {\"path\": \"\\u5e7f\\u897f\\u58ee\\u65cf\\u81ea\\u6cbb\\u533a,\\u5d07\\u5de6\\u5e02,\\u5d07\\u5de6\", \"areaCode\": \"WTX_CH101300201\"}, \"version\": \"v1\", \"status\": 0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/cn/area/basic",
+          "query": {
+            "location": [
+              "WTX_CH101300201"
+            ],
+            "token": [
+              "private-test-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "areaCode": "",
+          "observedAt": "",
+          "relativeHumidityPercent": 0,
+          "surfacePressureHpa": 0,
+          "temperatureCelsius": 0,
+          "weather": "",
+          "weatherCode": "",
+          "windDirection": "",
+          "windForce": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "WTX_CH101300201"
+      },
+      "name": "getCurrentWeather-bom",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "fb20a2a8-d484-5669-8118-4886c54fef4b",
+      "exchanges": [
+        {
+          "body": "{\"date\":{\"timeZone\":\"Asia/Shanghai\",\"time\":\"20240911135031\"},\"result\":{\"wd_desc\":\"东北风\",\"prs\":986.7,\"rh\":95,\"ws_desc\":\"3级\",\"wp\":\"阴\",\"wp_code\":\"02\"},\"location\":{\"path\":\"广西壮族自治区,崇左市,崇左\",\"areaCode\":\"WTX_CH101300201\"},\"version\":\"v1\",\"status\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/cn/area/basic",
+          "query": {
+            "location": [
+              "WTX_CH101300201"
+            ],
+            "token": [
+              "private-test-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "fetched",
+        "failureKind": "",
+        "output": {
+          "areaCode": "WTX_CH101300201",
+          "observedAt": "20240911135031",
+          "relativeHumidityPercent": 95,
+          "surfacePressureHpa": 986.7,
+          "temperatureCelsius": 0,
+          "weather": "阴",
+          "weatherCode": "02",
+          "windDirection": "东北风",
+          "windForce": "3级"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "WTX_CH101300201"
+      },
+      "name": "getCurrentWeather-missingTemperature",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "0e69fa25-fcfb-59a4-a795-c2d936f3f8fd",
+      "exchanges": [
+        {
+          "body": "{\"date\":{\"timeZone\":\"Asia/Shanghai\",\"time\":\"20240911135031\"},\"result\":{\"wd_desc\":\"东北风\",\"prs\":986.7,\"rh\":95,\"ws_desc\":\"3级\",\"wp\":\"阴\",\"tem\":null,\"wp_code\":\"02\"},\"location\":{\"path\":\"广西壮族自治区,崇左市,崇左\",\"areaCode\":\"WTX_CH101300201\"},\"version\":\"v1\",\"status\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/cn/area/basic",
+          "query": {
+            "location": [
+              "WTX_CH101300201"
+            ],
+            "token": [
+              "private-test-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "fetched",
+        "failureKind": "",
+        "output": {
+          "areaCode": "WTX_CH101300201",
+          "observedAt": "20240911135031",
+          "relativeHumidityPercent": 95,
+          "surfacePressureHpa": 986.7,
+          "temperatureCelsius": 0,
+          "weather": "阴",
+          "weatherCode": "02",
+          "windDirection": "东北风",
+          "windForce": "3级"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "WTX_CH101300201"
+      },
+      "name": "getCurrentWeather-nullTemperature",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "d6d2c084-4bcc-5190-93b0-35c4b847b459",
+      "exchanges": [
+        {
+          "body": "{\"date\":{\"timeZone\":\"Asia/Shanghai\",\"time\":\"20240911135031\"},\"result\":{\"wd_desc\":\"东北风\",\"prs\":986.7,\"rh\":95,\"ws_desc\":\"3级\",\"wp\":\"阴\",\"tem\":-5.125,\"wp_code\":\"02\"},\"location\":{\"path\":\"广西壮族自治区,崇左市,崇左\",\"areaCode\":\"WTX_CH101300201\"},\"version\":\"v1\",\"status\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/cn/area/basic",
+          "query": {
+            "location": [
+              "WTX_CH101300201"
+            ],
+            "token": [
+              "private-test-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "fetched",
+        "failureKind": "",
+        "output": {
+          "areaCode": "WTX_CH101300201",
+          "observedAt": "20240911135031",
+          "relativeHumidityPercent": 95,
+          "surfacePressureHpa": 986.7,
+          "temperatureCelsius": -5.125,
+          "weather": "阴",
+          "weatherCode": "02",
+          "windDirection": "东北风",
+          "windForce": "3级"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "WTX_CH101300201"
+      },
+      "name": "getCurrentWeather-fractionalTemp",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "8cf18d25-094a-501e-ab1c-917f32bd6419",
+      "exchanges": [
+        {
+          "body": "{\"date\":{\"timeZone\":\"Asia/Shanghai\",\"time\":\"20240911135031\"},\"result\":{\"wd_desc\":\"东北风\",\"prs\":986.7,\"rh\":95,\"ws_desc\":\"3级\",\"wp\":\"阴\",\"tem\":\"7.1\",\"wp_code\":\"02\"},\"location\":{\"path\":\"广西壮族自治区,崇左市,崇左\",\"areaCode\":\"WTX_CH101300201\"},\"version\":\"v1\",\"status\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/cn/area/basic",
+          "query": {
+            "location": [
+              "WTX_CH101300201"
+            ],
+            "token": [
+              "private-test-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "areaCode": "",
+          "observedAt": "",
+          "relativeHumidityPercent": 0,
+          "surfacePressureHpa": 0,
+          "temperatureCelsius": 0,
+          "weather": "",
+          "weatherCode": "",
+          "windDirection": "",
+          "windForce": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "WTX_CH101300201"
+      },
+      "name": "getCurrentWeather-numericString",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "b090b52b-f97c-5a6f-b954-7468f124f397",
+      "exchanges": [
+        {
+          "body": "{\"date\":{\"timeZone\":\"Asia/Shanghai\",\"time\":\"20240911135031\"},\"result\":{\"wd_desc\":\"东北风\",\"prs\":986.7,\"rh\":95,\"ws_desc\":\"3级\",\"wp\":\"阴\",\"tem\":26.7,\"wp_code\":\"02\"},\"location\":null,\"version\":\"v1\",\"status\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/cn/area/basic",
+          "query": {
+            "location": [
+              "WTX_CH101300201"
+            ],
+            "token": [
+              "private-test-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "fetched",
+        "failureKind": "",
+        "output": {
+          "areaCode": "",
+          "observedAt": "20240911135031",
+          "relativeHumidityPercent": 95,
+          "surfacePressureHpa": 986.7,
+          "temperatureCelsius": 26.7,
+          "weather": "阴",
+          "weatherCode": "02",
+          "windDirection": "东北风",
+          "windForce": "3级"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "WTX_CH101300201"
+      },
+      "name": "getCurrentWeather-nullPlace",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "30fcdbe7-cbc0-57da-9b73-7c6fec2ca460",
+      "exchanges": [
+        {
+          "body": "{\"date\":{\"timeZone\":\"Asia/Shanghai\",\"time\":\"20240911135031\"},\"result\":{\"wd_desc\":\"东北风\",\"prs\":986.7,\"rh\":95,\"ws_desc\":\"3级\",\"wp\":\"阴\",\"tem\":26.7,\"wp_code\":\"02\"},\"version\":\"v1\",\"status\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/cn/area/basic",
+          "query": {
+            "location": [
+              "WTX_CH101300201"
+            ],
+            "token": [
+              "private-test-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "fetched",
+        "failureKind": "",
+        "output": {
+          "areaCode": "",
+          "observedAt": "20240911135031",
+          "relativeHumidityPercent": 95,
+          "surfacePressureHpa": 986.7,
+          "temperatureCelsius": 26.7,
+          "weather": "阴",
+          "weatherCode": "02",
+          "windDirection": "东北风",
+          "windForce": "3级"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "WTX_CH101300201"
+      },
+      "name": "getCurrentWeather-missingPlace",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "3d99707d-6cb2-5195-af6a-ee4cabd0735a",
+      "exchanges": [
+        {
+          "body": "{\"date\":{\"timeZone\":\"Asia/Shanghai\",\"time\":\"20240911135031\"},\"result\":{\"wd_desc\":\"东北风\",\"prs\":986.7,\"rh\":95,\"ws_desc\":\"3级\",\"wp\":\"阴\",\"tem\":26.7,\"wp_code\":\"02\"},\"location\":{\"path\":\"广西壮族自治区,崇左市,崇左\",\"areaCode\":7},\"version\":\"v1\",\"status\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/cn/area/basic",
+          "query": {
+            "location": [
+              "WTX_CH101300201"
+            ],
+            "token": [
+              "private-test-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "areaCode": "",
+          "observedAt": "",
+          "relativeHumidityPercent": 0,
+          "surfacePressureHpa": 0,
+          "temperatureCelsius": 0,
+          "weather": "",
+          "weatherCode": "",
+          "windDirection": "",
+          "windForce": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "WTX_CH101300201"
+      },
+      "name": "getCurrentWeather-numberArea",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "b9e5014e-83ca-59c7-b8bc-efa4eb14992f",
+      "exchanges": [
+        {
+          "body": "{\"date\":{\"timeZone\":\"Asia/Shanghai\",\"time\":\"20240911135031\"},\"result\":{\"wd_desc\":\"东北风\",\"prs\":986.7,\"rh\":0,\"ws_desc\":\"3级\",\"wp\":\"阴\",\"tem\":26.7,\"wp_code\":\"02\"},\"location\":{\"path\":\"广西壮族自治区,崇左市,崇左\",\"areaCode\":\"WTX_CH101300201\"},\"version\":\"v1\",\"status\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/cn/area/basic",
+          "query": {
+            "location": [
+              "WTX_CH101300201"
+            ],
+            "token": [
+              "private-test-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "fetched",
+        "failureKind": "",
+        "output": {
+          "areaCode": "WTX_CH101300201",
+          "observedAt": "20240911135031",
+          "relativeHumidityPercent": 0,
+          "surfacePressureHpa": 986.7,
+          "temperatureCelsius": 26.7,
+          "weather": "阴",
+          "weatherCode": "02",
+          "windDirection": "东北风",
+          "windForce": "3级"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "WTX_CH101300201"
+      },
+      "name": "getCurrentWeather-lowHumidity",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "4d269d67-176f-52c5-872a-5a3c1663d65a",
+      "exchanges": [
+        {
+          "body": "{\"date\":{\"timeZone\":\"Asia/Shanghai\",\"time\":\"20240911135031\"},\"result\":{\"wd_desc\":\"东北风\",\"prs\":986.7,\"rh\":100,\"ws_desc\":\"3级\",\"wp\":\"阴\",\"tem\":26.7,\"wp_code\":\"02\"},\"location\":{\"path\":\"广西壮族自治区,崇左市,崇左\",\"areaCode\":\"WTX_CH101300201\"},\"version\":\"v1\",\"status\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/cn/area/basic",
+          "query": {
+            "location": [
+              "WTX_CH101300201"
+            ],
+            "token": [
+              "private-test-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "fetched",
+        "failureKind": "",
+        "output": {
+          "areaCode": "WTX_CH101300201",
+          "observedAt": "20240911135031",
+          "relativeHumidityPercent": 100,
+          "surfacePressureHpa": 986.7,
+          "temperatureCelsius": 26.7,
+          "weather": "阴",
+          "weatherCode": "02",
+          "windDirection": "东北风",
+          "windForce": "3级"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "WTX_CH101300201"
+      },
+      "name": "getCurrentWeather-fullHumidity",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "651a9255-d116-50e9-8bce-5cb2951aadbf",
+      "exchanges": [
+        {
+          "body": "{\"date\":{\"timeZone\":\"Asia/Shanghai\",\"time\":\"20240911135031\"},\"result\":{\"wd_desc\":\"东北风\",\"prs\":986.7,\"rh\":101,\"ws_desc\":\"3级\",\"wp\":\"阴\",\"tem\":26.7,\"wp_code\":\"02\"},\"location\":{\"path\":\"广西壮族自治区,崇左市,崇左\",\"areaCode\":\"WTX_CH101300201\"},\"version\":\"v1\",\"status\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/cn/area/basic",
+          "query": {
+            "location": [
+              "WTX_CH101300201"
+            ],
+            "token": [
+              "private-test-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "areaCode": "",
+          "observedAt": "",
+          "relativeHumidityPercent": 0,
+          "surfacePressureHpa": 0,
+          "temperatureCelsius": 0,
+          "weather": "",
+          "weatherCode": "",
+          "windDirection": "",
+          "windForce": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "WTX_CH101300201"
+      },
+      "name": "getCurrentWeather-overHumidity",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "b28c44c2-05db-56cc-a75f-bebe1651df8e",
+      "exchanges": [
+        {
+          "body": "{\"date\":{\"timeZone\":\"Asia/Shanghai\",\"time\":\"20240911135031\"},\"result\":{\"wd_desc\":\"东北风\",\"prs\":986.7,\"ws_desc\":\"3级\",\"wp\":\"阴\",\"tem\":26.7,\"wp_code\":\"02\"},\"location\":{\"path\":\"广西壮族自治区,崇左市,崇左\",\"areaCode\":\"WTX_CH101300201\"},\"version\":\"v1\",\"status\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/cn/area/basic",
+          "query": {
+            "location": [
+              "WTX_CH101300201"
+            ],
+            "token": [
+              "private-test-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "areaCode": "",
+          "observedAt": "",
+          "relativeHumidityPercent": 0,
+          "surfacePressureHpa": 0,
+          "temperatureCelsius": 0,
+          "weather": "",
+          "weatherCode": "",
+          "windDirection": "",
+          "windForce": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "WTX_CH101300201"
+      },
+      "name": "getCurrentWeather-missingHumidity",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "4a053f5c-a8b4-5ab7-b757-2a4cd510fe02",
+      "exchanges": [
+        {
+          "body": "{\"date\":{\"timeZone\":\"Asia/Shanghai\",\"time\":\"20240911135031\"},\"result\":{\"wd_desc\":\"东北风\",\"prs\":986.7,\"rh\":12.5,\"ws_desc\":\"3级\",\"wp\":\"阴\",\"tem\":26.7,\"wp_code\":\"02\"},\"location\":{\"path\":\"广西壮族自治区,崇左市,崇左\",\"areaCode\":\"WTX_CH101300201\"},\"version\":\"v1\",\"status\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/cn/area/basic",
+          "query": {
+            "location": [
+              "WTX_CH101300201"
+            ],
+            "token": [
+              "private-test-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "areaCode": "",
+          "observedAt": "",
+          "relativeHumidityPercent": 0,
+          "surfacePressureHpa": 0,
+          "temperatureCelsius": 0,
+          "weather": "",
+          "weatherCode": "",
+          "windDirection": "",
+          "windForce": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "WTX_CH101300201"
+      },
+      "name": "getCurrentWeather-fractionHumidity",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "0405413f-a56c-5778-95ce-2b70e37855f1",
+      "exchanges": [
+        {
+          "body": "{\"date\":{\"timeZone\":\"Asia/Shanghai\",\"time\":\"20240911135031\"},\"result\":{\"wd_desc\":\"东北风\",\"prs\":986.7,\"rh\":true,\"ws_desc\":\"3级\",\"wp\":\"阴\",\"tem\":26.7,\"wp_code\":\"02\"},\"location\":{\"path\":\"广西壮族自治区,崇左市,崇左\",\"areaCode\":\"WTX_CH101300201\"},\"version\":\"v1\",\"status\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/cn/area/basic",
+          "query": {
+            "location": [
+              "WTX_CH101300201"
+            ],
+            "token": [
+              "private-test-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "areaCode": "",
+          "observedAt": "",
+          "relativeHumidityPercent": 0,
+          "surfacePressureHpa": 0,
+          "temperatureCelsius": 0,
+          "weather": "",
+          "weatherCode": "",
+          "windDirection": "",
+          "windForce": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "WTX_CH101300201"
+      },
+      "name": "getCurrentWeather-boolHumidity",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "5d0cd335-1b87-5175-930f-585f84adcfb3",
+      "exchanges": [
+        {
+          "body": "{\"date\":{\"timeZone\":\"Asia/Shanghai\",\"time\":\"20240911135031\"},\"result\":{\"wd_desc\":\"东北风\",\"prs\":0,\"rh\":95,\"ws_desc\":\"3级\",\"wp\":\"阴\",\"tem\":26.7,\"wp_code\":\"02\"},\"location\":{\"path\":\"广西壮族自治区,崇左市,崇左\",\"areaCode\":\"WTX_CH101300201\"},\"version\":\"v1\",\"status\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/cn/area/basic",
+          "query": {
+            "location": [
+              "WTX_CH101300201"
+            ],
+            "token": [
+              "private-test-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "areaCode": "",
+          "observedAt": "",
+          "relativeHumidityPercent": 0,
+          "surfacePressureHpa": 0,
+          "temperatureCelsius": 0,
+          "weather": "",
+          "weatherCode": "",
+          "windDirection": "",
+          "windForce": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "WTX_CH101300201"
+      },
+      "name": "getCurrentWeather-zeroPressure",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "a6830a0d-c244-5db6-9c1c-42b16bb5ce02",
+      "exchanges": [
+        {
+          "body": "{\"date\":{\"timeZone\":\"Asia/Shanghai\",\"time\":\"20240911135031\"},\"result\":{\"wd_desc\":\"东北风\",\"prs\":-4,\"rh\":95,\"ws_desc\":\"3级\",\"wp\":\"阴\",\"tem\":26.7,\"wp_code\":\"02\"},\"location\":{\"path\":\"广西壮族自治区,崇左市,崇左\",\"areaCode\":\"WTX_CH101300201\"},\"version\":\"v1\",\"status\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/cn/area/basic",
+          "query": {
+            "location": [
+              "WTX_CH101300201"
+            ],
+            "token": [
+              "private-test-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "areaCode": "",
+          "observedAt": "",
+          "relativeHumidityPercent": 0,
+          "surfacePressureHpa": 0,
+          "temperatureCelsius": 0,
+          "weather": "",
+          "weatherCode": "",
+          "windDirection": "",
+          "windForce": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "WTX_CH101300201"
+      },
+      "name": "getCurrentWeather-negativePressure",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "0b4f42a2-0ec2-56d7-ac45-0be72b39f462",
+      "exchanges": [
+        {
+          "body": "{\"date\":{\"timeZone\":\"Asia/Shanghai\",\"time\":\"20240911135031\"},\"result\":{\"wd_desc\":\"\",\"prs\":986.7,\"rh\":95,\"ws_desc\":\"3级\",\"wp\":\"阴\",\"tem\":26.7,\"wp_code\":\"02\"},\"location\":{\"path\":\"广西壮族自治区,崇左市,崇左\",\"areaCode\":\"WTX_CH101300201\"},\"version\":\"v1\",\"status\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/cn/area/basic",
+          "query": {
+            "location": [
+              "WTX_CH101300201"
+            ],
+            "token": [
+              "private-test-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "areaCode": "",
+          "observedAt": "",
+          "relativeHumidityPercent": 0,
+          "surfacePressureHpa": 0,
+          "temperatureCelsius": 0,
+          "weather": "",
+          "weatherCode": "",
+          "windDirection": "",
+          "windForce": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "WTX_CH101300201"
+      },
+      "name": "getCurrentWeather-missingDirection",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "db397607-db58-5a1e-a7ff-62446ae72a19",
+      "exchanges": [
+        {
+          "body": "{\"date\":{\"timeZone\":\"Asia/Shanghai\",\"time\":\"20240911135031\"},\"result\":{\"wd_desc\":\"东北风\",\"prs\":986.7,\"rh\":95,\"ws_desc\":\"3级\",\"wp\":\"weather private-test-token\",\"tem\":26.7,\"wp_code\":\"02\"},\"location\":{\"path\":\"广西壮族自治区,崇左市,崇左\",\"areaCode\":\"WTX_CH101300201\"},\"version\":\"v1\",\"status\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/cn/area/basic",
+          "query": {
+            "location": [
+              "WTX_CH101300201"
+            ],
+            "token": [
+              "private-test-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "areaCode": "",
+          "observedAt": "",
+          "relativeHumidityPercent": 0,
+          "surfacePressureHpa": 0,
+          "temperatureCelsius": 0,
+          "weather": "",
+          "weatherCode": "",
+          "windDirection": "",
+          "windForce": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "WTX_CH101300201"
+      },
+      "name": "getCurrentWeather-secretEcho",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "70894ff4-4204-50d6-af7c-189d8e51b98c",
+      "exchanges": [
+        {
+          "body": "{\"date\":{\"timeZone\":\"Asia/Shanghai\",\"time\":\"20240911135031\"},\"result\":{\"wd_desc\":\"东北风\",\"prs\":986.7,\"rh\":95,\"ws_desc\":\"3级\",\"wp\":\"阴\",\"tem\":26.7,\"wp_code\":\"02\"},\"location\":{\"path\":\"广西壮族自治区,崇左市,崇左\",\"areaCode\":\"private-test-token\"},\"version\":\"v1\",\"status\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/cn/area/basic",
+          "query": {
+            "location": [
+              "WTX_CH101300201"
+            ],
+            "token": [
+              "private-test-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "areaCode": "",
+          "observedAt": "",
+          "relativeHumidityPercent": 0,
+          "surfacePressureHpa": 0,
+          "temperatureCelsius": 0,
+          "weather": "",
+          "weatherCode": "",
+          "windDirection": "",
+          "windForce": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "WTX_CH101300201"
+      },
+      "name": "getCurrentWeather-areaEcho",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "cbe64748-d41d-5376-a59a-800f035a14b9",
+      "exchanges": [
+        {
+          "body": "{\"date\":{\"timeZone\":\"Asia/Shanghai\",\"time\":\"00000229010203\"},\"result\":{\"wd_desc\":\"东北风\",\"prs\":986.7,\"rh\":95,\"ws_desc\":\"3级\",\"wp\":\"阴\",\"tem\":26.7,\"wp_code\":\"02\"},\"location\":{\"path\":\"广西壮族自治区,崇左市,崇左\",\"areaCode\":\"WTX_CH101300201\"},\"version\":\"v1\",\"status\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/cn/area/basic",
+          "query": {
+            "location": [
+              "WTX_CH101300201"
+            ],
+            "token": [
+              "private-test-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "fetched",
+        "failureKind": "",
+        "output": {
+          "areaCode": "WTX_CH101300201",
+          "observedAt": "00000229010203",
+          "relativeHumidityPercent": 95,
+          "surfacePressureHpa": 986.7,
+          "temperatureCelsius": 26.7,
+          "weather": "阴",
+          "weatherCode": "02",
+          "windDirection": "东北风",
+          "windForce": "3级"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "WTX_CH101300201"
+      },
+      "name": "getCurrentWeather-dateLeapYearZero",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "7b3bb87b-5b9b-586e-9bdd-e05083e93589",
+      "exchanges": [
+        {
+          "body": "{\"date\":{\"timeZone\":\"Asia/Shanghai\",\"time\":\"19000229010203\"},\"result\":{\"wd_desc\":\"东北风\",\"prs\":986.7,\"rh\":95,\"ws_desc\":\"3级\",\"wp\":\"阴\",\"tem\":26.7,\"wp_code\":\"02\"},\"location\":{\"path\":\"广西壮族自治区,崇左市,崇左\",\"areaCode\":\"WTX_CH101300201\"},\"version\":\"v1\",\"status\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/cn/area/basic",
+          "query": {
+            "location": [
+              "WTX_CH101300201"
+            ],
+            "token": [
+              "private-test-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "areaCode": "",
+          "observedAt": "",
+          "relativeHumidityPercent": 0,
+          "surfacePressureHpa": 0,
+          "temperatureCelsius": 0,
+          "weather": "",
+          "weatherCode": "",
+          "windDirection": "",
+          "windForce": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "WTX_CH101300201"
+      },
+      "name": "getCurrentWeather-dateCentury",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "a126a47f-6cca-5dfc-974e-0a2cf6a5431b",
+      "exchanges": [
+        {
+          "body": "{\"date\":{\"timeZone\":\"Asia/Shanghai\",\"time\":\"20000229010203\"},\"result\":{\"wd_desc\":\"东北风\",\"prs\":986.7,\"rh\":95,\"ws_desc\":\"3级\",\"wp\":\"阴\",\"tem\":26.7,\"wp_code\":\"02\"},\"location\":{\"path\":\"广西壮族自治区,崇左市,崇左\",\"areaCode\":\"WTX_CH101300201\"},\"version\":\"v1\",\"status\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/cn/area/basic",
+          "query": {
+            "location": [
+              "WTX_CH101300201"
+            ],
+            "token": [
+              "private-test-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "fetched",
+        "failureKind": "",
+        "output": {
+          "areaCode": "WTX_CH101300201",
+          "observedAt": "20000229010203",
+          "relativeHumidityPercent": 95,
+          "surfacePressureHpa": 986.7,
+          "temperatureCelsius": 26.7,
+          "weather": "阴",
+          "weatherCode": "02",
+          "windDirection": "东北风",
+          "windForce": "3级"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "WTX_CH101300201"
+      },
+      "name": "getCurrentWeather-dateLeap",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "8dc8eb34-9171-5df7-9109-015d37d1ce4d",
+      "exchanges": [
+        {
+          "body": "{\"date\":{\"timeZone\":\"Asia/Shanghai\",\"time\":\"2024010112121\"},\"result\":{\"wd_desc\":\"东北风\",\"prs\":986.7,\"rh\":95,\"ws_desc\":\"3级\",\"wp\":\"阴\",\"tem\":26.7,\"wp_code\":\"02\"},\"location\":{\"path\":\"广西壮族自治区,崇左市,崇左\",\"areaCode\":\"WTX_CH101300201\"},\"version\":\"v1\",\"status\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/cn/area/basic",
+          "query": {
+            "location": [
+              "WTX_CH101300201"
+            ],
+            "token": [
+              "private-test-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "areaCode": "",
+          "observedAt": "",
+          "relativeHumidityPercent": 0,
+          "surfacePressureHpa": 0,
+          "temperatureCelsius": 0,
+          "weather": "",
+          "weatherCode": "",
+          "windDirection": "",
+          "windForce": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "WTX_CH101300201"
+      },
+      "name": "getCurrentWeather-dateDigitWidth",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "f7afc170-e338-5e37-9186-59d4aa61e328",
+      "exchanges": [
+        {
+          "body": "{\"date\":{\"timeZone\":\"Asia/Shanghai\",\"time\":\"20240101240000\"},\"result\":{\"wd_desc\":\"东北风\",\"prs\":986.7,\"rh\":95,\"ws_desc\":\"3级\",\"wp\":\"阴\",\"tem\":26.7,\"wp_code\":\"02\"},\"location\":{\"path\":\"广西壮族自治区,崇左市,崇左\",\"areaCode\":\"WTX_CH101300201\"},\"version\":\"v1\",\"status\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/cn/area/basic",
+          "query": {
+            "location": [
+              "WTX_CH101300201"
+            ],
+            "token": [
+              "private-test-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "areaCode": "",
+          "observedAt": "",
+          "relativeHumidityPercent": 0,
+          "surfacePressureHpa": 0,
+          "temperatureCelsius": 0,
+          "weather": "",
+          "weatherCode": "",
+          "windDirection": "",
+          "windForce": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "WTX_CH101300201"
+      },
+      "name": "getCurrentWeather-dateHour",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "b8dbba0b-cd60-53af-9a6f-af69780ae29c",
+      "exchanges": [
+        {
+          "body": "{\"date\":{\"timeZone\":\"Asia/Shanghai\",\"time\":\"20240101125960\"},\"result\":{\"wd_desc\":\"东北风\",\"prs\":986.7,\"rh\":95,\"ws_desc\":\"3级\",\"wp\":\"阴\",\"tem\":26.7,\"wp_code\":\"02\"},\"location\":{\"path\":\"广西壮族自治区,崇左市,崇左\",\"areaCode\":\"WTX_CH101300201\"},\"version\":\"v1\",\"status\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/cn/area/basic",
+          "query": {
+            "location": [
+              "WTX_CH101300201"
+            ],
+            "token": [
+              "private-test-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "areaCode": "",
+          "observedAt": "",
+          "relativeHumidityPercent": 0,
+          "surfacePressureHpa": 0,
+          "temperatureCelsius": 0,
+          "weather": "",
+          "weatherCode": "",
+          "windDirection": "",
+          "windForce": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "WTX_CH101300201"
+      },
+      "name": "getCurrentWeather-dateSecond",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "f40d162f-3e6b-5fad-9ec9-f52a25bb36fb",
+      "exchanges": [
+        {
+          "body": "{\"date\":{\"timeZone\":\"Asia/Shanghai\",\"time\":\"20240001111111\"},\"result\":{\"wd_desc\":\"东北风\",\"prs\":986.7,\"rh\":95,\"ws_desc\":\"3级\",\"wp\":\"阴\",\"tem\":26.7,\"wp_code\":\"02\"},\"location\":{\"path\":\"广西壮族自治区,崇左市,崇左\",\"areaCode\":\"WTX_CH101300201\"},\"version\":\"v1\",\"status\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/cn/area/basic",
+          "query": {
+            "location": [
+              "WTX_CH101300201"
+            ],
+            "token": [
+              "private-test-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "areaCode": "",
+          "observedAt": "",
+          "relativeHumidityPercent": 0,
+          "surfacePressureHpa": 0,
+          "temperatureCelsius": 0,
+          "weather": "",
+          "weatherCode": "",
+          "windDirection": "",
+          "windForce": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "WTX_CH101300201"
+      },
+      "name": "getCurrentWeather-dateMonth",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "a6264cf9-dda7-5fed-b083-59333e797b8d",
+      "exchanges": [
+        {
+          "body": "{\"date\": {\"timeZone\": \"Asia/Shanghai\", \"time\": \"20240911135031\"}, \"result\": {\"wd_desc\": \"\\u4e1c\\u5317\\u98ce\", \"prs\": 986.7, \"rh\": 95.0, \"ws_desc\": \"3\\u7ea7\", \"wp\": \"\\u9634\", \"tem\": 26.7, \"wp_code\": \"02\"}, \"location\": {\"path\": \"\\u5e7f\\u897f\\u58ee\\u65cf\\u81ea\\u6cbb\\u533a,\\u5d07\\u5de6\\u5e02,\\u5d07\\u5de6\", \"areaCode\": \"WTX_CH101300201\"}, \"version\": \"v1\", \"status\": 0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/cn/area/basic",
+          "query": {
+            "location": [
+              "WTX_CH101300201"
+            ],
+            "token": [
+              "private-test-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "areaCode": "",
+          "observedAt": "",
+          "relativeHumidityPercent": 0,
+          "surfacePressureHpa": 0,
+          "temperatureCelsius": 0,
+          "weather": "",
+          "weatherCode": "",
+          "windDirection": "",
+          "windForce": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "WTX_CH101300201"
+      },
+      "name": "getCurrentWeather-decimalHumidity",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "eb5bd8d5-b6f3-522c-b25b-2f95146c182a",
+      "exchanges": [
+        {
+          "body": "{\"date\": {\"timeZone\": \"Asia/Shanghai\", \"time\": \"20240911135031\"}, \"result\": {\"wd_desc\": \"\\u4e1c\\u5317\\u98ce\", \"prs\": 986.7, \"rh\": 95, \"ws_desc\": \"3\\u7ea7\", \"wp\": \"\\u9634\", \"tem\": 1e400, \"wp_code\": \"02\"}, \"location\": {\"path\": \"\\u5e7f\\u897f\\u58ee\\u65cf\\u81ea\\u6cbb\\u533a,\\u5d07\\u5de6\\u5e02,\\u5d07\\u5de6\", \"areaCode\": \"WTX_CH101300201\"}, \"version\": \"v1\", \"status\": 0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/cn/area/basic",
+          "query": {
+            "location": [
+              "WTX_CH101300201"
+            ],
+            "token": [
+              "private-test-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "areaCode": "",
+          "observedAt": "",
+          "relativeHumidityPercent": 0,
+          "surfacePressureHpa": 0,
+          "temperatureCelsius": 0,
+          "weather": "",
+          "weatherCode": "",
+          "windDirection": "",
+          "windForce": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "WTX_CH101300201"
+      },
+      "name": "getCurrentWeather-overflowTemperature",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "5c028aa5-0852-5707-9afd-9e3d9680164a",
+      "exchanges": [
+        {
+          "body": "{\"DATE\":{\"TIMEZONE\":\"Asia/Shanghai\",\"TIME\":\"20240911135031\"},\"RESULT\":{\"WD_DESC\":\"东北风\",\"PRS\":986.7,\"RH\":95,\"WS_DESC\":\"3级\",\"WP\":\"阴\",\"TEM\":26.7,\"WP_CODE\":\"02\"},\"LOCATION\":{\"PATH\":\"广西壮族自治区,崇左市,崇左\",\"AREACODE\":\"WTX_CH101300201\"},\"VERSION\":\"v1\",\"STATUS\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/cn/area/basic",
+          "query": {
+            "location": [
+              "WTX_CH101300201"
+            ],
+            "token": [
+              "private-test-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "fetched",
+        "failureKind": "",
+        "output": {
+          "areaCode": "WTX_CH101300201",
+          "observedAt": "20240911135031",
+          "relativeHumidityPercent": 95,
+          "surfacePressureHpa": 986.7,
+          "temperatureCelsius": 26.7,
+          "weather": "阴",
+          "weatherCode": "02",
+          "windDirection": "东北风",
+          "windForce": "3级"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "WTX_CH101300201"
+      },
+      "name": "getCurrentWeather-upperFields",
+      "operation": "getCurrentWeather"
     }
   ],
   "schemaVersion": 1

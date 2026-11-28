@@ -1,0 +1,42 @@
+{
+  "getCurrentWeather": {
+    "branches": [
+      {
+        "description": "GEOVIS Earth returned current weather.",
+        "id": "fetched",
+        "optional": false
+      },
+      {
+        "description": "GEOVIS Earth rejected token, quota, or location.",
+        "id": "providerRejected",
+        "optional": true
+      },
+      {
+        "description": "GEOVIS Earth returned malformed or oversized data.",
+        "id": "invalidResponse",
+        "optional": true
+      },
+      {
+        "description": "Local token or location is invalid.",
+        "id": "defect",
+        "optional": true
+      }
+    ],
+    "operation": {
+      "connectorId": "geovisearth",
+      "operationId": "getCurrentWeather"
+    },
+    "stepDefaults": {
+      "executeDurability": 2,
+      "executeMethodTimeout": 30000000000,
+      "executeRetry": {
+        "BackoffCoefficient": 2,
+        "InitialInterval": 2000000000,
+        "MaximumAttempts": 3,
+        "MaximumInterval": 30000000000,
+        "TotalDuration": 300000000000
+      },
+      "heartbeatTimeout": 0
+    }
+  }
+}

@@ -5,8 +5,10 @@
 import json
 import math
 import re
+from calendar import monthrange
 from datetime import UTC, datetime
-from urllib.parse import urlencode, urlsplit
+from typing import Any
+from urllib.parse import urlencode
 
 import httpx
 from dex_connectors.sdk import (
@@ -48,24 +50,29 @@ def _retry(kind: FailureKind, message: str, delay: float = 0) -> QueryAttempt[Ge
     return QueryAttempt.retry(Failure(kind, "geovisearth", "getCurrentWeather", message), delay)
 
 
+_COORDINATE = re.compile(
+    r"[+-]?(?:(?:[0-9](?:_?[0-9])*(?:\.(?:[0-9](?:_?[0-9])*)?)?|\.[0-9](?:_?[0-9])*)(?:[Ee][+-]?[0-9](?:_?[0-9])*)?|0[xX](?:_?[0-9A-Fa-f](?:_?[0-9A-Fa-f])*(?:\.(?:[0-9A-Fa-f](?:_?[0-9A-Fa-f])*)?)?|\.[0-9A-Fa-f](?:_?[0-9A-Fa-f])*)[pP][+-]?[0-9](?:_?[0-9])*)"
+)
+
+
+def _valid_coordinate(text: str, maximum: float) -> bool:
+    if not _COORDINATE.fullmatch(text):
+        return False
+    literal = text.replace("_", "")
+    try:
+        value = float.fromhex(literal) if literal.lstrip("+-").lower().startswith("0x") else float(literal)
+    except OverflowError:
+        return False
+    return abs(value) <= maximum
+
+
 def _valid_location(location: str) -> bool:
+    if not isinstance(location, str):
+        return False
     if _AREA_CODE.fullmatch(location):
         return True
-    if location.strip() != location:
-        return False
-    parts = location.split(",")
-    if len(parts) != 2:
-        return False
-    try:
-        longitude, latitude = (float(part) for part in parts)
-    except ValueError:
-        return False
-    return (
-        math.isfinite(longitude)
-        and -180 <= longitude <= 180
-        and math.isfinite(latitude)
-        and -90 <= latitude <= 90
-    )
+    pair = location.split(",")
+    return len(pair) == 2 and _valid_coordinate(pair[0], 180) and _valid_coordinate(pair[1], 90)
 
 
 def _valid_token(value: str) -> bool:
@@ -83,18 +90,14 @@ class Client:
     ) -> None:
         if config is None or credentials is None:
             raise ValueError("GEOVIS Earth configuration and credential source are required")
-        parsed = urlsplit(config.base_url)
+        origin = config.base_url.rstrip("/")
         if (
-            parsed.scheme != "https"
-            or parsed.netloc != "api.open.geovisearth.com"
-            or parsed.path not in ("", "/")
-            or parsed.query
-            or parsed.fragment
+            origin != "https://api.open.geovisearth.com"
             or config.timeout_seconds <= 0
             or not 0 < config.max_response_bytes <= 16 << 20
         ):
             raise ValueError("GEOVIS Earth configuration is invalid")
-        self.base_url = config.base_url.rstrip("/")
+        self.base_url = origin
         self.max_response_bytes = config.max_response_bytes
         self.credentials = credentials
         self.http_client = http_client or new_provider_http_client(config.timeout_seconds)
@@ -183,65 +186,107 @@ class GetCurrentWeatherOperation:
                 )
         finally:
             await response.aclose()
-        return _decode_weather(body)
+        return _decode_weather(body, token)
 
 
-def _decode_weather(body: bytes) -> QueryAttempt[GetCurrentWeatherOutput]:
+def _fields_by_name(fields: dict[str, Any]) -> dict[str, Any]:
+    return {name.lower(): value for name, value in fields.items()}
+
+
+def _int64(value: object) -> bool:
+    return type(value) is int and -(1 << 63) <= value < (1 << 63)
+
+
+def _finite_number(value: object) -> bool:
+    if not isinstance(value, (int, float)) or isinstance(value, bool):
+        return False
     try:
-        document = json.loads(body)
-    except (ValueError, UnicodeDecodeError):
-        return _branch("invalidResponse", FailureKind.PROTOCOL, "GEOVIS Earth returned invalid weather data")
-    if not isinstance(document, dict) or type(document.get("status")) is not int:
-        return _branch("invalidResponse", FailureKind.PROTOCOL, "GEOVIS Earth returned invalid weather data")
-    if document["status"] != 0:
-        return _branch(
-            "providerRejected",
-            FailureKind.PROVIDER_REJECTION,
-            f"GEOVIS Earth rejected the weather request, status {document['status']}",
-        )
-    result, date, place = document.get("result"), document.get("date"), document.get("location")
-    if not isinstance(result, dict) or not isinstance(date, dict):
-        return _branch(
-            "invalidResponse", FailureKind.PROTOCOL, "GEOVIS Earth returned incomplete weather observation"
-        )
-    weather, code = result.get("wp"), result.get("wp_code")
-    temperature, humidity, pressure = result.get("tem"), result.get("rh"), result.get("prs")
-    direction, force, observed = result.get("wd_desc"), result.get("ws_desc"), date.get("time")
-    if (
-        not isinstance(weather, str)
-        or not weather
-        or not isinstance(code, str)
-        or not code
-        or not isinstance(temperature, (int, float))
-        or isinstance(temperature, bool)
-        or not math.isfinite(temperature)
-        or not isinstance(humidity, int)
-        or isinstance(humidity, bool)
-        or not 0 <= humidity <= 100
-        or not isinstance(pressure, (int, float))
-        or isinstance(pressure, bool)
-        or not math.isfinite(pressure)
-        or pressure <= 0
-        or not isinstance(direction, str)
-        or not direction
-        or not isinstance(force, str)
-        or not force
-        or not isinstance(observed, str)
-        or len(observed) != 14
-    ):
-        return _branch(
-            "invalidResponse", FailureKind.PROTOCOL, "GEOVIS Earth returned incomplete weather observation"
-        )
-    try:
-        datetime.strptime(observed, "%Y%m%d%H%M%S")
-    except ValueError:
-        return _branch(
-            "invalidResponse", FailureKind.PROTOCOL, "GEOVIS Earth returned invalid observation time"
-        )
-    area_code = place.get("areaCode", "") if isinstance(place, dict) else ""
-    if not isinstance(area_code, str):
-        area_code = ""
-    output = GetCurrentWeatherOutput(
-        area_code, weather, code, float(temperature), humidity, direction, force, float(pressure), observed
+        return math.isfinite(float(value))
+    except OverflowError:
+        return False
+
+
+def _valid_time(text: str) -> bool:
+    if len(text) != 14 or not text.isascii() or not text.isdecimal():
+        return False
+    year = int(text[:4])
+    month = int(text[4:6])
+    day = int(text[6:8])
+    return (
+        1 <= month <= 12
+        and 1 <= day <= monthrange(year, month)[1]
+        and int(text[8:10]) < 24
+        and int(text[10:12]) < 60
+        and int(text[12:]) < 60
     )
-    return QueryAttempt.branch_result("fetched", output, Receipt())
+
+
+def _invalid_weather() -> QueryAttempt[GetCurrentWeatherOutput]:
+    return _branch("invalidResponse", FailureKind.PROTOCOL, "GEOVIS Earth returned invalid weather data")
+
+
+def _invalid_json_number(text: str) -> None:
+    raise ValueError("invalid JSON number")
+
+
+def _decode_weather(body: bytes, token: str) -> QueryAttempt[GetCurrentWeatherOutput]:
+    try:
+        data = json.loads(
+            body.decode("utf-8", errors="replace"),
+            object_hook=_fields_by_name,
+            parse_constant=_invalid_json_number,
+        )
+    except (ValueError, RecursionError):
+        return _invalid_weather()
+    if not isinstance(data, dict) or not _int64(data.get("status")):
+        return _invalid_weather()
+    result, date, location = data.get("result"), data.get("date"), data.get("location")
+    if any(item is not None and not isinstance(item, dict) for item in (result, date, location)):
+        return _invalid_weather()
+    result, date, location = result or {}, date or {}, location or {}
+    area, time = location.get("areacode"), date.get("time")
+    weather, code, direction, force = (result.get(name) for name in ("wp", "wp_code", "wd_desc", "ws_desc"))
+    humidity, temperature, pressure = result.get("rh"), result.get("tem"), result.get("prs")
+    if any(
+        value is not None and not isinstance(value, str)
+        for value in (area, time, weather, code, direction, force)
+    ):
+        return _invalid_weather()
+    if (humidity is not None and not _int64(humidity)) or any(
+        value is not None and not _finite_number(value) for value in (temperature, pressure)
+    ):
+        return _invalid_weather()
+    if data["status"] != 0:
+        return _branch(
+            "providerRejected", FailureKind.PROVIDER_REJECTION, "GEOVIS Earth rejected the weather request"
+        )
+    if (
+        not weather
+        or not code
+        or not direction
+        or not force
+        or not time
+        or not _valid_time(time)
+        or humidity is None
+        or not 0 <= humidity <= 100
+        or pressure is None
+        or pressure <= 0
+    ):
+        return _invalid_weather()
+    if any(token in field for field in (area or "", time, weather, code, direction, force)):
+        return _invalid_weather()
+    return QueryAttempt.branch_result(
+        "fetched",
+        GetCurrentWeatherOutput(
+            area or "",
+            weather,
+            code,
+            float(temperature or 0),
+            humidity,
+            direction,
+            force,
+            float(pressure),
+            time,
+        ),
+        Receipt(),
+    )

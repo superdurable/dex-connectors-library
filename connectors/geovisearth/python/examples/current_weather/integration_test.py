@@ -26,8 +26,9 @@ from .flow import CONNECTION_NAME, GEOVISEarthCurrentWeatherFlow
 
 
 @pytest.mark.asyncio
-async def test_current_weather_retries_503(tmp_path: Path) -> None:
-    """Persist the provider result after one availability retry."""
+@pytest.mark.parametrize("weather_code", ["02", "private-test-token"], ids=["fetched", "credential-echo"])
+async def test_current_weather_retries_503(tmp_path: Path, weather_code: str) -> None:
+    """Verify the retried observation and failure when the provider echoes the token."""
     address = os.environ["DEX_FLOW_SERVICE_ADDRESS"]
     requests: list[httpx.Request] = []
 
@@ -37,7 +38,20 @@ async def test_current_weather_retries_503(tmp_path: Path) -> None:
             return httpx.Response(503)
         return httpx.Response(
             200,
-            content='{"date":{"timeZone":"Asia/Shanghai","time":"20240911135031"},"result":{"wd_desc":"东北风","prs":986.7,"rh":95,"ws_desc":"3级","wp":"阴","tem":26.7,"wp_code":"02"},"location":{"path":"广西壮族自治区,崇左市,崇左","areaCode":"WTX_CH101300201"},"version":"v1","status":0}'.encode(),
+            json={
+                "date": {"time": "20240911135031"},
+                "result": {
+                    "wd_desc": "东北风",
+                    "prs": 986.7,
+                    "rh": 95,
+                    "ws_desc": "3级",
+                    "wp": "阴",
+                    "tem": 26.7,
+                    "wp_code": weather_code,
+                },
+                "location": {"areaCode": "WTX_CH101300201"},
+                "status": 0,
+            },
         )
 
     reference = ConnectionRef("geovisearth", CONNECTION_NAME)
@@ -59,10 +73,15 @@ async def test_current_weather_retries_503(tmp_path: Path) -> None:
                 flow_id = f"geovisearth-python-{uuid4().hex}"
                 await client.start_flow(flow, flow_id, GetCurrentWeatherInput("WTX_CH101300201"))
                 result = await asyncio.wait_for(client.wait_for_flow(flow_id, timedelta(seconds=30)), 35)
-                assert result.status == dex.FlowStatus.COMPLETED, result.error_message
-                output = result.single_output(GetCurrentWeatherOutput)
-                assert output.weather_code == "02"
-                assert output.relative_humidity_percent == 95
+                if weather_code == "02":
+                    assert result.status == dex.FlowStatus.COMPLETED, result.error_message
+                    output = result.single_output(GetCurrentWeatherOutput)
+                    assert output.weather_code == weather_code
+                    assert output.relative_humidity_percent == 95
+                else:
+                    assert result.status == dex.FlowStatus.FAILED
+                    assert weather_code not in (result.error_message or "")
+                    assert not result.completions
                 assert len(requests) == 2
         finally:
             await worker.stop()

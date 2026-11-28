@@ -140,6 +140,11 @@ func (operation GetCurrentWeatherOperation) Invoke(call sdkgo.Call, input GetCur
 		return weatherBranch(GetCurrentWeatherBranchInvalidResponse, sdkgo.FailureProtocol, "GEOVIS Earth returned invalid observation time")
 	}
 	output := GetCurrentWeatherOutput{AreaCode: wire.Location.AreaCode, Weather: wire.Result.Weather, WeatherCode: wire.Result.WeatherCode, TemperatureCelsius: wire.Result.TemperatureCelsius, RelativeHumidityPercent: *wire.Result.RelativeHumidityPercent, WindDirection: wire.Result.WindDirection, WindForce: wire.Result.WindForce, SurfacePressureHpa: wire.Result.SurfacePressureHpa, ObservedAt: wire.Date.Time}
+	for _, field := range []string{output.AreaCode, output.Weather, output.WeatherCode, output.WindDirection, output.WindForce, output.ObservedAt} {
+		if strings.Contains(field, credentials.Token.Reveal()) {
+			return weatherBranch(GetCurrentWeatherBranchInvalidResponse, sdkgo.FailureProtocol, "GEOVIS Earth returned invalid weather data")
+		}
+	}
 	return sdkgo.NewQueryBranch(GetCurrentWeatherBranchFetched, output, nil, sdkgo.Receipt{})
 }
 func isFinite(value float64) bool { return !math.IsNaN(value) && !math.IsInf(value, 0) }

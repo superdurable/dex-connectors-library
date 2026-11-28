@@ -21,9 +21,18 @@ ADAPTER = conformance.PythonOperationAdapter(
     CONNECTION,
     geovisearth,
     lambda http_client, recorder: geovisearth.Client(
-        geovisearth.Config(),
+        geovisearth.Config(max_response_bytes=16)
+        if recorder.scenario["name"].endswith("-smallLimit")
+        else geovisearth.Config(),
         conformance.static_credentials(
-            CONNECTION, geovisearth.Credentials(sdk.SecretString("private-test-token"))
+            CONNECTION,
+            geovisearth.Credentials(
+                sdk.SecretString(
+                    ""
+                    if recorder.scenario["name"] == "getCurrentWeather-missingCredential"
+                    else "private-test-token"
+                )
+            ),
         ),
         http_client,
     ),
@@ -34,3 +43,17 @@ ADAPTER = conformance.PythonOperationAdapter(
 async def test_connector_conformance(scenario: dict[str, object]) -> None:
     """Match exact Go requests, branches, outputs, and retry decisions."""
     await conformance.replay(scenario, ADAPTER.invoke)
+
+
+@pytest.mark.parametrize(
+    "base_url",
+    [
+        "https://api.open.geovisearth.com:8443",
+        "https://api.open.geovisearth.com/path",
+        "https://api.open.geovisearth.com/?",
+    ],
+)
+def test_rejects_token_destination(base_url: str) -> None:
+    """Reject an unexpected origin before credentials can be sent."""
+    with pytest.raises(ValueError):
+        geovisearth.Client(geovisearth.Config(base_url=base_url), sdk.StaticCredentialProvider({}))

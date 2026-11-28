@@ -1,0 +1,22 @@
+// Copyright (c) 2026 Super Durable
+// SPDX-License-Identifier: MIT
+
+use dex_connector_geovisearth as connector;
+const CONNECTOR_ID: &str = "geovisearth";
+const ORIGIN: &str = "https://api.open.geovisearth.com";
+fn scenario_credentials(name: &str) -> connector::Credentials {
+    let token = if name == "getCurrentWeather-missingCredential" {
+        ""
+    } else {
+        "private-test-token"
+    };
+    dex_connectors_sdk::SecretString::new(token).into()
+}
+
+use connector::{
+    GetCurrentWeatherInput as QueryInput, GetCurrentWeatherOperation as QueryOperation,
+};
+const OPERATION_ID: &str = "getCurrentWeather";
+
+#[path = "support/http_query.rs"]
+mod http_query;

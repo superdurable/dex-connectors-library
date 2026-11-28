@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { it } from 'vitest';
+import { expect, it } from 'vitest';
 import { SecretString, StaticCredentialProvider, type Call } from '@superdurable/connectors-sdk';
 import { ProviderTransportError } from '@superdurable/connectors-sdk/providerhttp';
 import { GeovisearthClient } from '../src/client.js';
@@ -13,9 +13,9 @@ const connection = { provider: 'geovisearth', name: 'geovisearth' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeGeovisearth, ''));
 
 async function invokeGeovisearth(scenario: Scenario, recorder: ExchangeRecorder) {
-  const token = scenario.name.endsWith('missing-credentials') ? '' : 'private-test-token';
+  const token = scenario.name.endsWith('-missingCredential') ? '' : 'private-test-token';
   const credentials: Array<[typeof connection, { token: SecretString }]> = [[connection, { token: new SecretString(token) }]];
-  const client = new GeovisearthClient({ maxResponseBytes: scenario.name.endsWith('oversize') ? 8 : 1_048_576 }, new StaticCredentialProvider(credentials), {
+  const client = new GeovisearthClient({ maxResponseBytes: scenario.name.endsWith('-smallLimit') ? 16 : 1_048_576 }, new StaticCredentialProvider(credentials), {
     send: request => answerRecordedRequest(recorder, request, before => new ProviderTransportError(before)),
   });
   const call: Call = {
@@ -26,3 +26,11 @@ async function invokeGeovisearth(scenario: Scenario, recorder: ExchangeRecorder)
   if (scenario.operation === 'getCurrentWeather') return client.getCurrentWeather().invoke(call, GetCurrentWeatherInputSchema.parse(scenario.input));
   throw new Error('unknown Geovisearth operation ' + scenario.operation);
 }
+
+
+it.each(['https://api.open.geovisearth.com:8443', 'https://api.open.geovisearth.com/path', 'https://api.open.geovisearth.com/?'])(
+  'rejects the token destination %s during construction', baseUrl => {
+    const credentials = new StaticCredentialProvider<{token:SecretString}>([]);
+    expect(() => new GeovisearthClient({baseUrl}, credentials)).toThrow();
+  },
+);

@@ -4,22 +4,30 @@
 package geovisearth
 
 import (
-    "net/http"
-    "testing"
+	"net/http"
+	"strings"
+	"testing"
 
-    "github.com/stretchr/testify/require"
-    "github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/stretchr/testify/require"
+	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
 
 const conformanceEndpointPath = ""
 const conformanceFixturePathPrefix = ""
 
 func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint string, transport *http.Client) conformanceInvoker {
-    t.Helper()
-    credentials := Credentials{Token: sdkgo.NewSecretString(testToken)}
-    client, err := New(Config{}, sdkgo.StaticCredentialProvider[Credentials]{testConnection: credentials}, WithHTTPClient(transport))
-    require.NoError(t, err)
-    return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
-        "getCurrentWeather": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetCurrentWeather(), testConnection),
-    }}
+	t.Helper()
+	credentials := Credentials{Token: sdkgo.NewSecretString(testToken)}
+	if scenario.Name == "getCurrentWeather-missingCredential" {
+		credentials.Token = sdkgo.NewSecretString("")
+	}
+	config := Config{}
+	if strings.HasSuffix(scenario.Name, "-smallLimit") {
+		config.MaxResponseBytes = 16
+	}
+	client, err := New(config, sdkgo.StaticCredentialProvider[Credentials]{testConnection: credentials}, WithHTTPClient(transport))
+	require.NoError(t, err)
+	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
+		"getCurrentWeather": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetCurrentWeather(), testConnection),
+	}}
 }
