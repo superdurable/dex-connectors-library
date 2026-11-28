@@ -234,6 +234,219 @@
       "input": {},
       "name": "listProvinces-transport",
       "operation": "listProvinces"
+    },
+    {
+      "callId": "0fce4b5a-8ef6-5bd1-bd61-7e12d8e3a75b",
+      "exchanges": [
+        {
+          "body": "{\"status\":104}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/area/province",
+          "query": {
+            "appkey": [
+              "test-secret"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listProvinces-dailyQuota",
+      "operation": "listProvinces"
+    },
+    {
+      "callId": "abb1e22b-a586-5819-9635-ad5f58110051",
+      "exchanges": [
+        {
+          "body": "{\"status\":106}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/area/province",
+          "query": {
+            "appkey": [
+              "test-secret"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listProvinces-ipQuota",
+      "operation": "listProvinces"
+    },
+    {
+      "callId": "e83fde98-d72c-59fb-90a9-ee616ba60ffe",
+      "exchanges": [
+        {
+          "body": "{\"status\":107}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/area/province",
+          "query": {
+            "appkey": [
+              "test-secret"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listProvinces-maintenance",
+      "operation": "listProvinces"
+    },
+    {
+      "callId": "1d3939e5-4656-545f-84c7-bd23a358061a",
+      "exchanges": [
+        {
+          "body": "{\"status\":101}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/area/province",
+          "query": {
+            "appkey": [
+              "test-secret"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "provinces": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listProvinces-badAppkey",
+      "operation": "listProvinces"
+    },
+    {
+      "callId": "54d8eb49-6da7-5a2a-aebb-42733f6911ba",
+      "exchanges": [
+        {
+          "body": "{\"status\":0,\"result\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/area/province",
+          "query": {
+            "appkey": [
+              "test-secret"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "provinces": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listProvinces-empty",
+      "operation": "listProvinces"
+    },
+    {
+      "callId": "616f98f9-8d0a-5f9e-9e2e-17168f532e75",
+      "exchanges": [
+        {
+          "body": "{\"status\":0,\"result\":[{\"id\":\"\",\"name\":\"Beijing\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/area/province",
+          "query": {
+            "appkey": [
+              "test-secret"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "provinces": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listProvinces-blankProvince",
+      "operation": "listProvinces"
     }
   ],
   "schemaVersion": 1

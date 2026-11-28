@@ -1,0 +1,52 @@
+{
+  "connectorId": "jisuapi",
+  "releaseTag": "connectors/jisuapi/go/v0.1.0",
+  "package": {
+    "ecosystem": "maven",
+    "name": "io.superdurable:dex-connector-jisuapi",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newListProvincesStep",
+      "kind": "query",
+      "operationId": "listProvinces",
+      "inputType": "ListProvincesInput",
+      "description": "List province IDs and names without personal data.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListProvincesInput needs no selection because the provider returns the province catalog.",
+        "properties": {},
+        "type": "object"
+      }
+    }
+  ]
+}

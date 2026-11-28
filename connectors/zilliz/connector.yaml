@@ -9,8 +9,10 @@ metadata:
   version: v0.1.0
 spec:
   languages:
-    python: {version: v0.1.0, operations: [listClusters], triggers: []}
-    typescript: {version: v0.1.0, package: "@superdurable/connector-zilliz", operations: [listClusters], triggers: []}
+    java: {version: v0.1.0, operations: [listClusters], triggers: []}
+    rust: {version: v0.1.0, operations: [listClusters], triggers: []}
+    python: {version: v0.1.1, operations: [listClusters], triggers: []}
+    typescript: {version: v0.1.1, package: "@superdurable/connector-zilliz", operations: [listClusters], triggers: []}
   provider: zilliz
   codegen:
     go:

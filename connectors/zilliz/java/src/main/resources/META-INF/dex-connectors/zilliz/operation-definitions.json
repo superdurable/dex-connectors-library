@@ -1,0 +1,42 @@
+{
+  "listClusters": {
+    "branches": [
+      {
+        "description": "Zilliz returned the visible cluster page.",
+        "id": "found",
+        "optional": false
+      },
+      {
+        "description": "Zilliz rejected the Key or request.",
+        "id": "providerRejected",
+        "optional": true
+      },
+      {
+        "description": "Zilliz returned malformed or oversized cluster data.",
+        "id": "invalidResponse",
+        "optional": true
+      },
+      {
+        "description": "The local API Key is invalid.",
+        "id": "defect",
+        "optional": true
+      }
+    ],
+    "operation": {
+      "connectorId": "zilliz",
+      "operationId": "listClusters"
+    },
+    "stepDefaults": {
+      "executeDurability": 2,
+      "executeMethodTimeout": 30000000000,
+      "executeRetry": {
+        "BackoffCoefficient": 2,
+        "InitialInterval": 1000000000,
+        "MaximumAttempts": 0,
+        "MaximumInterval": 300000000000,
+        "TotalDuration": 3600000000000
+      },
+      "heartbeatTimeout": 0
+    }
+  }
+}

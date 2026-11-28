@@ -13,3 +13,18 @@ Run the [example Flow](go/examples/list-clusters/) with `{}` input. The checked-
 The `python/` package provides the `listClusters` Query. Run its checked-in example from `python/examples/`.
 
 The [TypeScript package](typescript/README.md) implements `listClusters` with a [runnable Dex Flow](typescript/examples/cluster-list/README.md). Its provider scenarios replay the Go-recorded contract; live authorization remains unverified without user-controlled credentials.
+
+Cluster metadata uses UTF-8 byte limits. Missing or null names, regions, plans, and statuses appear as empty strings.
+
+## Java and Rust
+
+The [Java Worker](java/examples/io/superdurable/dexconnectors/zilliz/ClusterDirectoryWorker.java) registers `JavaZillizClusterDirectory`. Run `./gradlew clusterDirectoryWorker` from `java/` with `ZILLIZ_API_KEY` supplied through your credential manager. Hosted Java applications can use `ClusterDirectory.fromProject` with their loaded connection.
+
+The [Rust Worker](rust/examples/list_clusters.rs) registers `RustZillizClusterDirectory`. From `rust/`, run `cargo run --example list_clusters` with `DEX_CONNECTOR_CONFIG_FILE` pointing at the connections file exported by Dex Web. Both examples use the static `zilliz` connection name and `DEX_FLOW_SERVICE_ADDRESS` to select the Dex server. Start the Flow with an empty JSON object.
+
+Generate and lint the Flow Definition Graphs from the connector directory.
+
+```sh
+dexcli visualize java/examples/io/superdurable/dexconnectors/zilliz/ClusterDirectoryWorker.java --language java --schema-version 2.0 --lint app --open=false --json --out /tmp/zilliz-java
+dexcli visualize rust/examples/list_clusters.rs --language rust --schema-version 2.0 --lint app --open=false --json --out /tmp/zilliz-rust
+```

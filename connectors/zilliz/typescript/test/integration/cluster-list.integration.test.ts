@@ -25,7 +25,7 @@ it('retries Zilliz 503 through a real Dex Worker and persists the cluster list',
       response.writeHead(400).end(); return;
     }
     if (requests === 1) { response.writeHead(503).end(); return; }
-    response.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify({ code: 0, data: { count: 1, clusters: [{ clusterId: 'inxx-example', clusterName: 'example-cluster', regionId: 'aws-us-west-2', plan: 'Enterprise', status: 'RUNNING' }] } }));
+    response.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify({ code: 0, data: { count: 1, clusters: [{ clusterId: 'inxx-example', clusterName: 'example-cluster', regionId: null, status: 'RUNNING' }] } }));
   });
   server.listen(0, '127.0.0.1');
   await once(server, 'listening');
@@ -47,7 +47,7 @@ it('retries Zilliz 503 through a real Dex Worker and persists the cluster list',
     await client.startFlow(flow, flowId, {});
     const result = await client.waitForFlow(flowId, 60_000);
     expect(result.status, result.errorMessage).toBe('completed');
-    expect(result.singleOutput<ListClustersOutput>()).toEqual({ total: 1, clusters: [{ clusterID: 'inxx-example', name: 'example-cluster', regionID: 'aws-us-west-2', plan: 'Enterprise', status: 'RUNNING' }] });
+    expect(result.singleOutput<ListClustersOutput>()).toEqual({ total: 1, clusters: [{ clusterID: 'inxx-example', name: 'example-cluster', regionID: '', plan: '', status: 'RUNNING' }] });
     expect(requests).toBe(2);
   } finally {
     await client.close(); await worker.close(); cache.close();

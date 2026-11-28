@@ -37,7 +37,7 @@ async def test_list_system_voices_retries_503(tmp_path: Path) -> None:
             return httpx.Response(503)
         return httpx.Response(
             200,
-            content='{"system_voice":[{"voice_id":"cn_male_chenyu","voice_name":"晨宇","language":["zh"]}],"base_resp":{"status_code":0}}'.encode(),
+            content=b'{"system_voice":[{"voice_id":"cn_male_chenyu","voice_name":null,"language":["zh",null]}],"base_resp":{"status_code":0}}',
         )
 
     reference = ConnectionRef("unisound", CONNECTION_NAME)
@@ -59,6 +59,8 @@ async def test_list_system_voices_retries_503(tmp_path: Path) -> None:
                 assert result.status == dex.FlowStatus.COMPLETED, result.error_message
                 result_value = result.single_output(ListSystemVoicesOutput)
                 assert result_value.voices[0].voice_id == "cn_male_chenyu"
+                assert result_value.voices[0].name == ""
+                assert result_value.voices[0].languages == ("zh", "")
                 assert len(requests) == 2
         finally:
             await worker.stop()

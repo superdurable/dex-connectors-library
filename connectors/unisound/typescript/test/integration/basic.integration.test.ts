@@ -21,7 +21,7 @@ it('retries a provider 503 and persists the result through real Dex', async () =
   const server = createServer((_request, response) => {
     attempts++;
     if (attempts === 1) { response.writeHead(503).end(); return; }
-    response.writeHead(200, { 'Content-Type': 'application/json' }).end("{\"system_voice\":[{\"voice_id\":\"cn_male_chenyu\",\"voice_name\":\"晨宇\",\"language\":[\"zh\"]}],\"base_resp\":{\"status_code\":0}}");
+    response.writeHead(200, { 'Content-Type': 'application/json' }).end("{\"system_voice\":[{\"voice_id\":\"cn_male_chenyu\",\"voice_name\":null,\"language\":[\"zh\",null]}],\"base_resp\":{\"status_code\":0}}");
   });
   server.listen(0, '127.0.0.1');
   await once(server, 'listening');
@@ -47,7 +47,7 @@ it('retries a provider 503 and persists the result through real Dex', async () =
     await client.startFlow(flow, flowId, {});
     const result = await client.waitForFlow(flowId, 60_000);
     expect(result.status, result.errorMessage).toBe('completed');
-    expect(result.singleOutput()).toEqual({"voices": [{"voiceID": "cn_male_chenyu", "name": "晨宇", "languages": ["zh"]}]});
+    expect(result.singleOutput()).toEqual({"voices": [{"voiceID": "cn_male_chenyu", "name": "", "languages": ["zh", ""]}]});
     expect(attempts).toBe(2);
   } finally {
     await client.close(); await worker.close(); cache.close();

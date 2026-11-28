@@ -1,0 +1,42 @@
+{
+  "listProvinces": {
+    "branches": [
+      {
+        "description": "JisuAPI returned province identifiers and names.",
+        "id": "listed",
+        "optional": false
+      },
+      {
+        "description": "JisuAPI rejected the key or access.",
+        "id": "providerRejected",
+        "optional": true
+      },
+      {
+        "description": "JisuAPI returned malformed or oversized data.",
+        "id": "invalidResponse",
+        "optional": true
+      },
+      {
+        "description": "Local appkey is invalid.",
+        "id": "defect",
+        "optional": true
+      }
+    ],
+    "operation": {
+      "connectorId": "jisuapi",
+      "operationId": "listProvinces"
+    },
+    "stepDefaults": {
+      "executeDurability": 2,
+      "executeMethodTimeout": 30000000000,
+      "executeRetry": {
+        "BackoffCoefficient": 2,
+        "InitialInterval": 2000000000,
+        "MaximumAttempts": 3,
+        "MaximumInterval": 30000000000,
+        "TotalDuration": 300000000000
+      },
+      "heartbeatTimeout": 0
+    }
+  }
+}

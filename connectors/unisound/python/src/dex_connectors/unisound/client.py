@@ -188,18 +188,21 @@ def _decode(body: bytes, input: ListSystemVoicesInput, delay: float) -> QueryAtt
         return _branch("invalidResponse", FailureKind.PROTOCOL, "Unisound returned invalid system voices")
     voices: list[SystemVoice] = []
     for voice in wire_voices[:25]:
+        if not isinstance(voice, dict):
+            return _branch("invalidResponse", FailureKind.PROTOCOL, "Unisound returned invalid system voice")
+        name = "" if voice.get("voice_name") is None else voice["voice_name"]
         if (
-            not isinstance(voice, dict)
-            or not isinstance(voice.get("voice_id"), str)
+            not isinstance(voice.get("voice_id"), str)
             or not voice["voice_id"]
-            or len(voice["voice_id"]) > 128
+            or len(voice["voice_id"].encode("utf-8", "replace")) > 128
             or voice["voice_id"].strip() != voice["voice_id"]
-            or not isinstance(voice.get("voice_name", ""), str)
-            or len(voice.get("voice_name", "")) > 200
+            or not isinstance(name, str)
+            or len(name.encode("utf-8", "replace")) > 200
             or not isinstance(voice.get("language"), list)
             or len(voice["language"]) > 20
-            or any(not isinstance(language, str) for language in voice["language"])
+            or any(language is not None and not isinstance(language, str) for language in voice["language"])
         ):
             return _branch("invalidResponse", FailureKind.PROTOCOL, "Unisound returned invalid system voice")
-        voices.append(SystemVoice(voice["voice_id"], voice.get("voice_name", ""), tuple(voice["language"])))
+        languages = tuple("" if language is None else language for language in voice["language"])
+        voices.append(SystemVoice(voice["voice_id"], name, languages))
     return QueryAttempt.branch_result("found", ListSystemVoicesOutput(tuple(voices)), Receipt())

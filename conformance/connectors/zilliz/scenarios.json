@@ -365,6 +365,330 @@
       "input": {},
       "name": "listClusters-defect",
       "operation": "listClusters"
+    },
+    {
+      "callId": "de71c3f0-e5dd-5021-9a2d-c2925959afc1",
+      "exchanges": [
+        {
+          "body": "{\"code\":300}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/clusters",
+          "query": {
+            "currentPage": [
+              "1"
+            ],
+            "pageSize": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "clusters": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listClusters-accountRejected",
+      "operation": "listClusters"
+    },
+    {
+      "callId": "6a41c927-2f97-5e7d-8c2f-dc1fd9bec367",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"count\":26,\"clusters\":[{\"clusterId\":\"a\"},{\"clusterId\":\"a\"},{\"clusterId\":\"a\"},{\"clusterId\":\"a\"},{\"clusterId\":\"a\"},{\"clusterId\":\"a\"},{\"clusterId\":\"a\"},{\"clusterId\":\"a\"},{\"clusterId\":\"a\"},{\"clusterId\":\"a\"},{\"clusterId\":\"a\"},{\"clusterId\":\"a\"},{\"clusterId\":\"a\"},{\"clusterId\":\"a\"},{\"clusterId\":\"a\"},{\"clusterId\":\"a\"},{\"clusterId\":\"a\"},{\"clusterId\":\"a\"},{\"clusterId\":\"a\"},{\"clusterId\":\"a\"},{\"clusterId\":\"a\"},{\"clusterId\":\"a\"},{\"clusterId\":\"a\"},{\"clusterId\":\"a\"},{\"clusterId\":\"a\"},{\"clusterId\":\"a\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/clusters",
+          "query": {
+            "currentPage": [
+              "1"
+            ],
+            "pageSize": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "clusters": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listClusters-pageLimit",
+      "operation": "listClusters"
+    },
+    {
+      "callId": "0560d83e-4195-5e18-8167-ec1f131e4256",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"count\":-1,\"clusters\":[]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/clusters",
+          "query": {
+            "currentPage": [
+              "1"
+            ],
+            "pageSize": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "clusters": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listClusters-negativeCount",
+      "operation": "listClusters"
+    },
+    {
+      "callId": "3be20e49-2957-5c78-bbb5-ebe1a0f1d562",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"count\":1,\"clusters\":[{\"clusterId\":\" id\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/clusters",
+          "query": {
+            "currentPage": [
+              "1"
+            ],
+            "pageSize": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "clusters": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listClusters-invalidClusterID",
+      "operation": "listClusters"
+    },
+    {
+      "callId": "1a66b991-d7e0-5134-9bf8-08db71a6da37",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"count\":1,\"clusters\":[{\"clusterId\":\"id\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/clusters",
+          "query": {
+            "currentPage": [
+              "1"
+            ],
+            "pageSize": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "clusters": [
+            {
+              "clusterID": "id",
+              "name": "",
+              "plan": "",
+              "regionID": "",
+              "status": ""
+            }
+          ],
+          "total": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listClusters-optionalMetadata",
+      "operation": "listClusters"
+    },
+    {
+      "callId": "371c9d34-f45d-59ef-8093-039a2daea0e6",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"count\":1,\"clusters\":[{\"clusterId\":\"id\",\"clusterName\":null,\"status\":null}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/clusters",
+          "query": {
+            "currentPage": [
+              "1"
+            ],
+            "pageSize": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "clusters": [
+            {
+              "clusterID": "id",
+              "name": "",
+              "plan": "",
+              "regionID": "",
+              "status": ""
+            }
+          ],
+          "total": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listClusters-nullMetadata",
+      "operation": "listClusters"
+    },
+    {
+      "callId": "5decc4e9-ba18-59b0-9e10-0ba1774fe06e",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"count\":1,\"clusters\":[{\"clusterId\":\"名名名名名名名名名名名名名名名名名名名名名名名名名名名名名名名名名名名名名名名名名名名\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/clusters",
+          "query": {
+            "currentPage": [
+              "1"
+            ],
+            "pageSize": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "clusters": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listClusters-utf8ByteLimit",
+      "operation": "listClusters"
     }
   ],
   "schemaVersion": 1

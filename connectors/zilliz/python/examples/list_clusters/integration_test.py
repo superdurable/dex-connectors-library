@@ -32,7 +32,7 @@ async def test_list_clusters_retries_503(tmp_path: Path) -> None:
     requests: list[httpx.Request] = []
     response_body = (
         '{"code":0,"data":{"count":2,"clusters":[{"clusterId":"inxx-example","clusterName":"ex'
-        'ample-cluster","regionId":"aws-us-west-2","plan":"Enterprise","status":"RUNNING"}]}}'
+        'ample-cluster","regionId":null,"status":"RUNNING"}]}}'
     )
 
     def answer(request: httpx.Request) -> httpx.Response:
@@ -57,7 +57,8 @@ async def test_list_clusters_retries_503(tmp_path: Path) -> None:
                 result = await asyncio.wait_for(client.wait_for_flow(flow_id, timedelta(seconds=40)), 45)
                 assert result.status == dex.FlowStatus.COMPLETED, result.error_message
                 output = result.single_output(ListClustersOutput)
-                assert output != ListClustersOutput()
+                assert output.clusters and output.clusters[0].region_id == ""
+                assert output.clusters[0].plan == ""
                 assert len(requests) == 2
         finally:
             await worker.stop()

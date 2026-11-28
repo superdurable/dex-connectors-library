@@ -65,8 +65,10 @@ export class ListSystemVoicesOperation implements Query<ListSystemVoicesInput, L
     const voices: NonNullable<ListSystemVoicesOutput['voices']> = [];
     for (const item of wire.system_voice) {
       if (voices.length === 25) break;
-      if (!isRecord(item) || typeof item.voice_id !== 'string' || !item.voice_id || item.voice_id.length > 128 || item.voice_id.trim() !== item.voice_id || typeof item.voice_name !== 'string' || item.voice_name.length > 200 || !Array.isArray(item.language) || item.language.length > 20 || !item.language.every(language => typeof language === 'string')) return branch('invalidResponse', 'PROTOCOL', 'Unisound returned invalid system voice');
-      voices.push({ voiceID: item.voice_id, name: item.voice_name, languages: item.language });
+      if (!isRecord(item) || typeof item.voice_id !== 'string' || !item.voice_id || Buffer.byteLength(item.voice_id) > 128 || item.voice_id.trim() !== item.voice_id) return branch('invalidResponse', 'PROTOCOL', 'Unisound returned invalid system voice');
+      const name = item.voice_name ?? '';
+      if (typeof name !== 'string' || Buffer.byteLength(name) > 200 || !Array.isArray(item.language) || item.language.length > 20 || !item.language.every(language => language === null || typeof language === 'string')) return branch('invalidResponse', 'PROTOCOL', 'Unisound returned invalid system voice');
+      voices.push({ voiceID: item.voice_id, name, languages: item.language.map((language: string | null) => language ?? '') });
     }
     return newQueryBranch('found', { voices });
   }

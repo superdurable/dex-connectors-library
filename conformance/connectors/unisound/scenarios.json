@@ -261,6 +261,422 @@
       "input": {},
       "name": "listSystemVoices-defect",
       "operation": "listSystemVoices"
+    },
+    {
+      "callId": "14116ff8-739a-5e33-91f4-40ab85aeb33d",
+      "exchanges": [
+        {
+          "body": "{\"base_resp\":{\"status_code\":100501}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/audio/voices/query",
+          "requestBody": {
+            "voice_type": "system"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listSystemVoices-voiceQuota",
+      "operation": "listSystemVoices"
+    },
+    {
+      "callId": "689a0f96-7100-5288-837b-eada3a0569ad",
+      "exchanges": [
+        {
+          "body": "{\"base_resp\":{\"status_code\":100999}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/audio/voices/query",
+          "requestBody": {
+            "voice_type": "system"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listSystemVoices-unavailable",
+      "operation": "listSystemVoices"
+    },
+    {
+      "callId": "7d2e0aad-b257-5bf1-b825-6cb6d67d5c5c",
+      "exchanges": [
+        {
+          "body": "{\"base_resp\":{\"status_code\":100100}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/audio/voices/query",
+          "requestBody": {
+            "voice_type": "system"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "voices": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listSystemVoices-badApplication",
+      "operation": "listSystemVoices"
+    },
+    {
+      "callId": "e64bd556-8c23-512a-b422-2b3e2e17a900",
+      "exchanges": [
+        {
+          "body": "{\"base_resp\":{\"status_code\":0},\"system_voice\":[{\"voice_id\":\"cn\",\"language\":[\"zh\",\"zh\",\"zh\",\"zh\",\"zh\",\"zh\",\"zh\",\"zh\",\"zh\",\"zh\",\"zh\",\"zh\",\"zh\",\"zh\",\"zh\",\"zh\",\"zh\",\"zh\",\"zh\",\"zh\",\"zh\"]}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/audio/voices/query",
+          "requestBody": {
+            "voice_type": "system"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "voices": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listSystemVoices-languageLimit",
+      "operation": "listSystemVoices"
+    },
+    {
+      "callId": "2b8e5649-b337-592f-b66c-1d86e2ceb837",
+      "exchanges": [
+        {
+          "body": "{\"base_resp\":{\"status_code\":0},\"system_voice\":[{\"voice_id\":\"0\",\"language\":[]},{\"voice_id\":\"1\",\"language\":[]},{\"voice_id\":\"2\",\"language\":[]},{\"voice_id\":\"3\",\"language\":[]},{\"voice_id\":\"4\",\"language\":[]},{\"voice_id\":\"5\",\"language\":[]},{\"voice_id\":\"6\",\"language\":[]},{\"voice_id\":\"7\",\"language\":[]},{\"voice_id\":\"8\",\"language\":[]},{\"voice_id\":\"9\",\"language\":[]},{\"voice_id\":\"10\",\"language\":[]},{\"voice_id\":\"11\",\"language\":[]},{\"voice_id\":\"12\",\"language\":[]},{\"voice_id\":\"13\",\"language\":[]},{\"voice_id\":\"14\",\"language\":[]},{\"voice_id\":\"15\",\"language\":[]},{\"voice_id\":\"16\",\"language\":[]},{\"voice_id\":\"17\",\"language\":[]},{\"voice_id\":\"18\",\"language\":[]},{\"voice_id\":\"19\",\"language\":[]},{\"voice_id\":\"20\",\"language\":[]},{\"voice_id\":\"21\",\"language\":[]},{\"voice_id\":\"22\",\"language\":[]},{\"voice_id\":\"23\",\"language\":[]},{\"voice_id\":\"24\",\"language\":[]},{}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/audio/voices/query",
+          "requestBody": {
+            "voice_type": "system"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "voices": [
+            {
+              "languages": [],
+              "name": "",
+              "voiceID": "0"
+            },
+            {
+              "languages": [],
+              "name": "",
+              "voiceID": "1"
+            },
+            {
+              "languages": [],
+              "name": "",
+              "voiceID": "2"
+            },
+            {
+              "languages": [],
+              "name": "",
+              "voiceID": "3"
+            },
+            {
+              "languages": [],
+              "name": "",
+              "voiceID": "4"
+            },
+            {
+              "languages": [],
+              "name": "",
+              "voiceID": "5"
+            },
+            {
+              "languages": [],
+              "name": "",
+              "voiceID": "6"
+            },
+            {
+              "languages": [],
+              "name": "",
+              "voiceID": "7"
+            },
+            {
+              "languages": [],
+              "name": "",
+              "voiceID": "8"
+            },
+            {
+              "languages": [],
+              "name": "",
+              "voiceID": "9"
+            },
+            {
+              "languages": [],
+              "name": "",
+              "voiceID": "10"
+            },
+            {
+              "languages": [],
+              "name": "",
+              "voiceID": "11"
+            },
+            {
+              "languages": [],
+              "name": "",
+              "voiceID": "12"
+            },
+            {
+              "languages": [],
+              "name": "",
+              "voiceID": "13"
+            },
+            {
+              "languages": [],
+              "name": "",
+              "voiceID": "14"
+            },
+            {
+              "languages": [],
+              "name": "",
+              "voiceID": "15"
+            },
+            {
+              "languages": [],
+              "name": "",
+              "voiceID": "16"
+            },
+            {
+              "languages": [],
+              "name": "",
+              "voiceID": "17"
+            },
+            {
+              "languages": [],
+              "name": "",
+              "voiceID": "18"
+            },
+            {
+              "languages": [],
+              "name": "",
+              "voiceID": "19"
+            },
+            {
+              "languages": [],
+              "name": "",
+              "voiceID": "20"
+            },
+            {
+              "languages": [],
+              "name": "",
+              "voiceID": "21"
+            },
+            {
+              "languages": [],
+              "name": "",
+              "voiceID": "22"
+            },
+            {
+              "languages": [],
+              "name": "",
+              "voiceID": "23"
+            },
+            {
+              "languages": [],
+              "name": "",
+              "voiceID": "24"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listSystemVoices-first25",
+      "operation": "listSystemVoices"
+    },
+    {
+      "callId": "54678181-a8a4-5e2a-bc2c-e0dc71c5c225",
+      "exchanges": [
+        {
+          "body": "{\"base_resp\":{\"status_code\":0},\"system_voice\":[{\"voice_id\":\"voice\",\"language\":[null,\"zh\"],\"voice_name\":null}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/audio/voices/query",
+          "requestBody": {
+            "voice_type": "system"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "voices": [
+            {
+              "languages": [
+                "",
+                "zh"
+              ],
+              "name": "",
+              "voiceID": "voice"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listSystemVoices-nullMetadata",
+      "operation": "listSystemVoices"
+    },
+    {
+      "callId": "aacbe619-fd54-5a7d-9838-f7968e324da8",
+      "exchanges": [
+        {
+          "body": "{\"base_resp\":{\"status_code\":0},\"system_voice\":[{\"voice_id\":\"名名名名名名名名名名名名名名名名名名名名名名名名名名名名名名名名名名名名名名名名名名名\",\"language\":[\"zh\"]}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/audio/voices/query",
+          "requestBody": {
+            "voice_type": "system"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "voices": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listSystemVoices-utf8ByteLimit",
+      "operation": "listSystemVoices"
     }
   ],
   "schemaVersion": 1

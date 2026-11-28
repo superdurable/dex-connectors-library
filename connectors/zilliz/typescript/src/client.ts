@@ -63,8 +63,16 @@ export class ListClustersOperation implements Query<ListClustersInput, ListClust
     if (!isRecord(document.data) || !Number.isInteger(document.data.count) || (document.data.count as number) < 0 || !Array.isArray(document.data.clusters) || document.data.clusters.length > 25) return branch('invalidResponse', 'PROTOCOL');
     const clusters: ClusterSummary[] = [];
     for (const item of document.data.clusters) {
-      if (!isRecord(item) || typeof item.clusterId !== 'string' || !item.clusterId || Buffer.byteLength(item.clusterId, 'utf8') > 128 || item.clusterId.trim() !== item.clusterId || typeof item.clusterName !== 'string' || Buffer.byteLength(item.clusterName, 'utf8') > 200 || typeof item.regionId !== 'string' || Buffer.byteLength(item.regionId, 'utf8') > 100 || typeof item.plan !== 'string' || Buffer.byteLength(item.plan, 'utf8') > 100 || typeof item.status !== 'string' || Buffer.byteLength(item.status, 'utf8') > 100) return branch('invalidResponse', 'PROTOCOL');
-      clusters.push({ clusterID: item.clusterId, name: item.clusterName, regionID: item.regionId, plan: item.plan, status: item.status });
+      if (!isRecord(item) || typeof item.clusterId !== 'string' || !item.clusterId || Buffer.byteLength(item.clusterId) > 128 || item.clusterId.trim() !== item.clusterId) return branch('invalidResponse', 'PROTOCOL');
+      const name = item.clusterName ?? '';
+      const regionID = item.regionId ?? '';
+      const plan = item.plan ?? '';
+      const status = item.status ?? '';
+      if (typeof name !== 'string' || Buffer.byteLength(name) > 200 ||
+          typeof regionID !== 'string' || Buffer.byteLength(regionID) > 100 ||
+          typeof plan !== 'string' || Buffer.byteLength(plan) > 100 ||
+          typeof status !== 'string' || Buffer.byteLength(status) > 100) return branch('invalidResponse', 'PROTOCOL');
+      clusters.push({ clusterID: item.clusterId, name, regionID, plan, status });
     }
     return newQueryBranch('found', { total: document.data.count as number, clusters });
   }

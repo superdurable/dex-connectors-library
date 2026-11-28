@@ -118,21 +118,21 @@ class ListClustersOperation:
         for item in items:
             if not isinstance(item, dict):
                 return None
-            cluster_id = item.get("clusterId", "")
-            name = item.get("clusterName", "")
-            region_id = item.get("regionId", "")
-            plan = item.get("plan", "")
-            status = item.get("status", "")
+            cluster_id = "" if item.get("clusterId") is None else item["clusterId"]
+            name = "" if item.get("clusterName") is None else item["clusterName"]
+            region_id = "" if item.get("regionId") is None else item["regionId"]
+            plan = "" if item.get("plan") is None else item["plan"]
+            status = "" if item.get("status") is None else item["status"]
             if not all(isinstance(value, str) for value in (cluster_id, name, region_id, plan, status)):
                 return None
             if (
                 not cluster_id
-                or len(cluster_id) > 128
+                or len(cluster_id.encode("utf-8", "replace")) > 128
                 or cluster_id.strip() != cluster_id
-                or len(name) > 200
-                or len(region_id) > 100
-                or len(plan) > 100
-                or len(status) > 100
+                or len(name.encode("utf-8", "replace")) > 200
+                or len(region_id.encode("utf-8", "replace")) > 100
+                or len(plan.encode("utf-8", "replace")) > 100
+                or len(status.encode("utf-8", "replace")) > 100
             ):
                 return None
             summaries.append(ClusterSummary(cluster_id, name, region_id, plan, status))
