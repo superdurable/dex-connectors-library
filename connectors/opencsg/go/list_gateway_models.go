@@ -78,7 +78,7 @@ func (operation ListGatewayModelsOperation) Invoke(call sdkgo.Call, _ ListGatewa
 	}
 	modelIDs := make([]string, 0, min(len(wire.Data), 50))
 	for _, model := range wire.Data {
-		if model.ID == "" || len(model.ID) > 256 || strings.ContainsAny(model.ID, "\r\n\x00") {
+		if strings.Contains(model.ID, credentials.APIKey.Reveal()) || model.ID == "" || len(model.ID) > 256 || strings.ContainsAny(model.ID, "\r\n\x00") {
 			return modelsBranch(ListGatewayModelsBranchInvalidResponse, sdkgo.FailureProtocol, "OpenCSG returned invalid model ID")
 		}
 		if len(modelIDs) < 50 {

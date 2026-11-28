@@ -1,0 +1,52 @@
+{
+  "connectorId": "opencsg",
+  "releaseTag": "connectors/opencsg/go/v0.1.1",
+  "package": {
+    "ecosystem": "cargo",
+    "name": "dex-connector-opencsg",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_list_gateway_models_step",
+      "kind": "query",
+      "operationId": "listGatewayModels",
+      "inputType": "ListGatewayModelsInput",
+      "description": "List up to 50 model IDs enabled for the gateway Key.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListGatewayModelsInput requests models visible to the community gateway Key.",
+        "properties": {},
+        "type": "object"
+      }
+    }
+  ]
+}

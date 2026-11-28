@@ -1,10 +1,10 @@
 {
   "connectorId": "opencsg",
-  "releaseTag": "connectors/opencsg/go/v0.1.0",
+  "releaseTag": "connectors/opencsg/go/v0.1.1",
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-opencsg",
-    "version": "0.1.0"
+    "version": "0.1.1"
   },
   "factories": [
     {

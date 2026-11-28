@@ -20,9 +20,14 @@ CONNECTION = sdk.ConnectionRef("opencsg", "opencsg")
 
 def make_client(client: object, recorder: conformance.ExchangeRecorder) -> provider.Client:
     """Build the provider client from synthetic Go scenario settings."""
-    key = "" if recorder.scenario["name"].endswith("-defect") else "test-secret"
+    name = recorder.scenario["name"]
+    key = {
+        "listGatewayModels-defect": "",
+        "listGatewayModels-longKey": "x" * 1024,
+        "listGatewayModels-nonAsciiKey": "密钥",
+    }.get(name, "test-secret")
     return provider.Client(
-        provider.Config(),
+        provider.Config(max_response_bytes=16 if name.endswith(("-oversized", "-smallLimit")) else 1048576),
         conformance.static_credentials(CONNECTION, provider.Credentials(sdk.SecretString(key))),
         client,
     )

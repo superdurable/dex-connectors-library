@@ -259,6 +259,511 @@
       "input": {},
       "name": "listGatewayModels-transport",
       "operation": "listGatewayModels"
+    },
+    {
+      "callId": "cf160aff-b9d2-43ce-92f5-e5c5ce932403",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"model-0\"},{\"id\":\"model-1\"},{\"id\":\"model-2\"},{\"id\":\"model-3\"},{\"id\":\"model-4\"},{\"id\":\"model-5\"},{\"id\":\"model-6\"},{\"id\":\"model-7\"},{\"id\":\"model-8\"},{\"id\":\"model-9\"},{\"id\":\"model-10\"},{\"id\":\"model-11\"},{\"id\":\"model-12\"},{\"id\":\"model-13\"},{\"id\":\"model-14\"},{\"id\":\"model-15\"},{\"id\":\"model-16\"},{\"id\":\"model-17\"},{\"id\":\"model-18\"},{\"id\":\"model-19\"},{\"id\":\"model-20\"},{\"id\":\"model-21\"},{\"id\":\"model-22\"},{\"id\":\"model-23\"},{\"id\":\"model-24\"},{\"id\":\"model-25\"},{\"id\":\"model-26\"},{\"id\":\"model-27\"},{\"id\":\"model-28\"},{\"id\":\"model-29\"},{\"id\":\"model-30\"},{\"id\":\"model-31\"},{\"id\":\"model-32\"},{\"id\":\"model-33\"},{\"id\":\"model-34\"},{\"id\":\"model-35\"},{\"id\":\"model-36\"},{\"id\":\"model-37\"},{\"id\":\"model-38\"},{\"id\":\"model-39\"},{\"id\":\"model-40\"},{\"id\":\"model-41\"},{\"id\":\"model-42\"},{\"id\":\"model-43\"},{\"id\":\"model-44\"},{\"id\":\"model-45\"},{\"id\":\"model-46\"},{\"id\":\"model-47\"},{\"id\":\"model-48\"},{\"id\":\"model-49\"},{\"id\":\"model-50\"},{\"id\":\"model-51\"},{\"id\":\"model-52\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/models",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "modelIDs": [
+            "model-0",
+            "model-1",
+            "model-2",
+            "model-3",
+            "model-4",
+            "model-5",
+            "model-6",
+            "model-7",
+            "model-8",
+            "model-9",
+            "model-10",
+            "model-11",
+            "model-12",
+            "model-13",
+            "model-14",
+            "model-15",
+            "model-16",
+            "model-17",
+            "model-18",
+            "model-19",
+            "model-20",
+            "model-21",
+            "model-22",
+            "model-23",
+            "model-24",
+            "model-25",
+            "model-26",
+            "model-27",
+            "model-28",
+            "model-29",
+            "model-30",
+            "model-31",
+            "model-32",
+            "model-33",
+            "model-34",
+            "model-35",
+            "model-36",
+            "model-37",
+            "model-38",
+            "model-39",
+            "model-40",
+            "model-41",
+            "model-42",
+            "model-43",
+            "model-44",
+            "model-45",
+            "model-46",
+            "model-47",
+            "model-48",
+            "model-49"
+          ],
+          "total": 53
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listGatewayModels-projectionCap",
+      "operation": "listGatewayModels"
+    },
+    {
+      "callId": "e75b15aa-1212-4e0f-aec1-58d257b2c27c",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"model-0\"},{\"id\":\"model-1\"},{\"id\":\"model-2\"},{\"id\":\"model-3\"},{\"id\":\"model-4\"},{\"id\":\"model-5\"},{\"id\":\"model-6\"},{\"id\":\"model-7\"},{\"id\":\"model-8\"},{\"id\":\"model-9\"},{\"id\":\"model-10\"},{\"id\":\"model-11\"},{\"id\":\"model-12\"},{\"id\":\"model-13\"},{\"id\":\"model-14\"},{\"id\":\"model-15\"},{\"id\":\"model-16\"},{\"id\":\"model-17\"},{\"id\":\"model-18\"},{\"id\":\"model-19\"},{\"id\":\"model-20\"},{\"id\":\"model-21\"},{\"id\":\"model-22\"},{\"id\":\"model-23\"},{\"id\":\"model-24\"},{\"id\":\"model-25\"},{\"id\":\"model-26\"},{\"id\":\"model-27\"},{\"id\":\"model-28\"},{\"id\":\"model-29\"},{\"id\":\"model-30\"},{\"id\":\"model-31\"},{\"id\":\"model-32\"},{\"id\":\"model-33\"},{\"id\":\"model-34\"},{\"id\":\"model-35\"},{\"id\":\"model-36\"},{\"id\":\"model-37\"},{\"id\":\"model-38\"},{\"id\":\"model-39\"},{\"id\":\"model-40\"},{\"id\":\"model-41\"},{\"id\":\"model-42\"},{\"id\":\"model-43\"},{\"id\":\"model-44\"},{\"id\":\"model-45\"},{\"id\":\"model-46\"},{\"id\":\"model-47\"},{\"id\":\"model-48\"},{\"id\":\"model-49\"},{\"id\":\"model-50\"},{\"id\":\"model-51\"},{\"id\":\"model-52\"},{\"id\":\"\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/models",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "modelIDs": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listGatewayModels-invalidAfterCap",
+      "operation": "listGatewayModels"
+    },
+    {
+      "callId": "92dba890-ba33-4d66-9a3e-f41fe6d5cff7",
+      "exchanges": [
+        {
+          "body": "{\"DaTa\":[{\"Id\":\"same\"},{\"ID\":\"same\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/models",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "modelIDs": [
+            "same",
+            "same"
+          ],
+          "total": 2
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listGatewayModels-duplicateIDs",
+      "operation": "listGatewayModels"
+    },
+    {
+      "callId": "af3c85a2-959a-4da9-902e-9eb1755cca2a",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/models",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "modelIDs": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listGatewayModels-multibyteID",
+      "operation": "listGatewayModels"
+    },
+    {
+      "callId": "9ddb61f1-94dc-45c9-b5f5-9576b1569335",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"before-test-\\u0073ecret-after\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/models",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "modelIDs": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listGatewayModels-escapedKey",
+      "operation": "listGatewayModels"
+    },
+    {
+      "callId": "26d97be0-b532-4e05-9a24-a10f7d773ad9",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"sample\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/models",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "modelIDs": [
+            "sample"
+          ],
+          "total": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listGatewayModels-longKey",
+      "operation": "listGatewayModels"
+    },
+    {
+      "callId": "67a37e65-4873-49af-9366-06d9a731a918",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "modelIDs": [],
+          "total": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listGatewayModels-nonAsciiKey",
+      "operation": "listGatewayModels"
+    },
+    {
+      "callId": "c40a8388-d6c4-46fb-aa00-a170cfb42489",
+      "exchanges": [
+        {
+          "body": "{\"data\":null}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/models",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "modelIDs": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listGatewayModels-noRows",
+      "operation": "listGatewayModels"
+    },
+    {
+      "callId": "fd8f786a-b9e2-4220-b2b8-b9b973195688",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":8}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/models",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "modelIDs": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listGatewayModels-wrongIDType",
+      "operation": "listGatewayModels"
+    },
+    {
+      "callId": "942b95c8-4c5f-45f6-a740-ec58d5fa2000",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"longer than sixteen bytes\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/models",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "modelIDs": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listGatewayModels-oversized",
+      "operation": "listGatewayModels"
+    },
+    {
+      "callId": "19f621c6-7a12-458f-ba41-832fb0fcb0fe",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/models",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "modelIDs": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listGatewayModels-forbidden",
+      "operation": "listGatewayModels"
+    },
+    {
+      "callId": "c4359fce-f47e-4bc0-8a89-d23c347b6c32",
+      "exchanges": [
+        {
+          "body": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/models",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 7000,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listGatewayModels-throttled-smallLimit",
+      "operation": "listGatewayModels"
+    },
+    {
+      "callId": "15ab67af-4e0a-4c19-888f-17a2384ffc5b",
+      "exchanges": [
+        {
+          "body": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/models",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "modelIDs": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listGatewayModels-unauthorized-smallLimit",
+      "operation": "listGatewayModels"
     }
   ],
   "schemaVersion": 1

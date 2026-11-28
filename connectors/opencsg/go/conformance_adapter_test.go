@@ -5,6 +5,7 @@ package opencsg
 
 import (
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -17,10 +18,19 @@ const conformanceFixturePathPrefix = ""
 func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint string, transport *http.Client) conformanceInvoker {
 	t.Helper()
 	credentials := Credentials{APIKey: sdkgo.NewSecretString("test-secret")}
-	if scenario.Name == "listGatewayModels-defect" {
+	switch scenario.Name {
+	case "listGatewayModels-defect":
 		credentials = Credentials{}
+	case "listGatewayModels-longKey":
+		credentials.APIKey = sdkgo.NewSecretString(strings.Repeat("x", 1024))
+	case "listGatewayModels-nonAsciiKey":
+		credentials.APIKey = sdkgo.NewSecretString("密钥")
 	}
-	client, err := New(Config{}, sdkgo.StaticCredentialProvider[Credentials]{testConnection: credentials}, WithHTTPClient(transport))
+	config := Config{}
+	if scenario.Name == "listGatewayModels-oversized" || strings.HasSuffix(scenario.Name, "-smallLimit") {
+		config.MaxResponseBytes = 16
+	}
+	client, err := New(config, sdkgo.StaticCredentialProvider[Credentials]{testConnection: credentials}, WithHTTPClient(transport))
 	require.NoError(t, err)
 	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
 		"listGatewayModels": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListGatewayModels(), testConnection),

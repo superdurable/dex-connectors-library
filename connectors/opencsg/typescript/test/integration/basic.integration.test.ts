@@ -22,6 +22,10 @@ it('retries one 503 and persists the provider result through real Dex', async ()
   const server = createServer((request, response) => {
     requests++;
     if (requests === 1) { response.writeHead(503).end(); return; }
+    if (requests === 3) {
+      response.writeHead(200, { 'Content-Type': 'application/json' }).end(String.raw`{"data":[{"id":"before-test-\u0073ecret-after"}]}`);
+      return;
+    }
     const selected = bodies[0];
     response.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify(selected));
   });
@@ -52,6 +56,13 @@ it('retries one 503 and persists the provider result through real Dex', async ()
     expect(result.status, result.errorMessage).toBe('completed');
     expect(result.singleOutput()).toEqual({"modelIDs": ["OpenCSG/example-model"], "total": 1});
     expect(requests).toBe(2);
+    const echoId = `opencsg-echo-${randomUUID()}`;
+    await client.startFlow(flow, echoId, {});
+    const failed = await client.waitForFlow(echoId, 60_000);
+    expect(failed.status).toBe('failed');
+    expect(failed.errorMessage).toContain('invalidResponse');
+    expect(failed.errorMessage).not.toContain('test-secret');
+    expect(requests).toBe(3);
   } finally {
     await client.close(); await worker.close(); cache.close();
     await rm(directory, { recursive: true, force: true });

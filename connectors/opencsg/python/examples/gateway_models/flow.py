@@ -2,6 +2,8 @@
 # SPDX-License-Identifier: MIT
 """Read opencsg through one durable provider Query."""
 
+from dataclasses import dataclass
+
 import dex
 from dex_connectors.sdk import QueryResult
 
@@ -16,18 +18,23 @@ CONNECTION_NAME = "opencsg"
 _OUTCOME = dex.Attribute("opencsg-list_gateway_models-outcome", ListGatewayModelsOutput)
 
 
-def map_to_operation_input(input: ListGatewayModelsInput) -> ListGatewayModelsInput:
-    """Forward the typed Flow input to the provider Query."""
-    return input
+@dataclass(frozen=True)
+class GatewayCatalogRequest:
+    """Start an unfiltered read of the gateway catalog."""
+
+
+def map_to_operation_input(input: GatewayCatalogRequest) -> ListGatewayModelsInput:
+    """Request the catalog visible to this connection."""
+    return ListGatewayModelsInput()
 
 
 # dex:group group-id:read group-label:"Provider read"
 # dex:explanation text:"Begin the opencsg read with the configured connection."
-class _Start(dex.Step[ListGatewayModelsInput]):
+class _Start(dex.Step[GatewayCatalogRequest]):
     def get_step_type(self) -> str:
         return "StartListGatewayModels"
 
-    def execute(self, context: dex.Context, input: ListGatewayModelsInput) -> dex.StepDecision:
+    def execute(self, context: dex.Context, input: GatewayCatalogRequest) -> dex.StepDecision:
         return dex.go_to(dex.StepRef("ListGatewayModelsQuery"), input)
 
 
@@ -42,7 +49,7 @@ class _Complete(dex.Step[QueryResult[ListGatewayModelsOutput]]):
         return dex.graceful_complete(input.value)
 
 
-class ListGatewayModelsFlow(dex.Flow[ListGatewayModelsInput]):
+class ListGatewayModelsFlow(dex.Flow[GatewayCatalogRequest]):
     """Durably read opencsg with its static connection."""
 
     def __init__(self, connection: Connection) -> None:
@@ -52,7 +59,7 @@ class ListGatewayModelsFlow(dex.Flow[ListGatewayModelsInput]):
         self._complete = _Complete()
         self._query = new_list_gateway_models_step(
             step_type="ListGatewayModelsQuery",
-            step_input_type=ListGatewayModelsInput,
+            step_input_type=GatewayCatalogRequest,
             annotations={
                 "groupId": "provider",
                 "groupLabel": "opencsg",
@@ -68,7 +75,7 @@ class ListGatewayModelsFlow(dex.Flow[ListGatewayModelsInput]):
         """Return the stable Flow identity shown in Dex Web."""
         return "OpencsgListGatewayModels"
 
-    def get_steps(self) -> dex.StepList[ListGatewayModelsInput]:
+    def get_steps(self) -> dex.StepList[GatewayCatalogRequest]:
         """Register the start, provider Query, and completion Steps."""
         return dex.StepList.start_step(self._start).other_steps(self._query, self._complete)
 

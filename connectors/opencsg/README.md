@@ -13,3 +13,16 @@ The [runnable Flow](go/examples/list-gateway-models/) starts with `{}` and compl
 ## Python
 
 The first Python package implements the read-only operation and all Go-recorded provider branches. See [Python package](python/README.md) and its [runnable Flow](python/examples/gateway_models/README.md). Live provider authorization and responses are unverified.
+
+## TypeScript, Java, and Rust
+
+The [TypeScript Flow](typescript/examples/basic/flow.ts), [Java Worker](java/examples/io/superdurable/dexconnectors/opencsg/GatewayCatalogWorker.java), and [Rust Worker](rust/examples/list_gateway_models.rs) each bind the `opencsg` connection and accept an empty object. All five languages return the full count and preserve the order of the first fifty IDs. An invalid ID anywhere in the response, including an ID containing the current bearer key, selects `invalidResponse`.
+
+Run `./gradlew gatewayCatalogWorker` from `java/` with `OPENCSG_API_KEY` supplied by your credential manager. Java applications using a loaded Dex project can bind `GatewayCatalog.fromProject` instead. The Rust example loads its credentials and request limits from the project. Point `DEX_CONNECTOR_CONNECTIONS_FILE` at the Dex Web connections file and run `cargo run --example list_gateway_models` from `rust/`.
+
+With `DEX_FLOW_SERVICE_ADDRESS` set to a running Dex service, `./gradlew test dexDevTest` and `cargo test --all-targets` run the native samples against provider fixtures. From this connector directory, generate and lint their FDG 2.0 graphs with the following commands.
+
+```sh
+dexcli visualize java/examples/io/superdurable/dexconnectors/opencsg/GatewayCatalogWorker.java --language java --schema-version 2.0 --lint app --open=false --json --out /tmp/opencsg-java-fdg
+dexcli visualize rust/examples/list_gateway_models.rs --language rust --schema-version 2.0 --lint app --open=false --json --out /tmp/opencsg-rust-fdg
+```

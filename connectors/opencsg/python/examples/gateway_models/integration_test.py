@@ -18,12 +18,11 @@ from dex_connectors.opencsg import (
     Client,
     Config,
     Credentials,
-    ListGatewayModelsInput,
     ListGatewayModelsOutput,
     new_connection,
 )
 
-from .flow import CONNECTION_NAME, ListGatewayModelsFlow
+from .flow import CONNECTION_NAME, GatewayCatalogRequest, ListGatewayModelsFlow
 
 
 @pytest.mark.asyncio
@@ -41,6 +40,9 @@ async def test_provider_query_retries_503(tmp_path: Path) -> None:
         requests.append(request)
         if len(requests) == 1:
             return httpx.Response(503)
+        if len(requests) == 3:
+            echo = next(case for case in scenarios if case["name"] == "listGatewayModels-escapedKey")
+            return httpx.Response(200, content=echo["exchanges"][0]["body"])
         exchange = exchanges[len(requests) - 2]
         assert request.method == exchange["method"]
         assert request.url.path == exchange["path"]
@@ -60,12 +62,20 @@ async def test_provider_query_retries_503(tmp_path: Path) -> None:
             await worker.wait_pull_registered(timeout=15)
             async with dex.AsyncClient(registry, cache, dex.ClientOptions(server_address=address)) as client:
                 flow_id = f"opencsg-python-{uuid4().hex}"
-                await client.start_flow(flow, flow_id, ListGatewayModelsInput())
+                await client.start_flow(flow, flow_id, GatewayCatalogRequest())
                 result = await asyncio.wait_for(client.wait_for_flow(flow_id, timedelta(seconds=30)), 35)
                 assert result.status == dex.FlowStatus.COMPLETED, result.error_message
                 output = result.single_output(ListGatewayModelsOutput)
                 assert output.model_ids == tuple(success["expected"]["output"]["modelIDs"])
                 assert len(requests) == len(exchanges) + 1
+                echo_id = f"opencsg-python-echo-{uuid4().hex}"
+                await client.start_flow(flow, echo_id, GatewayCatalogRequest())
+                failed = await asyncio.wait_for(client.wait_for_flow(echo_id, timedelta(seconds=30)), 35)
+                assert failed.status == dex.FlowStatus.FAILED
+                assert failed.error_message is not None
+                assert "invalidResponse" in failed.error_message
+                assert "test-secret" not in failed.error_message
+                assert len(requests) == 3
         finally:
             await worker.stop()
             await worker_task

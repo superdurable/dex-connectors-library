@@ -139,12 +139,14 @@ class ListGatewayModelsOperation:
                 return _retry(FailureKind.AVAILABILITY, "opencsg response was interrupted")
         finally:
             await response.aclose()
-        return _decode_response(body)
+        return _decode_response(body, key)
 
 
-def _decode_response(body: bytes) -> QueryAttempt[ListGatewayModelsOutput]:
+def _decode_response(body: bytes, key: str) -> QueryAttempt[ListGatewayModelsOutput]:
     try:
-        document: Any = json.loads(body)
+        document: Any = json.loads(
+            body, object_pairs_hook=lambda pairs: {name.lower(): value for name, value in pairs}
+        )
     except (ValueError, UnicodeDecodeError):
         return _branch("invalidResponse", FailureKind.PROTOCOL, "OpenCSG returned invalid model data")
     models = document.get("data") if isinstance(document, dict) else None
@@ -155,9 +157,10 @@ def _decode_response(body: bytes) -> QueryAttempt[ListGatewayModelsOutput]:
         identifier = model.get("id") if isinstance(model, dict) else None
         if (
             not isinstance(identifier, str)
+            or key in identifier
             or not identifier
+            or any(char in "\r\n\0" or "\ud800" <= char <= "\udfff" for char in identifier)
             or len(identifier.encode()) > 256
-            or any(char in identifier for char in "\r\n\0")
         ):
             return _branch("invalidResponse", FailureKind.PROTOCOL, "OpenCSG returned invalid model ID")
         if len(ids) < 50:

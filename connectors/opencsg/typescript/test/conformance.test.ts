@@ -12,8 +12,9 @@ const connection = { provider: 'opencsg', name: 'opencsg' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeOpenCSG, ''));
 
 async function invokeOpenCSG(scenario: Scenario, recorder: ExchangeRecorder) {
-  const credentials = new StaticCredentialProvider([[connection, { apiKey: new SecretString(scenario.name.endsWith('defect') ? '' : 'test-secret') }]]);
-  const client = new OpenCSGClient({}, credentials, { send: request => answerRecordedRequest(recorder, request, before => new ProviderTransportError(before)) });
+  const keys: Record<string, string> = { 'listGatewayModels-defect': '', 'listGatewayModels-longKey': 'x'.repeat(1024), 'listGatewayModels-nonAsciiKey': '密钥' };
+  const credentials = new StaticCredentialProvider([[connection, { apiKey: new SecretString(keys[scenario.name] ?? 'test-secret') }]]);
+  const client = new OpenCSGClient({ maxResponseBytes: /-(?:oversized|smallLimit)$/.test(scenario.name) ? 16 : 1048576 }, credentials, { send: request => answerRecordedRequest(recorder, request, before => new ProviderTransportError(before)) });
   const call: Call = {
     context: { flowId: 'opencsg-conformance', cancellationSignal: new AbortController().signal } as Call['context'],
     id: scenario.callId, connection, operation: { connectorId: 'opencsg', operationId: scenario.operation },

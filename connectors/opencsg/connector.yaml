@@ -6,11 +6,13 @@ metadata:
   description: List model IDs available through the OpenCSG community AI Gateway.
   company: OpenCSG
   categories: [ai, developer-tools]
-  version: v0.1.0
+  version: v0.1.1
 spec:
   languages:
-    python: {version: v0.1.0, operations: [listGatewayModels], triggers: []}
-    typescript: {version: v0.1.0, package: "@superdurable/connector-opencsg", operations: [listGatewayModels], triggers: []}
+    java: {version: v0.1.0, operations: [listGatewayModels], triggers: []}
+    rust: {version: v0.1.0, operations: [listGatewayModels], triggers: []}
+    python: {version: v0.1.1, operations: [listGatewayModels], triggers: []}
+    typescript: {version: v0.1.1, package: "@superdurable/connector-opencsg", operations: [listGatewayModels], triggers: []}
   provider: opencsg
   codegen:
     go:
