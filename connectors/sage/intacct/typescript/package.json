@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-sage-intacct",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "license": "MIT",
   "description": "Sage Intacct connector for Dex TypeScript applications",
   "repository": {
@@ -43,7 +43,7 @@
     "check": "npm run typecheck && npm run lint && npm test && npm run build"
   },
   "dependencies": {
-    "@superdurable/connectors-sdk": "0.7.0",
+    "@superdurable/connectors-sdk": "0.8.0",
     "@superdurable/dex": ">=1.28.0",
     "zod": "^4.1.0"
   },

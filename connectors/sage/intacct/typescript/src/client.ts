@@ -6,7 +6,7 @@ import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oa
 import { BodyTooLargeError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { Authorization, CredentialFields } from './generated/refresh.js';
 import type { Config, Credentials } from './generated/models.js';
-import { GetInvoiceOperation } from './operations.js';
+import { GetInvoiceOperation, ListInvoicesOperation } from './operations.js';
 
 /** Injectable Sage Intacct transport and OAuth refresh dependencies. */
 export interface SageIntacctClientOptions {
@@ -49,6 +49,9 @@ export class SageIntacctClient {
 
   /** Bind the accounts receivable invoice Query. */ getInvoice(): GetInvoiceOperation { return new GetInvoiceOperation(this); }
 
+  /** Bind the first-page invoice listing Query. */
+  listInvoices(): ListInvoicesOperation { return new ListInvoicesOperation(this); }
+
   /** Send one bounded GET with a bearer token held outside Flow state. */
   async get(call: Call, path: string): Promise<SageIntacctExchange> {
     let token: string;
@@ -74,7 +77,7 @@ export class SageIntacctClient {
       return failedExchange('request');
     }
     const retryAfterMs = parseRetryAfter(header(response.headers, 'retry-after'), this.now());
-    if (Buffer.from(response.body).includes(token)) return { ...failedExchange('credential'), status: response.status, retryAfterMs };
+    if (containsAccessToken(response.body, token)) return { ...failedExchange('credential'), status: response.status, retryAfterMs };
     return { status: response.status, body: response.body, retryAfterMs };
   }
 }
@@ -85,4 +88,26 @@ function failedExchange(error: NonNullable<SageIntacctExchange['error']>): SageI
 function header(headers: ProviderResponse['headers'], name: string): string {
   const value = Object.entries(headers).find(([key]) => key.toLowerCase() === name.toLowerCase())?.[1];
   return Array.isArray(value) ? value[0] ?? '' : value ?? '';
+}
+
+
+function containsAccessToken(body: Uint8Array, token: string): boolean {
+  const bytes = Buffer.from(body);
+  if (bytes.includes(token)) return true;
+  if (!bytes.includes(0x5c)) return false;
+  let document: unknown;
+  try { document = JSON.parse(bytes.toString('utf8')); }
+  catch { return false; }
+  const pending: unknown[] = [document];
+  while (pending.length) {
+    const value = pending.pop();
+    if (typeof value === 'string' && value.includes(token)) return true;
+    if (value !== null && typeof value === 'object') {
+      for (const [name, field] of Object.entries(value)) {
+        if (name.includes(token)) return true;
+        pending.push(field);
+      }
+    }
+  }
+  return false;
 }

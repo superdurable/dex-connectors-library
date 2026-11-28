@@ -11,30 +11,37 @@ from dex_connectors.sdk.projectconfig.provider import RefreshingCredentialProvid
 from dex_connectors.sdk.oauthtoken import ManifestCredentialRefreshDriver
 
 from ..client import Client, Config, Credentials
-from .definitions import CONNECTOR_ID, GET_INVOICE_DEFINITION
+from .definitions import CONNECTOR_ID, GET_INVOICE_DEFINITION, LIST_INVOICES_DEFINITION
 from .refresh import AUTHORIZATION, CREDENTIAL_FIELDS
-from ..models import GetInvoiceInput, InvoiceSummary
+from ..models import GetInvoiceInput, InvoiceList, InvoiceSummary, ListInvoicesInput
 
 class Connection:
 
-    __slots__ = ('_get_invoice', '_client', 'reference')
+    __slots__ = ('_get_invoice', '_list_invoices', '_client', 'reference')
 
     def __init__(self,
         reference: ConnectionRef,
         get_invoice: Query[GetInvoiceInput, InvoiceSummary],
+        list_invoices: Query[ListInvoicesInput, InvoiceList],
         client: Client | None = None,
     ) -> None:
         reference.validate()
-        if reference.provider != CONNECTOR_ID or get_invoice is None:
+        if reference.provider != CONNECTOR_ID or get_invoice is None or list_invoices is None:
             raise ValueError("Sage Intacct connection provider and operations are required")
         if get_invoice.definition().operation != GET_INVOICE_DEFINITION.operation:
             raise ValueError("Sage Intacct connection operation identity differs")
+        if list_invoices.definition().operation != LIST_INVOICES_DEFINITION.operation:
+            raise ValueError("Sage Intacct connection operation identity differs")
         self.reference = reference
         self._get_invoice = get_invoice
+        self._list_invoices = list_invoices
         self._client = client
 
     def get_invoice(self) -> Query[GetInvoiceInput, InvoiceSummary]:
         return self._get_invoice
+
+    def list_invoices(self) -> Query[ListInvoicesInput, InvoiceList]:
+        return self._list_invoices
 
     async def aclose(self) -> None:
         if self._client is not None:
@@ -52,16 +59,17 @@ setattr(Connection, '__module__', 'dex_connectors.sage_intacct.connection')
 def new_connection(client: Client, reference: ConnectionRef) -> Connection:
     if client is None:
         raise ValueError("Sage Intacct client is required")
-    return Connection(reference, client.get_invoice(), client)
+    return Connection(reference, client.get_invoice(), client.list_invoices(), client)
 
 setattr(new_connection, '__module__', 'dex_connectors.sage_intacct.connection')
 
 
 def new_connection_with_operations(
     get_invoice: Query[GetInvoiceInput, InvoiceSummary],
+    list_invoices: Query[ListInvoicesInput, InvoiceList],
     reference: ConnectionRef,
 ) -> Connection:
-    return Connection(reference, get_invoice)
+    return Connection(reference, get_invoice, list_invoices)
 
 setattr(new_connection_with_operations, '__module__', 'dex_connectors.sage_intacct.connection')
 

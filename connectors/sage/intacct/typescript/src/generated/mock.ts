@@ -4,9 +4,9 @@
 
 import { branchCase, retryCase, type Case, newQuery, type MockQuery } from '@superdurable/connectors-sdk/connectormock';
 import type { Failure } from '@superdurable/connectors-sdk';
-import type { GetInvoiceInput, InvoiceSummary } from './models.js';
-import { GetInvoiceInputSchema, InvoiceSummarySchema } from './models.js';
-import { ProviderID, GetInvoiceDefinition } from './definitions.js';
+import type { GetInvoiceInput, InvoiceSummary, ListInvoicesInput, InvoiceList } from './models.js';
+import { GetInvoiceInputSchema, InvoiceSummarySchema, ListInvoicesInputSchema, InvoiceListSchema } from './models.js';
+import { ProviderID, GetInvoiceDefinition, ListInvoicesDefinition } from './definitions.js';
 import { newConnectionWithOperations, type Connection, type Operations } from './connection.js';
 
 /** Go zero value for GetInvoiceInput in scripted cases. */
@@ -17,6 +17,14 @@ export const emptyGetInvoiceInput: GetInvoiceInput = GetInvoiceInputSchema.parse
 export const emptyInvoiceSummary: InvoiceSummary = InvoiceSummarySchema.parse({
   "key": '',
   "id": '',
+});
+/** Go zero value for ListInvoicesInput in scripted cases. */
+export const emptyListInvoicesInput: ListInvoicesInput = ListInvoicesInputSchema.parse({
+});
+/** Go zero value for InvoiceList in scripted cases. */
+export const emptyInvoiceList: InvoiceList = InvoiceListSchema.parse({
+  "invoices": [],
+  "next": '',
 });
 
 /** Script the found branch. */
@@ -39,19 +47,41 @@ export function getInvoiceFoundDefault(): Case<InvoiceSummary> {
 /** Default getInvoice scenario. */
 export function getInvoiceDefault(): Case<InvoiceSummary> { return getInvoiceFoundDefault(); }
 
+/** Script the found branch. */
+export function listInvoicesFound(value: InvoiceList, failure?: Failure): Case<InvoiceList> { return branchCase("found", value, failure); }
+/** Script the providerRejected branch. */
+export function listInvoicesProviderRejected(value: InvoiceList, failure?: Failure): Case<InvoiceList> { return branchCase("providerRejected", value, failure); }
+/** Script the invalidResponse branch. */
+export function listInvoicesInvalidResponse(value: InvoiceList, failure?: Failure): Case<InvoiceList> { return branchCase("invalidResponse", value, failure); }
+/** Script the defect branch. */
+export function listInvoicesDefect(value: InvoiceList, failure?: Failure): Case<InvoiceList> { return branchCase("defect", value, failure); }
+/** Script a safe retry of listInvoices. */
+export function listInvoicesRetry(failure: Failure, retryAfterMs = 0): Case<InvoiceList> { return retryCase(failure, retryAfterMs); }
+/** Manifest scenario foundDefault for listInvoices. */
+export function listInvoicesFoundDefault(): Case<InvoiceList> {
+  const value = InvoiceListSchema.parse({"invoices":[{"id":"INV-443","key":"443"}],"next":""});
+  return branchCase("found", value);
+}
+/** Default listInvoices scenario. */
+export function listInvoicesDefault(): Case<InvoiceList> { return listInvoicesFoundDefault(); }
+
 /** Scripted operations and manifest defaults for this connector. */
 export class GeneratedMock implements Operations {
   readonly #getInvoice: MockQuery<GetInvoiceInput, InvoiceSummary>;
+  readonly #listInvoices: MockQuery<ListInvoicesInput, InvoiceList>;
   readonly #connection: Connection;
 
   constructor(connectionName: string) {
     this.#getInvoice = newQuery<GetInvoiceInput, InvoiceSummary>(GetInvoiceDefinition).default(getInvoiceDefault());
+    this.#listInvoices = newQuery<ListInvoicesInput, InvoiceList>(ListInvoicesDefinition).default(listInvoicesDefault());
     this.#connection = newConnectionWithOperations(this, { provider: ProviderID, name: connectionName });
   }
 
   connection(): Connection { return this.#connection; }
   getInvoice(): MockQuery<GetInvoiceInput, InvoiceSummary> { return this.#getInvoice; }
+  listInvoices(): MockQuery<ListInvoicesInput, InvoiceList> { return this.#listInvoices; }
   assertNoFailures(): void {
     this.#getInvoice.assertNoFailures();
+    this.#listInvoices.assertNoFailures();
   }
 }

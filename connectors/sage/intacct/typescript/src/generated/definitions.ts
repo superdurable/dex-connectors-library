@@ -41,3 +41,32 @@ export const GetInvoiceDefinition: QueryDefinition = {
 };
 /** Manifest metadata for getInvoice. */
 export const GetInvoiceMetadata = { kind: "query", idempotency: "none", authorization: "required" } as const;
+
+/** Branch IDs for listInvoices. */
+export const ListInvoicesBranch = {
+  Found: "found",
+  ProviderRejected: "providerRejected",
+  InvalidResponse: "invalidResponse",
+  Defect: "defect",
+} as const;
+/** Sage Intacct returned an invoice page. */
+export const ListInvoicesBranchFound = ListInvoicesBranch.Found;
+/** Sage Intacct conclusively rejected the list request. */
+export const ListInvoicesBranchProviderRejected = ListInvoicesBranch.ProviderRejected;
+/** Sage Intacct returned malformed or oversized list JSON. */
+export const ListInvoicesBranchInvalidResponse = ListInvoicesBranch.InvalidResponse;
+/** Local connection credentials are invalid. */
+export const ListInvoicesBranchDefect = ListInvoicesBranch.Defect;
+/** Manifest definition for listInvoices. */
+export const ListInvoicesDefinition: QueryDefinition = {
+  operation: { connectorId: ConnectorID, operationId: "listInvoices" },
+  branches: [
+    { id: "found", description: "Sage Intacct returned an invoice page." },
+    { id: "providerRejected", description: "Sage Intacct conclusively rejected the list request.", optional: true },
+    { id: "invalidResponse", description: "Sage Intacct returned malformed or oversized list JSON.", optional: true },
+    { id: "defect", description: "Local connection credentials are invalid.", optional: true },
+  ],
+  stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
+};
+/** Manifest metadata for listInvoices. */
+export const ListInvoicesMetadata = { kind: "query", idempotency: "none", authorization: "required" } as const;

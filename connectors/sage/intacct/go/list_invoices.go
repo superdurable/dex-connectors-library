@@ -4,7 +4,6 @@
 package sageintacct
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -61,7 +60,7 @@ func (operation ListInvoicesOperation) Invoke(call sdkgo.Call, _ ListInvoicesInp
 	defer func() { _ = response.Body.Close() }()
 	retryAfter := providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now())
 	body, readErr := providerhttp.ReadBoundedBody(response.Body, operation.client.maxResponseBytes)
-	if bytes.Contains(body, []byte(accessToken)) {
+	if containsAccessToken(body, accessToken) {
 		return listInvoicesBranch(ListInvoicesBranchDefect, sdkgo.FailureAuthentication, "Sage Intacct response contained a credential")
 	}
 	if response.StatusCode == http.StatusTooManyRequests {

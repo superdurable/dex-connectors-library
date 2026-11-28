@@ -111,6 +111,16 @@ export interface InvoiceSummary {
   /** ID is the invoice's displayed document ID. */
   "id": string;
 }
+/** ListInvoicesInput requests the first page of Accounts Receivable invoices. */
+export interface ListInvoicesInput {
+}
+/** InvoiceList contains the keys and displayed IDs in one provider page. */
+export interface InvoiceList {
+  /** Invoices contains the invoice identities exposed by Sage Intacct. */
+  "invoices": Array<InvoiceSummary> | null;
+  /** Next is Sage Intacct's opaque link to the next page, or blank at the end. */
+  "next": string;
+}
 
 /** Runtime validator for GetInvoiceInput. */
 export const GetInvoiceInputSchema = z.strictObject({
@@ -122,3 +132,13 @@ export const InvoiceSummarySchema = z.strictObject({
   "key": z.string(),
   "id": z.string(),
 }) satisfies z.ZodType<InvoiceSummary>;
+
+/** Runtime validator for ListInvoicesInput. */
+export const ListInvoicesInputSchema = z.strictObject({
+}) satisfies z.ZodType<ListInvoicesInput>;
+
+/** Runtime validator for InvoiceList. */
+export const InvoiceListSchema = z.strictObject({
+  "invoices": z.array(InvoiceSummarySchema).nullable(),
+  "next": z.string(),
+}) satisfies z.ZodType<InvoiceList>;

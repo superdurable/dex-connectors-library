@@ -3,3 +3,4 @@
 """Operation-specific Sage Intacct Step factory."""
 
 from ._generated.steps import new_get_invoice_step as new_get_invoice_step
+from ._generated.steps import new_list_invoices_step as new_list_invoices_step

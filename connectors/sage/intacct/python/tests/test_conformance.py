@@ -14,18 +14,17 @@ ROOT = Path(__file__).parents[5]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 import connector_scenarios as conformance  # noqa: E402
 
-SCENARIOS = [
-    scenario
-    for scenario in conformance.load_scenarios(ROOT / "conformance/connectors/sage/intacct/scenarios.json")
-    if scenario["operation"] == "getInvoice"
-]
+SCENARIOS = conformance.load_scenarios(ROOT / "conformance/connectors/sage/intacct/scenarios.json")
 CONNECTION = sdk.ConnectionRef("sage-intacct", "sage-intacct")
 ADAPTER = conformance.PythonOperationAdapter(
     "sage-intacct",
     CONNECTION,
     sageintacct,
-    lambda http_client, _: sageintacct.Client(
-        sageintacct.Config(base_url="http://127.0.0.1:8848"),
+    lambda http_client, recorder: sageintacct.Client(
+        sageintacct.Config(
+            base_url="http://127.0.0.1:8848",
+            max_response_bytes=16 if recorder.scenario["name"].endswith("-smallLimit") else 1048576,
+        ),
         conformance.static_credentials(
             CONNECTION,
             sageintacct.Credentials(

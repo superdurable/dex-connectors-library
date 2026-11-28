@@ -1,10 +1,10 @@
 {
   "connectorId": "sage-intacct",
-  "releaseTag": "connectors/sage/intacct/go/v0.2.0",
+  "releaseTag": "connectors/sage/intacct/go/v0.2.1",
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-sage-intacct",
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   "factories": [
     {
@@ -58,6 +58,47 @@
         "required": [
           "invoiceKey"
         ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "new_list_invoices_step",
+      "kind": "query",
+      "operationId": "listInvoices",
+      "inputType": "ListInvoicesInput",
+      "description": "List one page of Accounts Receivable invoice keys and IDs.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListInvoicesInput requests the first page of Accounts Receivable invoices.",
+        "properties": {},
         "type": "object"
       }
     }

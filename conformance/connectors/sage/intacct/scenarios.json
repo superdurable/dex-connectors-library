@@ -590,6 +590,597 @@
       "input": {},
       "name": "listInvoices-transportFailure",
       "operation": "listInvoices"
+    },
+    {
+      "callId": "ff73c0bd-18d4-4e82-b53f-ac92ce5c5d05",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"test-sage-intacct-token\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ia/api/v1/objects/accounts-receivable/invoice/443",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-sage-intacct-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "id": "",
+          "key": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "invoiceKey": "443"
+      },
+      "name": "getInvoice-rawToken",
+      "operation": "getInvoice"
+    },
+    {
+      "callId": "a4624b30-3112-429a-8630-f75e1955f090",
+      "exchanges": [
+        {
+          "body": "{\"ia::result\":{\"key\":\"443\",\"id\":\"test-sage-intacct-\\u0074oken\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ia/api/v1/objects/accounts-receivable/invoice/443",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-sage-intacct-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "id": "",
+          "key": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "invoiceKey": "443"
+      },
+      "name": "getInvoice-escapedToken",
+      "operation": "getInvoice"
+    },
+    {
+      "callId": "f8ecc6ba-c5bd-4504-89ea-1da4e5cc50e3",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"test-sage-intacct-token\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ia/api/v1/objects/accounts-receivable/invoice",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-sage-intacct-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "invoices": [],
+          "next": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listInvoices-rawToken",
+      "operation": "listInvoices"
+    },
+    {
+      "callId": "989682f4-ca7e-4b8f-8c6e-60ef9edda7a7",
+      "exchanges": [
+        {
+          "body": "{\"ia::result\":[],\"ia::meta\":{\"next\":\"test-sage-intacct-\\u0074oken\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ia/api/v1/objects/accounts-receivable/invoice",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-sage-intacct-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "invoices": [],
+          "next": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listInvoices-escapedToken",
+      "operation": "listInvoices"
+    },
+    {
+      "callId": "23602b89-9034-4676-8ee2-f74f7aa5e355",
+      "exchanges": [
+        {
+          "body": "{\"ia::result\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ia/api/v1/objects/accounts-receivable/invoice",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-sage-intacct-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "invoices": [],
+          "next": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listInvoices-empty",
+      "operation": "listInvoices"
+    },
+    {
+      "callId": "614b4b97-e70b-43c1-8464-5eca1ee9d170",
+      "exchanges": [
+        {
+          "body": "{\"IA::RESULT\":[{\"KEY\":\"443\",\"ID\":\"INV-443\",\"private\":\"discard\"}],\"IA::META\":{\"NEXT\":\"https://untrusted.example/page/2\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ia/api/v1/objects/accounts-receivable/invoice",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-sage-intacct-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "invoices": [
+            {
+              "id": "INV-443",
+              "key": "443"
+            }
+          ],
+          "next": "https://untrusted.example/page/2"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listInvoices-opaqueNext",
+      "operation": "listInvoices"
+    },
+    {
+      "callId": "f6f90df3-1640-40d9-9429-60fb506216ec",
+      "exchanges": [
+        {
+          "body": "{\"ia::result\":[{\"key\":\"a/b\",\"id\":\"INV\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ia/api/v1/objects/accounts-receivable/invoice",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-sage-intacct-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "invoices": [],
+          "next": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listInvoices-badKey",
+      "operation": "listInvoices"
+    },
+    {
+      "callId": "6e4be8b6-8db8-4ba4-bb74-fae5bac7e883",
+      "exchanges": [
+        {
+          "body": "{\"ia::result\":[{\"key\":\"443\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ia/api/v1/objects/accounts-receivable/invoice",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-sage-intacct-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "invoices": [],
+          "next": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listInvoices-missingId",
+      "operation": "listInvoices"
+    },
+    {
+      "callId": "cd691f63-ca02-49b7-a9f3-e609747e3c42",
+      "exchanges": [
+        {
+          "body": "{\"ia::result\":[],\"ia::meta\":{\"next\":5}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ia/api/v1/objects/accounts-receivable/invoice",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-sage-intacct-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "invoices": [],
+          "next": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listInvoices-invalidNext",
+      "operation": "listInvoices"
+    },
+    {
+      "callId": "c71a6816-d49f-4b41-ae55-d1470be64a04",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ia/api/v1/objects/accounts-receivable/invoice",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-sage-intacct-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "invoices": [],
+          "next": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listInvoices-notAccessible",
+      "operation": "listInvoices"
+    },
+    {
+      "callId": "10addc22-f2e8-4f02-9d3b-1ce95d5c706a",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"larger than sixteen bytes\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ia/api/v1/objects/accounts-receivable/invoice/443",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-sage-intacct-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "id": "",
+          "key": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "invoiceKey": "443"
+      },
+      "name": "getInvoice-oversized-smallLimit",
+      "operation": "getInvoice"
+    },
+    {
+      "callId": "f6772ec5-a135-4aa5-8581-7e8275a6b7c0",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"larger than sixteen bytes\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ia/api/v1/objects/accounts-receivable/invoice/443",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-sage-intacct-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "key": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "invoiceKey": "443"
+      },
+      "name": "getInvoice-rejected-smallLimit",
+      "operation": "getInvoice"
+    },
+    {
+      "callId": "152be860-ed47-49fc-8f41-5e2eb09ddd20",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"larger than sixteen bytes\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ia/api/v1/objects/accounts-receivable/invoice/443",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-sage-intacct-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "key": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "invoiceKey": "443"
+      },
+      "name": "getInvoice-missing-smallLimit",
+      "operation": "getInvoice"
+    },
+    {
+      "callId": "a32a1178-a826-4d25-9a63-d6ba4131d8c5",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"larger than sixteen bytes\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ia/api/v1/objects/accounts-receivable/invoice",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-sage-intacct-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "invoices": [],
+          "next": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listInvoices-oversized-smallLimit",
+      "operation": "listInvoices"
+    },
+    {
+      "callId": "f408eec4-7451-4244-8029-3571a2365eb8",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"larger than sixteen bytes\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ia/api/v1/objects/accounts-receivable/invoice",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-sage-intacct-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "invoices": [],
+          "next": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listInvoices-rejected-smallLimit",
+      "operation": "listInvoices"
+    },
+    {
+      "callId": "ae25784e-cd2d-468c-9ce5-d2287a3074b4",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"larger than sixteen bytes\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ia/api/v1/objects/accounts-receivable/invoice",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-sage-intacct-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "invoices": [],
+          "next": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listInvoices-missing-smallLimit",
+      "operation": "listInvoices"
     }
   ],
   "schemaVersion": 1

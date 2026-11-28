@@ -2,12 +2,12 @@
 // SPDX-License-Identifier: MIT
 
 import { newQueryBranch, newQueryRetry, type Call, type Failure, type Query, type QueryAttempt, type QueryDefinition } from '@superdurable/connectors-sdk';
-import { GetInvoiceDefinition } from './generated/definitions.js';
-import type { GetInvoiceInput, InvoiceSummary } from './generated/models.js';
+import { GetInvoiceDefinition, ListInvoicesDefinition } from './generated/definitions.js';
+import type { GetInvoiceInput, InvoiceSummary, ListInvoicesInput, InvoiceList } from './generated/models.js';
 import type { SageIntacctClient, SageIntacctExchange } from './client.js';
 
-const emptyInvoice = (): InvoiceSummary => ({ key: '', id: '' });
-const invoiceKeyPattern = /^[A-Za-z0-9_-]{1,128}$/;
+const invoicesPath = '/ia/api/v1/objects/accounts-receivable/invoice';
+const invoiceKeyPattern = /^[A-Za-z0-9_-]{1,128}(?![\s\S])/;
 
 /** Read one accounts receivable invoice by system-assigned key. */
 export class GetInvoiceOperation implements Query<GetInvoiceInput, InvoiceSummary> {
@@ -16,39 +16,75 @@ export class GetInvoiceOperation implements Query<GetInvoiceInput, InvoiceSummar
   /** Project only the stable key and displayed ID into the Flow. */
   async invoke(call: Call, input: GetInvoiceInput): Promise<QueryAttempt<InvoiceSummary>> {
     if (!input || typeof input.invoiceKey !== 'string' || !invoiceKeyPattern.test(input.invoiceKey))
-      return branch('defect', 'VALIDATION', 'invoice key is invalid');
-    const exchange = await this.client.get(call, `/ia/api/v1/objects/accounts-receivable/invoice/${encodeURIComponent(input.invoiceKey)}`);
-    const failed = classifyRead(exchange);
+      return branch('getInvoice', { key: '', id: '' }, 'defect', 'VALIDATION', 'invoice key is invalid');
+    const exchange = await this.client.get(call, `${invoicesPath}/${encodeURIComponent(input.invoiceKey)}`);
+    const failed = classifyRead(exchange, 'getInvoice', { key: '', id: '' });
     if (failed) return failed;
     const document = parseDocument(exchange.body);
-    const result = isObject(document?.['ia::result']) ? document['ia::result'] : undefined;
-    if (!result || result.key !== input.invoiceKey || typeof result.id !== 'string' || !result.id)
-      return branch('invalidResponse', 'PROTOCOL', 'Sage Intacct returned invalid invoice JSON');
-    return newQueryBranch('found', { key: result.key, id: result.id });
+    const invoice = invoiceSummary(document?.['ia::result']);
+    if (!invoice || invoice.key !== input.invoiceKey)
+      return branch('getInvoice', { key: '', id: '' }, 'invalidResponse', 'PROTOCOL', 'Sage Intacct returned invalid invoice JSON');
+    return newQueryBranch('found', invoice);
   }
 }
 
-function classifyRead(exchange: SageIntacctExchange): QueryAttempt<InvoiceSummary> | undefined {
-  if (exchange.error === 'credential') return branch('defect', 'AUTHENTICATION', 'Sage Intacct connection needs authorization');
-  if (exchange.error === 'refresh' || exchange.error === 'request') return retry('TRANSPORT', 'Sage Intacct invoice request failed');
-  if (exchange.status === 429) return retry('RATE_LIMIT', 'Sage Intacct rate limited the request', exchange.retryAfterMs);
-  if (exchange.status === 408 || exchange.status >= 500) return retry('AVAILABILITY', 'Sage Intacct is temporarily unavailable', exchange.retryAfterMs);
-  if (exchange.status === 404) return branch('notFound', 'NOT_FOUND', 'Sage Intacct invoice was not found');
-  if (exchange.error === 'tooLarge') return branch('invalidResponse', 'RESPONSE_TOO_LARGE', 'Sage Intacct invoice response exceeded the configured limit');
-  if (exchange.status !== 200) return branch('providerRejected', 'PROVIDER_REJECTION', `Sage Intacct rejected HTTP ${exchange.status}`);
+/** Read the first page of Accounts Receivable invoice keys and IDs. */
+export class ListInvoicesOperation implements Query<ListInvoicesInput, InvoiceList> {
+  /** Bind the provider client. */
+  constructor(private readonly client: SageIntacctClient) {}
+  /** Return the manifest-generated invoice list contract. */
+  definition(): QueryDefinition { return ListInvoicesDefinition; }
+  /** Return the next link as opaque provider data after one GET. */
+  async invoke(call: Call, input: ListInvoicesInput): Promise<QueryAttempt<InvoiceList>> {
+    void input;
+    const empty: InvoiceList = { invoices: [], next: '' };
+    const exchange = await this.client.get(call, invoicesPath);
+    const failed = classifyRead(exchange, 'listInvoices', empty);
+    if (failed) return failed;
+    const document = parseDocument(exchange.body);
+    const rows = document?.['ia::result'];
+    const meta = document?.['ia::meta'];
+    const next = isObject(meta) ? meta.next : undefined;
+    if (!Array.isArray(rows) || (meta != null && !isObject(meta)) || (next != null && typeof next !== 'string'))
+      return branch('listInvoices', empty, 'invalidResponse', 'PROTOCOL', 'Sage Intacct returned invalid invoice list JSON');
+    const invoices: InvoiceSummary[] = [];
+    for (const row of rows) {
+      const invoice = invoiceSummary(row);
+      if (!invoice) return branch('listInvoices', empty, 'invalidResponse', 'PROTOCOL', 'Sage Intacct returned an incomplete invoice identity');
+      invoices.push(invoice);
+    }
+    return newQueryBranch('found', { invoices, next: next ?? '' });
+  }
+}
+
+function invoiceSummary(value: unknown): InvoiceSummary | undefined {
+  if (!isObject(value) || typeof value.key !== 'string' || !invoiceKeyPattern.test(value.key)
+      || typeof value.id !== 'string' || !value.id) return undefined;
+  return { key: value.key, id: value.id };
+}
+
+function classifyRead<T>(exchange: SageIntacctExchange, operation: string, empty: T): QueryAttempt<T> | undefined {
+  if (exchange.error === 'credential') return branch(operation, empty, 'defect', 'AUTHENTICATION', 'Sage Intacct connection needs authorization');
+  if (exchange.error === 'refresh' || exchange.error === 'request') return retry(operation, 'TRANSPORT', 'Sage Intacct invoice request failed');
+  if (exchange.status === 429) return retry(operation, 'RATE_LIMIT', 'Sage Intacct rate limited the request', exchange.retryAfterMs);
+  if (exchange.status === 408 || exchange.status >= 500) return retry(operation, 'AVAILABILITY', 'Sage Intacct is temporarily unavailable', exchange.retryAfterMs);
+  if (exchange.status === 404 && operation === 'getInvoice') return branch(operation, empty, 'notFound', 'NOT_FOUND', 'Sage Intacct invoice was not found');
+  if (exchange.status !== 200) return branch(operation, empty, 'providerRejected', 'PROVIDER_REJECTION', `Sage Intacct rejected HTTP ${exchange.status}`);
+  if (exchange.error === 'tooLarge') return branch(operation, empty, 'invalidResponse', 'RESPONSE_TOO_LARGE', 'Sage Intacct invoice response exceeded the configured limit');
   return undefined;
 }
 function parseDocument(body: Uint8Array): Record<string, unknown> | undefined {
-  try { const value: unknown = JSON.parse(Buffer.from(body).toString('utf8')); return isObject(value) ? value : undefined; }
+  try { const value: unknown = JSON.parse(Buffer.from(body).toString('utf8'), (_key, item: unknown) =>
+    isObject(item) ? Object.fromEntries(Object.entries(item).map(([key, field]) => [key.toLowerCase(), field])) : item); return isObject(value) ? value : undefined; }
   catch { return undefined; }
 }
 function isObject(value: unknown): value is Record<string, unknown> { return !!value && typeof value === 'object' && !Array.isArray(value); }
-function branch(branchId: string, kind: Failure['kind'], message: string): QueryAttempt<InvoiceSummary> {
-  return newQueryBranch(branchId, emptyInvoice(), {}, failure(kind, message));
+function branch<T>(operation: string, empty: T, branchId: string, kind: Failure['kind'], message: string): QueryAttempt<T> {
+  return newQueryBranch(branchId, empty, {}, failure(operation, kind, message));
 }
-function retry(kind: Failure['kind'], message: string, delay = 0): QueryAttempt<InvoiceSummary> {
-  return newQueryRetry(failure(kind, message), delay);
+function retry<T>(operation: string, kind: Failure['kind'], message: string, delay = 0): QueryAttempt<T> {
+  return newQueryRetry(failure(operation, kind, message), delay);
 }
-function failure(kind: Failure['kind'], message: string): Failure {
-  return { kind, provider: 'sage-intacct', operation: 'getInvoice', message };
+function failure(operation: string, kind: Failure['kind'], message: string): Failure {
+  return { kind, provider: 'sage-intacct', operation, message };
 }

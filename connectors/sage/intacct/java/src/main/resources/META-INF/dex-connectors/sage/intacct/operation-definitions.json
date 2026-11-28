@@ -1,0 +1,87 @@
+{
+  "getInvoice": {
+    "branches": [
+      {
+        "description": "Sage Intacct returned the requested invoice.",
+        "id": "found",
+        "optional": false
+      },
+      {
+        "description": "No accessible invoice has this system key.",
+        "id": "notFound",
+        "optional": true
+      },
+      {
+        "description": "Sage Intacct conclusively rejected the lookup.",
+        "id": "providerRejected",
+        "optional": true
+      },
+      {
+        "description": "Sage Intacct returned malformed or oversized invoice JSON.",
+        "id": "invalidResponse",
+        "optional": true
+      },
+      {
+        "description": "Local input or connection credentials are invalid.",
+        "id": "defect",
+        "optional": true
+      }
+    ],
+    "operation": {
+      "connectorId": "sage-intacct",
+      "operationId": "getInvoice"
+    },
+    "stepDefaults": {
+      "executeDurability": 2,
+      "executeMethodTimeout": 30000000000,
+      "executeRetry": {
+        "BackoffCoefficient": 2,
+        "InitialInterval": 1000000000,
+        "MaximumAttempts": 0,
+        "MaximumInterval": 300000000000,
+        "TotalDuration": 3600000000000
+      },
+      "heartbeatTimeout": 0
+    }
+  },
+  "listInvoices": {
+    "branches": [
+      {
+        "description": "Sage Intacct returned an invoice page.",
+        "id": "found",
+        "optional": false
+      },
+      {
+        "description": "Sage Intacct conclusively rejected the list request.",
+        "id": "providerRejected",
+        "optional": true
+      },
+      {
+        "description": "Sage Intacct returned malformed or oversized list JSON.",
+        "id": "invalidResponse",
+        "optional": true
+      },
+      {
+        "description": "Local connection credentials are invalid.",
+        "id": "defect",
+        "optional": true
+      }
+    ],
+    "operation": {
+      "connectorId": "sage-intacct",
+      "operationId": "listInvoices"
+    },
+    "stepDefaults": {
+      "executeDurability": 2,
+      "executeMethodTimeout": 30000000000,
+      "executeRetry": {
+        "BackoffCoefficient": 2,
+        "InitialInterval": 1000000000,
+        "MaximumAttempts": 0,
+        "MaximumInterval": 300000000000,
+        "TotalDuration": 3600000000000
+      },
+      "heartbeatTimeout": 0
+    }
+  }
+}

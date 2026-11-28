@@ -17,6 +17,7 @@ from dex_connectors.sdk import (
 CONNECTOR_ID = "sage-intacct"
 PROVIDER = "sage-intacct"
 GET_INVOICE_OPERATION_ID = "getInvoice"
+LIST_INVOICES_OPERATION_ID = "listInvoices"
 DEFECT = "defect"
 FOUND = "found"
 INVALID_RESPONSE = "invalidResponse"
@@ -31,6 +32,21 @@ GET_INVOICE_DEFINITION = QueryDefinition(
         BranchDefinition(PROVIDER_REJECTED, "Sage Intacct conclusively rejected the lookup.", True),
         BranchDefinition(INVALID_RESPONSE, "Sage Intacct returned malformed or oversized invoice JSON.", True),
         BranchDefinition(DEFECT, "Local input or connection credentials are invalid.", True),
+    ),
+    StepDefaults(
+        timedelta(seconds=30),
+        2,
+        execute_retry=default_connector_step_execute_retry_policy(),
+    ),
+)
+
+LIST_INVOICES_DEFINITION = QueryDefinition(
+    OperationRef(CONNECTOR_ID, LIST_INVOICES_OPERATION_ID),
+    (
+        BranchDefinition(FOUND, "Sage Intacct returned an invoice page.", False),
+        BranchDefinition(PROVIDER_REJECTED, "Sage Intacct conclusively rejected the list request.", True),
+        BranchDefinition(INVALID_RESPONSE, "Sage Intacct returned malformed or oversized list JSON.", True),
+        BranchDefinition(DEFECT, "Local connection credentials are invalid.", True),
     ),
     StepDefaults(
         timedelta(seconds=30),

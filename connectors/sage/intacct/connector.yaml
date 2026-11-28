@@ -6,19 +6,21 @@ metadata:
   description: Read Accounts Receivable invoices from Sage Intacct REST API by key or list page.
   company: Sage
   categories: [finance-payments]
-  version: v0.2.0
+  version: v0.2.1
 spec:
   provider: sage-intacct
   languages:
+    java: {version: v0.1.0, operations: [getInvoice, listInvoices], triggers: []}
+    rust: {version: v0.1.0, operations: [getInvoice, listInvoices], triggers: []}
     python:
-      version: v0.1.0
+      version: v0.2.0
       package: dex-connector-sage-intacct
-      operations: [getInvoice]
+      operations: [getInvoice, listInvoices]
       triggers: []
     typescript:
-      version: v0.1.0
+      version: v0.2.0
       package: '@superdurable/connector-sage-intacct'
-      operations: [getInvoice]
+      operations: [getInvoice, listInvoices]
       triggers: []
   codegen:
     go:
