@@ -150,9 +150,20 @@ def _valid_api_key(api_key: object) -> bool:
     )
 
 
+def _provider_fields(fields: dict[str, Any]) -> dict[str, Any]:
+    return {name.lower(): value for name, value in fields.items()}
+
+
+def _field_or_default(item: dict[str, Any], name: str, default: str | int) -> Any:
+    value = item.get(name)
+    return default if value is None else value
+
+
 def _decode_response(body: bytes) -> ListKnowledgeBasesOutput:
     document: Any = json.loads(
-        body, parse_constant=lambda _: (_ for _ in ()).throw(ValueError("invalid number"))
+        body,
+        object_hook=_provider_fields,
+        parse_constant=lambda _: (_ for _ in ()).throw(ValueError("invalid number")),
     )
     if (
         not isinstance(document, dict)
@@ -169,34 +180,36 @@ def _decode_response(body: bytes) -> ListKnowledgeBasesOutput:
         if not isinstance(item, dict):
             raise ValueError("invalid knowledge base")
         identifier = item.get("id")
-        name = item.get("name", "")
-        description = item.get("description", "")
-        status = item.get("status", "")
+        name = _field_or_default(item, "name", "")
+        description = _field_or_default(item, "description", "")
+        status = _field_or_default(item, "status", "")
         file_ids = item.get("file_ids")
-        created = item.get("created_at", 0)
-        updated = item.get("updated_at", 0)
+        created = _field_or_default(item, "created_at", 0)
+        updated = _field_or_default(item, "updated_at", 0)
         if (
             not isinstance(identifier, str)
             or not identifier
-            or len(identifier) > 256
+            or len(identifier.encode()) > 256
             or identifier in seen
             or item.get("object") != "knowledge-base"
             or not isinstance(name, str)
-            or len(name) > 256
+            or len(name.encode()) > 256
             or not isinstance(description, str)
-            or len(description) > 4096
+            or len(description.encode()) > 4096
             or not isinstance(status, str)
             or file_ids is not None
             and not isinstance(file_ids, list)
             or isinstance(file_ids, list)
             and (
                 len(file_ids) > 10_000
-                or any(not isinstance(value, str) or not value or len(value) > 256 for value in file_ids)
+                or any(
+                    not isinstance(value, str) or not value or len(value.encode()) > 256 for value in file_ids
+                )
             )
             or type(created) is not int
-            or created < 0
+            or not 0 <= created < 2**63
             or type(updated) is not int
-            or updated < 0
+            or not 0 <= updated < 2**63
         ):
             raise ValueError("invalid knowledge base")
         seen.add(identifier)

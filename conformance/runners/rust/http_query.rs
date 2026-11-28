@@ -6,7 +6,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use crate::{CONNECTOR_ID, ORIGIN, scenario_credentials};
-use crate::{OPERATION_ID, QueryInput, QueryOperation};
+use crate::{OPERATION_ID, QueryInput};
 
 const FIXTURE: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/support/scenarios.json");
 use dex_connectors_sdk::providerhttp::{
@@ -118,8 +118,11 @@ impl ProviderHttpTransport for RecordedProvider {
     }
 }
 
-#[test]
-fn replay_go_query() {
+type Clock = Arc<dyn Fn() -> std::time::SystemTime + Send + Sync>;
+type Credentials = Arc<StaticCredentialProvider<crate::connector::Credentials>>;
+pub(super) fn replay_with<Q: Query<Input = QueryInput>>(
+    build: impl Fn(&str, Credentials, ProviderHttpClient, usize, Clock) -> Q,
+) {
     let fixture = std::env::var("CONNECTOR_CONFORMANCE_FIXTURE").unwrap_or_else(|_| FIXTURE.into());
     let document: Value = serde_json::from_slice(&std::fs::read(fixture).unwrap()).unwrap();
     let scenarios = document["scenarios"].as_array().unwrap();
@@ -165,9 +168,7 @@ fn replay_go_query() {
             } else {
                 Arc::new(std::time::SystemTime::now)
             };
-        let operation =
-            QueryOperation::with_http_client_and_clock(Arc::new(credentials), http, limit, clock)
-                .unwrap();
+        let operation = build(name, Arc::new(credentials), http, limit, clock);
         let call = Call::new(
             CallId::new(scenario["callId"].as_str().unwrap()),
             connection,

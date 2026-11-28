@@ -9,9 +9,11 @@ metadata:
   version: v0.1.0
 spec:
   languages:
-    python: {version: v0.1.0, operations: [listKnowledgeBases], triggers: []}
+    java: {version: v0.1.0, operations: [listKnowledgeBases], triggers: []}
+    rust: {version: v0.1.0, operations: [listKnowledgeBases], triggers: []}
+    python: {version: v0.1.1, operations: [listKnowledgeBases], triggers: []}
     typescript:
-      version: v0.1.0
+      version: v0.1.1
       operations: [listKnowledgeBases]
       triggers: []
   provider: baichuan

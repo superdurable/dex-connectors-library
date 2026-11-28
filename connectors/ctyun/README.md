@@ -17,3 +17,16 @@ The [Python package](python/README.md) implements the same read-only `listKnowle
 ## TypeScript
 
 The [TypeScript package](typescript/README.md) implements the same signed `listKnowledgeBases` request. Its 15 Go-recorded provider scenarios and runnable Flow verify retry and persisted output through a real Dex Worker and Client.
+
+## Java and Rust
+
+Provider field names are case-insensitive. A missing or null file count is returned as zero.
+
+The [Java Worker](java/examples/io/superdurable/dexconnectors/ctyun/KnowledgeBaseWorker.java) and [Rust Worker](rust/examples/list_knowledge_bases.rs) run `listKnowledgeBases` with the static `ctyun` connection. Both return the ordered resource metadata from the `listed` branch. Set `DEX_FLOW_SERVICE_ADDRESS` and supply `CTYUN_ACCESS_KEY`, `CTYUN_SECURITY_KEY` and `CTYUN_TENANT_ID` to the Worker environment.
+
+Run `./gradlew knowledgeBaseWorker` from `java/` or `cargo run --example list_knowledge_bases` from `rust/`. With a local Dex server, `./gradlew build dexDevTest` and `cargo test --all-targets` replay the Go fixtures and verify the Worker retries a temporary error and persists the returned list. Generate the Flow graphs from the connector directory:
+
+```sh
+dexcli visualize java/examples/io/superdurable/dexconnectors/ctyun/KnowledgeBaseWorker.java --schema-version 2.0 --lint app --open=false
+dexcli visualize rust/examples/list_knowledge_bases.rs --schema-version 2.0 --lint app --open=false
+```

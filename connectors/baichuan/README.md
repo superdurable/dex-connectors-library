@@ -39,3 +39,16 @@ The [TypeScript package](typescript/README.md) implements `listKnowledgeBases` a
 ## Python
 
 The [Python package](python/README.md) implements `listKnowledgeBases` with a runnable Dex Flow and Go-recorded provider scenarios. Provider authorization with a live Baichuan API key remains unverified.
+
+## Java and Rust
+
+Field names in provider JSON are case-insensitive. Missing or null attached-file lists become empty arrays. Name and description limits use UTF-8 bytes.
+
+The [Java Worker](java/examples/io/superdurable/dexconnectors/baichuan/KnowledgeBaseWorker.java) and [Rust Worker](rust/examples/list_knowledge_bases.rs) run `listKnowledgeBases` with the static `baichuan` connection. Both return the ordered resource metadata from the `listed` branch. Set `DEX_FLOW_SERVICE_ADDRESS` and supply `BAICHUAN_API_KEY` to the Worker environment.
+
+Run `./gradlew knowledgeBaseWorker` from `java/` or `cargo run --example list_knowledge_bases` from `rust/`. With a local Dex server, `./gradlew build dexDevTest` and `cargo test --all-targets` replay the Go fixtures and verify the Worker retries a temporary error and persists the returned list. Generate the Flow graphs from the connector directory:
+
+```sh
+dexcli visualize java/examples/io/superdurable/dexconnectors/baichuan/KnowledgeBaseWorker.java --schema-version 2.0 --lint app --open=false
+dexcli visualize rust/examples/list_knowledge_bases.rs --schema-version 2.0 --lint app --open=false
+```

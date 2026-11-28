@@ -87,21 +87,22 @@ export class ListKnowledgeBasesOperation implements Query<ListKnowledgeBasesInpu
     try { wire = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(response.body)) as unknown; }
     catch { return terminal('invalidResponse', 'PROTOCOL', 'CTYun returned invalid knowledge-base JSON'); }
     if (!wire || typeof wire !== 'object' || Array.isArray(wire)) return terminal('invalidResponse', 'PROTOCOL', 'CTYun returned invalid knowledge-base JSON');
-    const fields = wire as Record<string, unknown>;
-    const status = statusCode(fields.statusCode);
+    const fields = providerFields(wire as Record<string, unknown>);
+    const status = statusCode(fields.statuscode);
     if (!status) return terminal('invalidResponse', 'PROTOCOL', 'CTYun returned invalid status code');
     if (status !== '200') {
       if (status === '40002' || status === '40004') return newQueryRetry(failure('AVAILABILITY', 'CTYun knowledge-base service reported a temporary error'), 0);
       const kind = ['40001', '40003', '40016'].includes(status) || (typeof fields.error === 'string' && fields.error.startsWith('CTAPI_100')) ? 'AUTHENTICATION' : 'PROVIDER_REJECTION';
       return terminal('providerRejected', kind, `CTYun rejected knowledge-base request with status ${status}`);
     }
-    if (!Array.isArray(fields.returnObj)) return terminal('invalidResponse', 'PROTOCOL', 'CTYun knowledge-base list is missing');
+    if (!Array.isArray(fields.returnobj)) return terminal('invalidResponse', 'PROTOCOL', 'CTYun knowledge-base list is missing');
     const knowledgeBases: KnowledgeBaseSummary[] = [];
-    for (const entry of fields.returnObj) {
+    for (const entry of fields.returnobj) {
       if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return terminal('invalidResponse', 'PROTOCOL', 'CTYun returned invalid knowledge-base metadata');
-      const item = entry as Record<string, unknown>;
-      if (typeof item.id !== 'number' || !Number.isSafeInteger(item.id) || item.id <= 0 || typeof item.name !== 'string' || !item.name || Buffer.byteLength(item.name) > 1024 || typeof item.count !== 'number' || !Number.isSafeInteger(item.count) || item.count < 0) return terminal('invalidResponse', 'PROTOCOL', 'CTYun returned invalid knowledge-base metadata');
-      knowledgeBases.push({ id: item.id, name: item.name, fileCount: item.count });
+      const item = providerFields(entry as Record<string, unknown>);
+      const count = item.count ?? 0;
+      if (typeof item.id !== 'number' || !Number.isSafeInteger(item.id) || item.id <= 0 || typeof item.name !== 'string' || !item.name || Buffer.byteLength(item.name) > 1024 || typeof count !== 'number' || !Number.isSafeInteger(count) || count < 0) return terminal('invalidResponse', 'PROTOCOL', 'CTYun returned invalid knowledge-base metadata');
+      knowledgeBases.push({ id: item.id, name: item.name, fileCount: count });
     }
     return newQueryBranch('listed', { knowledgeBases });
   }
@@ -129,4 +130,8 @@ function retryForStatus(status: number, headers: ProviderResponse['headers']): {
   const entry = Object.entries(headers).find(([name]) => name.toLowerCase() === 'retry-after')?.[1];
   return { retry: true, retryAfterMs: parseRetryAfter(Array.isArray(entry) ? entry[0] ?? '' : entry ?? '', new Date()),
     failure: status === 429 ? failure('RATE_LIMIT', 'CTYun knowledge-base request rate limited') : failure('AVAILABILITY', 'CTYun knowledge-base service temporarily unavailable') };
+}
+
+function providerFields(record: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(record).map(([name, value]) => [name.toLowerCase(), value]));
 }

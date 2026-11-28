@@ -75,19 +75,21 @@ export class ListKnowledgeBasesOperation implements Query<ListKnowledgeBasesInpu
     }
     const status = classifyStatus(response.status, response.headers);
     if (status) return status;
-    let document: unknown;
-    try { document = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(response.body)) as unknown; }
+    let wire: unknown;
+    try { wire = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(response.body)) as unknown; }
     catch { return branch('invalidResponse', 'PROTOCOL', 'Baichuan returned an invalid knowledge-base list'); }
-    if (!isRecord(document) || document.object !== 'list' || !Array.isArray(document.data) || document.data.length > 10_000) return branch('invalidResponse', 'PROTOCOL', 'Baichuan returned an invalid knowledge-base list');
+    const document = isRecord(wire) ? providerFields(wire) : {};
+    if (document.object !== 'list' || !Array.isArray(document.data) || document.data.length > 10_000) return branch('invalidResponse', 'PROTOCOL', 'Baichuan returned an invalid knowledge-base list');
     const knowledgeBases: KnowledgeBase[] = [];
     const seen = new Set<string>();
-    for (const item of document.data) {
-      if (!isRecord(item) || typeof item.id !== 'string' || !item.id || byteLength(item.id) > 256 || item.object !== 'knowledge-base' || !isOptionalString(item.name) || byteLength(optionalString(item.name)) > 256 || !isOptionalString(item.description) || byteLength(optionalString(item.description)) > 4096 || !isOptionalString(item.status) || !isOptionalInteger(item.created_at) || !isOptionalInteger(item.updated_at) || (optionalInteger(item.created_at) < 0) || (optionalInteger(item.updated_at) < 0) || !(item.file_ids === undefined || item.file_ids === null || Array.isArray(item.file_ids))) return branch('invalidResponse', 'PROTOCOL', 'Baichuan returned an invalid knowledge-base list');
+    for (const row of document.data) {
+      const item = isRecord(row) ? providerFields(row) : {};
+      if (typeof item.id !== 'string' || !item.id || byteLength(item.id) > 256 || item.object !== 'knowledge-base' || !isOptionalString(item.name) || byteLength(optionalString(item.name)) > 256 || !isOptionalString(item.description) || byteLength(optionalString(item.description)) > 4096 || !isOptionalString(item.status) || !isOptionalInteger(item.created_at) || !isOptionalInteger(item.updated_at) || (optionalInteger(item.created_at) < 0) || (optionalInteger(item.updated_at) < 0) || !(item.file_ids === undefined || item.file_ids === null || Array.isArray(item.file_ids))) return branch('invalidResponse', 'PROTOCOL', 'Baichuan returned an invalid knowledge-base list');
       if (seen.has(item.id)) return branch('invalidResponse', 'PROTOCOL', 'Baichuan returned an invalid knowledge-base list');
       seen.add(item.id);
-      const fileIds = item.file_ids === undefined || item.file_ids === null ? null : item.file_ids as unknown[];
-      if (fileIds !== null && (fileIds.length > 10_000 || fileIds.some(fileId => typeof fileId !== 'string' || !fileId || byteLength(fileId) > 256))) return branch('invalidResponse', 'PROTOCOL', 'Baichuan returned an invalid knowledge-base list');
-      knowledgeBases.push({ id: item.id, name: optionalString(item.name), description: optionalString(item.description), status: optionalString(item.status), fileIds: fileIds as string[] | null, createdAt: optionalInteger(item.created_at), updatedAt: optionalInteger(item.updated_at) });
+      const fileIds = item.file_ids === undefined || item.file_ids === null ? [] : item.file_ids as unknown[];
+      if (fileIds.length > 10_000 || fileIds.some(fileId => typeof fileId !== 'string' || !fileId || byteLength(fileId) > 256)) return branch('invalidResponse', 'PROTOCOL', 'Baichuan returned an invalid knowledge-base list');
+      knowledgeBases.push({ id: item.id, name: optionalString(item.name), description: optionalString(item.description), status: optionalString(item.status), fileIds: fileIds as string[], createdAt: optionalInteger(item.created_at), updatedAt: optionalInteger(item.updated_at) });
     }
     return newQueryBranch('listed', { knowledgeBases });
   }
@@ -111,3 +113,7 @@ function isValidAPIKey(value: string): boolean { return value.length > 0 && valu
 function failure(kind: Failure['kind'], message: string): Failure { return { provider: 'baichuan', operation: 'listKnowledgeBases', kind, message }; }
 function branch(id: string, kind: Failure['kind'], message: string): QueryAttempt<ListKnowledgeBasesOutput> { return newQueryBranch(id, emptyOutput, {}, failure(kind, message)); }
 function retry(kind: Failure['kind'], message: string, delayMs = 0): QueryAttempt<ListKnowledgeBasesOutput> { return newQueryRetry(failure(kind, message), delayMs); }
+
+function providerFields(record: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(record).map(([name, value]) => [name.toLowerCase(), value]));
+}

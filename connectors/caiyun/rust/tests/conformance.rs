@@ -93,3 +93,10 @@ fn unavailable_nonce_retries_before_dispatch() {
         matches!(operation.invoke(&call,&QueryInput{longitude:116.3,latitude:39.9}),QueryAttempt::Retry{failure,retry_after_seconds} if failure.kind==FailureKind::Availability && retry_after_seconds==0.0)
     );
 }
+
+#[test]
+fn replay_go_query() {
+    http_query::replay_with(|_, credentials, http, limit, clock| {
+        QueryOperation::with_http_client_and_clock(credentials, http, limit, clock).unwrap()
+    });
+}
