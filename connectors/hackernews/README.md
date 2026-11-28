@@ -23,10 +23,9 @@ The Python package is [`dex-connector-hackernews`](python/README.md), imported a
 The TypeScript package is [`@superdurable/connector-hackernews`](typescript/README.md).
 Its [top-story Flow](typescript/examples/top-story/README.md) binds the static
 `hackernews-public` connection and uses both generated Query Step factories.
-The TypeScript package implements all three operations from v0.4.0. The
-Python package implements `listStoryIDs` and `getItem`; `searchStories` is not
-yet in Python. Go-recorded provider scenarios replay through each package for
-the operations it implements.
+Python, TypeScript, Java, and Rust all implement `listStoryIDs`, `getItem`, and
+`getUser`. TypeScript also implements `searchStories`. Each package replays the
+Go-recorded provider scenarios for its supported operations.
 
 ## Operations
 

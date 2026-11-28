@@ -12,6 +12,7 @@ from ..client import (
     FAILURE_PROVIDER,
     FOUND,
     GET_ITEM_DEFINITION,
+    GET_USER_DEFINITION,
     LIST_STORY_IDS_DEFINITION,
     LISTED,
     NOT_FOUND,
@@ -19,7 +20,7 @@ from ..client import (
     PROVIDER_REJECTED,
 )
 from ..connection import Connection, new_connection_with_operations
-from ..models import GetItemInput, Item, ListStoryIDsInput, StoryIDs
+from ..models import GetItemInput, GetUserInput, Item, ListStoryIDsInput, StoryIDs, User
 
 
 def list_story_ids_listed(value: StoryIDs, failure: Failure | None = None) -> Case[StoryIDs]:
@@ -90,6 +91,24 @@ def get_item_rejected() -> Case[Item]:
     )
 
 
+def get_user_found(value: User, failure: Failure | None = None) -> Case[User]:
+    """Script the successful profile route."""
+    return Case.branch_result(FOUND, value, failure)
+
+
+def get_user_public_user() -> Case[User]:
+    """Return the manifest's publicUser profile."""
+    return get_user_found(
+        User(
+            id="langtools",
+            created=1700000000,
+            karma=100,
+            submitted=(42003,),
+            profile_url="https://news.ycombinator.com/user?id=langtools",
+        )
+    )
+
+
 class Mock:
     """Script Hacker News Queries, defaulting to their manifest answers."""
 
@@ -98,8 +117,13 @@ class Mock:
         self.list_story_ids_script.default(list_story_ids_developer_feed())
         self.get_item_script: Query[GetItemInput, Item] = Query(GET_ITEM_DEFINITION)
         self.get_item_script.default(get_item_compiler_story())
+        self.get_user_script: Query[GetUserInput, User] = Query(GET_USER_DEFINITION)
+        self.get_user_script.default(get_user_public_user())
         self._connection = new_connection_with_operations(
-            self.list_story_ids_script, self.get_item_script, ConnectionRef(PROVIDER, connection_name)
+            self.list_story_ids_script,
+            self.get_item_script,
+            ConnectionRef(PROVIDER, connection_name),
+            get_user=self.get_user_script,
         )
 
     def connection(self) -> Connection:
@@ -109,6 +133,8 @@ class Mock:
 
 __all__ = [
     "Mock",
+    "get_user_found",
+    "get_user_public_user",
     "list_story_ids_listed",
     "list_story_ids_developer_feed",
     "list_story_ids_feed_rejected",

@@ -4,9 +4,71 @@
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-hackernews",
-    "version": "0.4.0"
+    "version": "0.5.0"
   },
   "factories": [
+    {
+      "name": "newGetUserStep",
+      "kind": "query",
+      "operationId": "getUser",
+      "inputType": "GetUserInput",
+      "description": "Read a Hacker News user's public profile by case-sensitive username, including karma and submitted story and comment IDs.",
+      "agent": {
+        "exposed": true,
+        "branches": {
+          "defect": "rejected",
+          "notFound": "rejected",
+          "providerRejected": "rejected"
+        }
+      },
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "notFound",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetUserInput identifies a public Hacker News user by case-sensitive username.",
+        "properties": {
+          "id": {
+            "description": "ID is the username shown on the Hacker News profile page.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "type": "object"
+      }
+    },
     {
       "name": "newListStoryIDsStep",
       "kind": "query",

@@ -96,3 +96,33 @@ class Item:
 
 
 setattr(Item, '__module__', 'dex_connectors.hackernews.models')
+
+
+# GetUserInput identifies a public Hacker News user by case-sensitive username.
+@dataclass(frozen=True, slots=True)
+class GetUserInput:
+    # ID is the username shown on the Hacker News profile page.
+    id: str = ''
+
+
+setattr(GetUserInput, '__module__', 'dex_connectors.hackernews.models')
+
+
+# User contains public profile fields and submitted item IDs.
+@dataclass(frozen=True, slots=True)
+class User:
+    # ID is the case-sensitive public username.
+    id: str = ''
+    # Created is the account creation time in Unix seconds.
+    created: int = 0
+    # Karma is the public score reported by Hacker News.
+    karma: int = 0
+    # AboutHTML is untrusted profile HTML and needs sanitization before rendering.
+    about: str = _dataclass_field(default='', metadata={'dex_json_omit_default': True})
+    # Submitted contains public story, poll, and comment IDs.
+    submitted: tuple[int, ...] = _dataclass_field(default=(), metadata={'dex_json_omit_default': True})
+    # ProfileURL links to the public Hacker News profile.
+    profile_url: str = _dataclass_field(default='', metadata={'dex_json_name': 'profileUrl'})
+
+
+setattr(User, '__module__', 'dex_connectors.hackernews.models')

@@ -10,17 +10,25 @@ from pathlib import Path
 from typing import Any
 
 import dex
+import pytest
 import yaml
-from dex_connectors.sdk import RetryPolicy
+from dex_connectors.sdk import RetryPolicy, default_connector_step_execute_retry_policy
 from dex_connectors.sdk.connectormock import Case
 
 import dex_connectors.hackernews as package
-from dex_connectors.hackernews import GET_ITEM_DEFINITION, LIST_STORY_IDS_DEFINITION, Item, StoryIDs
+from dex_connectors.hackernews import (
+    GET_ITEM_DEFINITION,
+    GET_USER_DEFINITION,
+    LIST_STORY_IDS_DEFINITION,
+    Item,
+    StoryIDs,
+)
 from dex_connectors.hackernews.hackernewsmock import (
     Mock,
     get_item_compiler_story,
     get_item_missing,
     get_item_rejected,
+    get_user_public_user,
     list_story_ids_developer_feed,
     list_story_ids_feed_rejected,
 )
@@ -90,6 +98,30 @@ def test_manifest_operations_branches_and_mocks() -> None:
                 assert {"kind": case.failure.kind.value, "message": case.failure.message} == mock["failure"]
 
 
+def test_public_profile_mock_and_retry_match_manifest() -> None:
+    manifest = yaml.safe_load((CONNECTOR_DIRECTORY / "connector.yaml").read_text())
+    operation = next(entry for entry in manifest["spec"]["operations"] if entry["name"] == "getUser")
+    case = get_user_public_user()
+    expected = operation["mocks"][0]
+    assert expected["branch"] == case.branch
+    assert expected["output"] == json.loads(dex.CodecRegistry().resolve(package.User).encode(case.value).data)
+    assert [(branch.id, branch.optional) for branch in GET_USER_DEFINITION.branches or ()] == [
+        (branch["id"], branch.get("optional", False)) for branch in operation["branches"]
+    ]
+    assert GET_USER_DEFINITION.step_defaults.execute_retry == default_connector_step_execute_retry_policy()
+    assert Mock().connection().get_user().definition() == GET_USER_DEFINITION
+
+
+def test_existing_two_operation_bindings_still_register_the_top_story_flow() -> None:
+    mock = Mock()
+    connection = package.new_connection_with_operations(
+        mock.list_story_ids_script, mock.get_item_script, mock.connection().reference
+    )
+    dex.Registry([TopStoryFlow(connection)], allow_async_handlers=True)
+    with pytest.raises(ValueError, match="bind get_user"):
+        connection.get_user()
+
+
 def test_factory_parameters_match_declared_branch_fields() -> None:
     document = json.loads((Path(package.__file__).parent / "dex-connector.json").read_text())
     common = {
@@ -115,7 +147,7 @@ def test_identity_and_agent_metadata_match_manifest() -> None:
     assert Mock().connection().reference.provider == manifest["spec"]["provider"]
     operations = {operation["name"]: operation for operation in manifest["spec"]["operations"]}
     factories = {factory["operationId"]: factory for factory in document["factories"]}
-    for definition in (LIST_STORY_IDS_DEFINITION, GET_ITEM_DEFINITION):
+    for definition in (LIST_STORY_IDS_DEFINITION, GET_ITEM_DEFINITION, GET_USER_DEFINITION):
         operation_id = definition.operation.operation_id
         assert definition.operation.connector_id == document["connectorId"]
         assert factories[operation_id]["description"] == operations[operation_id]["agent"]["description"]
@@ -133,7 +165,7 @@ def test_list_story_ids_input_schema_lets_agents_omit_defaulted_fields() -> None
     schemas = {factory["operationId"]: factory["inputSchema"] for factory in document["factories"]}
     # Empty feed selects top and zero limit selects 50.
     assert "required" not in schemas["listStoryIDs"]
-    assert schemas["getItem"]["required"] == ["id"]
+    assert schemas["getItem"]["required"] == schemas["getUser"]["required"] == ["id"]
 
 
 def test_example_registers_with_mock_connection() -> None:

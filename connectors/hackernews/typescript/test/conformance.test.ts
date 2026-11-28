@@ -5,11 +5,11 @@ import { it } from 'vitest';
 import { type Call } from '@superdurable/connectors-sdk';
 import { ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
 import { HackerNewsClient } from '../src/client.js';
-import { GetItemInputSchema, ListStoryIDsInputSchema, SearchStoriesInputSchema } from '../src/generated/models.js';
+import { GetUserInputSchema, GetItemInputSchema, ListStoryIDsInputSchema, SearchStoriesInputSchema } from '../src/generated/models.js';
 import { answerRecordedRequest, ExchangeRecorder, loadScenarios, replay, scenarioCall, withScenarioHTTPServer, type Scenario } from '../../../../conformance/runners/typescript/connector_scenarios.js';
 
 const scenarios = loadScenarios(new URL('../../../../conformance/connectors/hackernews/scenarios.json', import.meta.url))
-  .filter(scenario => ['listStoryIDs', 'getItem', 'searchStories'].includes(scenario.operation));
+  .filter(scenario => ['listStoryIDs', 'getItem', 'searchStories', 'getUser'].includes(scenario.operation));
 const connection = { provider: 'hacker-news', name: 'public' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeHackerNews));
 
@@ -27,6 +27,7 @@ async function invokeAtBaseUrl(scenario: Scenario, baseUrl: string, send?: (requ
       flowId: 'hackernews-conformance', cancellationSignal: new AbortController().signal,
     }, { reportProgress() {}, writeText() {}, hasProgressStream: () => false, hasTextStream: () => false }) as Call;
     if (scenario.operation === 'listStoryIDs') return client.listStoryIDs().invoke(call, ListStoryIDsInputSchema.parse(scenario.input));
+    if (scenario.operation === 'getUser') return client.getUser().invoke(call, GetUserInputSchema.parse(scenario.input));
     if (scenario.operation === 'getItem') return client.getItem().invoke(call, GetItemInputSchema.parse(scenario.input));
     if (scenario.operation === 'searchStories') return client.searchStories().invoke(call, SearchStoriesInputSchema.parse(scenario.input));
     throw new Error(`unknown operation ${scenario.operation}`);

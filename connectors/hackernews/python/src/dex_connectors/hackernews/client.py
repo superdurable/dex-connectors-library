@@ -7,7 +7,8 @@ from collections.abc import Callable
 from dataclasses import dataclass as dataclass
 from datetime import UTC, datetime
 from datetime import timedelta as timedelta
-from typing import Any, TypeVar
+from typing import Any, Never, TypeVar
+from urllib.parse import quote, quote_plus
 
 import httpx
 from dex_connectors.sdk import BranchDefinition as BranchDefinition
@@ -41,7 +42,7 @@ from ._generated.definitions import LIST_STORY_IDS_OPERATION_ID as LIST_STORY_ID
 from ._generated.definitions import LISTED as LISTED
 from ._generated.definitions import NOT_FOUND as NOT_FOUND
 from ._generated.definitions import PROVIDER_REJECTED as PROVIDER_REJECTED
-from .models import GetItemInput, Item, ListStoryIDsInput, StoryIDs
+from .models import GetItemInput, GetUserInput, Item, ListStoryIDsInput, StoryIDs, User
 
 CONNECTOR_ID = _generated_definitions.CONNECTOR_ID
 PROVIDER = _generated_definitions.PROVIDER
@@ -53,6 +54,7 @@ _DEFAULT_TIMEOUT_SECONDS = 15
 _DEFAULT_MAX_RESPONSE_BYTES = 1_048_576
 
 LIST_STORY_IDS_DEFINITION: QueryDefinition = _generated_definitions.LIST_STORY_IDS_DEFINITION
+GET_USER_DEFINITION: QueryDefinition = _generated_definitions.GET_USER_DEFINITION
 GET_ITEM_DEFINITION: QueryDefinition = _generated_definitions.GET_ITEM_DEFINITION
 
 Output = TypeVar("Output")
@@ -86,6 +88,10 @@ class Client:
         """Bind the item Query to this client."""
         return GetItemOperation(self)
 
+    def get_user(self) -> "GetUserOperation":
+        """Bind the public user profile Query to this client."""
+        return GetUserOperation(self)
+
     async def aclose(self) -> None:
         """Close the owned provider HTTP client after application shutdown."""
         await self.http_client.aclose()
@@ -118,7 +124,7 @@ class Client:
                 kind = FailureKind.RATE_LIMIT if status == 429 else FailureKind.AVAILABILITY
                 retry_after = parse_retry_after(response.headers.get("Retry-After", ""), datetime.now(UTC))
                 return _retry(operation, kind, "Hacker News is temporarily unavailable", retry_after)
-            if status == 404 and operation == GET_ITEM_OPERATION_ID:
+            if status == 404 and operation in (GET_ITEM_OPERATION_ID, "getUser"):
                 return _failed(
                     operation, NOT_FOUND, empty, FailureKind.NOT_FOUND, "Hacker News resource was not found"
                 )
@@ -210,6 +216,95 @@ class GetItemOperation:
         return await self.client.get_json(
             operation, f"/item/{requested}.json", Item(), lambda body: _decode_item(body, requested)
         )
+
+
+class GetUserOperation:
+    """Read one public Hacker News user profile."""
+
+    def __init__(self, client: Client) -> None:
+        if client is None:
+            raise ValueError("Hacker News client is required")
+        self.client = client
+
+    def definition(self) -> QueryDefinition:
+        """Return the profile Query identity, branches and retry defaults."""
+        return GET_USER_DEFINITION
+
+    async def invoke(self, call: Call, input: GetUserInput) -> QueryAttempt[User]:
+        """Read the case-sensitive username once and classify the public response."""
+        if (
+            not isinstance(input, GetUserInput)
+            or not isinstance(input.id, str)
+            or not input.id
+            or len(input.id.encode("utf-8", errors="replace")) > 100
+            or any(character in input.id for character in "/?#")
+        ):
+            return _failed("getUser", DEFECT, User(), FailureKind.VALIDATION, "username is invalid")
+        try:
+            segment = quote(input.id, safe="$&+:=@")
+        except UnicodeEncodeError:
+            return _failed("getUser", DEFECT, User(), FailureKind.VALIDATION, "username is invalid")
+        return await self.client.get_json(
+            "getUser", f"/user/{segment}.json", User(), lambda body: _decode_user(body, input.id)
+        )
+
+
+def _reject_non_json_number(value: str) -> Never:
+    raise ValueError(f"invalid JSON number {value}")
+
+
+def _decode_user(body: bytes, requested: str) -> QueryAttempt[User]:
+    try:
+        document = json.loads(body, parse_constant=_reject_non_json_number)
+        if document is None:
+            return _failed(
+                "getUser", NOT_FOUND, User(), FailureKind.NOT_FOUND, "Hacker News user was not found"
+            )
+        if not isinstance(document, dict):
+            raise ValueError
+        fields = {name.lower(): value for name, value in document.items()}
+        username = _string(fields, "id")
+        about = _string(fields, "about")
+        _string(fields, "profileurl")
+        created = _integer(fields, "created")
+        karma = _integer(fields, "karma")
+        submitted = fields.get("submitted")
+        if submitted is None:
+            submitted = []
+        if not isinstance(submitted, list):
+            raise ValueError
+        ids = tuple(0 if value is None else value for value in submitted)
+        for number in (created, karma, *ids):
+            if type(number) is not int or not -(1 << 63) <= number < 1 << 63:
+                raise ValueError
+    except (ValueError, UnicodeDecodeError, RecursionError):
+        return _failed(
+            "getUser",
+            INVALID_RESPONSE,
+            User(),
+            FailureKind.PROTOCOL,
+            "Hacker News returned malformed user JSON",
+        )
+    if username != requested or created < 0 or karma < 0:
+        return _failed(
+            "getUser",
+            INVALID_RESPONSE,
+            User(),
+            FailureKind.PROTOCOL,
+            "Hacker News returned invalid user data",
+        )
+    if any(item_id <= 0 for item_id in ids):
+        return _failed(
+            "getUser",
+            INVALID_RESPONSE,
+            User(),
+            FailureKind.PROTOCOL,
+            "Hacker News returned an invalid submitted item ID",
+        )
+    user = User(
+        username, created, karma, about, ids, "https://news.ycombinator.com/user?id=" + quote_plus(username)
+    )
+    return QueryAttempt.branch_result(FOUND, user, Receipt())
 
 
 def _failed(

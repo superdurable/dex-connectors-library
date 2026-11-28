@@ -4,11 +4,22 @@
 
 import { branchCase, retryCase, type Case, newQuery, type MockQuery } from '@superdurable/connectors-sdk/connectormock';
 import type { Failure } from '@superdurable/connectors-sdk';
-import type { ListStoryIDsInput, StoryIDs, GetItemInput, Item, SearchStoriesInput, StorySearchHit, StorySearchPage } from './models.js';
-import { ListStoryIDsInputSchema, StoryIDsSchema, GetItemInputSchema, ItemSchema, SearchStoriesInputSchema, StorySearchHitSchema, StorySearchPageSchema } from './models.js';
-import { ProviderID, ConnectorID, ListStoryIDsDefinition, GetItemDefinition, SearchStoriesDefinition } from './definitions.js';
+import type { GetUserInput, User, ListStoryIDsInput, StoryIDs, GetItemInput, Item, SearchStoriesInput, StorySearchHit, StorySearchPage } from './models.js';
+import { GetUserInputSchema, UserSchema, ListStoryIDsInputSchema, StoryIDsSchema, GetItemInputSchema, ItemSchema, SearchStoriesInputSchema, StorySearchHitSchema, StorySearchPageSchema } from './models.js';
+import { ProviderID, ConnectorID, GetUserDefinition, ListStoryIDsDefinition, GetItemDefinition, SearchStoriesDefinition } from './definitions.js';
 import { newConnectionWithOperations, type Connection, type Operations } from './connection.js';
 
+/** Go zero value for GetUserInput in scripted cases. */
+export const emptyGetUserInput: GetUserInput = GetUserInputSchema.parse({
+  "id": '',
+});
+/** Go zero value for User in scripted cases. */
+export const emptyUser: User = UserSchema.parse({
+  "id": '',
+  "created": 0,
+  "karma": 0,
+  "profileUrl": '',
+});
 /** Go zero value for ListStoryIDsInput in scripted cases. */
 export const emptyListStoryIDsInput: ListStoryIDsInput = ListStoryIDsInputSchema.parse({
 });
@@ -51,6 +62,26 @@ export const emptyStorySearchPage: StorySearchPage = StorySearchPageSchema.parse
   "hitsPerPage": 0,
   "nextPage": 0,
 });
+
+/** Script the found branch. */
+export function getUserFound(value: User, failure?: Failure): Case<User> { return branchCase("found", value, failure); }
+/** Script the notFound branch. */
+export function getUserNotFound(value: User, failure?: Failure): Case<User> { return branchCase("notFound", value, failure); }
+/** Script the providerRejected branch. */
+export function getUserProviderRejected(value: User, failure?: Failure): Case<User> { return branchCase("providerRejected", value, failure); }
+/** Script the invalidResponse branch. */
+export function getUserInvalidResponse(value: User, failure?: Failure): Case<User> { return branchCase("invalidResponse", value, failure); }
+/** Script the defect branch. */
+export function getUserDefect(value: User, failure?: Failure): Case<User> { return branchCase("defect", value, failure); }
+/** Script a safe retry of getUser. */
+export function getUserRetry(failure: Failure, retryAfterMs = 0): Case<User> { return retryCase(failure, retryAfterMs); }
+/** Manifest scenario publicUser for getUser. */
+export function getUserPublicUser(): Case<User> {
+  const value = UserSchema.parse({"created":1700000000,"id":"langtools","karma":100,"profileUrl":"https://news.ycombinator.com/user?id=langtools","submitted":[42003]});
+  return branchCase("found", value);
+}
+/** Default getUser scenario. */
+export function getUserDefault(): Case<User> { return getUserPublicUser(); }
 
 /** Script the listed branch. */
 export function listStoryIDsListed(value: StoryIDs, failure?: Failure): Case<StoryIDs> { return branchCase("listed", value, failure); }
@@ -130,12 +161,14 @@ export function searchStoriesSearchRejected(): Case<StorySearchPage> {
 
 /** Scripted operations and manifest defaults for this connector. */
 export class GeneratedMock implements Operations {
+  readonly #getUser: MockQuery<GetUserInput, User>;
   readonly #listStoryIDs: MockQuery<ListStoryIDsInput, StoryIDs>;
   readonly #getItem: MockQuery<GetItemInput, Item>;
   readonly #searchStories: MockQuery<SearchStoriesInput, StorySearchPage>;
   readonly #connection: Connection;
 
   constructor(connectionName: string) {
+    this.#getUser = newQuery<GetUserInput, User>(GetUserDefinition).default(getUserDefault());
     this.#listStoryIDs = newQuery<ListStoryIDsInput, StoryIDs>(ListStoryIDsDefinition).default(listStoryIDsDefault());
     this.#getItem = newQuery<GetItemInput, Item>(GetItemDefinition).default(getItemDefault());
     this.#searchStories = newQuery<SearchStoriesInput, StorySearchPage>(SearchStoriesDefinition).default(searchStoriesDefault());
@@ -143,10 +176,12 @@ export class GeneratedMock implements Operations {
   }
 
   connection(): Connection { return this.#connection; }
+  getUser(): MockQuery<GetUserInput, User> { return this.#getUser; }
   listStoryIDs(): MockQuery<ListStoryIDsInput, StoryIDs> { return this.#listStoryIDs; }
   getItem(): MockQuery<GetItemInput, Item> { return this.#getItem; }
   searchStories(): MockQuery<SearchStoriesInput, StorySearchPage> { return this.#searchStories; }
   assertNoFailures(): void {
+    this.#getUser.assertNoFailures();
     this.#listStoryIDs.assertNoFailures();
     this.#getItem.assertNoFailures();
     this.#searchStories.assertNoFailures();

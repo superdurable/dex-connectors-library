@@ -18,6 +18,7 @@ from ._generated.steps import (
 from ._generated.steps import (
     new_get_item_step as new_get_item_step,
 )
+from ._generated.steps import new_get_user_step as new_get_user_step
 from ._generated.steps import (
     new_list_story_ids_step as new_list_story_ids_step,
 )

@@ -2778,6 +2778,250 @@
       },
       "name": "getUser-oversized-utf8",
       "operation": "getUser"
+    },
+    {
+      "callId": "8ed017c6-21f4-5ca6-a533-b3f29b8519af",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user/compilerdev.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-hacker-news-daily/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "created": 0,
+          "id": "",
+          "karma": 0,
+          "profileUrl": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "compilerdev"
+      },
+      "name": "getUser-http-not-found",
+      "operation": "getUser"
+    },
+    {
+      "callId": "27f9f507-a6b5-55ee-b7a5-63974e98534a",
+      "exchanges": [
+        {
+          "body": "{\"ID\":\"compilerdev\",\"Created\":1700000000,\"KARMA\":14,\"About\":\"\u003cp\u003eHello\u003c/p\u003e\",\"SUBMITTED\":[17],\"profileUrl\":\"untrusted\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user/compilerdev.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-hacker-news-daily/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "about": "\u003cp\u003eHello\u003c/p\u003e",
+          "created": 1700000000,
+          "id": "compilerdev",
+          "karma": 14,
+          "profileUrl": "https://news.ycombinator.com/user?id=compilerdev",
+          "submitted": [
+            17
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "compilerdev"
+      },
+      "name": "getUser-case-insensitive-fields",
+      "operation": "getUser"
+    },
+    {
+      "callId": "4b5ce1fb-2f43-5cbd-9504-589a2c86ad26",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"compilerdev\",\"karma\":{\"rawJSON\":\"12\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user/compilerdev.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-hacker-news-daily/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "created": 0,
+          "id": "",
+          "karma": 0,
+          "profileUrl": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "compilerdev"
+      },
+      "name": "getUser-object-karma",
+      "operation": "getUser"
+    },
+    {
+      "callId": "b807af9a-3d34-5ea9-b243-bba414469445",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"compilerdev\",\"profileUrl\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user/compilerdev.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-hacker-news-daily/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "created": 0,
+          "id": "",
+          "karma": 0,
+          "profileUrl": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "compilerdev"
+      },
+      "name": "getUser-mistyped-provider-permalink",
+      "operation": "getUser"
+    },
+    {
+      "callId": "74d882ee-7d5e-5045-81f4-dafbc5dc651b",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"compilerdev\",\"submitted\":[1,null]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user/compilerdev.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-hacker-news-daily/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "created": 0,
+          "id": "",
+          "karma": 0,
+          "profileUrl": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "compilerdev"
+      },
+      "name": "getUser-null-submitted-id",
+      "operation": "getUser"
+    },
+    {
+      "callId": "a6fcebac-1521-5907-97c8-407940d1524d",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"compilerdev\",\"ignored\":NaN}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user/compilerdev.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-hacker-news-daily/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "created": 0,
+          "id": "",
+          "karma": 0,
+          "profileUrl": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "compilerdev"
+      },
+      "name": "getUser-invalid-json-number",
+      "operation": "getUser"
     }
   ],
   "schemaVersion": 1

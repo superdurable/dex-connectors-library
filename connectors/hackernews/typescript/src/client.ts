@@ -4,8 +4,8 @@
 import { newQueryBranch, newQueryRetry, type Call, type Failure, type Query, type QueryAttempt } from '@superdurable/connectors-sdk';
 import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { Parser } from 'htmlparser2';
-import { GetItemDefinition, ListStoryIDsDefinition, SearchStoriesDefinition } from './generated/definitions.js';
-import type { Config, GetItemInput, Item, ListStoryIDsInput, SearchStoriesInput, StoryIDs, StorySearchHit, StorySearchPage } from './generated/models.js';
+import { GetUserDefinition, GetItemDefinition, ListStoryIDsDefinition, SearchStoriesDefinition } from './generated/definitions.js';
+import type { Config, GetUserInput, User, GetItemInput, Item, ListStoryIDsInput, SearchStoriesInput, StoryIDs, StorySearchHit, StorySearchPage } from './generated/models.js';
 
 /** Maximum Unicode code points kept in StorySearchHit.storyText. */
 export const MaxStoryTextCharacters = 2000;
@@ -14,6 +14,7 @@ const defaultBaseUrl = 'https://hacker-news.firebaseio.com/v0';
 const defaultSearchBaseUrl = 'https://hn.algolia.com/api/v1';
 const zeroTime = '0001-01-01T00:00:00Z';
 const zeroIds: StoryIDs = { ids: [], hasMore: false, observedAt: zeroTime };
+const zeroUser: User = { id: '', created: 0, karma: 0, profileUrl: '' };
 const zeroItem: Item = { id: 0, type: '', discussionUrl: '' };
 const validFeeds = new Set(['top', 'best', 'new', 'ask', 'show']);
 const validItemTypes = new Set(['story', 'comment', 'job', 'poll', 'pollopt']);
@@ -67,6 +68,8 @@ export class HackerNewsClient {
   listStoryIDs(): ListStoryIDsOperation { return new ListStoryIDsOperation(this); }
   /** Bind the item Query. */
   getItem(): GetItemOperation { return new GetItemOperation(this); }
+  /** Bind the public user profile Query. */
+  getUser(): GetUserOperation { return new GetUserOperation(this); }
   /** Bind the story search Query. */
   searchStories(): SearchStoriesOperation { return new SearchStoriesOperation(this); }
 
@@ -96,7 +99,7 @@ export class HackerNewsClient {
           const retryAfter = error.headers?.['retry-after'];
           return newQueryRetry(failure(operation, status === 429 ? 'RATE_LIMIT' : 'AVAILABILITY', 'Hacker News is temporarily unavailable'), parseRetryAfter(Array.isArray(retryAfter) ? retryAfter[0] ?? '' : retryAfter ?? '', this.now()));
         }
-        if (status === 404 && operation === 'getItem') return failed(operation, 'notFound', zero, 'NOT_FOUND', 'Hacker News resource was not found');
+        if (status === 404 && (operation === 'getItem' || operation === 'getUser')) return failed(operation, 'notFound', zero, 'NOT_FOUND', 'Hacker News resource was not found');
         if (status !== 200) return failed(operation, 'providerRejected', zero, 'PROVIDER_REJECTION', 'Hacker News rejected the request');
         return failed(operation, 'invalidResponse', zero, 'RESPONSE_TOO_LARGE', 'Hacker News response exceeded the configured limit');
       }
@@ -108,7 +111,7 @@ export class HackerNewsClient {
       const retryAfter = response.headers['retry-after'];
       return newQueryRetry(failure(operation, status === 429 ? 'RATE_LIMIT' : 'AVAILABILITY', 'Hacker News is temporarily unavailable'), parseRetryAfter(Array.isArray(retryAfter) ? retryAfter[0] ?? '' : retryAfter ?? '', this.now()));
     }
-    if (status === 404 && operation === 'getItem') return failed(operation, 'notFound', zero, 'NOT_FOUND', 'Hacker News resource was not found');
+    if (status === 404 && (operation === 'getItem' || operation === 'getUser')) return failed(operation, 'notFound', zero, 'NOT_FOUND', 'Hacker News resource was not found');
     if (status !== 200) return failed(operation, 'providerRejected', zero, 'PROVIDER_REJECTION', 'Hacker News rejected the request');
     return decode(response.body);
   }
@@ -160,6 +163,53 @@ export class GetItemOperation implements Query<GetItemInput, Item> {
       return newQueryBranch('found', item, {});
     });
   }
+}
+
+/** Read one public profile by case-sensitive Hacker News username. */
+export class GetUserOperation implements Query<GetUserInput, User> {
+  /** Bind the owning client. */ constructor(private readonly client: HackerNewsClient) {}
+  /** Return the manifest's profile Query contract. */ definition() { return GetUserDefinition; }
+
+  /** Read one public profile and build its canonical Hacker News permalink. */
+  invoke(call: Call, input: GetUserInput): Promise<QueryAttempt<User>> {
+    const id = input?.id;
+    if (typeof id !== 'string' || !id || Buffer.byteLength(id) > 100 || /[/?#]/.test(id) || /[\uD800-\uDFFF]/u.test(id)) {
+      return Promise.resolve(failed('getUser', 'defect', zeroUser, 'VALIDATION', 'username is invalid'));
+    }
+    const escaped = encodeURIComponent(id).replace(/[!'()*]/g, char => '%' + char.charCodeAt(0).toString(16).toUpperCase());
+    const segment = escaped.replace(/%(24|26|2B|3A|3D|40)/g, match => decodeURIComponent(match));
+    return this.client.getJSON(call, 'getUser', `/user/${segment}.json`, zeroUser, body => {
+      let user: User;
+      try {
+        const document = parseProviderJSON(body);
+        if (document === null) return failed('getUser', 'notFound', zeroUser, 'NOT_FOUND', 'Hacker News user was not found');
+        user = decodeUser(document);
+      } catch {
+        return failed('getUser', 'invalidResponse', zeroUser, 'PROTOCOL', 'Hacker News returned malformed user JSON');
+      }
+      if (user.id !== id || user.created < 0 || user.karma < 0)
+        return failed('getUser', 'invalidResponse', zeroUser, 'PROTOCOL', 'Hacker News returned invalid user data');
+      if (user.submitted?.some(item => item <= 0))
+        return failed('getUser', 'invalidResponse', zeroUser, 'PROTOCOL', 'Hacker News returned an invalid submitted item ID');
+      user.profileUrl = 'https://news.ycombinator.com/user?id=' + escaped.replace(/%20/g, '+');
+      return newQueryBranch('found', user, {});
+    });
+  }
+}
+
+function decodeUser(document: unknown): User {
+  if (!document || typeof document !== 'object' || Array.isArray(document)) throw new TypeError('profile');
+  const fields: Record<string, unknown> = Object.fromEntries(Object.entries(document).map(([name, value]) => [name.toLowerCase(), value]));
+  const username = fields.id ?? '';
+  const about = fields.about ?? '';
+  if (typeof username !== 'string' || typeof about !== 'string' || typeof (fields.profileurl ?? '') !== 'string') throw new TypeError('profile fields');
+  const user: User = { id: username, created: fields.created == null ? 0 : strictInteger(fields.created, 'created'),
+    karma: fields.karma == null ? 0 : strictInteger(fields.karma, 'karma'), profileUrl: '' };
+  if (about) user.about = about;
+  const submitted = fields.submitted ?? [];
+  if (!Array.isArray(submitted)) throw new TypeError('submitted');
+  if (submitted.length) user.submitted = submitted.map(value => value === null ? 0 : strictInteger(value, 'submitted'));
+  return user;
 }
 
 /** Search stories through the Hacker News Search API with one HTTP request. */
@@ -355,7 +405,8 @@ function parseProviderJSON(body: Uint8Array): unknown {
 }
 
 function strictInteger(value: unknown, name: string): number {
-  const source = value && typeof value === 'object' && 'rawJSON' in value ? String(value.rawJSON) : '';
+  const exactJSON = JSON as typeof JSON & { isRawJSON(input: unknown): input is { rawJSON: string } };
+  const source = exactJSON.isRawJSON(value) ? value.rawJSON : '';
   if (!/^-?(?:0|[1-9]\d*)$/.test(source)) throw new TypeError(name);
   const integer = Number(source);
   if (!Number.isSafeInteger(integer)) throw new TypeError(name);

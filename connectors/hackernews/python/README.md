@@ -1,8 +1,8 @@
 # Hacker News connector for Python
 
-Install with `pip install dex-connector-hackernews==0.3.0`. The package
+Install with `pip install dex-connector-hackernews==0.4.0`. The package
 requires `dex-connectors-sdk>=0.8.0,<1` and `dex-python-sdk>=1.28.0`, and
-implements the manifest Queries `listStoryIDs` and `getItem` with the same
+implements the manifest Queries `listStoryIDs`, `getItem`, and `getUser` with the same
 branches, defaults, and failure classification as the Go module. The public
 API needs no credentials.
 
@@ -18,6 +18,7 @@ open a Dex Web connection; 0.2.0 changes that identity (breaking).
 | --- | --- | --- | --- |
 | `listStoryIDs` | `new_list_story_ids_step` | `listed` | `providerRejected`, `invalidResponse`, `defect` |
 | `getItem` | `new_get_item_step` | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
+| `getUser` | `new_get_user_step` | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
 
 `listStoryIDs` reads the `top` (default), `best`, `new`, `ask`, or `show` feed
 and keeps the first `limit` IDs (default 50, at most 500), reporting whether
@@ -30,8 +31,8 @@ HTML.
 
 ## Agent tools
 
-Both Queries set `agent.exposed` in the package's `dex-connector.json`, so an
-agent host can offer `client.list_story_ids()` and `client.get_item()` as read
+All three Queries set `agent.exposed` in the package's `dex-connector.json`, so an
+agent host can offer `client.list_story_ids()`, `client.get_item()`, and `client.get_user()` as read
 tools. Every optional branch except `invalidResponse` is classified `rejected`:
 a read changes nothing. `invalidResponse` is a provider malfunction the model
 cannot fix, so it stays unlisted and agent hosts record it as a failure.
@@ -44,8 +45,22 @@ and then that story. Run the Worker with
 project containing the `hackernews` connection. It is smaller than the Go
 daily-digest example, which also summarizes stories with an LLM.
 
+The same Worker registers `HackerNewsProfilePython`. Start it with
+`{"username":"dhouston"}` to read the public profile, karma, and submitted item
+IDs. The connector builds the profile permalink from the requested username.
+Sanitize the untrusted `User.about` HTML before displaying it.
+[Runnable profile Flow](examples/top_story/profile_flow.py)
+
+With Dex running, `uv run python -m examples.top_story.profile_integration`
+checks the retry path. Append a public username to run against Firebase.
+Generate the graph from this package with
+`dexcli visualize examples/top_story/profile_flow.py --schema-version 2.0 --lint app --json --open=false --python .venv/bin/python --out /tmp/hackernews-python-profile`.
+
+For a custom test connection that exercises profiles, pass the `get_user`
+Query by keyword to `new_connection_with_operations`.
+
 ## Tests
 
-`hackernewsmock.Mock` scripts both Queries and defaults to the manifest
+`hackernewsmock.Mock` scripts all three Queries and defaults to the manifest
 answers. Run `uv run pytest tests` for provider parity and manifest contract
 checks.

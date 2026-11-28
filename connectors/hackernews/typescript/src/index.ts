@@ -7,14 +7,14 @@ import { HackerNewsClient } from './client.js';
 import { newProjectConnection as generatedProjectConnection } from './generated/connection.js';
 import type { Config } from './generated/models.js';
 
-export { HackerNewsClient, GetItemOperation, ListStoryIDsOperation, MaxStoryTextCharacters, SearchStoriesOperation } from './client.js';
+export { HackerNewsClient, GetItemOperation, GetUserOperation, ListStoryIDsOperation, MaxStoryTextCharacters, SearchStoriesOperation } from './client.js';
 export type { HackerNewsClientOptions } from './client.js';
 export { Connection, newConnection, newConnectionWithOperations } from './generated/connection.js';
-export { newGetItemStep, newListStoryIDsStep, newSearchStoriesStep } from './generated/steps.js';
-export type { GetItemStepConfig, ListStoryIDsStepConfig, SearchStoriesStepConfig } from './generated/steps.js';
+export { newGetItemStep, newGetUserStep, newListStoryIDsStep, newSearchStoriesStep } from './generated/steps.js';
+export type { GetItemStepConfig, GetUserStepConfig, ListStoryIDsStepConfig, SearchStoriesStepConfig } from './generated/steps.js';
 export * from './generated/definitions.js';
-export type { Config, Credentials, GetItemInput, Item, ListStoryIDsInput, SearchStoriesInput, StoryIDs, StorySearchHit, StorySearchPage } from './generated/models.js';
-export { GetItemInputSchema, ListStoryIDsInputSchema, SearchStoriesInputSchema, StorySearchHitSchema, StorySearchPageSchema } from './generated/models.js';
+export type { Config, Credentials, GetItemInput, GetUserInput, User, Item, ListStoryIDsInput, SearchStoriesInput, StoryIDs, StorySearchHit, StorySearchPage } from './generated/models.js';
+export { GetItemInputSchema, GetUserInputSchema, UserSchema, ListStoryIDsInputSchema, SearchStoriesInputSchema, StorySearchHitSchema, StorySearchPageSchema } from './generated/models.js';
 
 /** Bind the named public connection and honor all project configuration fields. */
 export function newProjectConnection(project: LoadedProject, connectionName: string) {

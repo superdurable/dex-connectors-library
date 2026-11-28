@@ -95,6 +95,26 @@ export function decodeCredentials(value: unknown): Credentials {
 /** Host-owned source of private connector credentials. */
 export type CredentialSource = CredentialProvider<Credentials>;
 
+/** GetUserInput identifies a public Hacker News user by case-sensitive username. */
+export interface GetUserInput {
+  /** ID is the username shown on the Hacker News profile page. */
+  "id": string;
+}
+/** User contains public profile fields and submitted item IDs. */
+export interface User {
+  /** ID is the case-sensitive public username. */
+  "id": string;
+  /** Created is the account creation time in Unix seconds. */
+  "created": number;
+  /** Karma is the public score reported by Hacker News. */
+  "karma": number;
+  /** AboutHTML is untrusted profile HTML and needs sanitization before rendering. */
+  "about"?: string | undefined;
+  /** Submitted contains public story, poll, and comment IDs. */
+  "submitted"?: Array<number> | undefined;
+  /** ProfileURL links to the public Hacker News profile. */
+  "profileUrl": string;
+}
 /** ListStoryIDsInput selects one feed snapshot. It does not select a historical time window. */
 export interface ListStoryIDsInput {
   /** Feed is top, best, new, ask, or show. Empty selects top. */
@@ -215,6 +235,21 @@ export interface StorySearchPage {
   /** NextPage is the zero-based number of the next readable page, or zero when this is the last one. */
   "nextPage": number;
 }
+
+/** Runtime validator for GetUserInput. */
+export const GetUserInputSchema = z.strictObject({
+  "id": z.string(),
+}) satisfies z.ZodType<GetUserInput>;
+
+/** Runtime validator for User. */
+export const UserSchema = z.strictObject({
+  "id": z.string(),
+  "created": z.number().int(),
+  "karma": z.number().int(),
+  "about": z.string().optional(),
+  "submitted": z.array(z.number().int()).optional(),
+  "profileUrl": z.string(),
+}) satisfies z.ZodType<User>;
 
 /** Runtime validator for ListStoryIDsInput. */
 export const ListStoryIDsInputSchema = z.strictObject({

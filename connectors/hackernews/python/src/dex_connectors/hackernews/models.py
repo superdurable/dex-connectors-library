@@ -5,8 +5,10 @@
 from dataclasses import dataclass, field
 
 from ._generated.models import GetItemInput as GetItemInput
+from ._generated.models import GetUserInput as GetUserInput
 from ._generated.models import ListStoryIDsInput as ListStoryIDsInput
 from ._generated.models import StoryIDs as StoryIDs
+from ._generated.models import User as User
 
 
 @dataclass(frozen=True, slots=True)

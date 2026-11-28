@@ -9,6 +9,39 @@ export const ConnectorID = "hacker-news-daily";
 /** Provider identity for named connections. */
 export const ProviderID = "hacker-news";
 
+/** Branch IDs for getUser. */
+export const GetUserBranch = {
+  Found: "found",
+  NotFound: "notFound",
+  ProviderRejected: "providerRejected",
+  InvalidResponse: "invalidResponse",
+  Defect: "defect",
+} as const;
+/** The public user was read. */
+export const GetUserBranchFound = GetUserBranch.Found;
+/** The user has no public profile. */
+export const GetUserBranchNotFound = GetUserBranch.NotFound;
+/** Hacker News rejected the request. */
+export const GetUserBranchProviderRejected = GetUserBranch.ProviderRejected;
+/** Hacker News returned malformed or oversized user data. */
+export const GetUserBranchInvalidResponse = GetUserBranch.InvalidResponse;
+/** The username or connection configuration is invalid. */
+export const GetUserBranchDefect = GetUserBranch.Defect;
+/** Manifest definition for getUser. */
+export const GetUserDefinition: QueryDefinition = {
+  operation: { connectorId: ConnectorID, operationId: "getUser" },
+  branches: [
+    { id: "found", description: "The public user was read." },
+    { id: "notFound", description: "The user has no public profile.", optional: true },
+    { id: "providerRejected", description: "Hacker News rejected the request.", optional: true },
+    { id: "invalidResponse", description: "Hacker News returned malformed or oversized user data.", optional: true },
+    { id: "defect", description: "The username or connection configuration is invalid.", optional: true },
+  ],
+  stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
+};
+/** Manifest metadata for getUser. */
+export const GetUserMetadata = { kind: "query", idempotency: "none", authorization: "none" } as const;
+
 /** Branch IDs for listStoryIDs. */
 export const ListStoryIDsBranch = {
   Listed: "listed",

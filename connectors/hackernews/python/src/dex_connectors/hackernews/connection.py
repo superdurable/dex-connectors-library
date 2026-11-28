@@ -9,14 +9,22 @@ import httpx
 from dex_connectors.sdk import ConnectionRef, Query
 from dex_connectors.sdk.projectconfig import LoadedProject
 
-from .client import CONNECTOR_ID, GET_ITEM_DEFINITION, LIST_STORY_IDS_DEFINITION, PROVIDER, Client, Config
-from .models import GetItemInput, Item, ListStoryIDsInput, StoryIDs
+from .client import (
+    CONNECTOR_ID,
+    GET_ITEM_DEFINITION,
+    GET_USER_DEFINITION,
+    LIST_STORY_IDS_DEFINITION,
+    PROVIDER,
+    Client,
+    Config,
+)
+from .models import GetItemInput, GetUserInput, Item, ListStoryIDsInput, StoryIDs, User
 
 
 class Connection:
     """Nonserializable Hacker News operation bindings for a named project connection."""
 
-    __slots__ = ("_list_story_ids", "_get_item", "_client", "reference")
+    __slots__ = ("_list_story_ids", "_get_item", "_get_user", "_client", "reference")
 
     def __init__(
         self,
@@ -24,18 +32,24 @@ class Connection:
         list_story_ids: Query[ListStoryIDsInput, StoryIDs],
         get_item: Query[GetItemInput, Item],
         client: Client | None = None,
+        *,
+        get_user: Query[GetUserInput, User] | None = None,
     ) -> None:
         reference.validate()
         if reference.provider != PROVIDER or list_story_ids is None or get_item is None:
             raise ValueError("Hacker News connection provider and operations are required")
+        if get_user is None and client is not None:
+            get_user = client.get_user()
         if (
             list_story_ids.definition().operation != LIST_STORY_IDS_DEFINITION.operation
             or get_item.definition().operation != GET_ITEM_DEFINITION.operation
+            or (get_user is not None and get_user.definition().operation != GET_USER_DEFINITION.operation)
         ):
             raise ValueError("Hacker News connection operation identity differs")
         self.reference = reference
         self._list_story_ids = list_story_ids
         self._get_item = get_item
+        self._get_user = get_user
         self._client = client
 
     def list_story_ids(self) -> Query[ListStoryIDsInput, StoryIDs]:
@@ -45,6 +59,14 @@ class Connection:
     def get_item(self) -> Query[GetItemInput, Item]:
         """Return the item Query used by an application Step."""
         return self._get_item
+
+    def get_user(self) -> Query[GetUserInput, User]:
+        """Return the public profile Query, raising ValueError for a test connection that omitted it."""
+        if self._get_user is None:
+            raise ValueError(
+                "bind get_user when constructing this test connection to register a profile Step"
+            )
+        return self._get_user
 
     async def aclose(self) -> None:
         """Close the owned provider transport after Worker shutdown."""
@@ -71,9 +93,11 @@ def new_connection_with_operations(
     list_story_ids: Query[ListStoryIDsInput, StoryIDs],
     get_item: Query[GetItemInput, Item],
     reference: ConnectionRef,
+    *,
+    get_user: Query[GetUserInput, User] | None = None,
 ) -> Connection:
     """Bind mock operations to the same connection identity as the real provider."""
-    return Connection(reference, list_story_ids, get_item)
+    return Connection(reference, list_story_ids, get_item, get_user=get_user)
 
 
 def new_project_connection(

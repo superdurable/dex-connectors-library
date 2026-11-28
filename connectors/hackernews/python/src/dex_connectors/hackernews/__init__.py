@@ -8,6 +8,7 @@ from .client import (
     FEEDS,
     FOUND,
     GET_ITEM_DEFINITION,
+    GET_USER_DEFINITION,
     INVALID_RESPONSE,
     LIST_STORY_IDS_DEFINITION,
     LISTED,
@@ -17,11 +18,12 @@ from .client import (
     Client,
     Config,
     GetItemOperation,
+    GetUserOperation,
     ListStoryIDsOperation,
 )
 from .connection import Connection, new_connection, new_connection_with_operations, new_project_connection
-from .models import GetItemInput, Item, ListStoryIDsInput, StoryIDs
-from .steps import new_get_item_step, new_list_story_ids_step
+from .models import GetItemInput, GetUserInput, Item, ListStoryIDsInput, StoryIDs, User
+from .steps import new_get_item_step, new_get_user_step, new_list_story_ids_step
 
 __all__ = [
     "Client",
@@ -29,6 +31,11 @@ __all__ = [
     "Connection",
     "GetItemInput",
     "GetItemOperation",
+    "GetUserInput",
+    "GetUserOperation",
+    "User",
+    "GET_USER_DEFINITION",
+    "new_get_user_step",
     "Item",
     "ListStoryIDsInput",
     "ListStoryIDsOperation",
