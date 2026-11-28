@@ -4,10 +4,12 @@
 package fanyigou
 
 import (
+	"net/http"
+	"strings"
+	"testing"
+
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
-	"net/http"
-	"testing"
 )
 
 const conformanceEndpointPath = ""
@@ -26,6 +28,9 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, _ string,
 	options := []Option{WithHTTPClient(transport)}
 	if scenario.RandomSeed != "" {
 		options = append(options, nonceReaderOption{reader: newConformanceSyntheticRandomReader(scenario.RandomSeed)})
+	}
+	if scenario.Name == "getAccountBalance-nonceUnavailable" {
+		options = append(options, nonceReaderOption{reader: strings.NewReader("")})
 	}
 	client, err := New(config, sdkgo.StaticCredentialProvider[Credentials]{testConnection: credentials}, options...)
 	require.NoError(t, err)

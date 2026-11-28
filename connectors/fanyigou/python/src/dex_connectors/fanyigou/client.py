@@ -47,8 +47,11 @@ def _retry(kind: FailureKind, message: str, delay: float = 0) -> QueryAttempt[Ge
 
 
 def _valid_credential(value: str) -> bool:
-    return bool(value) and len(value) <= 1024 and value.strip() == value and all(
-        ord(character) >= 0x20 and ord(character) != 0x7F for character in value
+    return (
+        bool(value)
+        and len(value.encode()) <= 1024
+        and value.strip() == value
+        and all(ord(character) >= 0x20 and ord(character) != 0x7F for character in value)
     )
 
 
@@ -56,7 +59,9 @@ class Client:
     """Resolve credentials for each account Query and own a redirect-safe transport."""
 
     def __init__(
-        self, config: Config, credentials: CredentialProvider[Credentials],
+        self,
+        config: Config,
+        credentials: CredentialProvider[Credentials],
         http_client: httpx.AsyncClient | None = None,
         nonce_bytes: Callable[[int], bytes] | None = None,
     ) -> None:
@@ -104,7 +109,8 @@ class GetAccountBalanceOperation:
                 raise ValueError("invalid credentials")
         except (ValueError, LookupError, OSError):
             return _branch(
-                "defect", FailureKind.AUTHENTICATION,
+                "defect",
+                FailureKind.AUTHENTICATION,
                 "Fanyigou application credentials are unavailable or invalid",
             )
         try:
@@ -115,10 +121,14 @@ class GetAccountBalanceOperation:
             return _retry(FailureKind.AVAILABILITY, "Fanyigou request nonce is unavailable")
         try:
             request = self.client.http_client.build_request(
-                "POST", _ENDPOINT,
+                "POST",
+                _ENDPOINT,
                 content=urlencode({"appid": app_id, "nonce_str": nonce.hex(), "type": "1"}),
-                headers={"Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-                         "Accept": "application/json", "Authorization": "Bearer " + private_key},
+                headers={
+                    "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+                    "Accept": "application/json",
+                    "Authorization": "Bearer " + private_key,
+                },
             )
         except (httpx.HTTPError, ValueError):
             return _branch("defect", FailureKind.VALIDATION, "Fanyigou account request is invalid")
@@ -134,13 +144,19 @@ class GetAccountBalanceOperation:
             if status == 408 or status >= 500:
                 return _retry(FailureKind.AVAILABILITY, "Fanyigou API is temporarily unavailable", delay)
             if status != 200:
-                return _branch("providerRejected", FailureKind.PROVIDER_REJECTION,
-                               f"Fanyigou rejected account request with HTTP {status}")
+                return _branch(
+                    "providerRejected",
+                    FailureKind.PROVIDER_REJECTION,
+                    f"Fanyigou rejected account request with HTTP {status}",
+                )
             try:
                 body = await read_bounded_body(response, self.client.max_response_bytes)
             except BodyTooLargeError:
-                return _branch("invalidResponse", FailureKind.RESPONSE_TOO_LARGE,
-                               "Fanyigou account response exceeded configured limit")
+                return _branch(
+                    "invalidResponse",
+                    FailureKind.RESPONSE_TOO_LARGE,
+                    "Fanyigou account response exceeded configured limit",
+                )
             except ProviderTransportError:
                 return _retry(FailureKind.AVAILABILITY, "Fanyigou account response was interrupted")
         finally:
@@ -150,24 +166,44 @@ class GetAccountBalanceOperation:
 
 def _decode_account(body: bytes, delay: float) -> QueryAttempt[GetAccountBalanceOutput]:
     try:
-        wire: Any = json.loads(body)
+        wire: Any = json.loads(
+            body,
+            object_hook=lambda fields: {key.lower(): value for key, value in fields.items()},
+            parse_constant=lambda _: (_ for _ in ()).throw(ValueError("invalid number")),
+        )
     except (ValueError, UnicodeDecodeError):
         return _branch("invalidResponse", FailureKind.PROTOCOL, "Fanyigou returned malformed account data")
-    if not isinstance(wire, dict) or type(wire.get("code")) is not int:
+    if not isinstance(wire, dict) or not _int64(wire.get("code")):
         return _branch("invalidResponse", FailureKind.PROTOCOL, "Fanyigou returned malformed account data")
     code = wire["code"]
+    data = wire.get("data")
+    if data is not None and (
+        not isinstance(data, dict)
+        or any(data.get(field) is not None and not _int64(data[field]) for field in ("deducttype", "balance"))
+    ):
+        return _branch("invalidResponse", FailureKind.PROTOCOL, "Fanyigou returned malformed resource data")
     if code in (102, 105):
         return _retry(FailureKind.AVAILABILITY, "Fanyigou account service is unavailable", delay)
     if code == 108:
         return _retry(FailureKind.RATE_LIMIT, "Fanyigou rate limited account request", delay)
     if code != 100:
-        return _branch("providerRejected", FailureKind.PROVIDER_REJECTION,
-                       f"Fanyigou rejected account request with code {code}")
-    data = wire.get("data")
-    if (not isinstance(data, dict) or type(data.get("deductType")) is not int
-            or data["deductType"] not in (0, 1) or type(data.get("balance")) is not int
-            or data["balance"] < 0):
+        return _branch(
+            "providerRejected",
+            FailureKind.PROVIDER_REJECTION,
+            f"Fanyigou rejected account request with code {code}",
+        )
+    if (
+        not isinstance(data, dict)
+        or type(data.get("deducttype")) is not int
+        or data["deducttype"] not in (0, 1)
+        or type(data.get("balance")) is not int
+        or data["balance"] < 0
+    ):
         return _branch("invalidResponse", FailureKind.PROTOCOL, "Fanyigou omitted a valid document balance")
     return QueryAttempt.branch_result(
-        "found", GetAccountBalanceOutput(deduct_type=data["deductType"], balance=data["balance"]), Receipt()
+        "found", GetAccountBalanceOutput(deduct_type=data["deducttype"], balance=data["balance"]), Receipt()
     )
+
+
+def _int64(value: object) -> bool:
+    return type(value) is int and -(2**63) <= value < 2**63

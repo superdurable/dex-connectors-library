@@ -1,0 +1,42 @@
+{
+  "getBalance": {
+    "branches": [
+      {
+        "description": "Shumei returned the account balance in yuan.",
+        "id": "retrieved",
+        "optional": false
+      },
+      {
+        "description": "Shumei rejected the accessKey or balance query.",
+        "id": "providerRejected",
+        "optional": true
+      },
+      {
+        "description": "Shumei returned malformed or oversized balance data.",
+        "id": "invalidResponse",
+        "optional": true
+      },
+      {
+        "description": "Local connection configuration or credentials are invalid.",
+        "id": "defect",
+        "optional": true
+      }
+    ],
+    "operation": {
+      "connectorId": "shumei",
+      "operationId": "getBalance"
+    },
+    "stepDefaults": {
+      "executeDurability": 2,
+      "executeMethodTimeout": 30000000000,
+      "executeRetry": {
+        "BackoffCoefficient": 2,
+        "InitialInterval": 1000000000,
+        "MaximumAttempts": 0,
+        "MaximumInterval": 300000000000,
+        "TotalDuration": 3600000000000
+      },
+      "heartbeatTimeout": 0
+    }
+  }
+}

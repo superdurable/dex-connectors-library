@@ -3,6 +3,7 @@
 """Shumei provider Query with bounded HTTP responses."""
 
 import json
+import math
 from datetime import UTC, datetime
 from urllib.parse import urlsplit
 
@@ -67,7 +68,11 @@ def _valid_base_url(value: str) -> str:
 
 
 def _json_object(body: bytes) -> dict[str, object]:
-    wire = json.loads(body, parse_constant=lambda _: (_ for _ in ()).throw(ValueError()))
+    wire = json.loads(
+        body,
+        object_hook=lambda fields: {k.lower(): v for k, v in fields.items()},
+        parse_constant=lambda _: (_ for _ in ()).throw(ValueError()),
+    )
     if not isinstance(wire, dict):
         raise ValueError("invalid JSON object")
     return wire
@@ -164,6 +169,8 @@ class GetBalanceOperation:
                     if response.status_code == 401
                     else FailureKind.AUTHORIZATION
                     if response.status_code == 403
+                    else FailureKind.VALIDATION
+                    if response.status_code in (400, 404)
                     else FailureKind.PROVIDER_REJECTION
                 )
                 return _branch(
@@ -197,11 +204,18 @@ class GetBalanceOperation:
 
         envelope = _json_object(body)
         code = envelope["code"]
-        if not isinstance(code, int):
-            raise ValueError("invalid code")
+        content = envelope.get("content")
+        if (
+            type(code) is not int
+            or not -(2**63) <= code < 2**63
+            or (content is not None and not isinstance(content, dict))
+        ):
+            raise ValueError("invalid balance envelope")
+        amount = content.get("balance") if content else None
+        if amount is not None and (type(amount) not in (int, float) or not math.isfinite(float(amount))):
+            raise ValueError("invalid balance")
         if code != 1100:
             raise ProviderRejection(FailureKind.PROVIDER_REJECTION)
-        content = envelope["content"]
-        if not isinstance(content, dict) or not isinstance(content.get("balance"), (int, float)):
-            raise ValueError("invalid balance")
-        return Balance(float(content["balance"]))
+        if amount is None:
+            raise ValueError("missing balance")
+        return Balance(float(amount))

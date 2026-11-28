@@ -7,3 +7,5 @@ Create a Dex Web connection named `chuanglan`. Open <https://zz.253.com>, then *
 A successful provider `code` of numeric or string `0` selects `fetched` with a nonnegative count. A definite provider rejection selects the optional `providerRejected` branch. Malformed or oversized responses select `invalidResponse`; missing credentials select `defect` without a request. HTTP 408, 429, 5xx, and transport errors Retry through Dex. Unwired optional branches fail the Flow.
 
 [Run the balance Flow](examples/balance/README.md). Its real Dex integration test exercises a provider 503 followed by success and verifies persistence. Eleven Go-recorded [conformance scenarios](../../../conformance/connectors/chuanglan/scenarios.json) check exact requests and outcomes. A real Chuanglan account and live balance lookup have not been verified.
+
+The TypeScript `remainingMessages` field uses a JavaScript number. Counts above `Number.MAX_SAFE_INTEGER` select `invalidResponse` to prevent rounding.

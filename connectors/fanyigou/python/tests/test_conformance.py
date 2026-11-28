@@ -17,7 +17,9 @@ import connector_scenarios as conformance  # noqa: E402
 SCENARIOS = conformance.load_scenarios(ROOT / "conformance/connectors/fanyigou/scenarios.json")
 CONNECTION = sdk.ConnectionRef("fanyigou", "fanyigou")
 ADAPTER = conformance.PythonOperationAdapter(
-    "fanyigou", CONNECTION, fanyigou,
+    "fanyigou",
+    CONNECTION,
+    fanyigou,
     lambda http_client, recorder: fanyigou.Client(
         fanyigou.Config(
             max_response_bytes=16 if recorder.scenario["name"].endswith("oversized") else 1048576
@@ -30,7 +32,9 @@ ADAPTER = conformance.PythonOperationAdapter(
             ),
         ),
         http_client,
-        conformance.SyntheticRandomSource(
+        (lambda _: b"")
+        if recorder.scenario["name"].endswith("-nonceUnavailable")
+        else conformance.SyntheticRandomSource(
             recorder.scenario.get("randomSeed", "SYNTHETIC_CONFORMANCE_fanyigou_defect")
         ).read,
     ),

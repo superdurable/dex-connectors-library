@@ -401,6 +401,624 @@
       "input": {},
       "name": "getBalance-missing-credentials",
       "operation": "getBalance"
+    },
+    {
+      "callId": "3fdba597-f374-5fa6-8788-6ae064c356d5",
+      "exchanges": [
+        {
+          "body": "{\"CODE\":\"0\",\"BALANCE\":\"+0007\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/msg/balance/json",
+          "requestBody": {
+            "account": "N9000123",
+            "password": "secret-password"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "fetched",
+        "failureKind": "",
+        "output": {
+          "remainingMessages": 7
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getBalance-signedCount",
+      "operation": "getBalance"
+    },
+    {
+      "callId": "084d85ef-7495-52ce-a436-b7b09fe9fc8b",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"00\",\"balance\":\"7\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/msg/balance/json",
+          "requestBody": {
+            "account": "N9000123",
+            "password": "secret-password"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "remainingMessages": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getBalance-paddedZeroCode",
+      "operation": "getBalance"
+    },
+    {
+      "callId": "fe3b024d-f900-5b20-8238-5b73352060a3",
+      "exchanges": [
+        {
+          "body": "{\"code\":0.0,\"balance\":\"7\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/msg/balance/json",
+          "requestBody": {
+            "account": "N9000123",
+            "password": "secret-password"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "remainingMessages": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getBalance-fractionalCode",
+      "operation": "getBalance"
+    },
+    {
+      "callId": "68cbd1a4-abf0-52a6-be53-285d14c140ce",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"no\",\"balance\":\"7\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/msg/balance/json",
+          "requestBody": {
+            "account": "N9000123",
+            "password": "secret-password"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "remainingMessages": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getBalance-invalidStatus",
+      "operation": "getBalance"
+    },
+    {
+      "callId": "d737d70b-a676-5a4d-a960-ca199090b8fc",
+      "exchanges": [
+        {
+          "body": "{\"code\":-0,\"balance\":\"7\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/msg/balance/json",
+          "requestBody": {
+            "account": "N9000123",
+            "password": "secret-password"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "remainingMessages": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getBalance-negativeZeroCode",
+      "operation": "getBalance"
+    },
+    {
+      "callId": "babd2904-27b3-5a98-aa25-166ffbc63b1c",
+      "exchanges": [
+        {
+          "body": "{\"code\":101,\"balance\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/msg/balance/json",
+          "requestBody": {
+            "account": "N9000123",
+            "password": "secret-password"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "remainingMessages": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getBalance-rejectedWrongType",
+      "operation": "getBalance"
+    },
+    {
+      "callId": "4ec80fc5-0630-50dc-8f4b-d1fffb7d8dd0",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"balance\":\"-0\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/msg/balance/json",
+          "requestBody": {
+            "account": "N9000123",
+            "password": "secret-password"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "fetched",
+        "failureKind": "",
+        "output": {
+          "remainingMessages": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getBalance-signedZero",
+      "operation": "getBalance"
+    },
+    {
+      "callId": "d274b619-572f-5b7c-b471-32a849ce8a12",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"balance\":\"9223372036854775808\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/msg/balance/json",
+          "requestBody": {
+            "account": "N9000123",
+            "password": "secret-password"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "remainingMessages": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getBalance-overflowCount",
+      "operation": "getBalance"
+    },
+    {
+      "callId": "cad8da1e-1da1-53d5-8c66-6f47d370ea6e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/msg/balance/json",
+          "requestBody": {
+            "account": "N9000123",
+            "password": "secret-password"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "VALIDATION",
+        "output": {
+          "remainingMessages": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getBalance-http400",
+      "operation": "getBalance"
+    },
+    {
+      "callId": "9ac5deb2-454f-5571-8275-ea5f2b081897",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/msg/balance/json",
+          "requestBody": {
+            "account": "N9000123",
+            "password": "secret-password"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "remainingMessages": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getBalance-http401",
+      "operation": "getBalance"
+    },
+    {
+      "callId": "d0090df7-19bb-5e21-908e-2de42f65b8d9",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/msg/balance/json",
+          "requestBody": {
+            "account": "N9000123",
+            "password": "secret-password"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "remainingMessages": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getBalance-http403",
+      "operation": "getBalance"
+    },
+    {
+      "callId": "2b9fb14f-6d43-548b-981e-0ce2c257f36d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/msg/balance/json",
+          "requestBody": {
+            "account": "N9000123",
+            "password": "secret-password"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "remainingMessages": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getBalance-http404",
+      "operation": "getBalance"
+    },
+    {
+      "callId": "292e8851-d673-5224-9ba7-f059336f4506",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/msg/balance/json",
+          "requestBody": {
+            "account": "N9000123",
+            "password": "secret-password"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "remainingMessages": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getBalance-http405",
+      "operation": "getBalance"
+    },
+    {
+      "callId": "2515c293-8e1c-5848-8d9d-e63400e94270",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/msg/balance/json",
+          "requestBody": {
+            "account": "N9000123",
+            "password": "secret-password"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 408
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getBalance-http408",
+      "operation": "getBalance"
+    },
+    {
+      "callId": "2cb310a2-8b01-585a-a71e-95a6218ed6a9",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/msg/balance/json",
+          "requestBody": {
+            "account": "N9000123",
+            "password": "secret-password"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 502
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getBalance-http502",
+      "operation": "getBalance"
+    },
+    {
+      "callId": "33800c91-affb-5004-8212-197de6780e0a",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"balance\":\"953\",\"time\":\"20180524170449\",\"errorMsg\":\"\"}{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/msg/balance/json",
+          "requestBody": {
+            "account": "N9000123",
+            "password": "secret-password"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "remainingMessages": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getBalance-trailingData",
+      "operation": "getBalance"
     }
   ],
   "schemaVersion": 1

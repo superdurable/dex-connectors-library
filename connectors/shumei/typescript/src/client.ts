@@ -1,6 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
+import { parseBalanceResponse, integerCode, exactAmount } from './decimal-response.js';
 import { SecretString, newQueryBranch, newQueryRetry, type Call, type CredentialProvider, type Failure, type Query, type QueryAttempt, type QueryDefinition } from '@superdurable/connectors-sdk';
 import { BodyTooLargeError, parseRetryAfter, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { GetBalanceDefinition } from './generated/definitions.js';
@@ -60,14 +61,21 @@ export class GetBalanceOperation implements Query<GetBalanceInput, Balance> {
     if (exchange.error === 'tooLarge') return branch('invalidResponse', 'RESPONSE_TOO_LARGE');
     if (status !== 200) return branch('providerRejected', status === 401 ? 'AUTHENTICATION' : status === 403 ? 'AUTHORIZATION' : status === 400 || status === 404 ? 'VALIDATION' : 'PROVIDER_REJECTION');
     let document: unknown;
-    try { document = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(body)) as unknown; } catch { return branch('invalidResponse', 'PROTOCOL'); }
-    if (!isRecord(document) || !Number.isSafeInteger(document.code)) return branch('invalidResponse', 'PROTOCOL');
-    if (document.code !== 1100) return branch('providerRejected', 'PROVIDER_REJECTION');
-    const content = document.content; if (!isRecord(content) || typeof content.balance !== 'number' || !Number.isFinite(content.balance)) return branch('invalidResponse', 'PROTOCOL');
-    return newQueryBranch('retrieved', { balanceYuan: content.balance });
+    try { document = parseBalanceResponse(body); } catch { return branch('invalidResponse', 'PROTOCOL'); }
+    if (!isRecord(document)) return branch('invalidResponse','PROTOCOL');
+    const code=integerCode(document.code);
+    const content=document.content;
+    if (code===undefined || (content!=null && !isRecord(content))) return branch('invalidResponse','PROTOCOL');
+    const raw=content?.balance;
+    const amount=raw==null || typeof raw==='string' ? undefined : exactAmount(raw);
+    const balance=amount===undefined ? undefined : Number(amount);
+    if (raw!=null && (balance===undefined || !Number.isFinite(balance))) return branch('invalidResponse','PROTOCOL');
+    if (code!==1100n) return branch('providerRejected','PROVIDER_REJECTION');
+    if (balance===undefined) return branch('invalidResponse','PROTOCOL');
+    return newQueryBranch('retrieved',{balanceYuan:balance});
   }
 }
-function isRecord(value: unknown): value is Record<string, unknown> { return typeof value === 'object' && value !== null && !Array.isArray(value); }
+function isRecord(value: unknown): value is Record<string, unknown> { return typeof value === 'object' && value !== null && Object.getPrototypeOf(value) === Object.prototype; }
 function failure(kind: Failure['kind']): Failure { return { provider: 'shumei', operation: 'getBalance', kind, message: 'Shumei provider request failed' }; }
 function branch(name: string, kind: Failure['kind']): QueryAttempt<Balance> { return newQueryBranch(name, emptyOutput, {}, failure(kind)); }
 function retry(kind: Failure['kind'], delay = 0): QueryAttempt<Balance> { return newQueryRetry(failure(kind), delay); }

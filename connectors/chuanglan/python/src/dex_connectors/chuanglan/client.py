@@ -7,7 +7,6 @@ from __future__ import annotations
 import json
 import re
 from datetime import UTC, datetime
-from typing import Any
 
 import httpx
 from dex_connectors.sdk import (
@@ -73,10 +72,44 @@ def _branch(branch: str, kind: FailureKind, message: str) -> QueryAttempt[GetBal
     return QueryAttempt.branch_result(branch, GetBalanceOutput(), Receipt(), _failure(kind, message))
 
 
-def _wire_field(document: dict[str, Any], name: str) -> Any:
-    if name in document:
-        return document[name]
-    return next((value for key, value in document.items() if key.casefold() == name.casefold()), None)
+def _balance_fields(body: bytes) -> tuple[str, str]:
+    text = body.decode("utf-8", errors="replace").strip(" \t\r\n")
+    decoder = json.JSONDecoder(
+        parse_constant=lambda _: (_ for _ in ()).throw(ValueError("invalid JSON number"))
+    )
+
+    def skip_space(offset: int) -> int:
+        while offset < len(text) and text[offset] in " \t\r\n":
+            offset += 1
+        return offset
+
+    if not text.startswith("{"):
+        raise ValueError("expected a balance response object")
+    offset = 1
+    code = balance = ""
+    while True:
+        offset = skip_space(offset)
+        name, offset = decoder.raw_decode(text, offset)
+        if not isinstance(name, str):
+            raise ValueError("expected field name")
+        offset = skip_space(offset)
+        if text[offset : offset + 1] != ":":
+            raise ValueError("expected field value")
+        start = offset + 1
+        start = skip_space(start)
+        value, offset = decoder.raw_decode(text, start)
+        if name.lower() == "code":
+            code = text[start:offset].strip('"')
+        elif name.lower() == "balance" and value is not None:
+            if not isinstance(value, str):
+                raise ValueError("invalid balance field")
+            balance = value
+        offset = skip_space(offset)
+        if offset == len(text) - 1 and text[offset] == "}":
+            return code, balance
+        if text[offset : offset + 1] != ",":
+            raise ValueError("expected another field or end of response")
+        offset += 1
 
 
 def _parse_int64(text: str) -> int:
@@ -193,13 +226,7 @@ class GetBalanceOperation:
                 )
                 return _branch(PROVIDER_REJECTED, kind, "Chuanglan rejected the balance lookup")
             try:
-                document = json.loads(contents)
-                if not isinstance(document, dict):
-                    raise ValueError
-                code = _wire_field(document, "code")
-                if code is None or isinstance(code, (bool, list, dict)):
-                    raise ValueError
-                code_text = str(code)
+                code_text, balance = _balance_fields(contents)
                 if code_text != "0":
                     _parse_int64(code_text)
                     return _branch(
@@ -207,9 +234,6 @@ class GetBalanceOperation:
                         FailureKind.PROVIDER_REJECTION,
                         "Chuanglan rejected the balance lookup",
                     )
-                balance = _wire_field(document, "balance")
-                if not isinstance(balance, str):
-                    raise ValueError
                 remaining_messages = _parse_int64(balance)
                 if remaining_messages < 0:
                     raise ValueError

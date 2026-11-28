@@ -18,3 +18,14 @@ credentials and a fake provider; live Chuanglan authorization remains unverified
 ## TypeScript package
 
 The `@superdurable/connector-chuanglan` package implements `getBalance` with the same request and outcomes as Go. Its [runnable balance Flow](typescript/examples/balance/README.md) passed a real local Dex Worker, Client, retry, and persistence test against a provider stand-in. Eleven Go-recorded scenarios verify exact provider requests and outcomes. A live Chuanglan account lookup remains unverified.
+
+## Java and Rust
+
+The [Java Worker](java/examples/io/superdurable/dexconnectors/chuanglan/AccountBalanceWorker.java) and [Rust Worker](rust/examples/get_balance.rs) execute `getBalance` through the static `chuanglan` connection. The result contains the remaining domestic SMS message count. Set `DEX_FLOW_SERVICE_ADDRESS` and the Chuanglan connection variables `CHUANGLAN_ACCOUNT` and `CHUANGLAN_PASSWORD` in the Worker process environment.
+
+Run `./gradlew accountBalanceWorker` from `java/` or `cargo run --example get_balance` from `rust/`. With a local Dex server running, use `./gradlew build dexDevTest` and `cargo test --all-targets` to verify provider outcomes and the Worker retry path. Generate the Flow graphs from the connector directory:
+
+```sh
+dexcli visualize java/examples/io/superdurable/dexconnectors/chuanglan/AccountBalanceWorker.java --schema-version 2.0 --lint app --open=false
+dexcli visualize rust/examples/get_balance.rs --schema-version 2.0 --lint app --open=false
+```

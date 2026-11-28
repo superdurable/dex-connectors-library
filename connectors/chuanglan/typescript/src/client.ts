@@ -78,20 +78,28 @@ export class GetBalanceOperation implements Query<GetBalanceInput, GetBalanceOut
     const response = exchange.response;
     if (response.status !== 200) return terminal('providerRejected', httpFailureKind(response.status), 'Chuanglan rejected the balance lookup');
     let wire: unknown;
-    try { wire = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(response.body)) as unknown; }
-    catch { return terminal('invalidResponse', 'PROTOCOL', 'Chuanglan returned an invalid balance response'); }
-    if (!wire || typeof wire !== 'object' || Array.isArray(wire)) return terminal('invalidResponse', 'PROTOCOL', 'Chuanglan returned an invalid balance response');
+    try {
+      wire = JSON.parse(Buffer.from(response.body).toString('utf8'), (name, value:unknown, context?:{source?:string}) => {
+        if (name.toLowerCase() === 'code') return context?.source?.replace(/^"+|"+$/g, '');
+        if (value && typeof value === 'object' && !Array.isArray(value)) return Object.fromEntries(Object.entries(value).map(([key, field]) => [key.toLowerCase(), field]));
+        return value;
+      }) as unknown;
+    } catch { return terminal('invalidResponse', 'PROTOCOL', 'Chuanglan returned an invalid balance response'); }
+    if (!wire || typeof wire !== 'object' || Array.isArray(wire)) return terminal('invalidResponse','PROTOCOL','Invalid balance envelope');
     const fields = wire as Record<string, unknown>;
-    if (fields.code === undefined || fields.code === null) return terminal('invalidResponse', 'PROTOCOL', 'Chuanglan returned an invalid balance response');
-    const code = fields.code;
-    if (!(typeof code === 'string' || typeof code === 'number') || !/^-?\d+$/.test(String(code))) return terminal('invalidResponse', 'PROTOCOL', 'Chuanglan returned an invalid status code');
-    if (String(code) !== '0') return terminal('providerRejected', 'PROVIDER_REJECTION', 'Chuanglan rejected the balance lookup');
-    const balance = fields.balance;
-    if (typeof balance !== 'string' || !/^\d+$/.test(balance)) return terminal('invalidResponse', 'PROTOCOL', 'Chuanglan returned an invalid remaining-message count');
-    const remainingMessages = Number(balance);
-    if (!Number.isSafeInteger(remainingMessages) || remainingMessages < 0) return terminal('invalidResponse', 'PROTOCOL', 'Chuanglan returned an invalid remaining-message count');
+    const code = parseCount(fields.code);
+    if (code === undefined || (fields.balance != null && typeof fields.balance !== 'string')) return terminal('invalidResponse','PROTOCOL','Invalid Chuanglan response fields');
+    if (fields.code !== '0') return terminal('providerRejected','PROVIDER_REJECTION','Chuanglan rejected the balance lookup');
+    const count=parseCount(fields.balance);
+    if (count === undefined || count<0n || count>BigInt(Number.MAX_SAFE_INTEGER)) return terminal('invalidResponse','PROTOCOL','Invalid remaining-message count');
+    const remainingMessages=Number(count);
     return newQueryBranch('fetched', { remainingMessages });
   }
+}
+function parseCount(value:unknown):bigint|undefined {
+  if (typeof value !== 'string' || !/^[+-]?[0-9]+$/.test(value)) return undefined;
+  const count=BigInt(value);
+  return count >= -(1n<<63n) && count < (1n<<63n) ? count : undefined;
 }
 function validCredential(value: string): boolean { return value.length > 0 && value.length <= 512 && /^[!-~]+$/.test(value); }
 function failure(kind: Failure['kind'], message: string): Failure { return { kind, provider: 'chuanglan', operation: 'getBalance', message }; }

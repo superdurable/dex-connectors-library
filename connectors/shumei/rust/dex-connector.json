@@ -1,0 +1,52 @@
+{
+  "connectorId": "shumei",
+  "releaseTag": "connectors/shumei/go/v0.1.0",
+  "package": {
+    "ecosystem": "cargo",
+    "name": "dex-connector-shumei",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_get_balance_step",
+      "kind": "query",
+      "operationId": "getBalance",
+      "inputType": "GetBalanceInput",
+      "description": "Read the current SaaS account balance in yuan without listing bills or customer data.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "retrieved",
+          "field": "retrieved",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetBalanceInput requires no selector; the accessKey identifies the account.",
+        "properties": {},
+        "type": "object"
+      }
+    }
+  ]
+}

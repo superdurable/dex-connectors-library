@@ -456,6 +456,925 @@
       "name": "getAccountBalance-throttleCode",
       "operation": "getAccountBalance",
       "randomSeed": "SYNTHETIC_CONFORMANCE_fanyigou_getAccountBalance-throttleCode"
+    },
+    {
+      "callId": "2f70547e-1ae0-579d-8809-a2449dcb5066",
+      "exchanges": [
+        {
+          "body": "{\"CODE\":100,\"Data\":{\"DEDUCTTYPE\":0,\"Balance\":0}}",
+          "form": {
+            "appid": [
+              "test-app"
+            ],
+            "nonce_str": [
+              "90f7c9aecb4b100fb237c90ff98277af"
+            ],
+            "type": [
+              "1"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/TranslateApi/api/getAccount",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-private-key"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded; charset=UTF-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "balance": 0,
+          "deductType": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-points",
+      "operation": "getAccountBalance",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_fanyigou_getAccountBalance-points"
+    },
+    {
+      "callId": "870343ed-200b-599a-85d4-7696a25ad989",
+      "exchanges": [
+        {
+          "body": "{\"code\":100,\"data\":{\"deductType\":1,\"balance\":-2}}",
+          "form": {
+            "appid": [
+              "test-app"
+            ],
+            "nonce_str": [
+              "6bfafb5196aebd67537b0f7298a47025"
+            ],
+            "type": [
+              "1"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/TranslateApi/api/getAccount",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-private-key"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded; charset=UTF-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "balance": 0,
+          "deductType": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-negativeBalance",
+      "operation": "getAccountBalance",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_fanyigou_getAccountBalance-negativeBalance"
+    },
+    {
+      "callId": "2bba06fe-92b0-5338-90da-9a0d26e3611b",
+      "exchanges": [
+        {
+          "body": "{\"code\":100,\"data\":{\"deductType\":2,\"balance\":8}}",
+          "form": {
+            "appid": [
+              "test-app"
+            ],
+            "nonce_str": [
+              "f15e994623a5491504439cbefac213ba"
+            ],
+            "type": [
+              "1"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/TranslateApi/api/getAccount",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-private-key"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded; charset=UTF-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "balance": 0,
+          "deductType": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-invalidUnits",
+      "operation": "getAccountBalance",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_fanyigou_getAccountBalance-invalidUnits"
+    },
+    {
+      "callId": "036f4ab4-7d2a-5520-86cd-344a0f5ce69f",
+      "exchanges": [
+        {
+          "body": "{\"code\":100,\"data\":{\"deductType\":0,\"balance\":2.0}}",
+          "form": {
+            "appid": [
+              "test-app"
+            ],
+            "nonce_str": [
+              "491b1cf7dcb2295d1d7e4f85f546d543"
+            ],
+            "type": [
+              "1"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/TranslateApi/api/getAccount",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-private-key"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded; charset=UTF-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "balance": 0,
+          "deductType": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-nonIntegerBalance",
+      "operation": "getAccountBalance",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_fanyigou_getAccountBalance-nonIntegerBalance"
+    },
+    {
+      "callId": "63ee3ad1-7e77-5ba5-a4bd-c006fd96e04f",
+      "exchanges": [
+        {
+          "body": "{\"code\":102,\"data\":{\"balance\":false}}",
+          "form": {
+            "appid": [
+              "test-app"
+            ],
+            "nonce_str": [
+              "f254ef2eceec4862cacd8155dfd8b0cf"
+            ],
+            "type": [
+              "1"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/TranslateApi/api/getAccount",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-private-key"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded; charset=UTF-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "balance": 0,
+          "deductType": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-badDataBeforeRetry",
+      "operation": "getAccountBalance",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_fanyigou_getAccountBalance-badDataBeforeRetry"
+    },
+    {
+      "callId": "0b39c728-f7db-5e26-9cd2-37c9e7c80eec",
+      "exchanges": [
+        {
+          "body": "{\"code\":700}",
+          "form": {
+            "appid": [
+              "test-app"
+            ],
+            "nonce_str": [
+              "855faf9c46baf94d2b2b5b3811846add"
+            ],
+            "type": [
+              "1"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/TranslateApi/api/getAccount",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-private-key"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded; charset=UTF-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "balance": 0,
+          "deductType": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-badBusiness",
+      "operation": "getAccountBalance",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_fanyigou_getAccountBalance-badBusiness"
+    },
+    {
+      "callId": "f41350bc-54d6-549e-9b5c-c1ac11019ea8",
+      "exchanges": [
+        {
+          "body": "{\"code\":true}",
+          "form": {
+            "appid": [
+              "test-app"
+            ],
+            "nonce_str": [
+              "db1c6571586413a157f4cd91680ef112"
+            ],
+            "type": [
+              "1"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/TranslateApi/api/getAccount",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-private-key"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded; charset=UTF-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "balance": 0,
+          "deductType": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-invalidCode",
+      "operation": "getAccountBalance",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_fanyigou_getAccountBalance-invalidCode"
+    },
+    {
+      "callId": "e677a25c-edfe-5f28-8bbe-9eebbd8c8f4d",
+      "exchanges": [
+        {
+          "body": "{\"code\":102}",
+          "form": {
+            "appid": [
+              "test-app"
+            ],
+            "nonce_str": [
+              "2b44ac7d8b119126161dfe298fa44d51"
+            ],
+            "type": [
+              "1"
+            ]
+          },
+          "headers": {
+            "Retry-After": "3"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/TranslateApi/api/getAccount",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-private-key"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded; charset=UTF-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 3000,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-businessDelay102",
+      "operation": "getAccountBalance",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_fanyigou_getAccountBalance-businessDelay102"
+    },
+    {
+      "callId": "3ff29667-b6ef-573e-9081-2a4c1b2691d5",
+      "exchanges": [
+        {
+          "body": "{\"code\":105}",
+          "form": {
+            "appid": [
+              "test-app"
+            ],
+            "nonce_str": [
+              "8f2e0202552be847bcd43534a79a7561"
+            ],
+            "type": [
+              "1"
+            ]
+          },
+          "headers": {
+            "Retry-After": "3"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/TranslateApi/api/getAccount",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-private-key"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded; charset=UTF-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 3000,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-businessDelay105",
+      "operation": "getAccountBalance",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_fanyigou_getAccountBalance-businessDelay105"
+    },
+    {
+      "callId": "d5359335-8cb0-5fb9-958e-f0ce0980ab3b",
+      "exchanges": [
+        {
+          "body": "{\"code\":108}",
+          "form": {
+            "appid": [
+              "test-app"
+            ],
+            "nonce_str": [
+              "b01652a1195dca8fc15edb2f82267665"
+            ],
+            "type": [
+              "1"
+            ]
+          },
+          "headers": {
+            "Retry-After": "3"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/TranslateApi/api/getAccount",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-private-key"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded; charset=UTF-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 3000,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-businessDelay108",
+      "operation": "getAccountBalance",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_fanyigou_getAccountBalance-businessDelay108"
+    },
+    {
+      "callId": "cebd09eb-b83a-5eec-8402-21c515df89ec",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "appid": [
+              "test-app"
+            ],
+            "nonce_str": [
+              "1a5653c0203f74bc72975287563a8459"
+            ],
+            "type": [
+              "1"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/TranslateApi/api/getAccount",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-private-key"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded; charset=UTF-8"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "balance": 0,
+          "deductType": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-http400",
+      "operation": "getAccountBalance",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_fanyigou_getAccountBalance-http400"
+    },
+    {
+      "callId": "f8370b87-727c-5f96-85bd-34a4c9d1d52f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "appid": [
+              "test-app"
+            ],
+            "nonce_str": [
+              "20bc18db61759d6a0e71bff8d7ed08ad"
+            ],
+            "type": [
+              "1"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/TranslateApi/api/getAccount",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-private-key"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded; charset=UTF-8"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "balance": 0,
+          "deductType": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-http401",
+      "operation": "getAccountBalance",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_fanyigou_getAccountBalance-http401"
+    },
+    {
+      "callId": "a3dab36e-d890-5b92-b6f4-d4553c9f1069",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "appid": [
+              "test-app"
+            ],
+            "nonce_str": [
+              "c77c71b06c2a9826048103433779f944"
+            ],
+            "type": [
+              "1"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/TranslateApi/api/getAccount",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-private-key"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded; charset=UTF-8"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "balance": 0,
+          "deductType": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-http403",
+      "operation": "getAccountBalance",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_fanyigou_getAccountBalance-http403"
+    },
+    {
+      "callId": "a4a4429f-e1de-50e0-8bc2-aa7fa710ed69",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "appid": [
+              "test-app"
+            ],
+            "nonce_str": [
+              "f84d363cfb6811a0663bebe820164571"
+            ],
+            "type": [
+              "1"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/TranslateApi/api/getAccount",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-private-key"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded; charset=UTF-8"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "balance": 0,
+          "deductType": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-http404",
+      "operation": "getAccountBalance",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_fanyigou_getAccountBalance-http404"
+    },
+    {
+      "callId": "8c746807-b128-5d32-86a3-cc8be7571faa",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "appid": [
+              "test-app"
+            ],
+            "nonce_str": [
+              "92aa38d0ad94916abe643d622b20758f"
+            ],
+            "type": [
+              "1"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/TranslateApi/api/getAccount",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-private-key"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded; charset=UTF-8"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "balance": 0,
+          "deductType": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-http405",
+      "operation": "getAccountBalance",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_fanyigou_getAccountBalance-http405"
+    },
+    {
+      "callId": "9772524f-79be-59e1-bf7a-22cabb8ed90b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "appid": [
+              "test-app"
+            ],
+            "nonce_str": [
+              "b3cfb9312dcf21864cdb082561cae244"
+            ],
+            "type": [
+              "1"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/TranslateApi/api/getAccount",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-private-key"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded; charset=UTF-8"
+            ]
+          },
+          "status": 408
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-http408",
+      "operation": "getAccountBalance",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_fanyigou_getAccountBalance-http408"
+    },
+    {
+      "callId": "e56adff5-08ba-52fc-94cf-2ef255515861",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "appid": [
+              "test-app"
+            ],
+            "nonce_str": [
+              "0e491f75e9f3661956b386bf15695ca6"
+            ],
+            "type": [
+              "1"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/TranslateApi/api/getAccount",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-private-key"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded; charset=UTF-8"
+            ]
+          },
+          "status": 502
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-http502",
+      "operation": "getAccountBalance",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_fanyigou_getAccountBalance-http502"
+    },
+    {
+      "callId": "9ea838ef-c04c-5eb3-9791-0cb84b2c0ec1",
+      "exchanges": [
+        {
+          "body": "{\"code\":100,\"data\":{\"deductType\":1,\"balance\":137684}}{}",
+          "form": {
+            "appid": [
+              "test-app"
+            ],
+            "nonce_str": [
+              "4f5847f381cf431c4bb96cc2847d0659"
+            ],
+            "type": [
+              "1"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/TranslateApi/api/getAccount",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-private-key"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded; charset=UTF-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "balance": 0,
+          "deductType": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-trailingData",
+      "operation": "getAccountBalance",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_fanyigou_getAccountBalance-trailingData"
+    },
+    {
+      "callId": "aa9debbc-e384-5f3e-9292-72c0587d886b",
+      "exchanges": [],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-nonceUnavailable",
+      "operation": "getAccountBalance"
     }
   ],
   "schemaVersion": 1

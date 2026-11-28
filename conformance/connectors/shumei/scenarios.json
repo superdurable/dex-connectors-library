@@ -235,6 +235,608 @@
       "input": {},
       "name": "getBalance-defect",
       "operation": "getBalance"
+    },
+    {
+      "callId": "3f07dc5d-c419-5bc7-85df-81800e97aa6b",
+      "exchanges": [
+        {
+          "body": "{\"CODE\":1100,\"Content\":{\"Balance\":-2.5}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/saas/balance/v1",
+          "requestBody": {
+            "accessKey": "secretTestKey"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json; charset=utf-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "retrieved",
+        "failureKind": "",
+        "output": {
+          "balanceYuan": -2.5
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getBalance-negative",
+      "operation": "getBalance"
+    },
+    {
+      "callId": "ec73ea29-eb9e-536a-8493-b68bf90cd2b1",
+      "exchanges": [
+        {
+          "body": "{\"code\":1100,\"content\":{\"balance\":0}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/saas/balance/v1",
+          "requestBody": {
+            "accessKey": "secretTestKey"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json; charset=utf-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "retrieved",
+        "failureKind": "",
+        "output": {
+          "balanceYuan": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getBalance-zero",
+      "operation": "getBalance"
+    },
+    {
+      "callId": "54e0570e-634e-5f82-9671-a02b417fb573",
+      "exchanges": [
+        {
+          "body": "{\"code\":1901}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/saas/balance/v1",
+          "requestBody": {
+            "accessKey": "secretTestKey"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json; charset=utf-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "balanceYuan": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getBalance-providerError",
+      "operation": "getBalance"
+    },
+    {
+      "callId": "037d83c3-dc1b-5cd7-8fc5-3ec7d6962fb6",
+      "exchanges": [
+        {
+          "body": "{\"code\":1901,\"content\":{\"balance\":\"3\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/saas/balance/v1",
+          "requestBody": {
+            "accessKey": "secretTestKey"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json; charset=utf-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "balanceYuan": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getBalance-typedBeforeCode",
+      "operation": "getBalance"
+    },
+    {
+      "callId": "0ba979b1-ce21-5c6e-94d2-30ce16cab695",
+      "exchanges": [
+        {
+          "body": "{\"code\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/saas/balance/v1",
+          "requestBody": {
+            "accessKey": "secretTestKey"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json; charset=utf-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "balanceYuan": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getBalance-invalidCode",
+      "operation": "getBalance"
+    },
+    {
+      "callId": "afc6fd2e-66cc-54df-bb39-0f93dceba1b0",
+      "exchanges": [
+        {
+          "body": "{\"code\":1100.0,\"content\":{\"balance\":30}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/saas/balance/v1",
+          "requestBody": {
+            "accessKey": "secretTestKey"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json; charset=utf-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "balanceYuan": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getBalance-fractionalCode",
+      "operation": "getBalance"
+    },
+    {
+      "callId": "74a3e594-685c-5d77-8813-c4d6c798443f",
+      "exchanges": [
+        {
+          "body": "{\"code\":1100,\"content\":{\"balance\":1e309}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/saas/balance/v1",
+          "requestBody": {
+            "accessKey": "secretTestKey"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json; charset=utf-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "balanceYuan": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getBalance-overflow",
+      "operation": "getBalance"
+    },
+    {
+      "callId": "dede4953-1eb4-560f-a398-4e68a29539a9",
+      "exchanges": [
+        {
+          "body": "{\"code\":1100,\"content\":{\"balance\":true}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/saas/balance/v1",
+          "requestBody": {
+            "accessKey": "secretTestKey"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json; charset=utf-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "balanceYuan": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getBalance-malformedBalance",
+      "operation": "getBalance"
+    },
+    {
+      "callId": "cedd6b6d-da72-544d-98d5-163c0f5fe67f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/saas/balance/v1",
+          "requestBody": {
+            "accessKey": "secretTestKey"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json; charset=utf-8"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "VALIDATION",
+        "output": {
+          "balanceYuan": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getBalance-http400",
+      "operation": "getBalance"
+    },
+    {
+      "callId": "a537dcb6-ac86-5059-b186-6f52a1e601c2",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/saas/balance/v1",
+          "requestBody": {
+            "accessKey": "secretTestKey"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json; charset=utf-8"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "balanceYuan": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getBalance-http401",
+      "operation": "getBalance"
+    },
+    {
+      "callId": "07fa43b3-5b72-53a1-bac1-67a5f11a377b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/saas/balance/v1",
+          "requestBody": {
+            "accessKey": "secretTestKey"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json; charset=utf-8"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "balanceYuan": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getBalance-http403",
+      "operation": "getBalance"
+    },
+    {
+      "callId": "db38271e-de32-5f73-9be8-1f173d7205b4",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/saas/balance/v1",
+          "requestBody": {
+            "accessKey": "secretTestKey"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json; charset=utf-8"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "VALIDATION",
+        "output": {
+          "balanceYuan": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getBalance-http404",
+      "operation": "getBalance"
+    },
+    {
+      "callId": "0831e402-3e0e-5d4f-9380-29761ed5c203",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/saas/balance/v1",
+          "requestBody": {
+            "accessKey": "secretTestKey"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json; charset=utf-8"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "balanceYuan": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getBalance-http405",
+      "operation": "getBalance"
+    },
+    {
+      "callId": "83ecb26e-5f6f-5461-95a0-7ad759b5a34b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/saas/balance/v1",
+          "requestBody": {
+            "accessKey": "secretTestKey"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json; charset=utf-8"
+            ]
+          },
+          "status": 408
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getBalance-http408",
+      "operation": "getBalance"
+    },
+    {
+      "callId": "260d6c5d-166f-57a3-9773-89a29f476ae6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/saas/balance/v1",
+          "requestBody": {
+            "accessKey": "secretTestKey"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json; charset=utf-8"
+            ]
+          },
+          "status": 502
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getBalance-http502",
+      "operation": "getBalance"
+    },
+    {
+      "callId": "4fd8edd9-8e21-5e19-a51c-3a5cd0228abb",
+      "exchanges": [
+        {
+          "body": "{\"code\":1100,\"message\":\"成功\",\"content\":{\"balance\":1357.65}}{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/saas/balance/v1",
+          "requestBody": {
+            "accessKey": "secretTestKey"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json; charset=utf-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "balanceYuan": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getBalance-trailingData",
+      "operation": "getBalance"
     }
   ],
   "schemaVersion": 1

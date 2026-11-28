@@ -9,9 +9,11 @@ metadata:
   version: v0.1.0
 spec:
   languages:
-    python: {version: v0.1.0, operations: [getAccountBalance], triggers: []}
+    java: {version: v0.1.0, operations: [getAccountBalance], triggers: []}
+    rust: {version: v0.1.0, operations: [getAccountBalance], triggers: []}
+    python: {version: v0.1.1, operations: [getAccountBalance], triggers: []}
     typescript:
-      version: v0.1.0
+      version: v0.1.1
       package: "@superdurable/connector-fanyigou"
       operations: [getAccountBalance]
       triggers: []
