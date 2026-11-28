@@ -5,6 +5,7 @@ package apispace
 
 import (
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -17,11 +18,15 @@ const conformanceFixturePathPrefix = ""
 func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint string, transport *http.Client) conformanceInvoker {
 	t.Helper()
 	config := Config{BaseURL: endpoint}
-	if scenario.Name == "getCurrentWeather-oversized" {
+	if scenario.Name == "getCurrentWeather-oversized" || strings.HasSuffix(scenario.Name, "-smallLimit") {
 		config.MaxResponseBytes = 16
 	}
+	token := "test-token"
+	if scenario.Name == "getCurrentWeather-missingCredential" {
+		token = ""
+	}
 	client, err := New(config, sdkgo.StaticCredentialProvider[Credentials]{
-		testConnection: {APIToken: sdkgo.NewSecretString("test-token")},
+		testConnection: {APIToken: sdkgo.NewSecretString(token)},
 	}, WithHTTPClient(transport))
 	require.NoError(t, err)
 	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{

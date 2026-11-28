@@ -41,7 +41,7 @@ public abstract class QueryScenarios {
     protected abstract QueryAttempt<?> invokeScenario(Call call, JsonNode scenario, CredentialProvider<SecretString> credentials,
                                               ProviderHttpTransport transport, int limit) throws Exception;
 
-    private static final ObjectMapper JSON = new ObjectMapper();
+    private static final ObjectMapper JSON = new ObjectMapper().enable(com.fasterxml.jackson.databind.DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
 
     @TestFactory protected Iterable<DynamicTest> replayQuery() throws IOException {
         String selected = System.getenv().getOrDefault("CONNECTOR_CONFORMANCE_FIXTURE", fixture);
@@ -70,9 +70,18 @@ public abstract class QueryScenarios {
         assertFalse(expected.get("uncertain").asBoolean());
         assertEquals(expected.get("retryAfterMs").asLong(), attempt.getRetryAfter().toMillis());
         assertEquals(expected.get("failureKind").asText(), attempt.getFailure() == null ? "" : attempt.getFailure().getKind().name());
-        if (expected.has("output")) assertEquals(expected.get("output"), JSON.readTree(JSON.writeValueAsBytes(attempt.getValue())));
+        if (expected.has("output")) {
+            JsonNode output = JSON.readTree(JSON.writeValueAsBytes(attempt.getValue()));
+            assertTrue(expected.get("output").equals(QueryScenarios::compareJsonValues, output),
+                    () -> name + ": expected " + expected.get("output") + ", got " + output);
+        }
         assertEquals(expected.get("requestCount").asInt(), provider.sent);
         assertEquals(provider.exchanges.size(), provider.attempted);
+    }
+
+    private static int compareJsonValues(JsonNode left, JsonNode right) {
+        if (left.isNumber() && right.isNumber()) return left.decimalValue().compareTo(right.decimalValue());
+        return left.equals(right) ? 0 : 1;
     }
 
     private static Map<String, List<String>> decodedParameters(String form) throws IOException {

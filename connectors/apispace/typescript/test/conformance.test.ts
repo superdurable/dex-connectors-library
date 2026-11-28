@@ -15,8 +15,8 @@ it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario,
 async function invokeAPISpace(scenario: Scenario, recorder: ExchangeRecorder) {
   if (scenario.operation !== 'getCurrentWeather') throw new Error(`unknown APISpace operation ${scenario.operation}`);
   return withScenarioHTTPServer(recorder, async baseUrl => {
-    const credentials: Credentials = { apiToken: new SecretString('test-token') };
-    const client = new APISpaceClient({ baseUrl, ...(scenario.name === 'getCurrentWeather-oversized' ? { maxResponseBytes: 16 } : {}) }, new StaticCredentialProvider<Credentials>([[connection, credentials]]), {
+    const credentials: Credentials = { apiToken: new SecretString(scenario.name === 'getCurrentWeather-missingCredential' ? '' : 'test-token') };
+    const client = new APISpaceClient({ baseUrl, ...(scenario.name.endsWith('-oversized') || scenario.name.endsWith('-smallLimit') ? { maxResponseBytes: 16 } : {}) }, new StaticCredentialProvider<Credentials>([[connection, credentials]]), {
       send: request => {
         if (scenario.exchanges[0]?.transportFailure) {
           recorder.record({ method: request.method, url: request.url, headers: request.headers ?? {}, body: request.body });

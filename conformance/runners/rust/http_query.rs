@@ -186,7 +186,12 @@ fn replay_go_query() {
                 assert_eq!(expected["retryAfterMs"], 0, "{name}");
                 assert_eq!(expected["retry"], false, "{name}");
                 assert_eq!(expected["branch"], branch, "{name}");
-                assert_eq!(expected["output"], json!(value), "{name}");
+                let actual = json!(value);
+                assert!(
+                    same_json_value(&expected["output"], &actual),
+                    "{name}: expected {}, got {actual}",
+                    expected["output"]
+                );
                 assert_eq!(
                     expected["failureKind"],
                     failure
@@ -221,4 +226,61 @@ fn replay_go_query() {
         );
         assert!(recorded.exchanges.lock().unwrap().is_empty(), "{name}");
     }
+}
+
+// JSON has one number type. Go may emit an integral float without a decimal point.
+fn same_json_value(left: &Value, right: &Value) -> bool {
+    match (left, right) {
+        (Value::Number(a), Value::Number(b)) => {
+            decimal_parts(&a.to_string()) == decimal_parts(&b.to_string())
+        }
+        (Value::Object(a), Value::Object(b)) => {
+            a.len() == b.len()
+                && a.iter().all(|(key, value)| {
+                    b.get(key)
+                        .is_some_and(|other| same_json_value(value, other))
+                })
+        }
+        (Value::Array(a), Value::Array(b)) => {
+            a.len() == b.len()
+                && a.iter()
+                    .zip(b)
+                    .all(|(left, right)| same_json_value(left, right))
+        }
+        _ => left == right,
+    }
+}
+
+fn decimal_parts(number: &str) -> (bool, String, i64) {
+    let (mantissa, exponent) = number
+        .split_once(['e', 'E'])
+        .map_or((number, 0), |(mantissa, exponent)| {
+            (mantissa, exponent.parse::<i64>().expect("JSON exponent"))
+        });
+    let unsigned = mantissa.trim_start_matches('-');
+    let (whole, fraction) = unsigned.split_once('.').unwrap_or((unsigned, ""));
+    let digits = format!("{whole}{fraction}");
+    let nonzero = digits.trim_start_matches('0');
+    if nonzero.is_empty() {
+        return (false, "0".into(), 0);
+    }
+    let significant = nonzero.trim_end_matches('0');
+    (
+        mantissa.starts_with('-'),
+        significant.into(),
+        exponent - fraction.len() as i64 + (nonzero.len() - significant.len()) as i64,
+    )
+}
+
+#[test]
+fn equivalent_json_numbers_preserve_precision_and_object_fields() {
+    assert!(same_json_value(
+        &json!({"v":[0,125]}),
+        &json!({"v":[-0.0,1.25e2]})
+    ));
+    assert!(!same_json_value(
+        &json!(9007199254740993_i64),
+        &json!(9007199254740992.0)
+    ));
+    assert!(!same_json_value(&json!({"x":1}), &json!({"x":1,"y":0})));
 }

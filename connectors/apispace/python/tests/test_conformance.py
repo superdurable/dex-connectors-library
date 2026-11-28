@@ -22,9 +22,18 @@ ADAPTER = conformance.PythonOperationAdapter(
     apispace,
     lambda http_client, recorder: apispace.Client(
         apispace.Config(
-            max_response_bytes=16 if recorder.scenario["name"] == "getCurrentWeather-oversized" else 1048576
+            max_response_bytes=16
+            if recorder.scenario["name"].endswith(("-oversized", "-smallLimit"))
+            else 1048576
         ),
-        conformance.static_credentials(CONNECTION, apispace.Credentials(sdk.SecretString("test-token"))),
+        conformance.static_credentials(
+            CONNECTION,
+            apispace.Credentials(
+                sdk.SecretString(
+                    "" if recorder.scenario["name"] == "getCurrentWeather-missingCredential" else "test-token"
+                )
+            ),
+        ),
         http_client,
     ),
 )

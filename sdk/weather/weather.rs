@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: MIT
 
 use crate::{
-    CONNECTOR_ID, Config, Credentials, GetCurrentWeatherInput, GetCurrentWeatherOutput,
-    PROVIDER_LABEL, REJECT_HTTP_BEFORE_BODY, generated_definitions,
+    CONNECTOR_ID, Config, Credentials, GetCurrentWeatherInput, PROVIDER_LABEL,
+    REJECT_HTTP_BEFORE_BODY, WeatherOutput, generated_definitions,
 };
 use std::sync::Arc;
 use std::time::SystemTime;
@@ -101,7 +101,7 @@ impl GetCurrentWeatherOperation {
 
 impl Query for GetCurrentWeatherOperation {
     type Input = GetCurrentWeatherInput;
-    type Output = GetCurrentWeatherOutput;
+    type Output = WeatherOutput;
 
     fn definition(&self) -> QueryDefinition {
         generated_definitions::GetCurrentWeather::definition()
@@ -138,13 +138,13 @@ impl Query for GetCurrentWeatherOperation {
             response.headers().get("Retry-After").unwrap_or(""),
             (self.clock)(),
         );
-        if status == 429
+        if crate::is_rate_limited(status)
             || status == 408
             || status >= 500
             || (REJECT_HTTP_BEFORE_BODY && status != 200)
         {
             return match status {
-                429 => retry(
+                status if crate::is_rate_limited(status) => retry(
                     FailureKind::RateLimit,
                     &format!("{PROVIDER_LABEL} rate limited the weather request"),
                     delay,
@@ -156,11 +156,7 @@ impl Query for GetCurrentWeatherOperation {
                 ),
                 _ => rejected(
                     "providerRejected",
-                    match status {
-                        401 => FailureKind::Authentication,
-                        403 => FailureKind::Authorization,
-                        _ => FailureKind::ProviderRejection,
-                    },
+                    crate::http_rejection_kind(status),
                     &format!("{PROVIDER_LABEL} rejected weather request with HTTP {status}"),
                 ),
             };
@@ -168,7 +164,7 @@ impl Query for GetCurrentWeatherOperation {
         match read_bounded_body(&mut response, self.max_response_bytes) {
             Ok(_) if status != 200 => rejected(
                 "providerRejected",
-                FailureKind::ProviderRejection,
+                crate::http_rejection_kind(status),
                 &format!("{PROVIDER_LABEL} rejected weather request with HTTP {status}"),
             ),
             Ok(body) => crate::decode_weather(&body, input),
@@ -202,10 +198,10 @@ pub(super) fn rejected(
     branch: &str,
     kind: FailureKind,
     message: &str,
-) -> QueryAttempt<GetCurrentWeatherOutput> {
+) -> QueryAttempt<WeatherOutput> {
     QueryAttempt::branch(
         branch,
-        GetCurrentWeatherOutput::default(),
+        WeatherOutput::default(),
         Receipt::default(),
         Some(Failure::new(
             kind,
@@ -216,11 +212,7 @@ pub(super) fn rejected(
     )
 }
 
-pub(super) fn retry(
-    kind: FailureKind,
-    message: &str,
-    delay: f64,
-) -> QueryAttempt<GetCurrentWeatherOutput> {
+pub(super) fn retry(kind: FailureKind, message: &str, delay: f64) -> QueryAttempt<WeatherOutput> {
     QueryAttempt::retry(
         Failure::new(kind, CONNECTOR_ID, "getCurrentWeather", message),
         delay,

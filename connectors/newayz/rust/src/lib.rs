@@ -14,6 +14,11 @@ use serde::{Deserialize, Serialize};
 use weather::rejected;
 pub use weather::{GetCurrentWeatherOperation, new_get_current_weather_step};
 
+type WeatherOutput = GetCurrentWeatherOutput;
+
+fn is_rate_limited(status:u16)->bool { status==429 }
+fn http_rejection_kind(status:u16)->FailureKind { match status {401=>FailureKind::Authentication,403=>FailureKind::Authorization,_=>FailureKind::ProviderRejection} }
+
 const CONNECTOR_ID: &str = "newayz";
 const PROVIDER_LABEL: &str = "WAYZ";
 const REJECT_HTTP_BEFORE_BODY: bool = true;

@@ -12,3 +12,20 @@ The [Python package](python/README.md) implements `getCurrentWeather` and includ
 a runnable Dex Flow plus Go-recorded provider conformance scenarios.
 
 The [TypeScript package and runnable Flow](typescript/README.md) replay the Go-recorded provider contract and exercise the Flow against a real local Dex Server.
+
+## Java and Rust
+
+The [Java Worker](java/examples/io/superdurable/dexconnectors/apispace/CurrentWeatherWorker.java) and [Rust Worker](rust/examples/get_current_weather.rs) run `getCurrentWeather` on the static `apispace` connection. Start the Flow with `{"areaCode":"101010100"}`. The `found` branch returns the current conditions.
+
+From this connector directory, start `dexcli dev -open=false` and set `DEX_FLOW_SERVICE_ADDRESS` to the Dex Server address. The Worker integration tests return a simulated HTTP 503, then verify the retried Step completes with the observation.
+
+```sh
+(cd java && ./gradlew build dexDevTest)
+(cd rust && cargo test --locked --all-targets)
+dexcli visualize java/examples/io/superdurable/dexconnectors/apispace/CurrentWeatherWorker.java --schema-version 2.0 --lint app --json --open=false --out /tmp/apispace-java
+dexcli visualize rust/examples/get_current_weather.rs --schema-version 2.0 --lint app --json --open=false --out /tmp/apispace-rust
+```
+
+The Java graph analyzer reports unresolved input and inherited Step handlers. The Rust analyzer cannot resolve the SDK-defined Query Step. The Worker tests execute both Steps.
+
+For a provider-backed Worker, supply `APISPACE_API_TOKEN` through its environment and run `./gradlew currentWeatherWorker` from `java/` or `cargo run --locked --example get_current_weather` from `rust/`. Provider requests can consume account quota.

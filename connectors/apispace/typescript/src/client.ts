@@ -79,32 +79,71 @@ export class GetCurrentWeatherOperation implements Query<GetCurrentWeatherInput,
     }
     const early = classifyEarlyStatus(response.status, response.headers);
     if (early) return early;
+    if (response.body.length > this.client.maxResponseBytes) return branch('invalidResponse', 'RESPONSE_TOO_LARGE', 'APISpace response exceeded the configured limit');
     if (response.status !== 200) {
       const kind: Failure['kind'] = response.status === 401 ? 'AUTHENTICATION' : response.status === 403 || response.status === 416 ? 'AUTHORIZATION' : response.status === 400 || response.status === 404 ? 'VALIDATION' : 'PROVIDER_REJECTION';
       return branch('providerRejected', kind, `APISpace rejected weather query with HTTP ${response.status}`);
     }
-    let document: unknown;
-    try { document = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(response.body)) as unknown; }
-    catch { return branch('invalidResponse', 'PROTOCOL', 'APISpace returned an invalid weather response'); }
-    if (!isRecord(document) || !Number.isInteger(document.status)) return branch('invalidResponse', 'PROTOCOL', 'APISpace returned an invalid weather response');
-    if (document.status !== 0) return branch('providerRejected', 'PROVIDER_REJECTION', `APISpace rejected weather query with status ${document.status}`);
-    const result = document.result;
-    if (!isRecord(result) || !isRecord(result.location) || !isRecord(result.realtime)) return branch('invalidResponse', 'PROTOCOL', 'APISpace returned an invalid weather response');
-    const location = result.location;
-    const realtime = result.realtime;
-    if (typeof location.name !== 'string' || !location.name || typeof realtime.text !== 'string' || !realtime.text || typeof realtime.temp !== 'number' || !Number.isFinite(realtime.temp) || !Number.isInteger(realtime.rh) || (realtime.rh as number) < 0 || (realtime.rh as number) > 100 || typeof result.last_update !== 'string' || !result.last_update) return branch('invalidResponse', 'PROTOCOL', 'APISpace returned an invalid weather response');
-    return newQueryBranch('found', { city: location.name, condition: realtime.text, temperatureCelsius: realtime.temp, humidityPercent: realtime.rh as number, updatedAtBeijing: result.last_update });
+    let wire: Record<string, unknown> | undefined;
+    try {
+      wire = fieldsByName(JSON.parse(new TextDecoder().decode(response.body), readProviderNumber));
+    } catch {
+      return invalidWeather();
+    }
+    if (!wire || typeof wire.status !== 'bigint') return invalidWeather();
+
+    const result = wire.result == null ? {} : fieldsByName(wire.result);
+    if (!result) return invalidWeather();
+    const location = result.location == null ? {} : fieldsByName(result.location);
+    const observation = result.realtime == null ? {} : fieldsByName(result.realtime);
+    if (!location || !observation) return invalidWeather();
+
+    const { name: city } = location;
+    const { text: condition, temp: temperature, rh: humidity } = observation;
+    const updated = result.last_update;
+    if (
+      [city, condition, updated].some(value => value != null && typeof value !== 'string') ||
+      (temperature != null && (typeof temperature !== 'number' || !Number.isFinite(temperature))) ||
+      (humidity != null && typeof humidity !== 'bigint')
+    ) return invalidWeather();
+    if (wire.status !== 0n) {
+      return branch('providerRejected', 'PROVIDER_REJECTION', `APISpace rejected weather query with status ${wire.status}`);
+    }
+    if (
+      typeof city !== 'string' || !city || typeof condition !== 'string' || !condition ||
+      typeof temperature !== 'number' || typeof humidity !== 'bigint' || humidity < 0n || humidity > 100n ||
+      typeof updated !== 'string' || !updated
+    ) return invalidWeather();
+    return newQueryBranch('found', {
+      city, condition, temperatureCelsius: temperature, humidityPercent: Number(humidity), updatedAtBeijing: updated,
+    });
   }
 }
 
 function classifyEarlyStatus(status: number, headers: ProviderResponse['headers']): QueryAttempt<CurrentWeather> | undefined {
-  const retryAfterHeader = headers['retry-after'];
+  const retryAfterHeader = Object.entries(headers).find(([name]) => name.toLowerCase() === 'retry-after')?.[1];
   const retryAfterMs = parseRetryAfter(Array.isArray(retryAfterHeader) ? retryAfterHeader[0] ?? '' : retryAfterHeader ?? '');
   if (status === 429 || status === 413) return retry('RATE_LIMIT', 'APISpace rate limited weather requests', retryAfterMs);
   if (status === 408 || status >= 500) return retry('AVAILABILITY', 'APISpace weather is temporarily unavailable', retryAfterMs);
   return undefined;
 }
-function isRecord(value: unknown): value is Record<string, unknown> { return typeof value === 'object' && value !== null && !Array.isArray(value); }
+function invalidWeather(): QueryAttempt<CurrentWeather> {
+  return branch('invalidResponse', 'PROTOCOL', 'APISpace returned an invalid weather response');
+}
+function fieldsByName(value: unknown): Record<string, unknown> | undefined {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  return Object.fromEntries(Object.entries(value).map(([name, field]) => [name.toLowerCase(), field]));
+}
+
+// Go decodes status and relative humidity into signed integers before classifying a response.
+function readProviderNumber(key: string, value: unknown, context?: { source?: string }): unknown {
+  if (!['status', 'rh'].includes(key.toLowerCase()) || typeof value !== 'number') return value;
+  const source = context?.source;
+  if (source === undefined) return Number.isSafeInteger(value) ? BigInt(value) : false;
+  if (!/^-?\d+$/.test(source) || source.length > 20) return false;
+  const integer = BigInt(source);
+  return integer >= -(1n << 63n) && integer < (1n << 63n) ? integer : false;
+}
 function isValidAPIToken(value: string): boolean { return value.length > 0 && value.length <= 2048 && /^[!-~]+$/.test(value); }
 function failure(kind: Failure['kind'], message: string): Failure { return { provider: 'apispace', operation: 'getCurrentWeather', kind, message }; }
 function branch(id: string, kind: Failure['kind'], message: string): QueryAttempt<CurrentWeather> { return newQueryBranch(id, emptyWeather, {}, failure(kind, message)); }

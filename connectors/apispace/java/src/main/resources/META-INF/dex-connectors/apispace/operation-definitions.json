@@ -1,0 +1,42 @@
+{
+  "getCurrentWeather": {
+    "branches": [
+      {
+        "description": "APISpace returned current conditions for the city.",
+        "id": "found",
+        "optional": false
+      },
+      {
+        "description": "APISpace rejected the key, plan, quota, or city.",
+        "id": "providerRejected",
+        "optional": true
+      },
+      {
+        "description": "APISpace returned malformed or oversized weather data.",
+        "id": "invalidResponse",
+        "optional": true
+      },
+      {
+        "description": "Local connection configuration, token, or city ID is invalid.",
+        "id": "defect",
+        "optional": true
+      }
+    ],
+    "operation": {
+      "connectorId": "apispace",
+      "operationId": "getCurrentWeather"
+    },
+    "stepDefaults": {
+      "executeDurability": 2,
+      "executeMethodTimeout": 30000000000,
+      "executeRetry": {
+        "BackoffCoefficient": 2,
+        "InitialInterval": 1000000000,
+        "MaximumAttempts": 0,
+        "MaximumInterval": 300000000000,
+        "TotalDuration": 3600000000000
+      },
+      "heartbeatTimeout": 0
+    }
+  }
+}

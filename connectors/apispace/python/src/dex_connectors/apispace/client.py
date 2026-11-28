@@ -5,7 +5,7 @@
 import json
 import math
 from datetime import UTC, datetime
-from typing import Any, cast
+from typing import Any
 
 import httpx
 from dex_connectors.sdk import (
@@ -162,55 +162,72 @@ class GetCurrentWeatherOperation:
 
 def _decode_weather(body: bytes) -> QueryAttempt[CurrentWeather]:
     try:
-        wire: Any = json.loads(body, parse_constant=lambda _: (_ for _ in ()).throw(ValueError()))
+        wire: Any = json.loads(
+            body.decode("utf-8", errors="replace"),
+            object_hook=_lowercase_fields,
+            parse_constant=_reject_nonfinite,
+        )
     except (ValueError, UnicodeDecodeError):
-        return _branch(
-            "invalidResponse", FailureKind.PROTOCOL, "APISpace returned an invalid weather response"
-        )
-    if (
-        not isinstance(wire, dict)
-        or type(wire.get("status")) is not int
-        or not -(1 << 63) <= wire["status"] < (1 << 63)
+        return _invalid_weather()
+    if not isinstance(wire, dict) or not _int64(wire.get("status")):
+        return _invalid_weather()
+    result = wire.get("result")
+    if result is None:
+        result = {}
+    if not isinstance(result, dict):
+        return _invalid_weather()
+    location, realtime = result.get("location"), result.get("realtime")
+    if (location is not None and not isinstance(location, dict)) or (
+        realtime is not None and not isinstance(realtime, dict)
     ):
-        return _branch(
-            "invalidResponse", FailureKind.PROTOCOL, "APISpace returned an invalid weather response"
-        )
-    status = wire["status"]
-    if status != 0:
+        return _invalid_weather()
+    location, realtime = location or {}, realtime or {}
+    city, condition, updated = location.get("name"), realtime.get("text"), result.get("last_update")
+    temperature, humidity = realtime.get("temp"), realtime.get("rh")
+    if any(value is not None and not isinstance(value, str) for value in (city, condition, updated)) or (
+        humidity is not None and not _int64(humidity)
+    ):
+        return _invalid_weather()
+    if temperature is not None:
+        if type(temperature) not in (int, float):
+            return _invalid_weather()
+        try:
+            temperature = float(temperature)
+        except OverflowError:
+            return _invalid_weather()
+        if not math.isfinite(temperature):
+            return _invalid_weather()
+    if wire["status"] != 0:
         return _branch(
             "providerRejected",
             FailureKind.PROVIDER_REJECTION,
-            f"APISpace rejected weather query with status {status}",
+            f"APISpace rejected weather query with status {wire['status']}",
         )
-    result = wire.get("result")
-    if not isinstance(result, dict):
-        return _branch(
-            "invalidResponse", FailureKind.PROTOCOL, "APISpace returned an invalid weather response"
-        )
-    location, realtime = result.get("location"), result.get("realtime")
-    if not isinstance(location, dict) or not isinstance(realtime, dict):
-        return _branch(
-            "invalidResponse", FailureKind.PROTOCOL, "APISpace returned an invalid weather response"
-        )
-    city, condition = location.get("name"), realtime.get("text")
-    temperature, humidity, updated = realtime.get("temp"), realtime.get("rh"), result.get("last_update")
     if (
-        not isinstance(city, str)
-        or not city
-        or not isinstance(condition, str)
+        not city
         or not condition
-        or type(temperature) not in (int, float)
-        or not math.isfinite(cast(float, temperature))
-        or type(humidity) is not int
-        or not 0 <= humidity <= 100
-        or not isinstance(updated, str)
         or not updated
+        or temperature is None
+        or humidity is None
+        or not 0 <= humidity <= 100
     ):
-        return _branch(
-            "invalidResponse", FailureKind.PROTOCOL, "APISpace returned an invalid weather response"
-        )
+        return _invalid_weather()
     return QueryAttempt.branch_result(
-        "found",
-        CurrentWeather(city, condition, float(cast(float, temperature)), humidity, updated),
-        Receipt(),
+        "found", CurrentWeather(city, condition, temperature, humidity, updated), Receipt()
     )
+
+
+def _int64(value: object) -> bool:
+    return type(value) is int and -(1 << 63) <= value < (1 << 63)
+
+
+def _lowercase_fields(fields: dict[str, Any]) -> dict[str, Any]:
+    return {name.lower(): value for name, value in fields.items()}
+
+
+def _reject_nonfinite(value: str) -> None:
+    raise ValueError(f"invalid JSON number {value}")
+
+
+def _invalid_weather() -> QueryAttempt[CurrentWeather]:
+    return _branch("invalidResponse", FailureKind.PROTOCOL, "APISpace returned an invalid weather response")
