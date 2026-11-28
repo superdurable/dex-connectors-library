@@ -3,49 +3,19 @@
 """Run the profile Flow through Dex using a public username or a retrying fixture."""
 
 import asyncio
-import os
 import sys
-from datetime import timedelta
-from tempfile import TemporaryDirectory
-from uuid import uuid4
 
-import dex
 import httpx
-from dex_connectors.sdk import ConnectionRef
 
-from dex_connectors.hackernews import Client, Config, User, new_connection
+from dex_connectors.hackernews import Client, Config, User
 
 from .profile_flow import CONNECTION_NAME, ProfileFlow, ProfileRequest
+from .query_integration import read_once
 
 
 async def read_profile(provider: Client, username: str) -> User:
     """Start a real Worker and wait for the requested profile."""
-    connection = new_connection(provider, ConnectionRef("hacker-news", CONNECTION_NAME))
-    flow = ProfileFlow(connection)
-    registry = dex.Registry([flow], allow_async_handlers=True)
-    address = os.environ.get("DEX_FLOW_SERVICE_ADDRESS", "127.0.0.1:8801")
-    try:
-        with TemporaryDirectory() as directory:
-            cache = dex.open_blob_cache(dex.BlobCacheConfig(directory, 1 << 24))
-            worker = dex.AsyncWorker(registry, cache, dex.WorkerOptions(server_address=address))
-            serving = asyncio.create_task(worker.start())
-            try:
-                await worker.wait_pull_registered(timeout=15)
-                async with dex.AsyncClient(
-                    registry, cache, dex.ClientOptions(server_address=address)
-                ) as client:
-                    flow_id = f"hackernews-profile-python-{uuid4().hex}"
-                    await client.start_flow(flow, flow_id, ProfileRequest(username))
-                    result = await client.wait_for_flow(flow_id, timedelta(seconds=30))
-                    if result.status != dex.FlowStatus.COMPLETED:
-                        raise RuntimeError(f"profile Flow failed: {result.error_message}")
-                    return result.single_output(User)
-            finally:
-                await worker.stop()
-                await serving
-                cache.close()
-    finally:
-        await connection.aclose()
+    return await read_once(provider, CONNECTION_NAME, ProfileFlow, ProfileRequest(username), User)
 
 
 async def verify_retry() -> None:

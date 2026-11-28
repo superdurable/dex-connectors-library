@@ -9,6 +9,39 @@ export const ConnectorID = "hacker-news-daily";
 /** Provider identity for named connections. */
 export const ProviderID = "hacker-news";
 
+/** Branch IDs for getArticleThread. */
+export const GetArticleThreadBranch = {
+  Found: "found",
+  NotFound: "notFound",
+  ProviderRejected: "providerRejected",
+  InvalidResponse: "invalidResponse",
+  Defect: "defect",
+} as const;
+/** The article and its indexed comments were read. */
+export const GetArticleThreadBranchFound = GetArticleThreadBranch.Found;
+/** The article was not found. */
+export const GetArticleThreadBranchNotFound = GetArticleThreadBranch.NotFound;
+/** Hacker News Search rejected the article read. */
+export const GetArticleThreadBranchProviderRejected = GetArticleThreadBranch.ProviderRejected;
+/** Hacker News Search returned malformed or oversized thread data. */
+export const GetArticleThreadBranchInvalidResponse = GetArticleThreadBranch.InvalidResponse;
+/** The article ID or connection configuration is invalid. */
+export const GetArticleThreadBranchDefect = GetArticleThreadBranch.Defect;
+/** Manifest definition for getArticleThread. */
+export const GetArticleThreadDefinition: QueryDefinition = {
+  operation: { connectorId: ConnectorID, operationId: "getArticleThread" },
+  branches: [
+    { id: "found", description: "The article and its indexed comments were read." },
+    { id: "notFound", description: "The article was not found.", optional: true },
+    { id: "providerRejected", description: "Hacker News Search rejected the article read.", optional: true },
+    { id: "invalidResponse", description: "Hacker News Search returned malformed or oversized thread data.", optional: true },
+    { id: "defect", description: "The article ID or connection configuration is invalid.", optional: true },
+  ],
+  stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
+};
+/** Manifest metadata for getArticleThread. */
+export const GetArticleThreadMetadata = { kind: "query", idempotency: "none", authorization: "none" } as const;
+
 /** Branch IDs for getUser. */
 export const GetUserBranch = {
   Found: "found",

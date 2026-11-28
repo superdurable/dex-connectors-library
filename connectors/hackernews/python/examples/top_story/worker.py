@@ -12,6 +12,7 @@ from dex_connectors.sdk.projectconfig import load_from_environment
 
 from dex_connectors.hackernews import new_project_connection
 
+from .article_flow import ArticleThreadFlow
 from .flow import CONNECTION_NAME, TopStoryFlow
 from .profile_flow import ProfileFlow
 
@@ -24,7 +25,8 @@ async def run_worker() -> None:
     try:
         connection = new_project_connection(project, CONNECTION_NAME)
         registry = dex.Registry(
-            [TopStoryFlow(connection), ProfileFlow(connection)], allow_async_handlers=True
+            [TopStoryFlow(connection), ProfileFlow(connection), ArticleThreadFlow(connection)],
+            allow_async_handlers=True,
         )
         cache_directory = os.environ.get(
             "DEX_BLOB_CACHE_DIR", str(Path(tempfile.gettempdir()) / "dex-hackernews-top-story-blobs")

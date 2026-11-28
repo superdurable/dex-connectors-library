@@ -39,6 +39,7 @@
     "test": "vitest run",
     "check": "npm run typecheck && npm run lint && npm test && npm run build",
     "example:top-story": "tsx examples/top-story/worker.ts",
+    "integration:article": "tsx examples/top-story/article-integration.ts",
     "integration:profile": "tsx examples/top-story/profile-integration.ts",
     "integration:top-story": "tsx examples/top-story/integration.ts",
     "example:story-search": "tsx examples/story-search/worker.ts",

@@ -15,6 +15,7 @@ from dex_connectors.sdk import StepAnnotations as StepAnnotations
 from ._generated.steps import (
     StepInput as StepInput,
 )
+from ._generated.steps import new_get_article_thread_step as new_get_article_thread_step
 from ._generated.steps import (
     new_get_item_step as new_get_item_step,
 )

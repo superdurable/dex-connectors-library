@@ -2,37 +2,14 @@
 // SPDX-License-Identifier: MIT
 
 import assert from 'node:assert/strict';
-import { randomUUID } from 'node:crypto';
-import { mkdtemp, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { Client, Registry, Worker, openBlobCache } from '@superdurable/dex';
 import { HackerNewsClient, newConnection, type User } from '../../src/index.js';
 import { ConnectionName } from './flow.js';
+import { readOnce } from './query-integration.js';
 import { ProfileFlow } from './profile-flow.js';
 
 async function readProfile(provider: HackerNewsClient, username: string): Promise<User> {
   const flow = new ProfileFlow(newConnection(provider, { provider: 'hacker-news', name: ConnectionName }));
-  const registry = new Registry([flow]);
-  const directory = await mkdtemp(join(tmpdir(), 'dex-hackernews-profile-'));
-  const cache = openBlobCache({ directory, maxBytes: 1 << 24 });
-  const serverAddress = process.env.DEX_FLOW_SERVICE_ADDRESS || '127.0.0.1:8801';
-  const worker = new Worker(registry, cache, { serverAddress });
-  const client = new Client(registry, cache, { serverAddress });
-  try {
-    await worker.start();
-    await worker.waitPullRegistered({ timeoutMs: 15_000 });
-    const id = `hackernews-profile-typescript-${randomUUID()}`;
-    await client.startFlow(flow, id, { username });
-    const result = await client.waitForFlow(id, 30_000);
-    assert.equal(result.status, 'completed', result.errorMessage);
-    return result.singleOutput<User>();
-  } finally {
-    await client.close();
-    await worker.close();
-    cache.close();
-    await rm(directory, { recursive: true, force: true });
-  }
+  return readOnce(flow, { username });
 }
 
 async function verifyRetry(): Promise<void> {

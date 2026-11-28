@@ -77,7 +77,7 @@ public final class StoryFeed {
     }
 
     /** Read a bounded Firebase feed on each Execute attempt. */
-    public static final class ListStoryIDsOperation extends FirebaseQuery<ListStoryIDsInput, StoryIDs> {
+    public static final class ListStoryIDsOperation extends PublicApiQuery<ListStoryIDsInput, StoryIDs> {
         /** Use the public Firebase endpoint and the manifest timeout and size limit. */
         public ListStoryIDsOperation() { super("listStoryIDs", new StoryIDs(Collections.emptyList(), false, "0001-01-01T00:00:00Z")); }
 
@@ -93,7 +93,7 @@ public final class StoryFeed {
             if (limit < 1 || limit > 500) return failed("defect", FailureKind.VALIDATION, "limit must be from 1 through 500");
             return read("/" + feed + "stories.json", body -> {
                 JsonNode feedIDs;
-                try { feedIDs = FirebaseQuery.JSON.readTree(body); }
+                try { feedIDs = PublicApiQuery.JSON.readTree(body); }
                 catch (IOException e) { feedIDs = null; }
                 if (feedIDs == null || !feedIDs.isArray()) return failed("invalidResponse", FailureKind.PROTOCOL, "Hacker News returned an invalid feed");
                 List<Long> ids = new ArrayList<>((int) Math.min(limit, feedIDs.size()));

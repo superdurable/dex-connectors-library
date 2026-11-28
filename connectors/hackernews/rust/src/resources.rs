@@ -59,12 +59,12 @@ pub struct Item {
 }
 
 /// Read one public item per Execute attempt.
-pub struct GetItemOperation(FirebaseClient);
+pub struct GetItemOperation(PublicApiClient);
 
 impl GetItemOperation {
     /// Use the public Firebase endpoint and the manifest timeout and size limit.
     pub fn new() -> Result<Self, ValidationError> {
-        Ok(Self(FirebaseClient::new()?))
+        Ok(Self(PublicApiClient::new(crate::FIREBASE_BASE_URL)?))
     }
 
     /// Use a validated base URL, bounded transport and clock for Retry-After.
@@ -74,7 +74,7 @@ impl GetItemOperation {
         http: ProviderHttpClient,
         clock: Arc<dyn Fn() -> SystemTime + Send + Sync>,
     ) -> Result<Self, ValidationError> {
-        Ok(Self(FirebaseClient::with_client(
+        Ok(Self(PublicApiClient::with_client(
             base_url,
             max_response_bytes,
             http,
@@ -201,12 +201,12 @@ pub struct User {
 }
 
 /// Read one public user per Execute attempt.
-pub struct GetUserOperation(FirebaseClient);
+pub struct GetUserOperation(PublicApiClient);
 
 impl GetUserOperation {
     /// Use the public Firebase endpoint and the manifest timeout and size limit.
     pub fn new() -> Result<Self, ValidationError> {
-        Ok(Self(FirebaseClient::new()?))
+        Ok(Self(PublicApiClient::new(crate::FIREBASE_BASE_URL)?))
     }
 
     /// Use a validated base URL, bounded transport and clock for Retry-After.
@@ -216,7 +216,7 @@ impl GetUserOperation {
         http: ProviderHttpClient,
         clock: Arc<dyn Fn() -> SystemTime + Send + Sync>,
     ) -> Result<Self, ValidationError> {
-        Ok(Self(FirebaseClient::with_client(
+        Ok(Self(PublicApiClient::with_client(
             base_url,
             max_response_bytes,
             http,

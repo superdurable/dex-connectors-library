@@ -4,6 +4,7 @@
 package io.superdurable.dexconnectors.hackernews;
 
 import io.superdurable.dexconnectors.hackernews.PublicResources.*;
+import io.superdurable.dexconnectors.hackernews.ArticleThreads.*;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -27,6 +28,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class ConnectorConformanceTest {
     private static final ObjectMapper JSON = new ObjectMapper();
     private static final String ORIGIN = "https://hacker-news.firebaseio.com/v0";
+    private static final String SEARCH_ORIGIN = "https://hn.algolia.com/api/v1";
     private static final String FIXTURE = "../../../conformance/connectors/hackernews/scenarios.json";
 
     @TestFactory protected Iterable<DynamicTest> replayPublicQueries() throws IOException {
@@ -35,7 +37,7 @@ class ConnectorConformanceTest {
         assertTrue(scenarios.size() > 0);
         List<DynamicTest> tests = new java.util.ArrayList<>();
         for (JsonNode scenario : scenarios) {
-            if (!java.util.Arrays.asList("listStoryIDs", "getItem", "getUser").contains(scenario.get("operation").asText())) continue;
+            if (!java.util.Arrays.asList("listStoryIDs", "getItem", "getUser", "getArticleThread").contains(scenario.get("operation").asText())) continue;
             tests.add(DynamicTest.dynamicTest(scenario.get("name").asText(), () -> replay(scenario)));
         }
         assertFalse(tests.isEmpty());
@@ -45,8 +47,8 @@ class ConnectorConformanceTest {
     private void replay(JsonNode scenario) throws Exception {
         String name = scenario.get("name").asText();
         assertFalse(scenario.has("pending"), name + " is pending");
-        RecordedProvider provider = new RecordedProvider(scenario.get("exchanges"));
         String operation = scenario.get("operation").asText();
+        RecordedProvider provider = new RecordedProvider(scenario.get("exchanges"), operation.equals("getArticleThread") ? SEARCH_ORIGIN : ORIGIN);
         Call call = Call.create(CallId.of(scenario.get("callId").asText()), new ConnectionRef("hacker-news", "hacker-news-public"),
                 new OperationRef("hacker-news-daily", operation), null, 1);
         Clock clock = Clock.fixed(Instant.parse(scenario.path("fixedClock").asText("2026-01-01T00:00:00Z")), ZoneOffset.UTC);
@@ -55,6 +57,9 @@ class ConnectorConformanceTest {
         switch (operation) {
             case "listStoryIDs":
                 attempt = new ListStoryIDsOperation(ORIGIN, provider, 1 << 20, clock).invoke(call, JSON.treeToValue(input, ListStoryIDsInput.class));
+                break;
+            case "getArticleThread":
+                attempt = new GetArticleThreadOperation(SEARCH_ORIGIN, provider, 1 << 20, clock).invoke(call, JSON.treeToValue(input, GetArticleThreadInput.class));
                 break;
             case "getItem":
                 attempt = new GetItemOperation(ORIGIN, provider, 1 << 20, clock).invoke(call, JSON.treeToValue(input, GetItemInput.class));
@@ -79,14 +84,15 @@ class ConnectorConformanceTest {
         final JsonNode exchanges;
         int attempted;
         int sent;
-        RecordedProvider(JsonNode exchanges) { this.exchanges = exchanges; }
+        final String origin;
+        RecordedProvider(JsonNode exchanges, String origin) { this.exchanges = exchanges; this.origin = origin; }
 
         @Override public ProviderHttpResponse send(ProviderHttpRequest request) throws IOException {
             JsonNode exchange = exchanges.get(attempted++);
             assertNotNull(exchange, "unexpected request");
             assertEquals("absent", exchange.get("keyMode").asText());
             assertEquals(exchange.get("method").asText(), request.getMethod());
-            assertEquals(ORIGIN + exchange.get("path").asText(), request.getUrl());
+            assertEquals(origin + exchange.get("path").asText(), request.getUrl());
             Map<String, List<String>> headers = new LinkedHashMap<>();
             request.getHeaders().forEach((name, value) -> headers.put(name, Collections.singletonList(value)));
             assertEquals(exchange.get("requestHeaders"), JSON.valueToTree(headers));

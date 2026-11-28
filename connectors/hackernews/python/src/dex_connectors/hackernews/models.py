@@ -4,6 +4,9 @@
 
 from dataclasses import dataclass, field
 
+from ._generated.models import ArticleComment as ArticleComment
+from ._generated.models import ArticleThread as ArticleThread
+from ._generated.models import GetArticleThreadInput as GetArticleThreadInput
 from ._generated.models import GetItemInput as GetItemInput
 from ._generated.models import GetUserInput as GetUserInput
 from ._generated.models import ListStoryIDsInput as ListStoryIDsInput

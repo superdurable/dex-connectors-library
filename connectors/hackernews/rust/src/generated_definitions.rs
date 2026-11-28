@@ -3,6 +3,29 @@
 use dex_connectors_sdk as sdk;
 use std::time::Duration;
 
+pub struct GetArticleThread;
+
+impl GetArticleThread {
+    pub fn definition() -> sdk::QueryDefinition {
+        sdk::QueryDefinition {
+            operation: sdk::OperationRef::new(r"hacker-news-daily", r"getArticleThread"),
+            branches: Some(vec![
+                sdk::BranchDefinition::new(r"found", r"The article and its indexed comments were read.", false),
+                sdk::BranchDefinition::new(r"notFound", r"The article was not found.", true),
+                sdk::BranchDefinition::new(r"providerRejected", r"Hacker News Search rejected the article read.", true),
+                sdk::BranchDefinition::new(r"invalidResponse", r"Hacker News Search returned malformed or oversized thread data.", true),
+                sdk::BranchDefinition::new(r"defect", r"The article ID or connection configuration is invalid.", true),
+            ]),
+            step_defaults: sdk::StepDefaults {
+                execute_method_timeout: Duration::from_nanos(30000000000),
+                heartbeat_timeout: Duration::from_nanos(0),
+                execute_durability: sdk::ExecuteDurability::Async,
+                execute_retry: Some(sdk::default_connector_step_execute_retry_policy()),
+            },
+        }
+    }
+}
+
 pub struct GetUser;
 
 impl GetUser {

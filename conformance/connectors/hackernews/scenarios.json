@@ -3022,6 +3022,306 @@
       },
       "name": "getUser-invalid-json-number",
       "operation": "getUser"
+    },
+    {
+      "callId": "55b2a471-0061-5472-a500-b06a3e8a5c4c",
+      "exchanges": [
+        {
+          "body": "null",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/items/42003",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-hacker-news-daily/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "comments": [],
+          "discussionUrl": "",
+          "id": 0,
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 42003
+      },
+      "name": "getArticleThread-null",
+      "operation": "getArticleThread"
+    },
+    {
+      "callId": "851fb234-ae13-538c-b438-b3f8f7107cd1",
+      "exchanges": [
+        {
+          "body": "{\"id\":42004,\"title\":\"New\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/items/42003",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-hacker-news-daily/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "comments": [],
+          "discussionUrl": "",
+          "id": 0,
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 42003
+      },
+      "name": "getArticleThread-article-mismatch",
+      "operation": "getArticleThread"
+    },
+    {
+      "callId": "aa748280-0099-5b7b-812b-cc95ee98bfbe",
+      "exchanges": [
+        {
+          "body": "{\"id\":42003}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/items/42003",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-hacker-news-daily/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "comments": [],
+          "discussionUrl": "",
+          "id": 0,
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 42003
+      },
+      "name": "getArticleThread-no-title",
+      "operation": "getArticleThread"
+    },
+    {
+      "callId": "58d89247-5c95-563a-a61e-deeb427d9c5d",
+      "exchanges": [
+        {
+          "body": "{\"id\":42003,\"title\":\"Post\",\"children\":[{\"id\":7,\"url\":23}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/items/42003",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-hacker-news-daily/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "comments": [],
+          "discussionUrl": "",
+          "id": 0,
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 42003
+      },
+      "name": "getArticleThread-nested-type",
+      "operation": "getArticleThread"
+    },
+    {
+      "callId": "90d199ff-7756-5c39-b060-21618b8605be",
+      "exchanges": [
+        {
+          "body": "{\"id\":42003,\"title\":\"Post\",\"children\":[{\"id\":9223372036854775808}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/items/42003",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-hacker-news-daily/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "comments": [],
+          "discussionUrl": "",
+          "id": 0,
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 42003
+      },
+      "name": "getArticleThread-child-overflow",
+      "operation": "getArticleThread"
+    },
+    {
+      "callId": "0e0871ba-1456-590b-afc4-491d75e551bf",
+      "exchanges": [
+        {
+          "body": "{\"ID\":42003,\"TITLE\":\"Ask HN\",\"children\":[{\"id\":9,\"author\":null,\"children\":[{\"id\":7,\"parent_id\":9,\"text\":\"\u003cp\u003e\u0026amp;\u003c/p\u003e\",\"discussionUrl\":\"spoofed\"}]},{\"id\":2,\"parent_id\":0},{\"id\":9}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/items/42003",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-hacker-news-daily/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "comments": [
+            {
+              "discussionUrl": "https://news.ycombinator.com/item?id=9",
+              "id": 9,
+              "replies": [
+                {
+                  "discussionUrl": "https://news.ycombinator.com/item?id=7",
+                  "id": 7,
+                  "textHtml": "\u003cp\u003e\u0026amp;\u003c/p\u003e"
+                }
+              ]
+            },
+            {
+              "discussionUrl": "https://news.ycombinator.com/item?id=2",
+              "id": 2
+            },
+            {
+              "discussionUrl": "https://news.ycombinator.com/item?id=9",
+              "id": 9
+            }
+          ],
+          "discussionUrl": "https://news.ycombinator.com/item?id=42003",
+          "id": 42003,
+          "title": "Ask HN"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 42003
+      },
+      "name": "getArticleThread-ordered-comments",
+      "operation": "getArticleThread"
+    },
+    {
+      "callId": "0ae7298a-f2a4-5dc1-affe-6f270e98efb4",
+      "exchanges": [
+        {
+          "body": "{\"id\":42003,\"title\":\"Leaf\",\"children\":null}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/items/42003",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-hacker-news-daily/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "comments": [],
+          "discussionUrl": "https://news.ycombinator.com/item?id=42003",
+          "id": 42003,
+          "title": "Leaf"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 42003
+      },
+      "name": "getArticleThread-null-children",
+      "operation": "getArticleThread"
     }
   ],
   "schemaVersion": 1

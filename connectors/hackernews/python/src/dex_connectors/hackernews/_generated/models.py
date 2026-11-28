@@ -126,3 +126,59 @@ class User:
 
 
 setattr(User, '__module__', 'dex_connectors.hackernews.models')
+
+
+# GetArticleThreadInput identifies a public story or poll by item ID.
+@dataclass(frozen=True, slots=True)
+class GetArticleThreadInput:
+    # ID is a positive Hacker News article ID.
+    id: int = 0
+
+
+setattr(GetArticleThreadInput, '__module__', 'dex_connectors.hackernews.models')
+
+
+# ArticleComment is a public comment with its replies.
+@dataclass(frozen=True, slots=True)
+class ArticleComment:
+    # ID is the comment item ID.
+    id: int = 0
+    # Author is the commenter's public username, when available.
+    author: str = _dataclass_field(default='', metadata={'dex_json_omit_default': True})
+    # TextHTML is untrusted comment HTML.
+    text_html: str = _dataclass_field(default='', metadata={'dex_json_name': 'textHtml', 'dex_json_omit_default': True})
+    # DiscussionURL links directly to the comment on Hacker News.
+    discussion_url: str = _dataclass_field(default='', metadata={'dex_json_name': 'discussionUrl'})
+    # Replies contains nested public comments in provider order.
+    replies: tuple["ArticleComment", ...] = _dataclass_field(default=(), metadata={'dex_json_omit_default': True})
+
+
+setattr(ArticleComment, '__module__', 'dex_connectors.hackernews.models')
+
+
+# ArticleThread contains one indexed article and its public comment tree.
+# Title, TextHTML, and comment text are untrusted provider content.
+@dataclass(frozen=True, slots=True)
+class ArticleThread:
+    # ID is the article item ID.
+    id: int = 0
+    # Title is the article title.
+    title: str = ''
+    # Author is the article submitter's public username.
+    author: str = _dataclass_field(default='', metadata={'dex_json_omit_default': True})
+    # URL is the external source URL, when present.
+    url: str = _dataclass_field(default='', metadata={'dex_json_omit_default': True})
+    # TextHTML is the submitted story body, when present.
+    text_html: str = _dataclass_field(default='', metadata={'dex_json_name': 'textHtml', 'dex_json_omit_default': True})
+    # DiscussionURL links to the article on Hacker News.
+    discussion_url: str = _dataclass_field(default='', metadata={'dex_json_name': 'discussionUrl'})
+    # Comments are the indexed public comments in their nested order.
+    comments: tuple[ArticleComment, ...] = ()
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, 'comments', _replace_nil_slices(self.comments, 1))
+
+
+ArticleThread.__annotations__['comments'] = tuple[ArticleComment, ...] | None
+ArticleThread.__dataclass_fields__['comments'].type = tuple[ArticleComment, ...] | None
+setattr(ArticleThread, '__module__', 'dex_connectors.hackernews.models')

@@ -19,6 +19,7 @@ PROVIDER = "hacker-news"
 LIST_STORY_IDS_OPERATION_ID = "listStoryIDs"
 GET_ITEM_OPERATION_ID = "getItem"
 GET_USER_OPERATION_ID = "getUser"
+GET_ARTICLE_THREAD_OPERATION_ID = "getArticleThread"
 DEFECT = "defect"
 FOUND = "found"
 INVALID_RESPONSE = "invalidResponse"
@@ -65,6 +66,22 @@ GET_USER_DEFINITION = QueryDefinition(
         BranchDefinition(PROVIDER_REJECTED, "Hacker News rejected the request.", True),
         BranchDefinition(INVALID_RESPONSE, "Hacker News returned malformed or oversized user data.", True),
         BranchDefinition(DEFECT, "The username or connection configuration is invalid.", True),
+    ),
+    StepDefaults(
+        timedelta(seconds=30),
+        2,
+        execute_retry=default_connector_step_execute_retry_policy(),
+    ),
+)
+
+GET_ARTICLE_THREAD_DEFINITION = QueryDefinition(
+    OperationRef(CONNECTOR_ID, GET_ARTICLE_THREAD_OPERATION_ID),
+    (
+        BranchDefinition(FOUND, "The article and its indexed comments were read.", False),
+        BranchDefinition(NOT_FOUND, "The article was not found.", True),
+        BranchDefinition(PROVIDER_REJECTED, "Hacker News Search rejected the article read.", True),
+        BranchDefinition(INVALID_RESPONSE, "Hacker News Search returned malformed or oversized thread data.", True),
+        BranchDefinition(DEFECT, "The article ID or connection configuration is invalid.", True),
     ),
     StepDefaults(
         timedelta(seconds=30),

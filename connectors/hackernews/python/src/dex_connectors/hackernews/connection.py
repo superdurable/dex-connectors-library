@@ -11,6 +11,7 @@ from dex_connectors.sdk.projectconfig import LoadedProject
 
 from .client import (
     CONNECTOR_ID,
+    GET_ARTICLE_THREAD_DEFINITION,
     GET_ITEM_DEFINITION,
     GET_USER_DEFINITION,
     LIST_STORY_IDS_DEFINITION,
@@ -18,13 +19,22 @@ from .client import (
     Client,
     Config,
 )
-from .models import GetItemInput, GetUserInput, Item, ListStoryIDsInput, StoryIDs, User
+from .models import (
+    ArticleThread,
+    GetArticleThreadInput,
+    GetItemInput,
+    GetUserInput,
+    Item,
+    ListStoryIDsInput,
+    StoryIDs,
+    User,
+)
 
 
 class Connection:
     """Nonserializable Hacker News operation bindings for a named project connection."""
 
-    __slots__ = ("_list_story_ids", "_get_item", "_get_user", "_client", "reference")
+    __slots__ = ("_list_story_ids", "_get_item", "_get_user", "_get_article_thread", "_client", "reference")
 
     def __init__(
         self,
@@ -34,21 +44,29 @@ class Connection:
         client: Client | None = None,
         *,
         get_user: Query[GetUserInput, User] | None = None,
+        get_article_thread: Query[GetArticleThreadInput, ArticleThread] | None = None,
     ) -> None:
         reference.validate()
         if reference.provider != PROVIDER or list_story_ids is None or get_item is None:
             raise ValueError("Hacker News connection provider and operations are required")
+        if get_article_thread is None and client is not None:
+            get_article_thread = client.get_article_thread()
         if get_user is None and client is not None:
             get_user = client.get_user()
         if (
             list_story_ids.definition().operation != LIST_STORY_IDS_DEFINITION.operation
             or get_item.definition().operation != GET_ITEM_DEFINITION.operation
+            or (
+                get_article_thread is not None
+                and get_article_thread.definition().operation != GET_ARTICLE_THREAD_DEFINITION.operation
+            )
             or (get_user is not None and get_user.definition().operation != GET_USER_DEFINITION.operation)
         ):
             raise ValueError("Hacker News connection operation identity differs")
         self.reference = reference
         self._list_story_ids = list_story_ids
         self._get_item = get_item
+        self._get_article_thread = get_article_thread
         self._get_user = get_user
         self._client = client
 
@@ -59,6 +77,12 @@ class Connection:
     def get_item(self) -> Query[GetItemInput, Item]:
         """Return the item Query used by an application Step."""
         return self._get_item
+
+    def get_article_thread(self) -> Query[GetArticleThreadInput, ArticleThread]:
+        """Return the article Query, raising ValueError when a test connection omitted it."""
+        if self._get_article_thread is None:
+            raise ValueError("bind get_article_thread to register an article Step")
+        return self._get_article_thread
 
     def get_user(self) -> Query[GetUserInput, User]:
         """Return the public profile Query, raising ValueError for a test connection that omitted it."""
@@ -95,9 +119,12 @@ def new_connection_with_operations(
     reference: ConnectionRef,
     *,
     get_user: Query[GetUserInput, User] | None = None,
+    get_article_thread: Query[GetArticleThreadInput, ArticleThread] | None = None,
 ) -> Connection:
     """Bind mock operations to the same connection identity as the real provider."""
-    return Connection(reference, list_story_ids, get_item, get_user=get_user)
+    return Connection(
+        reference, list_story_ids, get_item, get_user=get_user, get_article_thread=get_article_thread
+    )
 
 
 def new_project_connection(
@@ -126,7 +153,6 @@ def _decode_config(value: dict[str, Any]) -> Config:
     base_url = value.get("baseUrl", "")
     timeout = value.get("timeout", 0)
     max_response_bytes = value.get("maxResponseBytes", 0)
-    # Only the Go package implements searchStories; this package accepts its setting and does not use it.
     search_base_url = value.get("searchBaseUrl", "")
     if not isinstance(base_url, str) or not isinstance(search_base_url, str):
         raise ValueError("Hacker News configuration baseUrl and searchBaseUrl must be strings")

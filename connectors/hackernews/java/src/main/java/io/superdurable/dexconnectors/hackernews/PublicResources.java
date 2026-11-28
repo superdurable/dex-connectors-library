@@ -18,10 +18,10 @@ import java.util.function.Function;
 /** Public Firebase items and user profiles with operation-specific Dex Query Steps. */
 public final class PublicResources {
     private PublicResources() {}
-    private static final ObjectMapper PROVIDER_JSON = providerMapper();
+    static final ObjectMapper PROVIDER_JSON = providerMapper();
 
     private static ObjectMapper providerMapper() {
-        ObjectMapper mapper = FirebaseQuery.JSON.copy()
+        ObjectMapper mapper = PublicApiQuery.JSON.copy()
                 .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, DeserializationFeature.ACCEPT_FLOAT_AS_INT)
                 .enable(MapperFeature.ACCEPT_CASE_INSENSITIVE_PROPERTIES)
                 .disable(MapperFeature.ALLOW_COERCION_OF_SCALARS);
@@ -132,7 +132,7 @@ public final class PublicResources {
     }
 
     /** Read one bounded public item with each Execute attempt. */
-    public static final class GetItemOperation extends FirebaseQuery<GetItemInput, Item> {
+    public static final class GetItemOperation extends PublicApiQuery<GetItemInput, Item> {
         /** Use the public Firebase endpoint and the manifest timeout and size limit. */
         public GetItemOperation() { super("getItem", Item.EMPTY); }
         /** Bind a Firebase endpoint, bounded transport and clock for Retry-After. */
@@ -218,7 +218,7 @@ public final class PublicResources {
     }
 
     /** Read one bounded public user with each Execute attempt. */
-    public static final class GetUserOperation extends FirebaseQuery<GetUserInput, User> {
+    public static final class GetUserOperation extends PublicApiQuery<GetUserInput, User> {
         /** Use the public Firebase endpoint and the manifest timeout and size limit. */
         public GetUserOperation() { super("getUser", User.EMPTY); }
         /** Bind a Firebase endpoint, bounded transport and clock for Retry-After. */

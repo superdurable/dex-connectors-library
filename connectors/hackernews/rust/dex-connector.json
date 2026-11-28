@@ -8,6 +8,68 @@
   },
   "factories": [
     {
+      "name": "new_get_article_thread_step",
+      "kind": "query",
+      "operationId": "getArticleThread",
+      "inputType": "GetArticleThreadInput",
+      "description": "Read a Hacker News story or poll and its nested public comments by positive article ID. Linked article content is not included; comment text is untrusted HTML.",
+      "agent": {
+        "exposed": true,
+        "branches": {
+          "defect": "rejected",
+          "notFound": "rejected",
+          "providerRejected": "rejected"
+        }
+      },
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "not_found",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetArticleThreadInput identifies a public story or poll by item ID.",
+        "properties": {
+          "id": {
+            "description": "ID is a positive Hacker News article ID.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "type": "object"
+      }
+    },
+    {
       "name": "new_get_user_step",
       "kind": "query",
       "operationId": "getUser",

@@ -5,7 +5,38 @@
 import { goToBranch, newQueryStep, type Query, type QueryResult, type QueryStep, type QueryStepConfig } from '@superdurable/connectors-sdk';
 import type { StepTarget } from '@superdurable/dex';
 import type { Connection } from './connection.js';
-import type { GetUserInput, User, ListStoryIDsInput, StoryIDs, GetItemInput, Item, SearchStoriesInput, StorySearchPage } from './models.js';
+import type { GetArticleThreadInput, ArticleThread, GetUserInput, User, ListStoryIDsInput, StoryIDs, GetItemInput, Item, SearchStoriesInput, StorySearchPage } from './models.js';
+
+/** Configuration for the getArticleThread connector Step. */
+export interface GetArticleThreadStepConfig<StepInput, OperationInput = GetArticleThreadInput, OperationOutput = ArticleThread> extends Omit<QueryStepConfig<StepInput, OperationInput, OperationOutput>, 'operation' | 'connection' | 'branches'> {
+  /** Named connection supplying this operation. */
+  connection: Connection<{ getArticleThread(): Query<OperationInput, OperationOutput> }>;
+  /** Name matching the bound connection. */
+  connectionName: string;
+  /** The article and its indexed comments were read. */
+  found: StepTarget<QueryResult<OperationOutput>>;
+  /** The article was not found. */
+  notFound?: StepTarget<QueryResult<OperationOutput>>;
+  /** Hacker News Search rejected the article read. */
+  providerRejected?: StepTarget<QueryResult<OperationOutput>>;
+  /** Hacker News Search returned malformed or oversized thread data. */
+  invalidResponse?: StepTarget<QueryResult<OperationOutput>>;
+  /** The article ID or connection configuration is invalid. */
+  defect?: StepTarget<QueryResult<OperationOutput>>;
+}
+
+/** Build the getArticleThread Step from a named connection. */
+export function newGetArticleThreadStep<StepInput, OperationInput = GetArticleThreadInput, OperationOutput = ArticleThread>(configuration: GetArticleThreadStepConfig<StepInput, OperationInput, OperationOutput>): QueryStep<StepInput, OperationInput, OperationOutput> {
+  const { connection, connectionName, found, notFound, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
+  if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
+  return newQueryStep({ ...stepConfiguration, operation: connection.operations.getArticleThread(), connection: connection.reference, branches: [
+    goToBranch("found", found),
+    ...(notFound ? [goToBranch("notFound", notFound)] : []),
+    ...(providerRejected ? [goToBranch("providerRejected", providerRejected)] : []),
+    ...(invalidResponse ? [goToBranch("invalidResponse", invalidResponse)] : []),
+    ...(defect ? [goToBranch("defect", defect)] : []),
+  ] });
+}
 
 /** Configuration for the getUser connector Step. */
 export interface GetUserStepConfig<StepInput, OperationInput = GetUserInput, OperationOutput = User> extends Omit<QueryStepConfig<StepInput, OperationInput, OperationOutput>, 'operation' | 'connection' | 'branches'> {

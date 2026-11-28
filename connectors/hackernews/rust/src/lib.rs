@@ -5,6 +5,11 @@
 
 #[rustfmt::skip]
 mod generated_definitions;
+mod article_thread;
+pub use article_thread::{
+    ArticleComment, ArticleThread, GetArticleThreadInput, GetArticleThreadOperation,
+    new_get_article_thread_step,
+};
 mod resources;
 pub use resources::{
     GetItemInput, GetItemOperation, GetUserInput, GetUserOperation, Item, User, new_get_item_step,
@@ -55,12 +60,12 @@ pub struct StoryIDs {
 }
 
 /// Query operation that makes one public Firebase GET per Execute attempt.
-pub struct ListStoryIDsOperation(FirebaseClient);
+pub struct ListStoryIDsOperation(PublicApiClient);
 
 impl ListStoryIDsOperation {
     /// Use the public Firebase endpoint and the manifest timeout and size limit.
     pub fn new() -> Result<Self, ValidationError> {
-        Ok(Self(FirebaseClient::new()?))
+        Ok(Self(PublicApiClient::new(FIREBASE_BASE_URL)?))
     }
 
     /// Use a validated base URL, bounded transport and observation clock.
@@ -70,7 +75,7 @@ impl ListStoryIDsOperation {
         http: ProviderHttpClient,
         clock: Arc<dyn Fn() -> SystemTime + Send + Sync>,
     ) -> Result<Self, ValidationError> {
-        Ok(Self(FirebaseClient::with_client(
+        Ok(Self(PublicApiClient::with_client(
             base_url,
             max_response_bytes,
             http,
@@ -150,18 +155,20 @@ pub fn new_list_story_ids_step<I>(
     QueryStep::new(config)
 }
 
-struct FirebaseClient {
+struct PublicApiClient {
     base_url: String,
     max_response_bytes: usize,
     http: ProviderHttpClient,
     clock: Arc<dyn Fn() -> SystemTime + Send + Sync>,
 }
 
-impl FirebaseClient {
-    /// Use the public Firebase v0 endpoint and the manifest timeout and size limit.
-    fn new() -> Result<Self, ValidationError> {
+const FIREBASE_BASE_URL: &str = "https://hacker-news.firebaseio.com/v0";
+
+impl PublicApiClient {
+    /// Use the selected public endpoint and the manifest timeout and size limit.
+    fn new(base_url: &str) -> Result<Self, ValidationError> {
         Self::with_client(
-            "https://hacker-news.firebaseio.com/v0",
+            base_url,
             1 << 20,
             ProviderHttpClient::new(Duration::from_secs(15), AddressPolicy::PublicHttps)?,
             Arc::new(SystemTime::now),
@@ -187,7 +194,7 @@ impl FirebaseClient {
     }
 }
 
-impl FirebaseClient {
+impl PublicApiClient {
     fn read_json<T: Default>(
         &self,
         operation: &str,
@@ -223,7 +230,7 @@ impl FirebaseClient {
                 delay,
             );
         }
-        if status == 404 && matches!(operation, "getItem" | "getUser") {
+        if status == 404 && matches!(operation, "getItem" | "getUser" | "getArticleThread") {
             return failed(
                 operation,
                 "notFound",

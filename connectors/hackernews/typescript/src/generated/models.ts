@@ -95,6 +95,42 @@ export function decodeCredentials(value: unknown): Credentials {
 /** Host-owned source of private connector credentials. */
 export type CredentialSource = CredentialProvider<Credentials>;
 
+/** GetArticleThreadInput identifies a public story or poll by item ID. */
+export interface GetArticleThreadInput {
+  /** ID is a positive Hacker News article ID. */
+  "id": number;
+}
+/** ArticleComment is a public comment with its replies. */
+export interface ArticleComment {
+  /** ID is the comment item ID. */
+  "id": number;
+  /** Author is the commenter's public username, when available. */
+  "author"?: string | undefined;
+  /** TextHTML is untrusted comment HTML. */
+  "textHtml"?: string | undefined;
+  /** DiscussionURL links directly to the comment on Hacker News. */
+  "discussionUrl": string;
+  /** Replies contains nested public comments in provider order. */
+  "replies"?: Array<ArticleComment> | undefined;
+}
+/** ArticleThread contains one indexed article and its public comment tree.
+   * Title, TextHTML, and comment text are untrusted provider content. */
+export interface ArticleThread {
+  /** ID is the article item ID. */
+  "id": number;
+  /** Title is the article title. */
+  "title": string;
+  /** Author is the article submitter's public username. */
+  "author"?: string | undefined;
+  /** URL is the external source URL, when present. */
+  "url"?: string | undefined;
+  /** TextHTML is the submitted story body, when present. */
+  "textHtml"?: string | undefined;
+  /** DiscussionURL links to the article on Hacker News. */
+  "discussionUrl": string;
+  /** Comments are the indexed public comments in their nested order. */
+  "comments": Array<ArticleComment> | null;
+}
 /** GetUserInput identifies a public Hacker News user by case-sensitive username. */
 export interface GetUserInput {
   /** ID is the username shown on the Hacker News profile page. */
@@ -235,6 +271,31 @@ export interface StorySearchPage {
   /** NextPage is the zero-based number of the next readable page, or zero when this is the last one. */
   "nextPage": number;
 }
+
+/** Runtime validator for GetArticleThreadInput. */
+export const GetArticleThreadInputSchema = z.strictObject({
+  "id": z.number().int(),
+}) satisfies z.ZodType<GetArticleThreadInput>;
+
+/** Runtime validator for ArticleComment. */
+export const ArticleCommentSchema: z.ZodType<ArticleComment> = z.lazy(() => z.strictObject({
+  "id": z.number().int(),
+  "author": z.string().optional(),
+  "textHtml": z.string().optional(),
+  "discussionUrl": z.string(),
+  "replies": z.array(ArticleCommentSchema).optional(),
+}));
+
+/** Runtime validator for ArticleThread. */
+export const ArticleThreadSchema = z.strictObject({
+  "id": z.number().int(),
+  "title": z.string(),
+  "author": z.string().optional(),
+  "url": z.string().optional(),
+  "textHtml": z.string().optional(),
+  "discussionUrl": z.string(),
+  "comments": z.array(ArticleCommentSchema).nullable(),
+}) satisfies z.ZodType<ArticleThread>;
 
 /** Runtime validator for GetUserInput. */
 export const GetUserInputSchema = z.strictObject({

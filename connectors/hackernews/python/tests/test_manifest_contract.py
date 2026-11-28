@@ -17,6 +17,7 @@ from dex_connectors.sdk.connectormock import Case
 
 import dex_connectors.hackernews as package
 from dex_connectors.hackernews import (
+    GET_ARTICLE_THREAD_DEFINITION,
     GET_ITEM_DEFINITION,
     GET_USER_DEFINITION,
     LIST_STORY_IDS_DEFINITION,
@@ -25,6 +26,7 @@ from dex_connectors.hackernews import (
 )
 from dex_connectors.hackernews.hackernewsmock import (
     Mock,
+    get_article_thread_compiler_thread,
     get_item_compiler_story,
     get_item_missing,
     get_item_rejected,
@@ -112,6 +114,16 @@ def test_public_profile_mock_and_retry_match_manifest() -> None:
     assert Mock().connection().get_user().definition() == GET_USER_DEFINITION
 
 
+def test_article_thread_mock_matches_manifest() -> None:
+    manifest = yaml.safe_load((CONNECTOR_DIRECTORY / "connector.yaml").read_text())
+    operation = next(entry for entry in manifest["spec"]["operations"] if entry["name"] == "getArticleThread")
+    case = get_article_thread_compiler_thread()
+    assert operation["mocks"][0]["branch"] == case.branch
+    codec = dex.CodecRegistry().resolve(package.ArticleThread)
+    assert json.loads(codec.encode(case.value).data) == operation["mocks"][0]["output"]
+    assert Mock().connection().get_article_thread().definition() == GET_ARTICLE_THREAD_DEFINITION
+
+
 def test_existing_two_operation_bindings_still_register_the_top_story_flow() -> None:
     mock = Mock()
     connection = package.new_connection_with_operations(
@@ -120,6 +132,8 @@ def test_existing_two_operation_bindings_still_register_the_top_story_flow() -> 
     dex.Registry([TopStoryFlow(connection)], allow_async_handlers=True)
     with pytest.raises(ValueError, match="bind get_user"):
         connection.get_user()
+    with pytest.raises(ValueError, match="bind get_article_thread"):
+        connection.get_article_thread()
 
 
 def test_factory_parameters_match_declared_branch_fields() -> None:
@@ -147,7 +161,12 @@ def test_identity_and_agent_metadata_match_manifest() -> None:
     assert Mock().connection().reference.provider == manifest["spec"]["provider"]
     operations = {operation["name"]: operation for operation in manifest["spec"]["operations"]}
     factories = {factory["operationId"]: factory for factory in document["factories"]}
-    for definition in (LIST_STORY_IDS_DEFINITION, GET_ITEM_DEFINITION, GET_USER_DEFINITION):
+    for definition in (
+        LIST_STORY_IDS_DEFINITION,
+        GET_ITEM_DEFINITION,
+        GET_USER_DEFINITION,
+        GET_ARTICLE_THREAD_DEFINITION,
+    ):
         operation_id = definition.operation.operation_id
         assert definition.operation.connector_id == document["connectorId"]
         assert factories[operation_id]["description"] == operations[operation_id]["agent"]["description"]

@@ -11,6 +11,7 @@ from dex_connectors.sdk.connectormock import Case, Query
 from ..client import (
     FAILURE_PROVIDER,
     FOUND,
+    GET_ARTICLE_THREAD_DEFINITION,
     GET_ITEM_DEFINITION,
     GET_USER_DEFINITION,
     LIST_STORY_IDS_DEFINITION,
@@ -20,7 +21,17 @@ from ..client import (
     PROVIDER_REJECTED,
 )
 from ..connection import Connection, new_connection_with_operations
-from ..models import GetItemInput, GetUserInput, Item, ListStoryIDsInput, StoryIDs, User
+from ..models import (
+    ArticleComment,
+    ArticleThread,
+    GetArticleThreadInput,
+    GetItemInput,
+    GetUserInput,
+    Item,
+    ListStoryIDsInput,
+    StoryIDs,
+    User,
+)
 
 
 def list_story_ids_listed(value: StoryIDs, failure: Failure | None = None) -> Case[StoryIDs]:
@@ -109,6 +120,31 @@ def get_user_public_user() -> Case[User]:
     )
 
 
+def get_article_thread_found(value: ArticleThread, failure: Failure | None = None) -> Case[ArticleThread]:
+    """Script the article found route."""
+    return Case.branch_result(FOUND, value, failure)
+
+
+def get_article_thread_compiler_thread() -> Case[ArticleThread]:
+    """Return the manifest's compilerThread answer."""
+    return get_article_thread_found(
+        ArticleThread(
+            id=42003,
+            title="Show HN: A compiler explorer for small languages",
+            author="langtools",
+            discussion_url="https://news.ycombinator.com/item?id=42003",
+            comments=(
+                ArticleComment(
+                    id=42004,
+                    author="reviewer",
+                    text_html="Useful explorer.",
+                    discussion_url="https://news.ycombinator.com/item?id=42004",
+                ),
+            ),
+        )
+    )
+
+
 class Mock:
     """Script Hacker News Queries, defaulting to their manifest answers."""
 
@@ -119,11 +155,16 @@ class Mock:
         self.get_item_script.default(get_item_compiler_story())
         self.get_user_script: Query[GetUserInput, User] = Query(GET_USER_DEFINITION)
         self.get_user_script.default(get_user_public_user())
+        self.get_article_thread_script: Query[GetArticleThreadInput, ArticleThread] = Query(
+            GET_ARTICLE_THREAD_DEFINITION
+        )
+        self.get_article_thread_script.default(get_article_thread_compiler_thread())
         self._connection = new_connection_with_operations(
             self.list_story_ids_script,
             self.get_item_script,
             ConnectionRef(PROVIDER, connection_name),
             get_user=self.get_user_script,
+            get_article_thread=self.get_article_thread_script,
         )
 
     def connection(self) -> Connection:
@@ -133,6 +174,8 @@ class Mock:
 
 __all__ = [
     "Mock",
+    "get_article_thread_compiler_thread",
+    "get_article_thread_found",
     "get_user_found",
     "get_user_public_user",
     "list_story_ids_listed",

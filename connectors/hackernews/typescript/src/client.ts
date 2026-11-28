@@ -4,8 +4,8 @@
 import { newQueryBranch, newQueryRetry, type Call, type Failure, type Query, type QueryAttempt } from '@superdurable/connectors-sdk';
 import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { Parser } from 'htmlparser2';
-import { GetUserDefinition, GetItemDefinition, ListStoryIDsDefinition, SearchStoriesDefinition } from './generated/definitions.js';
-import type { Config, GetUserInput, User, GetItemInput, Item, ListStoryIDsInput, SearchStoriesInput, StoryIDs, StorySearchHit, StorySearchPage } from './generated/models.js';
+import { GetArticleThreadDefinition, GetUserDefinition, GetItemDefinition, ListStoryIDsDefinition, SearchStoriesDefinition } from './generated/definitions.js';
+import type { ArticleComment, ArticleThread, GetArticleThreadInput, Config, GetUserInput, User, GetItemInput, Item, ListStoryIDsInput, SearchStoriesInput, StoryIDs, StorySearchHit, StorySearchPage } from './generated/models.js';
 
 /** Maximum Unicode code points kept in StorySearchHit.storyText. */
 export const MaxStoryTextCharacters = 2000;
@@ -15,6 +15,7 @@ const defaultSearchBaseUrl = 'https://hn.algolia.com/api/v1';
 const zeroTime = '0001-01-01T00:00:00Z';
 const zeroIds: StoryIDs = { ids: [], hasMore: false, observedAt: zeroTime };
 const zeroUser: User = { id: '', created: 0, karma: 0, profileUrl: '' };
+const zeroThread: ArticleThread = { id: 0, title: '', discussionUrl: '', comments: [] };
 const zeroItem: Item = { id: 0, type: '', discussionUrl: '' };
 const validFeeds = new Set(['top', 'best', 'new', 'ask', 'show']);
 const validItemTypes = new Set(['story', 'comment', 'job', 'poll', 'pollopt']);
@@ -68,6 +69,8 @@ export class HackerNewsClient {
   listStoryIDs(): ListStoryIDsOperation { return new ListStoryIDsOperation(this); }
   /** Bind the item Query. */
   getItem(): GetItemOperation { return new GetItemOperation(this); }
+  /** Bind the indexed article and public comment tree Query. */
+  getArticleThread(): GetArticleThreadOperation { return new GetArticleThreadOperation(this); }
   /** Bind the public user profile Query. */
   getUser(): GetUserOperation { return new GetUserOperation(this); }
   /** Bind the story search Query. */
@@ -99,7 +102,7 @@ export class HackerNewsClient {
           const retryAfter = error.headers?.['retry-after'];
           return newQueryRetry(failure(operation, status === 429 ? 'RATE_LIMIT' : 'AVAILABILITY', 'Hacker News is temporarily unavailable'), parseRetryAfter(Array.isArray(retryAfter) ? retryAfter[0] ?? '' : retryAfter ?? '', this.now()));
         }
-        if (status === 404 && (operation === 'getItem' || operation === 'getUser')) return failed(operation, 'notFound', zero, 'NOT_FOUND', 'Hacker News resource was not found');
+        if (status === 404 && (operation === 'getItem' || operation === 'getUser' || operation === 'getArticleThread')) return failed(operation, 'notFound', zero, 'NOT_FOUND', 'Hacker News resource was not found');
         if (status !== 200) return failed(operation, 'providerRejected', zero, 'PROVIDER_REJECTION', 'Hacker News rejected the request');
         return failed(operation, 'invalidResponse', zero, 'RESPONSE_TOO_LARGE', 'Hacker News response exceeded the configured limit');
       }
@@ -111,7 +114,7 @@ export class HackerNewsClient {
       const retryAfter = response.headers['retry-after'];
       return newQueryRetry(failure(operation, status === 429 ? 'RATE_LIMIT' : 'AVAILABILITY', 'Hacker News is temporarily unavailable'), parseRetryAfter(Array.isArray(retryAfter) ? retryAfter[0] ?? '' : retryAfter ?? '', this.now()));
     }
-    if (status === 404 && (operation === 'getItem' || operation === 'getUser')) return failed(operation, 'notFound', zero, 'NOT_FOUND', 'Hacker News resource was not found');
+    if (status === 404 && (operation === 'getItem' || operation === 'getUser' || operation === 'getArticleThread')) return failed(operation, 'notFound', zero, 'NOT_FOUND', 'Hacker News resource was not found');
     if (status !== 200) return failed(operation, 'providerRejected', zero, 'PROVIDER_REJECTION', 'Hacker News rejected the request');
     return decode(response.body);
   }
@@ -142,6 +145,97 @@ export class ListStoryIDsOperation implements Query<ListStoryIDsInput, StoryIDs>
     });
   }
 }
+
+/** Read one indexed article with its public comments. */
+export class GetArticleThreadOperation implements Query<GetArticleThreadInput, ArticleThread> {
+  /** Bind the owning client. */
+  constructor(private readonly client: HackerNewsClient) {}
+  /** Return the manifest Query contract. */
+  definition() { return GetArticleThreadDefinition; }
+  /** Validate the article ID and read its tree in one bounded request. */
+  invoke(call: Call, input: GetArticleThreadInput): Promise<QueryAttempt<ArticleThread>> {
+    if (!Number.isSafeInteger(input.id) || input.id <= 0) {
+      return Promise.resolve(failed('getArticleThread', 'defect', zeroThread, 'VALIDATION', 'article ID must be positive'));
+    }
+    return this.client.getSearchJSON(call, 'getArticleThread', `/items/${input.id}`, zeroThread, body => decodeArticleThread(body, input.id));
+  }
+}
+
+function decodeArticleThread(body: Uint8Array, requestedId: number): QueryAttempt<ArticleThread> {
+  const operation = 'getArticleThread';
+  try {
+    const document = parseProviderJSON(body);
+    if (document === null) return failed(operation, 'notFound', zeroThread, 'NOT_FOUND', 'Hacker News article was not found');
+    const article = readArticleNode(document);
+    if (article.id !== requestedId || !article.title) return failed(operation, 'invalidResponse', zeroThread, 'PROTOCOL', 'Hacker News Search returned an invalid article');
+    const result: ArticleThread = {
+      id: article.id, title: article.title, discussionUrl: discussionURL(article.id),
+      comments: new CommentTreeReader().readChildren(article, 0),
+    };
+    if (article.author) result.author = article.author;
+    if (article.url) result.url = article.url;
+    if (article.text) result.textHtml = article.text;
+    return newQueryBranch('found', result, {});
+  } catch (error) {
+    return failed(operation, 'invalidResponse', zeroThread, 'PROTOCOL', error instanceof InvalidCommentTree ?
+      'Hacker News Search returned an invalid comment tree' : 'Hacker News Search returned malformed article JSON');
+  }
+}
+
+class InvalidCommentTree extends Error {}
+
+interface ArticleNode {
+  id: number;
+  parentId: number;
+  title: string;
+  url: string;
+  author: string;
+  text: string;
+  children: unknown[];
+}
+
+function readArticleNode(value: unknown): ArticleNode {
+  const node: ArticleNode = { id: 0, parentId: 0, title: '', url: '', author: '', text: '', children: [] };
+  if (value === null) return node;
+  if (typeof value !== 'object' || Array.isArray(value)) throw new TypeError('article node');
+  for (const [key, field] of Object.entries(value)) {
+    if (field === null) continue;
+    const name = key.toLowerCase();
+    switch (name) {
+      case 'id': node.id = strictInteger(field, name); break;
+      case 'parent_id': node.parentId = strictInteger(field, name); break;
+      case 'title': case 'author': case 'url': case 'text':
+        if (typeof field !== 'string') throw new TypeError(name);
+        node[name] = field;
+        break;
+      case 'children':
+        if (!Array.isArray(field)) throw new TypeError(name);
+        node.children = field;
+    }
+  }
+  return node;
+}
+
+class CommentTreeReader {
+  private remaining = 5000;
+
+  readChildren(parent: ArticleNode, depth: number): ArticleComment[] {
+    if (depth >= 64 || parent.children.length > this.remaining) throw new InvalidCommentTree();
+    this.remaining -= parent.children.length;
+    return parent.children.map(child => {
+      const node = readArticleNode(child);
+      if (node.id <= 0 || (node.parentId !== 0 && node.parentId !== parent.id)) throw new InvalidCommentTree();
+      const comment: ArticleComment = { id: node.id, discussionUrl: discussionURL(node.id) };
+      if (node.author) comment.author = node.author;
+      if (node.text) comment.textHtml = node.text;
+      const replies = this.readChildren(node, depth + 1);
+      if (replies.length) comment.replies = replies;
+      return comment;
+    });
+  }
+}
+
+function discussionURL(id: number): string { return `https://news.ycombinator.com/item?id=${id}`; }
 
 /** Read one Hacker News story, comment, job, poll, or poll option. */
 export class GetItemOperation implements Query<GetItemInput, Item> {

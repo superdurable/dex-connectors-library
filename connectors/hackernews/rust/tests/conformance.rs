@@ -5,9 +5,12 @@ use std::collections::{BTreeMap, VecDeque};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use dex_connector_hackernews::{GetItemOperation, GetUserOperation, ListStoryIDsOperation};
+use dex_connector_hackernews::{
+    GetArticleThreadOperation, GetItemOperation, GetUserOperation, ListStoryIDsOperation,
+};
 use dex_connectors_sdk::Rfc3339NanoTimestamp;
 const ORIGIN: &str = "https://hacker-news.firebaseio.com/v0";
+const SEARCH_ORIGIN: &str = "https://hn.algolia.com/api/v1";
 const FIXTURE: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/support/scenarios.json");
 use dex_connectors_sdk::providerhttp::{
     ProviderHttpClient, ProviderHttpError, ProviderHttpRequest, ProviderHttpResponse,
@@ -20,6 +23,7 @@ struct RecordedProvider {
     exchanges: Mutex<VecDeque<Value>>,
     requests: Mutex<usize>,
     scenario: String,
+    origin: &'static str,
 }
 
 impl ProviderHttpTransport for RecordedProvider {
@@ -38,7 +42,7 @@ impl ProviderHttpTransport for RecordedProvider {
         assert_eq!(exchange["method"], request.method, "{}", self.scenario);
         assert_eq!(
             request.url,
-            format!("{}{}", ORIGIN, exchange["path"].as_str().unwrap()),
+            format!("{}{}", self.origin, exchange["path"].as_str().unwrap()),
             "{}",
             self.scenario
         );
@@ -92,7 +96,7 @@ fn replay_go_public_queries() {
         .filter(|s| {
             matches!(
                 s["operation"].as_str(),
-                Some("listStoryIDs" | "getItem" | "getUser")
+                Some("listStoryIDs" | "getItem" | "getUser" | "getArticleThread")
             )
         })
         .collect();
@@ -103,6 +107,11 @@ fn replay_go_public_queries() {
 
         let recorded = Arc::new(RecordedProvider {
             scenario: name.into(),
+            origin: if scenario["operation"] == "getArticleThread" {
+                SEARCH_ORIGIN
+            } else {
+                ORIGIN
+            },
             exchanges: Mutex::new(scenario["exchanges"].as_array().unwrap().clone().into()),
             requests: Mutex::new(0),
         });
@@ -128,6 +137,12 @@ fn replay_go_public_queries() {
         match operation {
             "listStoryIDs" => replay(
                 ListStoryIDsOperation::with_client(ORIGIN, 1 << 20, http, clock).unwrap(),
+                &call,
+                scenario,
+            ),
+            "getArticleThread" => replay(
+                GetArticleThreadOperation::with_client(SEARCH_ORIGIN, 1 << 20, http, clock)
+                    .unwrap(),
                 &call,
                 scenario,
             ),

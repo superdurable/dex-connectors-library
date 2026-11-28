@@ -16,7 +16,7 @@ ROOT = Path(__file__).parents[4]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 import connector_scenarios as conformance  # noqa: E402
 
-PYTHON_OPERATIONS = {"listStoryIDs", "getItem", "getUser"}
+PYTHON_OPERATIONS = {"listStoryIDs", "getItem", "getUser", "getArticleThread"}
 SCENARIOS = [
     scenario
     for scenario in conformance.load_scenarios(ROOT / "conformance/connectors/hackernews/scenarios.json")
@@ -28,7 +28,7 @@ ADAPTER = conformance.PythonOperationAdapter(
     CONNECTION,
     connector,
     lambda http_client, recorder: connector.Client(
-        connector.Config(base_url="http://127.0.0.1:12345"),
+        connector.Config(base_url="http://127.0.0.1:12345", search_base_url="http://127.0.0.1:12345"),
         http_client,
     ),
     operation_types={"listStoryIDs": connector.ListStoryIDsOperation},

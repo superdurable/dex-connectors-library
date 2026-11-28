@@ -2,7 +2,7 @@
 
 Install with `pip install dex-connector-hackernews==0.4.0`. The package
 requires `dex-connectors-sdk>=0.8.0,<1` and `dex-python-sdk>=1.28.0`, and
-implements the manifest Queries `listStoryIDs`, `getItem`, and `getUser` with the same
+implements the manifest Queries `listStoryIDs`, `getItem`, `getUser`, and `getArticleThread` with the same
 branches, defaults, and failure classification as the Go module. The public
 API needs no credentials.
 
@@ -18,6 +18,7 @@ open a Dex Web connection; 0.2.0 changes that identity (breaking).
 | --- | --- | --- | --- |
 | `listStoryIDs` | `new_list_story_ids_step` | `listed` | `providerRejected`, `invalidResponse`, `defect` |
 | `getItem` | `new_get_item_step` | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
+| `getArticleThread` | `new_get_article_thread_step` | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
 | `getUser` | `new_get_user_step` | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
 
 `listStoryIDs` reads the `top` (default), `best`, `new`, `ask`, or `show` feed
@@ -31,8 +32,8 @@ HTML.
 
 ## Agent tools
 
-All three Queries set `agent.exposed` in the package's `dex-connector.json`, so an
-agent host can offer `client.list_story_ids()`, `client.get_item()`, and `client.get_user()` as read
+All four Queries set `agent.exposed` in the package's `dex-connector.json`, so an
+agent host can offer `client.list_story_ids()`, `client.get_item()`, `client.get_user()`, and `client.get_article_thread()` as read
 tools. Every optional branch except `invalidResponse` is classified `rejected`:
 a read changes nothing. `invalidResponse` is a provider malfunction the model
 cannot fix, so it stays unlisted and agent hosts record it as a failure.
@@ -59,8 +60,20 @@ Generate the graph from this package with
 For a custom test connection that exercises profiles, pass the `get_user`
 Query by keyword to `new_connection_with_operations`.
 
+The Worker also registers `HackerNewsArticleThreadPython`. Start it with
+`{"article_id":8863}`. The Query reads the article and nested comments
+from the configured Search API endpoint in one request. The result preserves
+the indexed comment order and untrusted HTML. Bind `get_article_thread` by
+keyword when constructing an operation-based test connection for this Flow.
+[Runnable article thread Flow](examples/top_story/article_flow.py)
+
+With Dex running, verify a retry using `uv run python -m examples.top_story.article_integration`.
+Append `8863` to read the public article and print its discussion URL and top-level comment count.
+Generate the graph with
+`dexcli visualize examples/top_story/article_flow.py --schema-version 2.0 --lint app --json --open=false --python .venv/bin/python --out /tmp/hackernews-python-thread`.
+
 ## Tests
 
-`hackernewsmock.Mock` scripts all three Queries and defaults to the manifest
+`hackernewsmock.Mock` scripts all four Queries and defaults to the manifest
 answers. Run `uv run pytest tests` for provider parity and manifest contract
 checks.

@@ -22,9 +22,9 @@ The Python package is [`dex-connector-hackernews`](python/README.md), imported a
 
 The TypeScript package is [`@superdurable/connector-hackernews`](typescript/README.md).
 Its [top-story Flow](typescript/examples/top-story/README.md) binds the static
-`hackernews-public` connection and uses both generated Query Step factories.
-Python, TypeScript, Java, and Rust all implement `listStoryIDs`, `getItem`, and
-`getUser`. TypeScript also implements `searchStories`. Each package replays the
+`hackernews-public` connection and uses the generated feed and item Query Step factories.
+Python, TypeScript, Java, and Rust all implement `listStoryIDs`, `getItem`,
+`getUser`, and `getArticleThread`. TypeScript also implements `searchStories`. Each package replays the
 Go-recorded provider scenarios for its supported operations.
 
 ## Operations
@@ -154,7 +154,7 @@ The connector has no mutation, idempotency key, Trigger, or external write.
 | Configuration | Default | Meaning |
 | --- | --- | --- |
 | `baseUrl` | `https://hacker-news.firebaseio.com/v0` | Feed and item API base URL; HTTPS or loopback HTTP |
-| `searchBaseUrl` | `https://hn.algolia.com/api/v1` | Search API base URL for `searchStories`; HTTPS or loopback HTTP |
+| `searchBaseUrl` | `https://hn.algolia.com/api/v1` | Search API base URL for search and article threads over HTTPS or loopback HTTP |
 | `timeout` | `15s` | HTTP request timeout |
 | `maxResponseBytes` | `1048576` | Maximum response body size in bytes |
 
@@ -218,6 +218,27 @@ Worker and Client tests that verify routing and retries.
 ```sh
 dexcli visualize java/examples/io/superdurable/dexconnectors/hackernews/ItemAuthorWorker.java --schema-version 2.0 --lint app --json --open=false --out /tmp/hackernews-item-author-java
 dexcli visualize rust/examples/item_author.rs --schema-version 2.0 --lint app --json --open=false --out /tmp/hackernews-item-author-rust
+```
+
+The Java and Rust article thread Workers accept a positive Hacker News item ID.
+They print its discussion URL and top-level comment count. The Flow result
+contains the full indexed comment tree. Run these commands from the language package.
+
+```sh
+# java/
+./gradlew articleThreadWorker --args='--read 8863'
+
+# rust/
+cargo run --example article_thread -- --read 8863
+```
+
+Generate the article thread graphs from the connector directory. The current
+Java analyzer reports the inherited Query handler as missing. The Rust analyzer
+writes the graph with an unresolved Query Step type warning.
+
+```sh
+dexcli visualize java/examples/io/superdurable/dexconnectors/hackernews/ArticleThreadWorker.java --schema-version 2.0 --lint app --json --open=false --out /tmp/hackernews-thread-java
+dexcli visualize rust/examples/article_thread.rs --schema-version 2.0 --lint app --json --open=false --out /tmp/hackernews-thread-rust
 ```
 
 ## Verification

@@ -97,3 +97,14 @@ describe('HackerNewsClient', () => {
     expect(await item.getItem().invoke(call, { id: 42001 })).toMatchObject({ failure: { message: 'Hacker News returned an invalid child ID' } });
   });
 });
+
+it.each([[63, 1, 'found'], [64, 1, 'invalidResponse'], [2, 4999, 'found'], [2, 5000, 'invalidResponse']] as const)(
+  'bounds article comments at depth %i and width %i', async (depth, width, branch) => {
+    let children: Array<{id: number; children: unknown[]}> = Array.from({ length: width }, (_, index) => ({ id: index + 2, children: [] }));
+    for (let level = 1; level < depth; level++) children = [{ id: 10_000 + level, children }];
+    const body = Buffer.from(JSON.stringify({ id: 1, title: 'Article', children }));
+    const client = new HackerNewsClient({}, { send: async () => ({ status: 200, headers: {}, body }) });
+    const attempt = await client.getArticleThread().invoke(call, { id: 1 });
+    expect(attempt).toMatchObject({ branch });
+  },
+);

@@ -42,7 +42,17 @@ from ._generated.definitions import LIST_STORY_IDS_OPERATION_ID as LIST_STORY_ID
 from ._generated.definitions import LISTED as LISTED
 from ._generated.definitions import NOT_FOUND as NOT_FOUND
 from ._generated.definitions import PROVIDER_REJECTED as PROVIDER_REJECTED
-from .models import GetItemInput, GetUserInput, Item, ListStoryIDsInput, StoryIDs, User
+from .models import (
+    ArticleComment,
+    ArticleThread,
+    GetArticleThreadInput,
+    GetItemInput,
+    GetUserInput,
+    Item,
+    ListStoryIDsInput,
+    StoryIDs,
+    User,
+)
 
 CONNECTOR_ID = _generated_definitions.CONNECTOR_ID
 PROVIDER = _generated_definitions.PROVIDER
@@ -55,6 +65,7 @@ _DEFAULT_MAX_RESPONSE_BYTES = 1_048_576
 
 LIST_STORY_IDS_DEFINITION: QueryDefinition = _generated_definitions.LIST_STORY_IDS_DEFINITION
 GET_USER_DEFINITION: QueryDefinition = _generated_definitions.GET_USER_DEFINITION
+GET_ARTICLE_THREAD_DEFINITION: QueryDefinition = _generated_definitions.GET_ARTICLE_THREAD_DEFINITION
 GET_ITEM_DEFINITION: QueryDefinition = _generated_definitions.GET_ITEM_DEFINITION
 
 Output = TypeVar("Output")
@@ -75,6 +86,7 @@ class Client:
         if config.timeout_seconds < 0 or config.max_response_bytes < 0:
             raise ValueError("Hacker News timeout and maxResponseBytes must be positive")
         self.base_url = validate_base_url(config.base_url or _DEFAULT_BASE_URL)
+        self.search_base_url = validate_base_url(config.search_base_url or "https://hn.algolia.com/api/v1")
         self.max_response_bytes = config.max_response_bytes or _DEFAULT_MAX_RESPONSE_BYTES
         self.http_client = http_client or new_provider_http_client(
             config.timeout_seconds or _DEFAULT_TIMEOUT_SECONDS
@@ -87,6 +99,10 @@ class Client:
     def get_item(self) -> "GetItemOperation":
         """Bind the item Query to this client."""
         return GetItemOperation(self)
+
+    def get_article_thread(self) -> "GetArticleThreadOperation":
+        """Bind the indexed article and public comment tree Query."""
+        return GetArticleThreadOperation(self)
 
     def get_user(self) -> "GetUserOperation":
         """Bind the public user profile Query to this client."""
@@ -103,7 +119,7 @@ class Client:
         try:
             request = self.http_client.build_request(
                 "GET",
-                self.base_url + path,
+                (self.search_base_url if operation == "getArticleThread" else self.base_url) + path,
                 headers={"Accept": "application/json", "User-Agent": "superdurable-hacker-news-daily/0.1"},
             )
         except (httpx.HTTPError, ValueError):
@@ -124,7 +140,7 @@ class Client:
                 kind = FailureKind.RATE_LIMIT if status == 429 else FailureKind.AVAILABILITY
                 retry_after = parse_retry_after(response.headers.get("Retry-After", ""), datetime.now(UTC))
                 return _retry(operation, kind, "Hacker News is temporarily unavailable", retry_after)
-            if status == 404 and operation in (GET_ITEM_OPERATION_ID, "getUser"):
+            if status == 404 and operation in (GET_ITEM_OPERATION_ID, "getUser", "getArticleThread"):
                 return _failed(
                     operation, NOT_FOUND, empty, FailureKind.NOT_FOUND, "Hacker News resource was not found"
                 )
@@ -215,6 +231,40 @@ class GetItemOperation:
         requested = input.id
         return await self.client.get_json(
             operation, f"/item/{requested}.json", Item(), lambda body: _decode_item(body, requested)
+        )
+
+
+class GetArticleThreadOperation:
+    """Read one public Hacker News article with its indexed comments."""
+
+    def __init__(self, client: Client) -> None:
+        if client is None:
+            raise ValueError("Hacker News client is required")
+        self.client = client
+
+    def definition(self) -> QueryDefinition:
+        """Return the article Query identity, branches and retry defaults."""
+        return GET_ARTICLE_THREAD_DEFINITION
+
+    async def invoke(self, call: Call, input: GetArticleThreadInput) -> QueryAttempt[ArticleThread]:
+        """Read one bounded Search API response for a positive signed 64-bit article ID."""
+        if (
+            not isinstance(input, GetArticleThreadInput)
+            or type(input.id) is not int
+            or not 0 < input.id < 2**63
+        ):
+            return _failed(
+                "getArticleThread",
+                DEFECT,
+                ArticleThread(),
+                FailureKind.VALIDATION,
+                "article ID must be positive",
+            )
+        return await self.client.get_json(
+            "getArticleThread",
+            f"/items/{input.id}",
+            ArticleThread(),
+            lambda body: _decode_article_thread(body, input.id),
         )
 
 
@@ -442,3 +492,100 @@ def _boolean(document: dict[str, Any], name: str) -> bool:
     if not isinstance(value, bool):
         raise ValueError
     return value
+
+
+class _InvalidCommentTree(ValueError):
+    pass
+
+
+def _article_node(value: Any) -> dict[str, Any]:
+    if value is None:
+        return {}
+    if not isinstance(value, dict):
+        raise ValueError
+    node = {key.lower(): field for key, field in value.items() if field is not None}
+    for name in ("title", "text", "url", "author"):
+        _string(node, name)
+    for name in ("id", "parent_id"):
+        if not -(2**63) <= _integer(node, name) < 2**63:
+            raise ValueError
+    if not isinstance(node.get("children", []), list):
+        raise ValueError
+    return node
+
+
+def _decode_article_thread(body: bytes, requested: int) -> QueryAttempt[ArticleThread]:
+    operation = "getArticleThread"
+    try:
+        value = json.loads(body, parse_constant=_reject_non_json_number)
+        if value is None:
+            return _failed(
+                operation,
+                NOT_FOUND,
+                ArticleThread(),
+                FailureKind.NOT_FOUND,
+                "Hacker News article was not found",
+            )
+        node = _article_node(value)
+        if node.get("id") != requested or not node.get("title"):
+            return _failed(
+                operation,
+                INVALID_RESPONSE,
+                ArticleThread(),
+                FailureKind.PROTOCOL,
+                "Hacker News Search returned an invalid article",
+            )
+        comments = _CommentTreeReader().read_children(node, 0)
+    except _InvalidCommentTree:
+        return _failed(
+            operation,
+            INVALID_RESPONSE,
+            ArticleThread(),
+            FailureKind.PROTOCOL,
+            "Hacker News Search returned an invalid comment tree",
+        )
+    except (ValueError, UnicodeError, RecursionError):
+        return _failed(
+            operation,
+            INVALID_RESPONSE,
+            ArticleThread(),
+            FailureKind.PROTOCOL,
+            "Hacker News Search returned malformed article JSON",
+        )
+    article = ArticleThread(
+        id=requested,
+        title=node["title"],
+        author=_string(node, "author"),
+        url=_string(node, "url"),
+        text_html=_string(node, "text"),
+        discussion_url=f"https://news.ycombinator.com/item?id={requested}",
+        comments=comments,
+    )
+    return QueryAttempt.branch_result(FOUND, article, Receipt())
+
+
+class _CommentTreeReader:
+    def __init__(self) -> None:
+        self.remaining = 5000
+
+    def read_children(self, parent: dict[str, Any], depth: int) -> tuple[ArticleComment, ...]:
+        children = parent.get("children", [])
+        if depth >= 64 or len(children) > self.remaining:
+            raise _InvalidCommentTree
+        self.remaining -= len(children)
+        comments = []
+        for child in children:
+            node = _article_node(child)
+            comment_id = _integer(node, "id")
+            if comment_id <= 0 or _integer(node, "parent_id") not in (0, parent["id"]):
+                raise _InvalidCommentTree
+            comments.append(
+                ArticleComment(
+                    id=comment_id,
+                    author=_string(node, "author"),
+                    text_html=_string(node, "text"),
+                    discussion_url=f"https://news.ycombinator.com/item?id={comment_id}",
+                    replies=self.read_children(node, depth + 1),
+                )
+            )
+        return tuple(comments)

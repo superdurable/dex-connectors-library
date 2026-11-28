@@ -14,7 +14,7 @@ import java.time.Duration;
 import java.util.Objects;
 import java.util.function.Function;
 
-abstract class FirebaseQuery<I, O> implements Query<I, O> {
+abstract class PublicApiQuery<I, O> implements Query<I, O> {
     static final ObjectMapper JSON = new ObjectMapper().enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS);
     private final String operation;
     private final O empty;
@@ -24,11 +24,15 @@ abstract class FirebaseQuery<I, O> implements Query<I, O> {
     final Clock clock;
     private final QueryDefinition definition;
 
-    FirebaseQuery(String operation, O empty) {
-        this(operation, empty, "https://hacker-news.firebaseio.com/v0", new ProviderHttpClient(Duration.ofSeconds(15), AddressPolicy.PUBLIC_HTTPS), 1 << 20, Clock.systemUTC());
+    PublicApiQuery(String operation, O empty) {
+        this(operation, empty, "https://hacker-news.firebaseio.com/v0");
     }
 
-    FirebaseQuery(String operation, O empty, String baseUrl, ProviderHttpTransport transport, int maxResponseBytes, Clock clock) {
+    PublicApiQuery(String operation, O empty, String baseUrl) {
+        this(operation, empty, baseUrl, new ProviderHttpClient(Duration.ofSeconds(15), AddressPolicy.PUBLIC_HTTPS), 1 << 20, Clock.systemUTC());
+    }
+
+    PublicApiQuery(String operation, O empty, String baseUrl, ProviderHttpTransport transport, int maxResponseBytes, Clock clock) {
         this.operation = operation;
         this.empty = empty;
         this.baseUrl = ProviderHttp.validateBaseUrl(baseUrl);
@@ -36,7 +40,7 @@ abstract class FirebaseQuery<I, O> implements Query<I, O> {
         this.clock = Objects.requireNonNull(clock);
         if (maxResponseBytes < 1) throw new IllegalArgumentException("response byte limit must be positive");
         this.maxResponseBytes = maxResponseBytes;
-        try (InputStream input = FirebaseQuery.class.getResourceAsStream("/META-INF/dex-connectors/hackernews/operation-definitions.json")) {
+        try (InputStream input = PublicApiQuery.class.getResourceAsStream("/META-INF/dex-connectors/hackernews/operation-definitions.json")) {
             this.definition = JSON.treeToValue(JSON.readTree(Objects.requireNonNull(input)).required(operation), QueryDefinition.class);
             definition.validate();
         } catch (IOException e) { throw new IllegalStateException("invalid Hacker News Query definition", e); }

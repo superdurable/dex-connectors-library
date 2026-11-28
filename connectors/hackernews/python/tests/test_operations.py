@@ -21,6 +21,7 @@ from dex_connectors.sdk.projectconfig import (
 from dex_connectors.hackernews import (
     DEFECT,
     FOUND,
+    GET_ARTICLE_THREAD_DEFINITION,
     GET_ITEM_DEFINITION,
     INVALID_RESPONSE,
     LIST_STORY_IDS_DEFINITION,
@@ -29,6 +30,7 @@ from dex_connectors.hackernews import (
     PROVIDER_REJECTED,
     Client,
     Config,
+    GetArticleThreadInput,
     GetItemInput,
     ListStoryIDsInput,
     new_project_connection,
@@ -165,8 +167,11 @@ def make_project(connector_id: str, provider: str) -> LoadedProject:
         "hacker-news-public",
         "github.com/superdurable/dex-connectors-library/connectors/hackernews/go",
         provider,
-        # searchBaseUrl belongs to the Go-only searchStories; this package accepts it without using it.
-        {"baseUrl": "http://localhost:8848/v0", "timeout": 5_000_000_000, "searchBaseUrl": "http://localhost:8849/api/v1"},
+        {
+            "baseUrl": "http://localhost:8848/v0",
+            "timeout": 5_000_000_000,
+            "searchBaseUrl": "http://localhost:8849/api/v1",
+        },
     )
     return LoadedProject(
         Configuration(scope, 1, (entry,)),
@@ -209,3 +214,23 @@ def test_project_connection_rejects_other_identities(connector_id: str, provider
     with pytest.raises(ValueError) as error:
         new_project_connection(make_project(connector_id, provider), "hacker-news-public")
     assert str(error.value) == message
+
+
+@pytest.mark.parametrize(
+    ("depth", "width", "branch"),
+    [(63, 1, FOUND), (64, 1, INVALID_RESPONSE), (2, 4999, FOUND), (2, 5000, INVALID_RESPONSE)],
+)
+async def test_article_tree_limits(depth: int, width: int, branch: str) -> None:
+    children: list[dict[str, object]] = [{"id": index + 2, "children": []} for index in range(width)]
+    for level in range(1, depth):
+        children = [{"id": 10000 + level, "children": children}]
+    document = {"id": 1, "title": "Article", "children": children}
+    async with httpx.AsyncClient(
+        transport=httpx.MockTransport(lambda request: httpx.Response(200, json=document))
+    ) as transport:
+        client = Client(Config(), transport)
+        result = await client.get_article_thread().invoke(
+            Call(CallID(str(uuid4())), CONNECTION, GET_ARTICLE_THREAD_DEFINITION.operation),
+            GetArticleThreadInput(1),
+        )
+        assert result.branch == branch

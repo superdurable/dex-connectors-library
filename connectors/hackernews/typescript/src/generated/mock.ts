@@ -4,11 +4,27 @@
 
 import { branchCase, retryCase, type Case, newQuery, type MockQuery } from '@superdurable/connectors-sdk/connectormock';
 import type { Failure } from '@superdurable/connectors-sdk';
-import type { GetUserInput, User, ListStoryIDsInput, StoryIDs, GetItemInput, Item, SearchStoriesInput, StorySearchHit, StorySearchPage } from './models.js';
-import { GetUserInputSchema, UserSchema, ListStoryIDsInputSchema, StoryIDsSchema, GetItemInputSchema, ItemSchema, SearchStoriesInputSchema, StorySearchHitSchema, StorySearchPageSchema } from './models.js';
-import { ProviderID, ConnectorID, GetUserDefinition, ListStoryIDsDefinition, GetItemDefinition, SearchStoriesDefinition } from './definitions.js';
+import type { GetArticleThreadInput, ArticleComment, ArticleThread, GetUserInput, User, ListStoryIDsInput, StoryIDs, GetItemInput, Item, SearchStoriesInput, StorySearchHit, StorySearchPage } from './models.js';
+import { GetArticleThreadInputSchema, ArticleCommentSchema, ArticleThreadSchema, GetUserInputSchema, UserSchema, ListStoryIDsInputSchema, StoryIDsSchema, GetItemInputSchema, ItemSchema, SearchStoriesInputSchema, StorySearchHitSchema, StorySearchPageSchema } from './models.js';
+import { ProviderID, ConnectorID, GetArticleThreadDefinition, GetUserDefinition, ListStoryIDsDefinition, GetItemDefinition, SearchStoriesDefinition } from './definitions.js';
 import { newConnectionWithOperations, type Connection, type Operations } from './connection.js';
 
+/** Go zero value for GetArticleThreadInput in scripted cases. */
+export const emptyGetArticleThreadInput: GetArticleThreadInput = GetArticleThreadInputSchema.parse({
+  "id": 0,
+});
+/** Go zero value for ArticleComment in scripted cases. */
+export const emptyArticleComment: ArticleComment = ArticleCommentSchema.parse({
+  "id": 0,
+  "discussionUrl": '',
+});
+/** Go zero value for ArticleThread in scripted cases. */
+export const emptyArticleThread: ArticleThread = ArticleThreadSchema.parse({
+  "id": 0,
+  "title": '',
+  "discussionUrl": '',
+  "comments": [],
+});
 /** Go zero value for GetUserInput in scripted cases. */
 export const emptyGetUserInput: GetUserInput = GetUserInputSchema.parse({
   "id": '',
@@ -62,6 +78,26 @@ export const emptyStorySearchPage: StorySearchPage = StorySearchPageSchema.parse
   "hitsPerPage": 0,
   "nextPage": 0,
 });
+
+/** Script the found branch. */
+export function getArticleThreadFound(value: ArticleThread, failure?: Failure): Case<ArticleThread> { return branchCase("found", value, failure); }
+/** Script the notFound branch. */
+export function getArticleThreadNotFound(value: ArticleThread, failure?: Failure): Case<ArticleThread> { return branchCase("notFound", value, failure); }
+/** Script the providerRejected branch. */
+export function getArticleThreadProviderRejected(value: ArticleThread, failure?: Failure): Case<ArticleThread> { return branchCase("providerRejected", value, failure); }
+/** Script the invalidResponse branch. */
+export function getArticleThreadInvalidResponse(value: ArticleThread, failure?: Failure): Case<ArticleThread> { return branchCase("invalidResponse", value, failure); }
+/** Script the defect branch. */
+export function getArticleThreadDefect(value: ArticleThread, failure?: Failure): Case<ArticleThread> { return branchCase("defect", value, failure); }
+/** Script a safe retry of getArticleThread. */
+export function getArticleThreadRetry(failure: Failure, retryAfterMs = 0): Case<ArticleThread> { return retryCase(failure, retryAfterMs); }
+/** Manifest scenario compilerThread for getArticleThread. */
+export function getArticleThreadCompilerThread(): Case<ArticleThread> {
+  const value = ArticleThreadSchema.parse({"author":"langtools","comments":[{"author":"reviewer","discussionUrl":"https://news.ycombinator.com/item?id=42004","id":42004,"textHtml":"Useful explorer."}],"discussionUrl":"https://news.ycombinator.com/item?id=42003","id":42003,"title":"Show HN: A compiler explorer for small languages"});
+  return branchCase("found", value);
+}
+/** Default getArticleThread scenario. */
+export function getArticleThreadDefault(): Case<ArticleThread> { return getArticleThreadCompilerThread(); }
 
 /** Script the found branch. */
 export function getUserFound(value: User, failure?: Failure): Case<User> { return branchCase("found", value, failure); }
@@ -161,6 +197,7 @@ export function searchStoriesSearchRejected(): Case<StorySearchPage> {
 
 /** Scripted operations and manifest defaults for this connector. */
 export class GeneratedMock implements Operations {
+  readonly #getArticleThread: MockQuery<GetArticleThreadInput, ArticleThread>;
   readonly #getUser: MockQuery<GetUserInput, User>;
   readonly #listStoryIDs: MockQuery<ListStoryIDsInput, StoryIDs>;
   readonly #getItem: MockQuery<GetItemInput, Item>;
@@ -168,6 +205,7 @@ export class GeneratedMock implements Operations {
   readonly #connection: Connection;
 
   constructor(connectionName: string) {
+    this.#getArticleThread = newQuery<GetArticleThreadInput, ArticleThread>(GetArticleThreadDefinition).default(getArticleThreadDefault());
     this.#getUser = newQuery<GetUserInput, User>(GetUserDefinition).default(getUserDefault());
     this.#listStoryIDs = newQuery<ListStoryIDsInput, StoryIDs>(ListStoryIDsDefinition).default(listStoryIDsDefault());
     this.#getItem = newQuery<GetItemInput, Item>(GetItemDefinition).default(getItemDefault());
@@ -176,11 +214,13 @@ export class GeneratedMock implements Operations {
   }
 
   connection(): Connection { return this.#connection; }
+  getArticleThread(): MockQuery<GetArticleThreadInput, ArticleThread> { return this.#getArticleThread; }
   getUser(): MockQuery<GetUserInput, User> { return this.#getUser; }
   listStoryIDs(): MockQuery<ListStoryIDsInput, StoryIDs> { return this.#listStoryIDs; }
   getItem(): MockQuery<GetItemInput, Item> { return this.#getItem; }
   searchStories(): MockQuery<SearchStoriesInput, StorySearchPage> { return this.#searchStories; }
   assertNoFailures(): void {
+    this.#getArticleThread.assertNoFailures();
     this.#getUser.assertNoFailures();
     this.#listStoryIDs.assertNoFailures();
     this.#getItem.assertNoFailures();
