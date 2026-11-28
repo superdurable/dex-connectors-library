@@ -51,6 +51,31 @@ def _valid_api_key(value: str) -> bool:
     return bool(value) and len(value) <= 1024 and all(0x20 < ord(character) < 0x7F for character in value)
 
 
+_PRIVATE_NETWORKS = tuple(
+    ipaddress.ip_network(value) for value in ("10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16")
+)
+
+
+def _public_ipv4(value: object) -> str | None:
+    if not isinstance(value, str) or "%" in value:
+        return None
+    try:
+        parsed = ipaddress.ip_address(value)
+        address = parsed.ipv4_mapped if isinstance(parsed, ipaddress.IPv6Address) else parsed
+    except ValueError:
+        return None
+    if (
+        not isinstance(address, ipaddress.IPv4Address)
+        or address.is_loopback
+        or address.is_link_local
+        or address.is_unspecified
+        or address.is_multicast
+        or any(address in network for network in _PRIVATE_NETWORKS)
+    ):
+        return None
+    return str(address)
+
+
 class Client:
     """Own the redirect-safe HTTP transport and resolve credentials for every IP lookup."""
 
@@ -93,11 +118,8 @@ class LookupIPLocationOperation:
 
     async def invoke(self, call: Call, input: LookupIPLocationInput) -> QueryAttempt[LookupIPLocationOutput]:
         """Make one IP location request and classify its provider outcome."""
-        try:
-            address = ipaddress.ip_address(input.ip_address)
-        except ValueError:
-            return _branch("defect", FailureKind.VALIDATION, "HAIMOU requires one public IPv4 address")
-        if not isinstance(address, ipaddress.IPv4Address) or not address.is_global:
+        address = _public_ipv4(input.ip_address)
+        if address is None:
             return _branch("defect", FailureKind.VALIDATION, "HAIMOU requires one public IPv4 address")
         try:
             credentials = await self.client.credentials.resolve(call)
@@ -112,7 +134,7 @@ class LookupIPLocationOperation:
             request = self.client.http_client.build_request(
                 "GET",
                 _ENDPOINT,
-                params={"apikey": api_key, "ip": str(address)},
+                params={"apikey": api_key, "ip": address},
                 headers={"Accept": "application/json"},
             )
         except (httpx.HTTPError, ValueError):
@@ -154,12 +176,25 @@ class LookupIPLocationOperation:
 
 def _decode_location(body: bytes, delay: float) -> QueryAttempt[LookupIPLocationOutput]:
     try:
-        document: Any = json.loads(body)
-    except (ValueError, UnicodeDecodeError):
+        document: Any = json.loads(body, parse_constant=_reject_nonfinite_number)
+        if not isinstance(document, dict):
+            raise ValueError("invalid envelope")
+        wire = {key.lower(): value for key, value in document.items()}
+        code = wire["code"]
+        if type(code) is not int or not -(1 << 63) <= code < (1 << 63):
+            raise ValueError("invalid result code")
+        nested = wire.get("data")
+        if nested is not None and not isinstance(nested, dict):
+            raise ValueError("invalid location envelope")
+        wire = {key.lower(): value for key, value in (nested or {}).items()}
+        location: dict[str, str] = {}
+        for field in ("country", "province", "city", "district", "isp"):
+            value = wire.get(field)
+            if value is not None and not isinstance(value, str):
+                raise ValueError("invalid location field")
+            location[field] = value or ""
+    except (KeyError, ValueError, UnicodeDecodeError):
         return _branch("invalidResponse", FailureKind.PROTOCOL, "HAIMOU returned invalid lookup data")
-    if not isinstance(document, dict) or type(document.get("code")) is not int:
-        return _branch("invalidResponse", FailureKind.PROTOCOL, "HAIMOU returned invalid lookup data")
-    code = document["code"]
     if code in (10006, 429):
         return _retry(FailureKind.RATE_LIMIT, "HAIMOU rate limited the lookup", delay)
     if 500 <= code <= 599:
@@ -173,21 +208,20 @@ def _decode_location(body: bytes, delay: float) -> QueryAttempt[LookupIPLocation
         elif code == 10005:
             kind = FailureKind.QUOTA_EXHAUSTED
         return _branch("providerRejected", kind, f"HAIMOU rejected lookup with code {code}")
-    data = document.get("data")
-    if not isinstance(data, dict) or not all(
-        isinstance(data.get(key), str) for key in ("country", "province", "city", "district", "isp")
-    ):
-        return _branch("invalidResponse", FailureKind.PROTOCOL, "HAIMOU returned incomplete location data")
-    if not data["country"].strip() or not data["city"].strip():
+    if not location["country"].strip() or not location["city"].strip():
         return _branch("invalidResponse", FailureKind.PROTOCOL, "HAIMOU returned incomplete location data")
     return QueryAttempt.branch_result(
         "found",
         LookupIPLocationOutput(
-            country=data["country"],
-            province=data["province"],
-            city=data["city"],
-            district=data["district"],
-            operator=data["isp"],
+            country=location["country"],
+            province=location["province"],
+            city=location["city"],
+            district=location["district"],
+            operator=location["isp"],
         ),
         Receipt(),
     )
+
+
+def _reject_nonfinite_number(value: str) -> None:
+    raise ValueError(f"Invalid JSON number {value}")

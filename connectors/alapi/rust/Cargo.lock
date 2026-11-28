@@ -248,6 +248,7 @@ name = "dex-connector-alapi"
 version = "0.1.0"
 dependencies = [
  "dex-connectors-sdk",
+ "form_urlencoded",
  "serde",
  "serde_json",
  "tempfile",

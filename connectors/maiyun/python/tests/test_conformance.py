@@ -28,7 +28,9 @@ def create_client(http_client: object, recorder: conformance.ExchangeRecorder) -
         *((sdk.SecretString(""),) if is_defect else (sdk.SecretString("private-test-key"),))
     )
     return provider.Client(
-        provider.Config(), conformance.static_credentials(CONNECTION, credentials), http_client
+        provider.Config(max_response_bytes=16 if recorder.scenario["name"].endswith("-oversized") else 65536),
+        conformance.static_credentials(CONNECTION, credentials),
+        http_client,
     )
 
 

@@ -9,3 +9,18 @@ Run the [example Flow](go/examples/lookup-ip-location/) with its generated mock 
 The [TypeScript package](typescript/) has the same `lookupIPLocation` Query and a [runnable Dex Worker/Client example](typescript/examples/basic/). It replays the Go-recorded provider cases without storing the API key in Flow state.
 
 The [Python package](python/) implements the same `lookupIPLocation` Query and replays the Go-recorded provider scenarios. Its checked-in Flow tests retry and persistence against a real Dex Worker and Client.
+
+Java and Rust also implement `lookupIPLocation`. The [Java Worker](java/examples/io/superdurable/dexconnectors/haimou/IPLocationWorker.java) and [Rust Worker](rust/examples/lookup_ip_location.rs) register the static `haimou` connection and wire the `found` branch. Both take an object with the `ipAddress` field. Both canonicalize IPv4-mapped addresses before dispatch. Optional location fields default to empty strings.
+
+Run these commands from this connector directory. With `dexcli dev -open=false` running, set `DEX_FLOW_SERVICE_ADDRESS` to its Dex Server address. The integration tests supply their own token and transport, return HTTP 503 once, and verify the Worker retries and completes the Flow.
+
+```sh
+(cd java && ./gradlew build dexDevTest)
+(cd rust && cargo test --locked --all-targets)
+dexcli visualize java/examples/io/superdurable/dexconnectors/haimou/IPLocationWorker.java --schema-version 2.0 --lint app --json --open=false --out /tmp/haimou-java
+dexcli visualize rust/examples/lookup_ip_location.rs --schema-version 2.0 --lint app --json --open=false --out /tmp/haimou-rust
+```
+
+The Java graph is partial because the analyzer requires the inherited `QueryStep.execute` method and the input definition in the example source. The Rust analyzer also warns about the SDK-defined `QueryStep`. The integration tests exercise both Steps through a registered Worker.
+
+For a provider-backed Worker, supply the provider API key to the process as `HAIMOU_API_KEY` and run `./gradlew ipLocationWorker` in `java/` or `cargo run --locked --example lookup_ip_location` in `rust/`. An actual lookup can consume provider quota.

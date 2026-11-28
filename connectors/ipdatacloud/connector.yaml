@@ -9,8 +9,10 @@ metadata:
   version: v0.1.0
 spec:
   languages:
-    python: {version: v0.1.0, operations: [lookupIPLocation], triggers: []}
-    typescript: {version: v0.1.0, operations: [lookupIPLocation], triggers: []}
+    java: {version: v0.1.0, operations: [lookupIPLocation], triggers: []}
+    rust: {version: v0.1.0, operations: [lookupIPLocation], triggers: []}
+    python: {version: v0.1.1, operations: [lookupIPLocation], triggers: []}
+    typescript: {version: v0.1.1, operations: [lookupIPLocation], triggers: []}
   provider: ipdatacloud
   codegen:
     go:

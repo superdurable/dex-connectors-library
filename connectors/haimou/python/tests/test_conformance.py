@@ -21,7 +21,7 @@ ADAPTER = conformance.PythonOperationAdapter(
     CONNECTION,
     haimou,
     lambda http_client, recorder: haimou.Client(
-        haimou.Config(),
+        haimou.Config(max_response_bytes=16 if recorder.scenario["name"].endswith("-oversized") else 65536),
         conformance.static_credentials(CONNECTION, haimou.Credentials(sdk.SecretString("private-test-key"))),
         http_client,
     ),

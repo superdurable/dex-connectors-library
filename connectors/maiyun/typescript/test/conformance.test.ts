@@ -15,7 +15,7 @@ async function invokeMaiyun(scenario: Scenario, recorder: ExchangeRecorder) {
   if (scenario.operation !== 'lookupIPLocation') throw new Error(`unknown Maiyun operation ${scenario.operation}`);
   const isDefect = scenario.name.endsWith('-defect');
   const credentials = new StaticCredentialProvider([[connection, { token: new SecretString(isDefect ? '' : 'private-test-key') }]]);
-  const client = new MaiyunClient({}, credentials, { send: request => answerRecordedRequest(recorder, request, before => new ProviderTransportError(before)) });
+  const client = new MaiyunClient({ maxResponseBytes: scenario.name.endsWith('-oversized') ? 16 : 65536 }, credentials, { send: request => answerRecordedRequest(recorder, request, before => new ProviderTransportError(before)) });
   const call: Call = {
     context: { flowId: 'maiyun-conformance', cancellationSignal: new AbortController().signal } as Call['context'],
     id: scenario.callId, connection, operation: { connectorId: 'maiyun', operationId: scenario.operation },

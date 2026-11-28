@@ -21,7 +21,9 @@ ADAPTER = conformance.PythonOperationAdapter(
     CONNECTION,
     ipdatacloud,
     lambda http_client, recorder: ipdatacloud.Client(
-        ipdatacloud.Config(),
+        ipdatacloud.Config(
+            max_response_bytes=16 if recorder.scenario["name"].endswith("-oversized") else 65536
+        ),
         conformance.static_credentials(
             CONNECTION, ipdatacloud.Credentials(sdk.SecretString("private-test-key"))
         ),

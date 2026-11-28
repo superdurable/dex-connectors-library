@@ -1,6 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
+import { isIP } from 'node:net';
 import { SecretString, newQueryBranch, newQueryRetry, type Call, type CredentialProvider, type Failure, type Query, type QueryAttempt, type QueryDefinition } from '@superdurable/connectors-sdk';
 import { BodyTooLargeError, parseRetryAfter, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { LookupIPLocationDefinition } from './generated/definitions.js';
@@ -57,8 +58,9 @@ export class LookupIPLocationOperation implements Query<LookupIPLocationInput, L
   /** Return the generated Query contract. */ definition(): QueryDefinition { return LookupIPLocationDefinition; }
   /** Classify a provider attempt and preserve secret safety. */
   async invoke(call: Call, input: LookupIPLocationInput): Promise<QueryAttempt<LookupIPLocationOutput>> {
-    if (!input || !isPublicIPv4(input.ipAddress)) return branch('defect', 'VALIDATION');
-    const exchange = await this.client.request(call, input.ipAddress);
+    const ipAddress = publicIPv4(input?.ipAddress);
+    if (!ipAddress) return branch('defect', 'VALIDATION');
+    const exchange = await this.client.request(call, ipAddress);
     if (exchange.error === 'credential') return branch('defect', 'AUTHENTICATION');
     if (exchange.error === 'transport' || !exchange.response) return retry('AVAILABILITY');
     const { status, body } = exchange.response;
@@ -66,25 +68,59 @@ export class LookupIPLocationOperation implements Query<LookupIPLocationInput, L
     if (status === 408 || status >= 500) return retry('AVAILABILITY', exchange.retryAfterMs);
     if (status !== 200) return branch('providerRejected', status === 401 ? 'AUTHENTICATION' : status === 403 ? 'AUTHORIZATION' : 'PROVIDER_REJECTION');
     if (exchange.error === 'tooLarge') return branch('invalidResponse', 'RESPONSE_TOO_LARGE');
-    let document: unknown;
-    try { document = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(body)) as unknown; } catch { return branch('invalidResponse', 'PROTOCOL'); }
-    if (!isRecord(document) || !Number.isInteger(document.code)) return branch('invalidResponse', 'PROTOCOL');
-    if (document.code !== 200) return branch('providerRejected', document.code === 401 ? 'AUTHENTICATION' : document.code === 403 ? 'AUTHORIZATION' : 'PROVIDER_REJECTION');
-    const location = isRecord(document.data) && isRecord(document.data.location) ? document.data.location : undefined;
-    if (!location || typeof location.country !== 'string' || !location.country.trim() || typeof location.province !== 'string' || typeof location.city !== 'string' || !location.city.trim() || typeof location.district !== 'string' || typeof location.isp !== 'string') return branch('invalidResponse', 'PROTOCOL');
-    return newQueryBranch('found', { country: location.country, province: location.province, city: location.city, district: location.district, operator: location.isp });
+    let wire: Record<string, unknown> | undefined;
+    try { wire = fieldsByName(JSON.parse(new TextDecoder().decode(body), readProviderNumber)); }
+    catch { return branch('invalidResponse', 'PROTOCOL'); }
+    if (!wire) return branch('invalidResponse', 'PROTOCOL');
+    const code = wire.code;
+    if (typeof code !== 'number' || !Number.isInteger(code)) return branch('invalidResponse', 'PROTOCOL');
+    const data = wire.data;
+    wire = data == null ? {} : fieldsByName(data);
+    if (!wire) return branch('invalidResponse', 'PROTOCOL');
+    const location = wire.location;
+    wire = location == null ? {} : fieldsByName(location);
+    if (!wire) return branch('invalidResponse', 'PROTOCOL');
+    const values = wire;
+    if (['country', 'province', 'city', 'district', 'isp'].some(field => values[field] != null && typeof values[field] !== 'string')) return branch('invalidResponse', 'PROTOCOL');
+
+    if (code !== 200) return branch('providerRejected', code === 401 ? 'AUTHENTICATION' : code === 403 ? 'AUTHORIZATION' : 'PROVIDER_REJECTION');
+    if (typeof values.country !== 'string' || !values.country.trim() || typeof values.city !== 'string' || !values.city.trim()) return branch('invalidResponse', 'PROTOCOL');
+    return newQueryBranch('found', { country: values.country, city: values.city, province: String(values.province ?? ''), district: String(values.district ?? ''), operator: String(values.isp ?? '') });
   }
 }
 
-function isPublicIPv4(value: unknown): boolean {
-  if (typeof value !== 'string') return false;
-  const parts = value.split('.');
-  if (parts.length !== 4 || parts.some(part => !/^(0|[1-9]\d{0,2})$/.test(part) || Number(part) > 255)) return false;
+function publicIPv4(value: unknown): string | undefined {
+  if (typeof value !== 'string' || value.includes('%')) return undefined;
+  const version = isIP(value);
+  let address = value;
+  if (version === 6) {
+    const mapped = /^\[::ffff:([a-f0-9]+):([a-f0-9]+)\]$/.exec(new URL('http://[' + value + ']').hostname);
+    if (!mapped) return undefined;
+    const high = parseInt(mapped[1]!, 16);
+    const low = parseInt(mapped[2]!, 16);
+    address = [high >>> 8, high & 255, low >>> 8, low & 255].join('.');
+  } else if (version !== 4) return undefined;
+  const parts = address.split('.');
   const first = Number(parts[0]);
   const second = Number(parts[1]);
-  return first !== 0 && first !== 10 && first !== 127 && first < 224 && !(first === 169 && second === 254) && !(first === 172 && second >= 16 && second <= 31) && !(first === 192 && second === 168);
+  return !(parts.every(part => part === '0')) && first !== 10 && first !== 127 && !(first >= 224 && first <= 239) && !(first === 169 && second === 254) && !(first === 172 && second >= 16 && second <= 31) && !(first === 192 && second === 168) ? address : undefined;
 }
-function isRecord(value: unknown): value is Record<string, unknown> { return typeof value === 'object' && value !== null && !Array.isArray(value); }
+
 function failure(kind: Failure['kind']): Failure { return { provider: 'ipdatacloud', operation: 'lookupIPLocation', kind, message: 'IPDataCloud location lookup failed' }; }
 function branch(name: string, kind: Failure['kind']): QueryAttempt<LookupIPLocationOutput> { return newQueryBranch(name, emptyOutput, {}, failure(kind)); }
 function retry(kind: Failure['kind'], delay = 0): QueryAttempt<LookupIPLocationOutput> { return newQueryRetry(failure(kind), delay); }
+
+function fieldsByName(value: unknown): Record<string, unknown> | undefined {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  return Object.fromEntries(Object.entries(value).map(([name, field]) => [name.toLowerCase(), field]));
+}
+
+// Go decodes the result code into int64 before classifying the provider response.
+function readProviderNumber(key: string, value: unknown, context?: { source?: string }): unknown {
+  if (key.toLowerCase() !== 'code' || typeof value !== 'number') return value;
+  const source = context?.source;
+  if (source === undefined) return Number.isSafeInteger(value) ? value : null;
+  if (!/^-?\d+$/.test(source) || source.length > 20) return null;
+  const integer = BigInt(source);
+  return integer >= -(1n << 63n) && integer < (1n << 63n) ? value : null;
+}

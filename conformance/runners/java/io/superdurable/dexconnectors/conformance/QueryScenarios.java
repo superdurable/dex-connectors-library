@@ -86,7 +86,17 @@ public abstract class QueryScenarios {
             assertNotNull(exchange, "unexpected request");
             assertEquals("absent", exchange.get("keyMode").asText());
             assertEquals(exchange.get("method").asText(), request.getMethod());
-            assertEquals(origin + exchange.get("path").asText(), request.getUrl());
+            String[] url = request.getUrl().split("\\?", 2);
+            assertEquals(origin + exchange.get("path").asText(), url[0]);
+            Map<String, List<String>> parameters = new LinkedHashMap<>();
+            if (url.length == 2) {
+                for (String pair : url[1].split("&")) {
+                    String[] parts = pair.split("=", 2);
+                    String key = java.net.URLDecoder.decode(parts[0], "UTF-8");
+                    parameters.computeIfAbsent(key, ignored -> new java.util.ArrayList<>()).add(java.net.URLDecoder.decode(parts[1], "UTF-8"));
+                }
+            }
+            assertEquals(exchange.has("query") ? exchange.get("query") : JSON.createObjectNode(), JSON.valueToTree(parameters));
             Map<String, List<String>> headers = new LinkedHashMap<>();
             request.getHeaders().forEach((name, value) -> headers.put(name, Collections.singletonList(value)));
             assertEquals(exchange.get("requestHeaders"), JSON.valueToTree(headers));

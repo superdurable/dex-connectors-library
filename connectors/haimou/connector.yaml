@@ -10,9 +10,11 @@ metadata:
 spec:
   provider: haimou
   languages:
-    python: {version: v0.1.0, operations: [lookupIPLocation], triggers: []}
+    java: {version: v0.1.0, operations: [lookupIPLocation], triggers: []}
+    rust: {version: v0.1.0, operations: [lookupIPLocation], triggers: []}
+    python: {version: v0.1.1, operations: [lookupIPLocation], triggers: []}
     typescript:
-      version: v0.1.0
+      version: v0.1.1
       package: "@superdurable/connector-haimou"
       operations: [lookupIPLocation]
       triggers: []

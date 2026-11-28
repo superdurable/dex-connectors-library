@@ -15,7 +15,7 @@ it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario,
 async function invokeHaimou(scenario: Scenario, recorder: ExchangeRecorder) {
   const apiKey = scenario.name.endsWith('missing-credentials') ? '' : 'private-test-key';
   const credentials: Array<[typeof connection, { apiKey: SecretString }]> = [[connection, { apiKey: new SecretString(apiKey) }]];
-  const client = new HaimouClient({ maxResponseBytes: scenario.name.endsWith('oversize') ? 8 : 1_048_576 }, new StaticCredentialProvider(credentials), {
+  const client = new HaimouClient({ maxResponseBytes: scenario.name.endsWith('-oversized') ? 16 : 65536 }, new StaticCredentialProvider(credentials), {
     send: request => answerRecordedRequest(recorder, request, before => new ProviderTransportError(before)),
   });
   const call: Call = {

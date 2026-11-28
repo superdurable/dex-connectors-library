@@ -1,0 +1,42 @@
+{
+  "lookupIPLocation": {
+    "branches": [
+      {
+        "description": "IPDataCloud returned the IP location.",
+        "id": "found",
+        "optional": false
+      },
+      {
+        "description": "IPDataCloud rejected credentials, quota, or the query.",
+        "id": "providerRejected",
+        "optional": true
+      },
+      {
+        "description": "IPDataCloud returned malformed or oversized data.",
+        "id": "invalidResponse",
+        "optional": true
+      },
+      {
+        "description": "The local credentials or IP address are invalid.",
+        "id": "defect",
+        "optional": true
+      }
+    ],
+    "operation": {
+      "connectorId": "ipdatacloud",
+      "operationId": "lookupIPLocation"
+    },
+    "stepDefaults": {
+      "executeDurability": 2,
+      "executeMethodTimeout": 30000000000,
+      "executeRetry": {
+        "BackoffCoefficient": 2,
+        "InitialInterval": 2000000000,
+        "MaximumAttempts": 3,
+        "MaximumInterval": 30000000000,
+        "TotalDuration": 300000000000
+      },
+      "heartbeatTimeout": 0
+    }
+  }
+}

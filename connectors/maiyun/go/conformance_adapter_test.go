@@ -17,7 +17,11 @@ const conformanceFixturePathPrefix = ""
 func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint string, transport *http.Client) conformanceInvoker {
 	t.Helper()
 	credentials := Credentials{Token: sdkgo.NewSecretString("private-test-key")}
-	client, err := New(Config{}, sdkgo.StaticCredentialProvider[Credentials]{testConnection: credentials}, WithHTTPClient(transport))
+	config := Config{}
+	if scenario.Name == "lookupIPLocation-oversized" {
+		config.MaxResponseBytes = 16
+	}
+	client, err := New(config, sdkgo.StaticCredentialProvider[Credentials]{testConnection: credentials}, WithHTTPClient(transport))
 	require.NoError(t, err)
 	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
 		"lookupIPLocation": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.LookupIPLocation(), testConnection),

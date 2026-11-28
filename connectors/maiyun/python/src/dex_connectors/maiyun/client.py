@@ -37,6 +37,30 @@ from ._generated.definitions import (
 )
 from .models import LookupIPLocationInput, LookupIPLocationOutput
 
+_PRIVATE_NETWORKS = tuple(
+    ipaddress.ip_network(value) for value in ("10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16")
+)
+
+
+def _public_ipv4(value: object) -> str | None:
+    if not isinstance(value, str) or "%" in value:
+        return None
+    try:
+        parsed = ipaddress.ip_address(value)
+        address = parsed.ipv4_mapped if isinstance(parsed, ipaddress.IPv6Address) else parsed
+    except ValueError:
+        return None
+    if (
+        not isinstance(address, ipaddress.IPv4Address)
+        or address.is_loopback
+        or address.is_link_local
+        or address.is_unspecified
+        or address.is_multicast
+        or any(address in network for network in _PRIVATE_NETWORKS)
+    ):
+        return None
+    return str(address)
+
 
 class Client:
     """Own a bounded transport and resolve private credentials per call."""
@@ -83,11 +107,8 @@ class LookupIPLocationOperation:
         """Classify one bounded provider request and discard secret response fields."""
         if not isinstance(input, LookupIPLocationInput):
             return _branch(DEFECT, FailureKind.VALIDATION, "MAIYUN requires one public IPv4 address")
-        try:
-            address = ipaddress.ip_address(input.ip_address)
-            if address.version != 4 or not address.is_global:
-                raise ValueError("not a public IPv4")
-        except ValueError:
+        address = _public_ipv4(input.ip_address)
+        if address is None:
             return _branch(DEFECT, FailureKind.VALIDATION, "MAIYUN requires one public IPv4 address")
         try:
             credentials = await self.client.credentials.resolve(call)
@@ -110,7 +131,7 @@ class LookupIPLocationOperation:
                 "POST",
                 endpoint,
                 headers=headers,
-                content=json.dumps({"ip": input.ip_address}, separators=(",", ":")),
+                content=json.dumps({"ip": address}, separators=(",", ":")),
             )
             response, _ = await send_traced(self.client.http_client, request)
         except (ProviderTransportError, httpx.HTTPError, ValueError):
@@ -144,16 +165,7 @@ class LookupIPLocationOperation:
                 )
             except ProviderTransportError:
                 return _retry(FailureKind.AVAILABILITY, "MAIYUN response was interrupted")
-            try:
-                data: Any = json.loads(
-                    body, parse_constant=lambda _: (_ for _ in ()).throw(ValueError("invalid JSON number"))
-                )
-                result = _decode(data, input)
-            except (ValueError, TypeError, KeyError, OverflowError):
-                return _branch(INVALID_RESPONSE, FailureKind.PROTOCOL, "MAIYUN returned invalid data")
-            if isinstance(result, QueryAttempt):
-                return result
-            return QueryAttempt.branch_result(FOUND, result, Receipt())
+            return _decode_location(body, retry_after)
         finally:
             await response.aclose()
 
@@ -162,16 +174,27 @@ def _valid_secret(value: object) -> bool:
     return isinstance(value, str) and 0 < len(value) <= 1024 and all(32 < ord(c) < 127 for c in value)
 
 
-def _decode(
-    data: Any, input: LookupIPLocationInput
-) -> LookupIPLocationOutput | QueryAttempt[LookupIPLocationOutput]:
-    if not isinstance(data, dict) or type(data.get("result")) is not int:
-        raise ValueError("invalid envelope")
-    code = data["result"]
+def _decode_location(body: bytes, delay: float) -> QueryAttempt[LookupIPLocationOutput]:
+    try:
+        document: Any = json.loads(body, parse_constant=_reject_nonfinite_number)
+        if not isinstance(document, dict):
+            raise ValueError("invalid envelope")
+        wire = {key.lower(): value for key, value in document.items()}
+        code = wire["result"]
+        if type(code) is not int or not -(1 << 63) <= code < (1 << 63):
+            raise ValueError("invalid result code")
+        location: dict[str, str] = {}
+        for field in ("country", "province", "city", "district"):
+            value = wire.get(field)
+            if value is not None and not isinstance(value, str):
+                raise ValueError("invalid location field")
+            location[field] = value or ""
+    except (KeyError, ValueError, UnicodeDecodeError):
+        return _branch(INVALID_RESPONSE, FailureKind.PROTOCOL, "MAIYUN returned invalid lookup data")
     if code == -429:
-        return _retry(FailureKind.RATE_LIMIT, "MAIYUN rate limited the lookup")
+        return _retry(FailureKind.RATE_LIMIT, "MAIYUN rate limited the lookup", delay)
     if code <= -500:
-        return _retry(FailureKind.AVAILABILITY, "MAIYUN service is temporarily unavailable")
+        return _retry(FailureKind.AVAILABILITY, "MAIYUN service is temporarily unavailable", delay)
     if code != 1:
         kind = (
             FailureKind.AUTHENTICATION
@@ -183,13 +206,17 @@ def _decode(
             else FailureKind.PROVIDER_REJECTION
         )
         return _branch(PROVIDER_REJECTED, kind, f"MAIYUN rejected lookup with code {code}")
-    for field in ("country", "province", "city", "district"):
-        if not isinstance(data.get(field, ""), str):
-            raise ValueError("invalid location field")
-    if not data["country"].strip() or not data["city"].strip():
-        raise ValueError("incomplete location")
-    return LookupIPLocationOutput(
-        data["country"], data.get("province", ""), data["city"], data.get("district", "")
+    if not location["country"].strip() or not location["city"].strip():
+        return _branch(INVALID_RESPONSE, FailureKind.PROTOCOL, "MAIYUN returned incomplete location data")
+    return QueryAttempt.branch_result(
+        FOUND,
+        LookupIPLocationOutput(
+            country=location["country"],
+            province=location["province"],
+            city=location["city"],
+            district=location["district"],
+        ),
+        Receipt(),
     )
 
 
@@ -201,3 +228,7 @@ def _branch(branch: str, kind: FailureKind, message: str) -> QueryAttempt[Lookup
 
 def _retry(kind: FailureKind, message: str, retry_after: float = 0) -> QueryAttempt[LookupIPLocationOutput]:
     return QueryAttempt.retry(Failure(kind, "maiyun", "lookupIPLocation", message), retry_after)
+
+
+def _reject_nonfinite_number(value: str) -> None:
+    raise ValueError(f"Invalid JSON number {value}")
