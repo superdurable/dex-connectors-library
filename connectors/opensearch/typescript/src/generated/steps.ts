@@ -5,7 +5,7 @@
 import { goToBranch, newMutationStep, type Mutation, type MutationResult, type MutationStep, type MutationStepConfig, newQueryStep, type Query, type QueryResult, type QueryStep, type QueryStepConfig } from '@superdurable/connectors-sdk';
 import type { StepTarget } from '@superdurable/dex';
 import type { Connection } from './connection.js';
-import type { IndexDocumentInput, IndexedDocument, DeleteDocumentInput, DeletedDocument, SearchDocumentsInput, SearchPage } from './models.js';
+import type { IndexDocumentInput, IndexedDocument, DeleteDocumentInput, DeletedDocument, SearchDocumentsInput, SearchPage, GetDocumentInput, RetrievedDocument } from './models.js';
 
 /** Configuration for the indexDocument connector Step. */
 export interface IndexDocumentStepConfig<StepInput, OperationInput = IndexDocumentInput, OperationOutput = IndexedDocument> extends Omit<MutationStepConfig<StepInput, OperationInput, OperationOutput>, 'operation' | 'connection' | 'branches'> {
@@ -84,6 +84,40 @@ export function newSearchDocumentsStep<StepInput, OperationInput = SearchDocumen
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
   return newQueryStep({ ...stepConfiguration, operation: connection.operations.searchDocuments(), connection: connection.reference, branches: [
     goToBranch("found", found),
+    ...(indexNotFound ? [goToBranch("indexNotFound", indexNotFound)] : []),
+    ...(providerRejected ? [goToBranch("providerRejected", providerRejected)] : []),
+    ...(invalidResponse ? [goToBranch("invalidResponse", invalidResponse)] : []),
+    ...(defect ? [goToBranch("defect", defect)] : []),
+  ] });
+}
+
+/** Configuration for the getDocument connector Step. */
+export interface GetDocumentStepConfig<StepInput, OperationInput = GetDocumentInput, OperationOutput = RetrievedDocument> extends Omit<QueryStepConfig<StepInput, OperationInput, OperationOutput>, 'operation' | 'connection' | 'branches'> {
+  /** Named connection supplying this operation. */
+  connection: Connection<{ getDocument(): Query<OperationInput, OperationOutput> }>;
+  /** Name matching the bound connection. */
+  connectionName: string;
+  /** OpenSearch returned the document. */
+  found: StepTarget<QueryResult<OperationOutput>>;
+  /** The document does not exist. */
+  notFound?: StepTarget<QueryResult<OperationOutput>>;
+  /** The index does not exist. */
+  indexNotFound?: StepTarget<QueryResult<OperationOutput>>;
+  /** OpenSearch denied retrieval. */
+  providerRejected?: StepTarget<QueryResult<OperationOutput>>;
+  /** OpenSearch returned invalid document data. */
+  invalidResponse?: StepTarget<QueryResult<OperationOutput>>;
+  /** Index, document ID, or credentials are invalid. */
+  defect?: StepTarget<QueryResult<OperationOutput>>;
+}
+
+/** Build the getDocument Step from a named connection. */
+export function newGetDocumentStep<StepInput, OperationInput = GetDocumentInput, OperationOutput = RetrievedDocument>(configuration: GetDocumentStepConfig<StepInput, OperationInput, OperationOutput>): QueryStep<StepInput, OperationInput, OperationOutput> {
+  const { connection, connectionName, found, notFound, indexNotFound, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
+  if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
+  return newQueryStep({ ...stepConfiguration, operation: connection.operations.getDocument(), connection: connection.reference, branches: [
+    goToBranch("found", found),
+    ...(notFound ? [goToBranch("notFound", notFound)] : []),
     ...(indexNotFound ? [goToBranch("indexNotFound", indexNotFound)] : []),
     ...(providerRejected ? [goToBranch("providerRejected", providerRejected)] : []),
     ...(invalidResponse ? [goToBranch("invalidResponse", invalidResponse)] : []),

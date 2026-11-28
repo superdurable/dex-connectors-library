@@ -8,8 +8,8 @@ from dex_connectors.sdk import ConnectionRef, Failure, FailureKind
 from dex_connectors.sdk.connectormock import Case, Mutation, Query
 
 from ..connection import Connection, new_connection_with_operations
-from ..models import DeleteDocumentInput, DeletedDocument, IndexDocumentInput, IndexedDocument, SearchDocumentsInput, SearchHit, SearchPage
-from .definitions import CONNECTOR_ID, ABSENT, DEFECT, DELETE_DOCUMENT_DEFINITION, FOUND, INDEXED, INDEX_DOCUMENT_DEFINITION, INDEX_NOT_FOUND, INVALID_RESPONSE, PROVIDER_REJECTED, SEARCH_DOCUMENTS_DEFINITION
+from ..models import DeleteDocumentInput, DeletedDocument, GetDocumentInput, IndexDocumentInput, IndexedDocument, RetrievedDocument, SearchDocumentsInput, SearchHit, SearchPage
+from .definitions import CONNECTOR_ID, ABSENT, DEFECT, DELETE_DOCUMENT_DEFINITION, FOUND, GET_DOCUMENT_DEFINITION, INDEXED, INDEX_DOCUMENT_DEFINITION, INDEX_NOT_FOUND, INVALID_RESPONSE, NOT_FOUND, PROVIDER_REJECTED, SEARCH_DOCUMENTS_DEFINITION
 
 def index_document_indexed(value: IndexedDocument, failure: Failure | None = None) -> Case[IndexedDocument]:
     return Case.branch_result(INDEXED, value, failure)
@@ -101,6 +101,46 @@ def search_documents_matching_document() -> Case[SearchPage]:
 
 setattr(search_documents_matching_document, '__module__', "dex_connectors.opensearch.opensearchmock")
 
+def get_document_found(value: RetrievedDocument, failure: Failure | None = None) -> Case[RetrievedDocument]:
+    return Case.branch_result(FOUND, value, failure)
+
+setattr(get_document_found, '__module__', "dex_connectors.opensearch.opensearchmock")
+
+def get_document_not_found(value: RetrievedDocument, failure: Failure | None = None) -> Case[RetrievedDocument]:
+    return Case.branch_result(NOT_FOUND, value, failure)
+
+setattr(get_document_not_found, '__module__', "dex_connectors.opensearch.opensearchmock")
+
+def get_document_index_not_found(value: RetrievedDocument, failure: Failure | None = None) -> Case[RetrievedDocument]:
+    return Case.branch_result(INDEX_NOT_FOUND, value, failure)
+
+setattr(get_document_index_not_found, '__module__', "dex_connectors.opensearch.opensearchmock")
+
+def get_document_provider_rejected(value: RetrievedDocument, failure: Failure | None = None) -> Case[RetrievedDocument]:
+    return Case.branch_result(PROVIDER_REJECTED, value, failure)
+
+setattr(get_document_provider_rejected, '__module__', "dex_connectors.opensearch.opensearchmock")
+
+def get_document_invalid_response(value: RetrievedDocument, failure: Failure | None = None) -> Case[RetrievedDocument]:
+    return Case.branch_result(INVALID_RESPONSE, value, failure)
+
+setattr(get_document_invalid_response, '__module__', "dex_connectors.opensearch.opensearchmock")
+
+def get_document_defect(value: RetrievedDocument, failure: Failure | None = None) -> Case[RetrievedDocument]:
+    return Case.branch_result(DEFECT, value, failure)
+
+setattr(get_document_defect, '__module__', "dex_connectors.opensearch.opensearchmock")
+
+def get_document_retry(failure: Failure, after_seconds: float = 0) -> Case[RetrievedDocument]:
+    return Case.retry(failure, after_seconds)
+
+setattr(get_document_retry, '__module__', "dex_connectors.opensearch.opensearchmock")
+
+def get_document_product_found() -> Case[RetrievedDocument]:
+    return Case.branch_result(FOUND, RetrievedDocument(index='products', id='sku-42', source={'title': 'Meridian', 'category': 'release'}, version=1))
+
+setattr(get_document_product_found, '__module__', "dex_connectors.opensearch.opensearchmock")
+
 
 class Mock:
 
@@ -111,10 +151,13 @@ class Mock:
         self.delete_document_script.default(delete_document_deleted_product())
         self.search_documents_script: Query[SearchDocumentsInput, SearchPage] = Query(SEARCH_DOCUMENTS_DEFINITION)
         self.search_documents_script.default(search_documents_matching_document())
+        self.get_document_script: Query[GetDocumentInput, RetrievedDocument] = Query(GET_DOCUMENT_DEFINITION)
+        self.get_document_script.default(get_document_product_found())
         self._connection = new_connection_with_operations(
             index_document=self.index_document_script,
             delete_document=self.delete_document_script,
             search_documents=self.search_documents_script,
+            get_document=self.get_document_script,
             reference=ConnectionRef(CONNECTOR_ID, connection_name),
         )
 
@@ -143,4 +186,12 @@ __all__ = [
     "search_documents_defect",
     "search_documents_retry",
     "search_documents_matching_document",
+    "get_document_found",
+    "get_document_not_found",
+    "get_document_index_not_found",
+    "get_document_provider_rejected",
+    "get_document_invalid_response",
+    "get_document_defect",
+    "get_document_retry",
+    "get_document_product_found",
 ]

@@ -19,12 +19,14 @@ PROVIDER = "opensearch"
 INDEX_DOCUMENT_OPERATION_ID = "indexDocument"
 DELETE_DOCUMENT_OPERATION_ID = "deleteDocument"
 SEARCH_DOCUMENTS_OPERATION_ID = "searchDocuments"
+GET_DOCUMENT_OPERATION_ID = "getDocument"
 ABSENT = "absent"
 DEFECT = "defect"
 FOUND = "found"
 INDEX_NOT_FOUND = "indexNotFound"
 INDEXED = "indexed"
 INVALID_RESPONSE = "invalidResponse"
+NOT_FOUND = "notFound"
 PROVIDER_REJECTED = "providerRejected"
 
 INDEX_DOCUMENT_DEFINITION = MutationDefinition(
@@ -64,6 +66,23 @@ SEARCH_DOCUMENTS_DEFINITION = QueryDefinition(
         BranchDefinition(PROVIDER_REJECTED, "OpenSearch conclusively rejected the search.", True),
         BranchDefinition(INVALID_RESPONSE, "OpenSearch returned malformed or oversized search data.", True),
         BranchDefinition(DEFECT, "Local input or credentials are invalid.", True),
+    ),
+    StepDefaults(
+        timedelta(seconds=30),
+        2,
+        execute_retry=default_connector_step_execute_retry_policy(),
+    ),
+)
+
+GET_DOCUMENT_DEFINITION = QueryDefinition(
+    OperationRef(CONNECTOR_ID, GET_DOCUMENT_OPERATION_ID),
+    (
+        BranchDefinition(FOUND, "OpenSearch returned the document.", False),
+        BranchDefinition(NOT_FOUND, "The document does not exist.", True),
+        BranchDefinition(INDEX_NOT_FOUND, "The index does not exist.", True),
+        BranchDefinition(PROVIDER_REJECTED, "OpenSearch denied retrieval.", True),
+        BranchDefinition(INVALID_RESPONSE, "OpenSearch returned invalid document data.", True),
+        BranchDefinition(DEFECT, "Index, document ID, or credentials are invalid.", True),
     ),
     StepDefaults(
         timedelta(seconds=30),

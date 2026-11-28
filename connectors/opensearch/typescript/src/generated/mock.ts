@@ -4,9 +4,9 @@
 
 import { branchCase, retryCase, type Case, newMutation, type MockMutation, newQuery, type MockQuery } from '@superdurable/connectors-sdk/connectormock';
 import type { Failure } from '@superdurable/connectors-sdk';
-import type { IndexDocumentInput, IndexedDocument, DeleteDocumentInput, DeletedDocument, SearchDocumentsInput, SearchHit, SearchPage } from './models.js';
-import { IndexDocumentInputSchema, IndexedDocumentSchema, DeleteDocumentInputSchema, DeletedDocumentSchema, SearchDocumentsInputSchema, SearchHitSchema, SearchPageSchema } from './models.js';
-import { ProviderID, IndexDocumentDefinition, DeleteDocumentDefinition, SearchDocumentsDefinition } from './definitions.js';
+import type { IndexDocumentInput, IndexedDocument, DeleteDocumentInput, DeletedDocument, SearchDocumentsInput, SearchHit, SearchPage, GetDocumentInput, RetrievedDocument } from './models.js';
+import { IndexDocumentInputSchema, IndexedDocumentSchema, DeleteDocumentInputSchema, DeletedDocumentSchema, SearchDocumentsInputSchema, SearchHitSchema, SearchPageSchema, GetDocumentInputSchema, RetrievedDocumentSchema } from './models.js';
+import { ProviderID, IndexDocumentDefinition, DeleteDocumentDefinition, SearchDocumentsDefinition, GetDocumentDefinition } from './definitions.js';
 import { newConnectionWithOperations, type Connection, type Operations } from './connection.js';
 
 /** Go zero value for IndexDocumentInput in scripted cases. */
@@ -47,6 +47,18 @@ export const emptySearchPage: SearchPage = SearchPageSchema.parse({
   "total": 0,
   "relation": '',
   "hits": [],
+});
+/** Go zero value for GetDocumentInput in scripted cases. */
+export const emptyGetDocumentInput: GetDocumentInput = GetDocumentInputSchema.parse({
+  "index": '',
+  "documentId": '',
+});
+/** Go zero value for RetrievedDocument in scripted cases. */
+export const emptyRetrievedDocument: RetrievedDocument = RetrievedDocumentSchema.parse({
+  "index": '',
+  "id": '',
+  "source": null,
+  "version": 0,
 });
 
 /** Script the indexed branch. */
@@ -103,17 +115,41 @@ export function searchDocumentsMatchingDocument(): Case<SearchPage> {
 /** Default searchDocuments scenario. */
 export function searchDocumentsDefault(): Case<SearchPage> { return searchDocumentsMatchingDocument(); }
 
+/** Script the found branch. */
+export function getDocumentFound(value: RetrievedDocument, failure?: Failure): Case<RetrievedDocument> { return branchCase("found", value, failure); }
+/** Script the notFound branch. */
+export function getDocumentNotFound(value: RetrievedDocument, failure?: Failure): Case<RetrievedDocument> { return branchCase("notFound", value, failure); }
+/** Script the indexNotFound branch. */
+export function getDocumentIndexNotFound(value: RetrievedDocument, failure?: Failure): Case<RetrievedDocument> { return branchCase("indexNotFound", value, failure); }
+/** Script the providerRejected branch. */
+export function getDocumentProviderRejected(value: RetrievedDocument, failure?: Failure): Case<RetrievedDocument> { return branchCase("providerRejected", value, failure); }
+/** Script the invalidResponse branch. */
+export function getDocumentInvalidResponse(value: RetrievedDocument, failure?: Failure): Case<RetrievedDocument> { return branchCase("invalidResponse", value, failure); }
+/** Script the defect branch. */
+export function getDocumentDefect(value: RetrievedDocument, failure?: Failure): Case<RetrievedDocument> { return branchCase("defect", value, failure); }
+/** Script a safe retry of getDocument. */
+export function getDocumentRetry(failure: Failure, retryAfterMs = 0): Case<RetrievedDocument> { return retryCase(failure, retryAfterMs); }
+/** Manifest scenario productFound for getDocument. */
+export function getDocumentProductFound(): Case<RetrievedDocument> {
+  const value = RetrievedDocumentSchema.parse({"id":"sku-42","index":"products","source":{"category":"release","title":"Meridian"},"version":1});
+  return branchCase("found", value);
+}
+/** Default getDocument scenario. */
+export function getDocumentDefault(): Case<RetrievedDocument> { return getDocumentProductFound(); }
+
 /** Scripted operations and manifest defaults for this connector. */
 export class GeneratedMock implements Operations {
   readonly #indexDocument: MockMutation<IndexDocumentInput, IndexedDocument>;
   readonly #deleteDocument: MockMutation<DeleteDocumentInput, DeletedDocument>;
   readonly #searchDocuments: MockQuery<SearchDocumentsInput, SearchPage>;
+  readonly #getDocument: MockQuery<GetDocumentInput, RetrievedDocument>;
   readonly #connection: Connection;
 
   constructor(connectionName: string) {
     this.#indexDocument = newMutation<IndexDocumentInput, IndexedDocument>(IndexDocumentDefinition).default(indexDocumentDefault());
     this.#deleteDocument = newMutation<DeleteDocumentInput, DeletedDocument>(DeleteDocumentDefinition).default(deleteDocumentDefault());
     this.#searchDocuments = newQuery<SearchDocumentsInput, SearchPage>(SearchDocumentsDefinition).default(searchDocumentsDefault());
+    this.#getDocument = newQuery<GetDocumentInput, RetrievedDocument>(GetDocumentDefinition).default(getDocumentDefault());
     this.#connection = newConnectionWithOperations(this, { provider: ProviderID, name: connectionName });
   }
 
@@ -121,9 +157,11 @@ export class GeneratedMock implements Operations {
   indexDocument(): MockMutation<IndexDocumentInput, IndexedDocument> { return this.#indexDocument; }
   deleteDocument(): MockMutation<DeleteDocumentInput, DeletedDocument> { return this.#deleteDocument; }
   searchDocuments(): MockQuery<SearchDocumentsInput, SearchPage> { return this.#searchDocuments; }
+  getDocument(): MockQuery<GetDocumentInput, RetrievedDocument> { return this.#getDocument; }
   assertNoFailures(): void {
     this.#indexDocument.assertNoFailures();
     this.#deleteDocument.assertNoFailures();
     this.#searchDocuments.assertNoFailures();
+    this.#getDocument.assertNoFailures();
   }
 }

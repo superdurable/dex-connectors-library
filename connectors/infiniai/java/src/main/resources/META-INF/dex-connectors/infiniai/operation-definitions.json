@@ -1,0 +1,42 @@
+{
+  "listModels": {
+    "branches": [
+      {
+        "description": "GenStudio returned the tenant's model catalog.",
+        "id": "listed",
+        "optional": false
+      },
+      {
+        "description": "GenStudio rejected authentication or the model query.",
+        "id": "providerRejected",
+        "optional": true
+      },
+      {
+        "description": "GenStudio returned malformed or oversized model data.",
+        "id": "invalidResponse",
+        "optional": true
+      },
+      {
+        "description": "Local API key or settings are invalid.",
+        "id": "defect",
+        "optional": true
+      }
+    ],
+    "operation": {
+      "connectorId": "infiniai",
+      "operationId": "listModels"
+    },
+    "stepDefaults": {
+      "executeDurability": 2,
+      "executeMethodTimeout": 30000000000,
+      "executeRetry": {
+        "BackoffCoefficient": 2,
+        "InitialInterval": 1000000000,
+        "MaximumAttempts": 0,
+        "MaximumInterval": 300000000000,
+        "TotalDuration": 3600000000000
+      },
+      "heartbeatTimeout": 0
+    }
+  }
+}

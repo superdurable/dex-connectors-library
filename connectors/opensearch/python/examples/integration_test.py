@@ -9,19 +9,28 @@ from pathlib import Path
 from uuid import uuid4
 
 import dex
+import httpx
 import pytest
+from dex_connectors.sdk import ConnectionRef, SecretString, StaticCredentialProvider
 
 from dex_connectors.opensearch import (
+    Client,
+    Config,
+    Credentials,
     DeletedDocument,
     DeleteDocumentInput,
+    GetDocumentInput,
     IndexDocumentInput,
     IndexedDocument,
+    RetrievedDocument,
     SearchDocumentsInput,
     SearchPage,
+    new_connection,
 )
 from dex_connectors.opensearch.opensearchmock import Mock
 
 from .document_delete.flow import DocumentDeleteFlow
+from .document_get.flow import DocumentGetFlow
 from .document_index.flow import DocumentIndexFlow
 from .document_search.flow import DocumentSearchFlow
 
@@ -33,7 +42,32 @@ async def test_opensearch_flows_use_generated_mocks_with_real_dex(tmp_path: Path
     index_flow = DocumentIndexFlow(mock.connection())
     delete_flow = DocumentDeleteFlow(mock.connection())
     search_flow = DocumentSearchFlow(mock.connection())
-    registry = dex.Registry([index_flow, delete_flow, search_flow], allow_async_handlers=True)
+    requests: list[httpx.Request] = []
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        assert request.method == "GET" and request.url.raw_path == b"/products/_doc/sku&%21%2F42"
+        if len(requests) == 1:
+            return httpx.Response(503)
+        return httpx.Response(
+            200,
+            json={
+                "_index": "products",
+                "_id": "sku&!/42",
+                "_version": 3,
+                "found": True,
+                "_source": {"title": "Meridian"},
+            },
+        )
+
+    reference = ConnectionRef("opensearch", "opensearch")
+    provider = Client(
+        Config(cluster_url="http://127.0.0.1:12345"),
+        StaticCredentialProvider({reference: Credentials("reader", SecretString("fixture"))}),
+        httpx.AsyncClient(transport=httpx.MockTransport(answer)),
+    )
+    get_flow = DocumentGetFlow(new_connection(provider, reference))
+    registry = dex.Registry([index_flow, delete_flow, search_flow, get_flow], allow_async_handlers=True)
     cache = dex.open_blob_cache(dex.BlobCacheConfig(str(tmp_path / "blobs"), 1 << 24))
     address = os.environ["DEX_FLOW_SERVICE_ADDRESS"]
     worker = dex.AsyncWorker(registry, cache, dex.WorkerOptions(server_address=address))
@@ -65,7 +99,16 @@ async def test_opensearch_flows_use_generated_mocks_with_real_dex(tmp_path: Path
             assert searched.status == dex.FlowStatus.COMPLETED, searched.error_message
             assert searched.single_output(SearchPage).total == 1
             assert len(mock.search_documents_script.calls()) == 1
+            get_id = f"opensearch-python-get-{uuid4().hex}"
+            await client.start_flow(get_flow, get_id, GetDocumentInput("products", "sku&!/42"))
+            retrieved = await asyncio.wait_for(client.wait_for_flow(get_id, timedelta(seconds=25)), 30)
+            assert retrieved.status == dex.FlowStatus.COMPLETED, retrieved.error_message
+            assert retrieved.single_output(RetrievedDocument) == RetrievedDocument(
+                "products", "sku&!/42", {"title": "Meridian"}, 3
+            )
+            assert len(requests) == 2
     finally:
         await worker.stop()
         await worker_task
         cache.close()
+        await provider.aclose()

@@ -4,8 +4,10 @@
 
 from ._generated.models import DeletedDocument as DeletedDocument
 from ._generated.models import DeleteDocumentInput as DeleteDocumentInput
+from ._generated.models import GetDocumentInput as GetDocumentInput
 from ._generated.models import IndexDocumentInput as IndexDocumentInput
 from ._generated.models import IndexedDocument as IndexedDocument
+from ._generated.models import RetrievedDocument as RetrievedDocument
 from ._generated.models import SearchDocumentsInput as SearchDocumentsInput
 from ._generated.models import SearchHit as SearchHit
 from ._generated.models import SearchPage as SearchPage

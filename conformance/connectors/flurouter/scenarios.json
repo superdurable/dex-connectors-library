@@ -323,6 +323,128 @@
       "input": {},
       "name": "listModels-transportAfter",
       "operation": "listModels"
+    },
+    {
+      "callId": "0b2992b2-57ff-5898-a6e5-5b7058df6062",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"list\",\"data\":[{\"id\":\"gpt-example\",\"object\":\"model\",\"owner\":\"private\"},{\"id\":\"gpt-example\",\"object\":\"model\",\"owner\":\"private\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/models",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sk-il-test-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "modelIDs": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listModels-duplicate",
+      "operation": "listModels"
+    },
+    {
+      "callId": "a39eaaed-2167-5a68-9da2-ed7ed1847594",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"list\",\"data\":[{\"id\":\"model-0\",\"object\":\"model\",\"owner\":\"private\"},{\"id\":\"model-1\",\"object\":\"model\",\"owner\":\"private\"},{\"id\":\"model-2\",\"object\":\"model\",\"owner\":\"private\"},{\"id\":\"model-3\",\"object\":\"model\",\"owner\":\"private\"},{\"id\":\"model-4\",\"object\":\"model\",\"owner\":\"private\"},{\"id\":\"model-5\",\"object\":\"model\",\"owner\":\"private\"},{\"id\":\"model-6\",\"object\":\"model\",\"owner\":\"private\"},{\"id\":\"model-7\",\"object\":\"model\",\"owner\":\"private\"},{\"id\":\"model-8\",\"object\":\"model\",\"owner\":\"private\"},{\"id\":\"model-9\",\"object\":\"model\",\"owner\":\"private\"},{\"id\":\"model-10\",\"object\":\"model\",\"owner\":\"private\"},{\"id\":\"model-11\",\"object\":\"model\",\"owner\":\"private\"},{\"id\":\"model-12\",\"object\":\"model\",\"owner\":\"private\"},{\"id\":\"model-13\",\"object\":\"model\",\"owner\":\"private\"},{\"id\":\"model-14\",\"object\":\"model\",\"owner\":\"private\"},{\"id\":\"model-15\",\"object\":\"model\",\"owner\":\"private\"},{\"id\":\"model-16\",\"object\":\"model\",\"owner\":\"private\"},{\"id\":\"model-17\",\"object\":\"model\",\"owner\":\"private\"},{\"id\":\"model-18\",\"object\":\"model\",\"owner\":\"private\"},{\"id\":\"model-19\",\"object\":\"model\",\"owner\":\"private\"},{\"id\":\"model-20\",\"object\":\"model\",\"owner\":\"private\"},{\"id\":\"model-21\",\"object\":\"model\",\"owner\":\"private\"},{\"id\":\"model-22\",\"object\":\"model\",\"owner\":\"private\"},{\"id\":\"model-23\",\"object\":\"model\",\"owner\":\"private\"},{\"id\":\"model-24\",\"object\":\"model\",\"owner\":\"private\"},{\"id\":\"model-25\",\"object\":\"model\",\"owner\":\"private\"},{\"id\":\"model-26\",\"object\":\"model\",\"owner\":\"private\"},{\"id\":\"model-27\",\"object\":\"model\",\"owner\":\"private\"},{\"id\":\"model-28\",\"object\":\"model\",\"owner\":\"private\"},{\"id\":\"model-29\",\"object\":\"model\",\"owner\":\"private\"},{\"id\":\"model-30\",\"object\":\"model\",\"owner\":\"private\"},{\"id\":\"model-31\",\"object\":\"model\",\"owner\":\"private\"},{\"id\":\"model-32\",\"object\":\"model\",\"owner\":\"private\"},{\"id\":\"model-33\",\"object\":\"model\",\"owner\":\"private\"},{\"id\":\"model-34\",\"object\":\"model\",\"owner\":\"private\"},{\"id\":\"model-35\",\"object\":\"model\",\"owner\":\"private\"},{\"id\":\"model-36\",\"object\":\"model\",\"owner\":\"private\"},{\"id\":\"model-37\",\"object\":\"model\",\"owner\":\"private\"},{\"id\":\"model-38\",\"object\":\"model\",\"owner\":\"private\"},{\"id\":\"model-39\",\"object\":\"model\",\"owner\":\"private\"},{\"id\":\"model-40\",\"object\":\"model\",\"owner\":\"private\"},{\"id\":\"model-41\",\"object\":\"model\",\"owner\":\"private\"},{\"id\":\"model-42\",\"object\":\"model\",\"owner\":\"private\"},{\"id\":\"model-43\",\"object\":\"model\",\"owner\":\"private\"},{\"id\":\"model-44\",\"object\":\"model\",\"owner\":\"private\"},{\"id\":\"model-45\",\"object\":\"model\",\"owner\":\"private\"},{\"id\":\"model-46\",\"object\":\"model\",\"owner\":\"private\"},{\"id\":\"model-47\",\"object\":\"model\",\"owner\":\"private\"},{\"id\":\"model-48\",\"object\":\"model\",\"owner\":\"private\"},{\"id\":\"model-49\",\"object\":\"model\",\"owner\":\"private\"},{\"id\":\"model-50\",\"object\":\"model\",\"owner\":\"private\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/models",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sk-il-test-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "modelIDs": [
+            "model-0",
+            "model-1",
+            "model-2",
+            "model-3",
+            "model-4",
+            "model-5",
+            "model-6",
+            "model-7",
+            "model-8",
+            "model-9",
+            "model-10",
+            "model-11",
+            "model-12",
+            "model-13",
+            "model-14",
+            "model-15",
+            "model-16",
+            "model-17",
+            "model-18",
+            "model-19",
+            "model-20",
+            "model-21",
+            "model-22",
+            "model-23",
+            "model-24",
+            "model-25",
+            "model-26",
+            "model-27",
+            "model-28",
+            "model-29",
+            "model-30",
+            "model-31",
+            "model-32",
+            "model-33",
+            "model-34",
+            "model-35",
+            "model-36",
+            "model-37",
+            "model-38",
+            "model-39",
+            "model-40",
+            "model-41",
+            "model-42",
+            "model-43",
+            "model-44",
+            "model-45",
+            "model-46",
+            "model-47",
+            "model-48",
+            "model-49",
+            "model-50"
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listModels-retains-all-models",
+      "operation": "listModels"
     }
   ],
   "schemaVersion": 1

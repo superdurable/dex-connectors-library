@@ -4,11 +4,11 @@
 use dex_connector_yuexin as connector;
 
 const CONNECTOR_ID: &str = "yuexin";
-const FIXTURE: &str = "../../../conformance/connectors/yuexin/scenarios.json";
+const FIXTURE: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/support/scenarios.json");
 const ORIGIN: &str = "https://app.yuexin.ai";
 const KEY: &str = "test-secret";
 const MISSING_KEY_CASE: &str = "listModels-defect";
 const SMALL_BODY_CASE: &str = "listModels-oversized";
 
-#[path = "../../../../conformance/runners/rust/model_catalog.rs"]
+#[path = "support/model_catalog.rs"]
 mod model_catalog;

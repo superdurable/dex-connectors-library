@@ -9,10 +9,18 @@ metadata:
   version: v0.1.0
 spec:
   languages:
+    java: {version: v0.1.0, operations: [listModels], triggers: []}
+    rust: {version: v0.1.0, operations: [listModels], triggers: []}
     python: {version: v0.1.0, operations: [listModels], triggers: []}
     typescript: {version: v0.1.0, package: "@superdurable/connector-ppio", operations: [listModels], triggers: []}
   provider: ppio
   codegen:
+    modelCatalog:
+      endpoint: https://api.ppio.com/openai/v1/models
+      providerLabel: PPIO
+      connectorResponse: true
+      objectTags: absent
+      jsonContentType: true
     go:
       package: ppio
   configuration:

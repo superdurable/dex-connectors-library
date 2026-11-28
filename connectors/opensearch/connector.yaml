@@ -11,14 +11,14 @@ spec:
   provider: opensearch
   languages:
     python:
-      version: v0.1.1
+      version: v0.2.0
       package: dex-connector-opensearch
-      operations: [indexDocument, deleteDocument, searchDocuments]
+      operations: [indexDocument, deleteDocument, searchDocuments, getDocument]
       triggers: []
     typescript:
-      version: v0.1.1
+      version: v0.2.0
       package: '@superdurable/connector-opensearch'
-      operations: [indexDocument, deleteDocument, searchDocuments]
+      operations: [indexDocument, deleteDocument, searchDocuments, getDocument]
       triggers: []
   codegen:
     go:

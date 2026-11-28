@@ -1602,6 +1602,90 @@
       },
       "name": "getDocument-transport",
       "operation": "getDocument"
+    },
+    {
+      "callId": "9d6c5b62-eb42-5820-a572-43c3cc9d1215",
+      "exchanges": [
+        {
+          "body": "{\"_index\":\"products\",\"_id\":\"sku\u0026!/42\",\"_version\":1,\"found\":true,\"_source\":{\"title\":\"Meridian\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/products/_doc/sku\u0026!/42",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZGV4X3JlYWRlcjpmYWtlLXBhc3N3b3Jk"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "id": "sku\u0026!/42",
+          "index": "products",
+          "source": {
+            "title": "Meridian"
+          },
+          "version": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "documentId": "sku\u0026!/42",
+        "index": "products"
+      },
+      "name": "getDocument-escaped-id",
+      "operation": "getDocument"
+    },
+    {
+      "callId": "379fde6d-6652-5c5c-b448-3b8001214883",
+      "exchanges": [
+        {
+          "body": "{\"found\":false,\"error\":{\"type\":7}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/products/_doc/sku-42",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZGV4X3JlYWRlcjpmYWtlLXBhc3N3b3Jk"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "index": "",
+          "source": null,
+          "version": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "documentId": "sku-42",
+        "index": "products"
+      },
+      "name": "getDocument-invalid-missing-error",
+      "operation": "getDocument"
     }
   ],
   "schemaVersion": 1

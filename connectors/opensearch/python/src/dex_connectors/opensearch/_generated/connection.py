@@ -9,22 +9,23 @@ from dex_connectors.sdk import ConnectionRef, Mutation, Query, Call, SecretStrin
 from dex_connectors.sdk.projectconfig import ConnectionKey, LoadedProject
 
 from ..client import Client, Config, Credentials
-from .definitions import CONNECTOR_ID, DELETE_DOCUMENT_DEFINITION, INDEX_DOCUMENT_DEFINITION, SEARCH_DOCUMENTS_DEFINITION
-from ..models import DeleteDocumentInput, DeletedDocument, IndexDocumentInput, IndexedDocument, SearchDocumentsInput, SearchPage
+from .definitions import CONNECTOR_ID, DELETE_DOCUMENT_DEFINITION, GET_DOCUMENT_DEFINITION, INDEX_DOCUMENT_DEFINITION, SEARCH_DOCUMENTS_DEFINITION
+from ..models import DeleteDocumentInput, DeletedDocument, GetDocumentInput, IndexDocumentInput, IndexedDocument, RetrievedDocument, SearchDocumentsInput, SearchPage
 
 class Connection:
 
-    __slots__ = ('_index_document', '_delete_document', '_search_documents', '_client', 'reference')
+    __slots__ = ('_index_document', '_delete_document', '_search_documents', '_get_document', '_client', 'reference')
 
     def __init__(self,
         reference: ConnectionRef,
         index_document: Mutation[IndexDocumentInput, IndexedDocument],
         delete_document: Mutation[DeleteDocumentInput, DeletedDocument],
         search_documents: Query[SearchDocumentsInput, SearchPage],
+        get_document: Query[GetDocumentInput, RetrievedDocument],
         client: Client | None = None,
     ) -> None:
         reference.validate()
-        if reference.provider != CONNECTOR_ID or index_document is None or delete_document is None or search_documents is None:
+        if reference.provider != CONNECTOR_ID or index_document is None or delete_document is None or search_documents is None or get_document is None:
             raise ValueError("OpenSearch connection provider and operations are required")
         if index_document.definition().operation != INDEX_DOCUMENT_DEFINITION.operation:
             raise ValueError("OpenSearch connection operation identity differs")
@@ -32,10 +33,13 @@ class Connection:
             raise ValueError("OpenSearch connection operation identity differs")
         if search_documents.definition().operation != SEARCH_DOCUMENTS_DEFINITION.operation:
             raise ValueError("OpenSearch connection operation identity differs")
+        if get_document.definition().operation != GET_DOCUMENT_DEFINITION.operation:
+            raise ValueError("OpenSearch connection operation identity differs")
         self.reference = reference
         self._index_document = index_document
         self._delete_document = delete_document
         self._search_documents = search_documents
+        self._get_document = get_document
         self._client = client
 
     def index_document(self) -> Mutation[IndexDocumentInput, IndexedDocument]:
@@ -46,6 +50,9 @@ class Connection:
 
     def search_documents(self) -> Query[SearchDocumentsInput, SearchPage]:
         return self._search_documents
+
+    def get_document(self) -> Query[GetDocumentInput, RetrievedDocument]:
+        return self._get_document
 
     async def aclose(self) -> None:
         if self._client is not None:
@@ -63,7 +70,7 @@ setattr(Connection, '__module__', 'dex_connectors.opensearch.connection')
 def new_connection(client: Client, reference: ConnectionRef) -> Connection:
     if client is None:
         raise ValueError("OpenSearch client is required")
-    return Connection(reference, client.index_document(), client.delete_document(), client.search_documents(), client)
+    return Connection(reference, client.index_document(), client.delete_document(), client.search_documents(), client.get_document(), client)
 
 setattr(new_connection, '__module__', 'dex_connectors.opensearch.connection')
 
@@ -72,9 +79,10 @@ def new_connection_with_operations(
     index_document: Mutation[IndexDocumentInput, IndexedDocument],
     delete_document: Mutation[DeleteDocumentInput, DeletedDocument],
     search_documents: Query[SearchDocumentsInput, SearchPage],
+    get_document: Query[GetDocumentInput, RetrievedDocument],
     reference: ConnectionRef,
 ) -> Connection:
-    return Connection(reference, index_document, delete_document, search_documents)
+    return Connection(reference, index_document, delete_document, search_documents, get_document)
 
 setattr(new_connection_with_operations, '__module__', 'dex_connectors.opensearch.connection')
 

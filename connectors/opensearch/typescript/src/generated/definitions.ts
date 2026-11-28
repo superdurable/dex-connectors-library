@@ -95,3 +95,40 @@ export const SearchDocumentsDefinition: QueryDefinition = {
 };
 /** Manifest metadata for searchDocuments. */
 export const SearchDocumentsMetadata = { kind: "query", idempotency: "none", authorization: "required" } as const;
+
+/** Branch IDs for getDocument. */
+export const GetDocumentBranch = {
+  Found: "found",
+  NotFound: "notFound",
+  IndexNotFound: "indexNotFound",
+  ProviderRejected: "providerRejected",
+  InvalidResponse: "invalidResponse",
+  Defect: "defect",
+} as const;
+/** OpenSearch returned the document. */
+export const GetDocumentBranchFound = GetDocumentBranch.Found;
+/** The document does not exist. */
+export const GetDocumentBranchNotFound = GetDocumentBranch.NotFound;
+/** The index does not exist. */
+export const GetDocumentBranchIndexNotFound = GetDocumentBranch.IndexNotFound;
+/** OpenSearch denied retrieval. */
+export const GetDocumentBranchProviderRejected = GetDocumentBranch.ProviderRejected;
+/** OpenSearch returned invalid document data. */
+export const GetDocumentBranchInvalidResponse = GetDocumentBranch.InvalidResponse;
+/** Index, document ID, or credentials are invalid. */
+export const GetDocumentBranchDefect = GetDocumentBranch.Defect;
+/** Manifest definition for getDocument. */
+export const GetDocumentDefinition: QueryDefinition = {
+  operation: { connectorId: ConnectorID, operationId: "getDocument" },
+  branches: [
+    { id: "found", description: "OpenSearch returned the document." },
+    { id: "notFound", description: "The document does not exist.", optional: true },
+    { id: "indexNotFound", description: "The index does not exist.", optional: true },
+    { id: "providerRejected", description: "OpenSearch denied retrieval.", optional: true },
+    { id: "invalidResponse", description: "OpenSearch returned invalid document data.", optional: true },
+    { id: "defect", description: "Index, document ID, or credentials are invalid.", optional: true },
+  ],
+  stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
+};
+/** Manifest metadata for getDocument. */
+export const GetDocumentMetadata = { kind: "query", idempotency: "none", authorization: "required" } as const;

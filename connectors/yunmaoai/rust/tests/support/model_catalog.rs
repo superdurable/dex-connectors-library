@@ -1,0 +1,1 @@
+../../../../../conformance/runners/rust/model_catalog.rs

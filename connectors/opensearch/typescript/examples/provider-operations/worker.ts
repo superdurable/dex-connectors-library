@@ -8,6 +8,7 @@ import { loadFromEnvironment } from '@superdurable/connectors-sdk/projectconfig'
 import { newProjectConnection } from '../../src/index.js';
 import { ConnectionName, DocumentIndexFlow } from './document-index-flow.js';
 import { DocumentDeleteFlow } from './document-delete-flow.js';
+import { DocumentGetFlow } from './document-get-flow.js';
 import { DocumentSearchFlow } from './document-search-flow.js';
 
 /** Run three OpenSearch post Flows with one Dex Web connection. */
@@ -15,7 +16,7 @@ export async function runOpenSearchWorker(signal: AbortSignal): Promise<void> {
   const project = await loadFromEnvironment();
   const connection = newProjectConnection(project, ConnectionName);
   const registry = new Registry([
-    new DocumentIndexFlow(connection), new DocumentDeleteFlow(connection), new DocumentSearchFlow(connection),
+    new DocumentIndexFlow(connection), new DocumentDeleteFlow(connection), new DocumentSearchFlow(connection), new DocumentGetFlow(connection),
   ]);
   const cache = openBlobCache({
     directory: process.env.DEX_BLOB_CACHE_DIR || join(tmpdir(), 'dex-opensearch-ts-blobs'),

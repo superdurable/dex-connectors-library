@@ -8,6 +8,7 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 	"text/template"
 	"time"
@@ -62,11 +63,45 @@ func GenerateModelCatalogClient(manifest schema.Manifest, directory, language st
 	case "absent":
 		listTag, modelTag = "", ""
 	}
+	successBranch := ""
+	for _, operation := range manifest.Spec.Operations {
+		if operation.Name != "listModels" {
+			continue
+		}
+		for _, branch := range operation.Branches {
+			if !branch.Optional {
+				if successBranch != "" {
+					return nil, fmt.Errorf("model catalog requires exactly one listModels happy-path branch")
+				}
+				successBranch = branch.ID
+			}
+		}
+	}
+	if successBranch == "" {
+		return nil, fmt.Errorf("model catalog requires a listModels happy-path branch")
+	}
 	values := struct {
+		JSONContentType                                                                                             bool
+		SuccessBranchLiteral                                                                                        string
 		GoPackage, ConnectorLiteral, EndpointLiteral, ProviderLabel, Directory, KeyPrefixLiteral, ListTag, ModelTag string
+		ConnectorResponse                                                                                           bool
 		TimeoutNanos                                                                                                int64
 		MaxResponseBytes                                                                                            int
-	}{manifest.Spec.Codegen.Go.Package, literal(manifest.Metadata.Name), literal(protocol.Endpoint), protocol.ProviderLabel, strings.TrimPrefix(directory, "connectors/"), keyPrefix, listTag, modelTag, timeout.Nanoseconds(), maxResponseBytes}
+	}{
+		JSONContentType:      protocol.JSONContentType,
+		SuccessBranchLiteral: strconv.Quote(successBranch),
+		GoPackage:            manifest.Spec.Codegen.Go.Package,
+		ConnectorLiteral:     literal(manifest.Metadata.Name),
+		EndpointLiteral:      literal(protocol.Endpoint),
+		ProviderLabel:        protocol.ProviderLabel,
+		Directory:            strings.TrimPrefix(directory, "connectors/"),
+		KeyPrefixLiteral:     keyPrefix,
+		ListTag:              listTag,
+		ModelTag:             modelTag,
+		ConnectorResponse:    protocol.ConnectorResponse,
+		TimeoutNanos:         timeout.Nanoseconds(),
+		MaxResponseBytes:     maxResponseBytes,
+	}
 	var output bytes.Buffer
 	if err := modelCatalogTemplates.ExecuteTemplate(&output, templateName, values); err != nil {
 		return nil, err

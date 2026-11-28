@@ -9,6 +9,8 @@ metadata:
   version: v0.1.0
 spec:
   languages:
+    java: {version: v0.1.0, operations: [listModels], triggers: []}
+    rust: {version: v0.1.0, operations: [listModels], triggers: []}
     python: {version: v0.1.0, operations: [listModels], triggers: []}
     typescript:
       version: v0.1.0
@@ -17,6 +19,11 @@ spec:
       triggers: []
   provider: flurouter
   codegen:
+    modelCatalog:
+      endpoint: https://flurouter.net/v1/models
+      providerLabel: FluRouter
+      connectorResponse: true
+      keyPrefix: sk-il-
     go:
       package: flurouter
   configuration:

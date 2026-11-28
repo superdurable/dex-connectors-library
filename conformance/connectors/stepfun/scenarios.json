@@ -223,6 +223,76 @@
       "input": {},
       "name": "listModels-defect",
       "operation": "listModels"
+    },
+    {
+      "callId": "43c2ab85-b671-556c-8138-475e0787577c",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"list\",\"data\":[{\"id\":\"step-5-preview\",\"object\":\"model\",\"created\":1.5,\"owned_by\":\"stepai\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/models",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer secret-api-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "models": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listModels-created-is-fractional",
+      "operation": "listModels"
+    },
+    {
+      "callId": "ce0ab5a5-8e40-5bcb-9ec3-759813d8bad7",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"list\",\"data\":[{\"id\":\"step-5-preview\",\"object\":\"model\",\"created\":1789747200,\"owned_by\":\"\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/models",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer secret-api-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "models": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listModels-missing-owner",
+      "operation": "listModels"
     }
   ],
   "schemaVersion": 1

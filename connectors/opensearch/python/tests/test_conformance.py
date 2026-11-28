@@ -17,7 +17,6 @@ from connector_scenarios import PythonOperationAdapter, load_scenarios, replay  
 SCENARIOS = [
     scenario
     for scenario in load_scenarios(ROOT / "conformance/connectors/opensearch/scenarios.json")
-    if scenario["operation"] in {"indexDocument", "deleteDocument", "searchDocuments"}
 ]
 CONNECTION = sdk.ConnectionRef("opensearch", "opensearch")
 ADAPTER = PythonOperationAdapter(

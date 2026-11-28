@@ -36,6 +36,7 @@ publishing {
                 scm {
                     url = 'https://github.com/superdurable/dex-connectors-library'
                     connection = 'scm:git:https://github.com/superdurable/dex-connectors-library.git'
+                    developerConnection = 'scm:git:ssh://git@github.com/superdurable/dex-connectors-library.git'
                 }
             }
         }

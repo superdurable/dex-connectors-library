@@ -11,3 +11,12 @@ The runnable [list-models example](go/examples/list-models/README.md) demonstrat
 The first Python package release is `v0.1.0`. See the [Python README](python/README.md) and its runnable Flow for the operation contract and local Dex verification.
 
 The [TypeScript package](typescript/) provides the same `ListModels` operation, Go-recorded conformance tests, and a runnable Dex Worker and Client example.
+
+The [Java Worker](java/examples/io/superdurable/dexconnectors/stepfun/ModelCatalogWorker.java) and
+[Rust Worker](rust/examples/list_models.rs) serve the same model-list Query.
+Both examples read the key from `STEPFUN_API_KEY` in the Worker environment and use
+the static connection name `stepfun`. Start Dex locally with `dexcli dev -open=false`,
+then run `./gradlew modelCatalogWorker` from `java/` or `cargo run --example list_models`
+from `rust/`. Start `JavaStepfunModelCatalog` with an empty JSON string or `RustStepfunModelCatalog` with `{}`.
+Run `./gradlew check dexDevTest` and `cargo test --all-targets` in those directories
+to replay Go scenarios and exercise retry through a real Worker and Client.

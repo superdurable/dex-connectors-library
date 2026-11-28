@@ -9,3 +9,12 @@ Run the [example Flow](go/examples/list-models/) with the generated mock or a us
 The [Python package](python/README.md) includes a [runnable Dex Flow](python/examples/model_catalog/README.md) and replays the Go-recorded provider scenarios. Live provider authorization remains unverified without user-controlled credentials.
 
 The [TypeScript package](typescript/README.md) includes a [runnable Dex Flow](typescript/examples/basic/README.md) and replays the Go-recorded provider scenarios. Live provider authorization remains unverified without user-controlled credentials.
+
+The [Java Worker](java/examples/io/superdurable/dexconnectors/flurouter/ModelCatalogWorker.java) and
+[Rust Worker](rust/examples/list_models.rs) serve the same model-list Query.
+Both examples read the key from `FLUROUTER_API_KEY` in the Worker environment and use
+the static connection name `flurouter`. Start Dex locally with `dexcli dev -open=false`,
+then run `./gradlew modelCatalogWorker` from `java/` or `cargo run --example list_models`
+from `rust/`. Start `JavaFlurouterModelCatalog` with an empty JSON string or `RustFlurouterModelCatalog` with `{}`.
+Run `./gradlew check dexDevTest` and `cargo test --all-targets` in those directories
+to replay Go scenarios and exercise retry through a real Worker and Client.

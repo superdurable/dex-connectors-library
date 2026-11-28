@@ -13,19 +13,25 @@ from dex_connectors.sdk.projectconfig import load_from_environment
 from dex_connectors.opensearch import new_project_connection
 
 from .document_delete.flow import DocumentDeleteFlow
+from .document_get.flow import DocumentGetFlow
 from .document_index.flow import DocumentIndexFlow
 from .document_search.flow import DocumentSearchFlow
 
 
 async def run_worker() -> None:
-    """Load the named Dex Web connection and register three OpenSearch Flows."""
+    """Load the named Dex Web connection and register the OpenSearch Flows."""
     project = await load_from_environment()
     connection = None
     cache = None
     try:
         connection = new_project_connection(project, "opensearch")
         registry = dex.Registry(
-            [DocumentIndexFlow(connection), DocumentDeleteFlow(connection), DocumentSearchFlow(connection)],
+            [
+                DocumentIndexFlow(connection),
+                DocumentDeleteFlow(connection),
+                DocumentSearchFlow(connection),
+                DocumentGetFlow(connection),
+            ],
             allow_async_handlers=True,
         )
         cache_directory = os.environ.get(

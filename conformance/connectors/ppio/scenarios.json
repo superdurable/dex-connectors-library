@@ -285,6 +285,92 @@
       "input": {},
       "name": "listModels-transport",
       "operation": "listModels"
+    },
+    {
+      "callId": "028b3764-4750-538b-9335-943e764de610",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"tencent/hy4\",\"object\":\"model\",\"created\":1789747200,\"owned_by\":\"ppio\",\"display_name\":\"HY4\",\"status\":3,\"context_size\":131072,\"endpoints\":[]}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openai/v1/models",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer secret-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "models": [
+            {
+              "contextSize": 131072,
+              "createdAtUnix": 1789747200,
+              "displayName": "HY4",
+              "endpoints": [],
+              "id": "tencent/hy4",
+              "ownedBy": "ppio",
+              "status": 3
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listModels-pending-model",
+      "operation": "listModels"
+    },
+    {
+      "callId": "270be256-9b6f-5426-b953-5fc71e268d7a",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"tencent/hy4\",\"object\":\"model\",\"created\":1789747200,\"owned_by\":\"ppio\",\"display_name\":\"HY4\",\"status\":5,\"context_size\":131072,\"endpoints\":[\"chat/completions\"]}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openai/v1/models",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer secret-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "models": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listModels-unknown-status",
+      "operation": "listModels"
     }
   ],
   "schemaVersion": 1

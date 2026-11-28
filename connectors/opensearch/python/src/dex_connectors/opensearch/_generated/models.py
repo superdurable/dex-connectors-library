@@ -114,3 +114,31 @@ class SearchPage:
 SearchPage.__annotations__['hits'] = tuple[SearchHit, ...] | None
 SearchPage.__dataclass_fields__['hits'].type = tuple[SearchHit, ...] | None
 setattr(SearchPage, '__module__', 'dex_connectors.opensearch.models')
+
+
+# GetDocumentInput identifies an index document by its stable ID.
+@dataclass(frozen=True, slots=True)
+class GetDocumentInput:
+    # Index is the lowercase concrete index name.
+    index: str = ''
+    # DocumentID is the stable OpenSearch document ID.
+    document_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'documentId'})
+
+
+setattr(GetDocumentInput, '__module__', 'dex_connectors.opensearch.models')
+
+
+# RetrievedDocument is one indexed source and its version.
+@dataclass(frozen=True, slots=True)
+class RetrievedDocument:
+    # Index is the index containing the source.
+    index: str = ''
+    # ID is the provider document ID.
+    id: str = ''
+    # Source is untrusted provider JSON and can contain sensitive user data.
+    source: Any = None
+    # Version is the OpenSearch document version.
+    version: int = 0
+
+
+setattr(RetrievedDocument, '__module__', 'dex_connectors.opensearch.models')

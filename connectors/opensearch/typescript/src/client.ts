@@ -11,11 +11,11 @@ import {
   BodyTooLargeError, ProviderTransportError, parseRetryAfter, sendProviderRequest, validateBaseURL,
   type ProviderRequest, type ProviderResponse,
 } from '@superdurable/connectors-sdk/providerhttp';
-import { DeleteDocumentDefinition, IndexDocumentDefinition, SearchDocumentsDefinition } from './generated/definitions.js';
+import { GetDocumentDefinition, DeleteDocumentDefinition, IndexDocumentDefinition, SearchDocumentsDefinition } from './generated/definitions.js';
 import {
   isCredentialMaterialError,
   type Config, type Credentials, type DeleteDocumentInput, type DeletedDocument, type IndexDocumentInput,
-  type IndexedDocument, type SearchDocumentsInput, type SearchHit, type SearchPage,
+  type GetDocumentInput, type RetrievedDocument, type IndexedDocument, type SearchDocumentsInput, type SearchHit, type SearchPage,
 } from './generated/models.js';
 
 const indexPattern = /^[a-z0-9.][a-z0-9._-]*$/;
@@ -70,6 +70,8 @@ export class OpenSearchClient {
   /** Bind the stable-ID deletion Mutation. */ deleteDocument(): DeleteDocumentOperation {
     return new DeleteDocumentOperation(this);
   }
+  /** Bind document retrieval to this cluster. */
+  getDocument(): GetDocumentOperation { return new GetDocumentOperation(this); }
   /** Bind the bounded search Query. */ searchDocuments(): SearchDocumentsOperation {
     return new SearchDocumentsOperation(this);
   }
@@ -245,10 +247,13 @@ function validIndex(index: unknown): index is string {
   return typeof index === 'string' && index.length <= 255 && indexPattern.test(index) && index !== '.' && index !== '..';
 }
 function validDocumentID(id: unknown): id is string {
-  return typeof id === 'string' && !!id && Buffer.byteLength(id) <= 512 && !/[\r\n\0]/.test(id);
+  return typeof id === 'string' && !!id && Buffer.byteLength(id) <= 512 && Buffer.from(id).toString('utf8') === id && !/[\r\n\0]/.test(id);
 }
 function documentURL(clusterUrl: string, index: string, documentId: string): string {
-  return `${clusterUrl}/${index}/_doc/${encodeURIComponent(documentId)}`;
+  const segment = encodeURIComponent(documentId)
+    .replace(/[!'()*]/g, character => '%' + character.charCodeAt(0).toString(16).toUpperCase())
+    .replace(/%(24|26|2B|3A|3D|40)/g, escaped => decodeURIComponent(escaped));
+  return `${clusterUrl}/${index}/_doc/${segment}`;
 }
 function parseJSON(body: Uint8Array): unknown {
   try { return JSON.parse(Buffer.from(body).toString('utf8')) as unknown; }
@@ -299,4 +304,54 @@ function searchFailure(branch: string, kind: Failure['kind']): QueryAttempt<Sear
 }
 function searchRetry(kind: Failure['kind'], after = 0): QueryAttempt<SearchPage> {
   return newQueryRetry(failure('searchDocuments', kind), after);
+}
+
+/** Retrieve one document's JSON source and version from its index. */
+export class GetDocumentOperation implements Query<GetDocumentInput, RetrievedDocument> {
+  /** Bind the cluster transport and call-time credential source. */
+  constructor(private readonly client: OpenSearchClient) {}
+
+  /** Return the manifest-generated retrieval contract. */
+  definition() { return GetDocumentDefinition; }
+
+  /** Distinguish a missing document from a missing index and retry transient failures. */
+  async invoke(call: Call, input: GetDocumentInput): Promise<QueryAttempt<RetrievedDocument>> {
+    const failure = (branch: string, kind: Failure['kind'], message: string) =>
+      newQueryBranch(branch, { index: '', id: '', source: null, version: 0 }, {}, { kind, provider: 'opensearch', operation: 'getDocument', message });
+    const retry = (kind: Failure['kind'], message: string, delay = 0) =>
+      newQueryRetry<RetrievedDocument>({ kind, provider: 'opensearch', operation: 'getDocument', message }, delay);
+    if (!input || !validIndex(input.index) || !validDocumentID(input.documentId))
+      return failure('defect', 'VALIDATION', 'index or document ID is invalid');
+    const authorization = await this.client['resolveAuthorization'](call);
+    if (authorization === null) return retry('AVAILABILITY', 'OpenSearch credentials are temporarily unavailable');
+    if (!authorization) return failure('defect', 'AUTHENTICATION', 'OpenSearch credentials are invalid');
+    const exchange = await this.client.exchange(call, 'GET', documentURL(this.client.clusterUrl, input.index, input.documentId),
+      { Authorization: authorization, Accept: 'application/json' });
+    if (exchange.status === 429) return retry('RATE_LIMIT', 'OpenSearch rate limited the request', exchange.retryAfterMs);
+    if (exchange.status === 408 || exchange.status === 409 || exchange.status >= 500)
+      return retry('AVAILABILITY', 'OpenSearch is temporarily unavailable', exchange.retryAfterMs);
+    if (exchange.error === 'tooLarge') return retry('RESPONSE_TOO_LARGE', 'OpenSearch document response exceeded the configured limit');
+    if (exchange.error) return retry('TRANSPORT', 'OpenSearch document request failed');
+    const body = parseJSON(exchange.body);
+    if (exchange.status === 404) {
+      if (isRecord(body) && (body.found == null || typeof body.found === 'boolean') &&
+          isRecord(body.error) && body.error.type === 'index_not_found_exception')
+        return failure('indexNotFound', 'NOT_FOUND', 'OpenSearch index was not found');
+      if (isRecord(body) && body.found === false && (body.error == null ||
+          (isRecord(body.error) && (body.error.type == null || typeof body.error.type === 'string'))))
+        return failure('notFound', 'NOT_FOUND', 'OpenSearch document was not found');
+      return failure('invalidResponse', 'PROTOCOL', 'OpenSearch returned invalid missing-document data');
+    }
+    if (exchange.status !== 200) {
+      const kind = rejectionKind(exchange.status);
+      return failure('providerRejected', kind, `OpenSearch rejected retrieval with HTTP ${exchange.status}`);
+    }
+    if (!isRecord(body) || body._index !== input.index || body._id !== input.documentId ||
+        typeof body._version !== 'number' || !Number.isSafeInteger(body._version) || body._version <= 0 ||
+        body.found !== true || !isRecord(body._source)) {
+      return failure('invalidResponse', 'PROTOCOL', 'OpenSearch returned invalid document data');
+    }
+    return newQueryBranch('found', { index: input.index, id: input.documentId, source: body._source, version: body._version },
+      { observedAt: new Date().toISOString() });
+  }
 }

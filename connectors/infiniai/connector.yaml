@@ -9,10 +9,17 @@ metadata:
   version: v0.1.0
 spec:
   languages:
+    java: {version: v0.1.0, operations: [listModels], triggers: []}
+    rust: {version: v0.1.0, operations: [listModels], triggers: []}
     python: {version: v0.1.0, operations: [listModels], triggers: []}
     typescript: {version: v0.1.0, operations: [listModels], triggers: []}
   provider: infiniai
   codegen:
+    modelCatalog:
+      endpoint: https://cloud.infini-ai.com/maas/v1/models
+      providerLabel: InfiniAI
+      connectorResponse: true
+      keyPrefix: sk-
     go:
       package: infiniai
   configuration:

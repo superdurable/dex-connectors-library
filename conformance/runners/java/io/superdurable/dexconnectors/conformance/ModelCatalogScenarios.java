@@ -68,7 +68,7 @@ public abstract class ModelCatalogScenarios {
         assertFalse(expected.get("uncertain").asBoolean());
         assertEquals(expected.get("retryAfterMs").asLong(), attempt.getRetryAfter().toMillis());
         assertEquals(expected.get("failureKind").asText(), attempt.getFailure() == null ? "" : attempt.getFailure().getKind().name());
-        if (expected.has("output")) assertEquals(expected.get("output"), JSON.valueToTree(attempt.getValue()));
+        if (expected.has("output")) assertEquals(expected.get("output"), JSON.readTree(JSON.writeValueAsBytes(attempt.getValue())));
         assertEquals(expected.get("requestCount").asInt(), provider.sent);
         assertEquals(provider.exchanges.size(), provider.attempted);
     }

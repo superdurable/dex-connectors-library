@@ -1,0 +1,52 @@
+{
+  "connectorId": "ppio",
+  "releaseTag": "connectors/ppio/go/v0.1.0",
+  "package": {
+    "ecosystem": "cargo",
+    "name": "dex-connector-ppio",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_list_models_step",
+      "kind": "query",
+      "operationId": "listModels",
+      "inputType": "ListModelsInput",
+      "description": "List PPIO language models and their availability metadata.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListModelsInput has no user-supplied query parameters.",
+        "properties": {},
+        "type": "object"
+      }
+    }
+  ]
+}

@@ -247,6 +247,10 @@ type Codegen struct {
 
 // ModelCatalogCodegen selects a bearer-authenticated GET of an OpenAI-compatible model catalog.
 type ModelCatalogCodegen struct {
+	// JSONContentType sends the application/json Content-Type required by some model-list APIs.
+	JSONContentType bool `yaml:"jsonContentType,omitempty" json:"jsonContentType,omitempty"`
+	// ConnectorResponse delegates response validation and output projection to the connector package.
+	ConnectorResponse bool `yaml:"connectorResponse,omitempty" json:"connectorResponse,omitempty"`
 	// ObjectTags specifies the list and model type tags: lowercase (default), uppercase, or absent.
 	ObjectTags string `yaml:"objectTags,omitempty" json:"objectTags,omitempty"`
 	// Endpoint is the fixed HTTPS model-list URL.

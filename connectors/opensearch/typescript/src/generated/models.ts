@@ -135,6 +135,24 @@ export interface SearchPage {
   /** Hits contains this page's matching documents. */
   "hits": Array<SearchHit> | null;
 }
+/** GetDocumentInput identifies an index document by its stable ID. */
+export interface GetDocumentInput {
+  /** Index is the lowercase concrete index name. */
+  "index": string;
+  /** DocumentID is the stable OpenSearch document ID. */
+  "documentId": string;
+}
+/** RetrievedDocument is one indexed source and its version. */
+export interface RetrievedDocument {
+  /** Index is the index containing the source. */
+  "index": string;
+  /** ID is the provider document ID. */
+  "id": string;
+  /** Source is untrusted provider JSON and can contain sensitive user data. */
+  "source": unknown | null;
+  /** Version is the OpenSearch document version. */
+  "version": number;
+}
 
 /** Runtime validator for IndexDocumentInput. */
 export const IndexDocumentInputSchema = z.strictObject({
@@ -184,3 +202,17 @@ export const SearchPageSchema = z.strictObject({
   "relation": z.string(),
   "hits": z.array(SearchHitSchema).nullable(),
 }) satisfies z.ZodType<SearchPage>;
+
+/** Runtime validator for GetDocumentInput. */
+export const GetDocumentInputSchema = z.strictObject({
+  "index": z.string(),
+  "documentId": z.string(),
+}) satisfies z.ZodType<GetDocumentInput>;
+
+/** Runtime validator for RetrievedDocument. */
+export const RetrievedDocumentSchema = z.strictObject({
+  "index": z.string(),
+  "id": z.string(),
+  "source": z.unknown().nullable(),
+  "version": z.number().int(),
+}) satisfies z.ZodType<RetrievedDocument>;

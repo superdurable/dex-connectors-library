@@ -4,7 +4,7 @@
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-opensearch",
-    "version": "0.1.1"
+    "version": "0.2.0"
   },
   "factories": [
     {
@@ -177,6 +177,70 @@
         "required": [
           "index",
           "query"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "newGetDocumentStep",
+      "kind": "query",
+      "operationId": "getDocument",
+      "inputType": "GetDocumentInput",
+      "description": "Retrieve one document by its stable ID, including the latest source before index refresh.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "notFound",
+          "optional": true
+        },
+        {
+          "id": "indexNotFound",
+          "field": "indexNotFound",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetDocumentInput identifies an index document by its stable ID.",
+        "properties": {
+          "documentId": {
+            "description": "DocumentID is the stable OpenSearch document ID.",
+            "type": "string"
+          },
+          "index": {
+            "description": "Index is the lowercase concrete index name.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "documentId",
+          "index"
         ],
         "type": "object"
       }

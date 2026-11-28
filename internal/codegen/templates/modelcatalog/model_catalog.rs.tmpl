@@ -27,7 +27,8 @@ const ENDPOINT: &str = [[.EndpointLiteral]];
 #[derive(Clone, Default, Deserialize, Serialize)]
 pub struct ListModelsInput {}
 
-/// Size of the provider catalog and its first fifty model IDs.
+[[if .ConnectorResponse]]pub use crate::model_response::ListModelsOutput;
+[[else]]/// Size of the provider catalog and its first fifty model IDs.
 #[derive(Clone, Default, Deserialize, Serialize)]
 pub struct ListModelsOutput {
     /// Number of entries in the complete provider response.
@@ -36,7 +37,7 @@ pub struct ListModelsOutput {
     #[serde(rename = "modelIDs")]
     pub model_ids: Vec<String>,
 }
-
+[[end]]
 /// Settings for a single provider request.
 pub struct Config {
     /// Timeout per attempt. Uses the manifest default.
@@ -121,7 +122,8 @@ impl Query for ListModelsOperation {
                 "Authorization",
                 format!("Bearer {}", credentials.api_key.reveal()),
             )
-            .header("Accept", "application/json");
+            .header("Accept", "application/json")[[if .JSONContentType]]
+            .header("Content-Type", "application/json")[[end]];
         let Ok(mut response) = self.http.send_traced(&request) else {
             return retry(
                 FailureKind::Availability,
@@ -158,7 +160,7 @@ impl Query for ListModelsOperation {
             };
         }
         match read_bounded_body(&mut response, self.max_response_bytes) {
-            Ok(body) => decode_models(&body),
+            Ok(body) => decode_models(&body[[if .ConnectorResponse]], &credentials.api_key[[end]]),
             Err(ProviderHttpError::BodyTooLarge(_)) => rejected(
                 "invalidResponse",
                 FailureKind::ResponseTooLarge,
@@ -189,7 +191,20 @@ fn valid_key(key: &str) -> bool {
     [[if .KeyPrefixLiteral]]key.starts_with([[.KeyPrefixLiteral]]) && [[end]]!key.is_empty() && key.len() <= 1024 && key.bytes().all(|byte| byte.is_ascii_graphic())
 }
 
-#[derive(Deserialize)]
+[[if .ConnectorResponse]]fn decode_models(body: &[u8], credential: &SecretString) -> QueryAttempt<ListModelsOutput> {
+    let output = serde_json::from_slice::<serde_json::Value>(body).ok().and_then(|catalog| {
+[[if .ListTag]]        if catalog.get("object")?.as_str()? != "[[.ListTag]]" {
+            return None;
+        }
+[[end]]        ListModelsOutput::from_provider_models(catalog.get("data")?.as_array()?, |value| value.contains(credential.reveal()))
+    });
+    match output {
+        Some(value) => QueryAttempt::branch([[.SuccessBranchLiteral]], value, Receipt::default(), None),
+        None => rejected("invalidResponse", FailureKind::Protocol, "[[.ProviderLabel]] returned invalid model data"),
+    }
+}
+
+[[else]]#[derive(Deserialize)]
 struct Catalog {
 [[if .ListTag]]    object: String,
 [[end]]
@@ -233,14 +248,14 @@ fn decode_models(body: &[u8]) -> QueryAttempt<ListModelsOutput> {
         }
     }
     QueryAttempt::branch(
-        "found",
+        [[.SuccessBranchLiteral]],
         ListModelsOutput { total, model_ids },
         Receipt::default(),
         None,
     )
 }
 
-fn rejected(branch: &str, kind: FailureKind, message: &str) -> QueryAttempt<ListModelsOutput> {
+[[end]]fn rejected(branch: &str, kind: FailureKind, message: &str) -> QueryAttempt<ListModelsOutput> {
     QueryAttempt::branch(
         branch,
         ListModelsOutput::default(),

@@ -44,18 +44,22 @@ from ._generated.definitions import (
     DEFECT,
     DELETE_DOCUMENT_DEFINITION,
     FOUND,
+    GET_DOCUMENT_DEFINITION,
     INDEX_DOCUMENT_DEFINITION,
     INDEX_NOT_FOUND,
     INDEXED,
     INVALID_RESPONSE,
+    NOT_FOUND,
     PROVIDER_REJECTED,
     SEARCH_DOCUMENTS_DEFINITION,
 )
 from .models import (
     DeletedDocument,
     DeleteDocumentInput,
+    GetDocumentInput,
     IndexDocumentInput,
     IndexedDocument,
+    RetrievedDocument,
     SearchDocumentsInput,
     SearchHit,
     SearchPage,
@@ -110,6 +114,10 @@ class Client:
     def delete_document(self) -> "DeleteDocumentOperation":
         """Bind the stable-ID deletion Mutation."""
         return DeleteDocumentOperation(self)
+
+    def get_document(self) -> "GetDocumentOperation":
+        """Bind the document retrieval Query to this cluster."""
+        return GetDocumentOperation(self)
 
     def search_documents(self) -> "SearchDocumentsOperation":
         """Bind the bounded document search Query."""
@@ -270,6 +278,89 @@ class DeleteDocumentOperation:
         return _delete_failure(PROVIDER_REJECTED, _rejection_kind(exchange.status))
 
 
+class GetDocumentOperation:
+    """Retrieve the source and version of one document by its index and ID."""
+
+    def __init__(self, client: Client) -> None:
+        self.client = client
+
+    def definition(self) -> QueryDefinition:
+        """Return the manifest-generated retrieval contract."""
+        return GET_DOCUMENT_DEFINITION
+
+    async def invoke(self, call: Call, input: GetDocumentInput) -> QueryAttempt[RetrievedDocument]:
+        """Read one document, with distinct branches for missing documents and missing indexes."""
+
+        def failure(branch: str, kind: FailureKind, message: str) -> QueryAttempt[RetrievedDocument]:
+            return QueryAttempt.branch_result(
+                branch, RetrievedDocument(), Receipt(), Failure(kind, "opensearch", "getDocument", message)
+            )
+
+        def retry(kind: FailureKind, message: str, delay: float = 0) -> QueryAttempt[RetrievedDocument]:
+            return QueryAttempt.retry(Failure(kind, "opensearch", "getDocument", message), delay)
+
+        if not _valid_index(input.index) or not _valid_document_id(input.document_id):
+            return failure(DEFECT, FailureKind.VALIDATION, "index or document ID is invalid")
+        authorization = await self.client._resolve_authorization(call)
+        if authorization is None:
+            return retry(FailureKind.AVAILABILITY, "OpenSearch credentials are temporarily unavailable")
+        if not authorization:
+            return failure(DEFECT, FailureKind.AUTHENTICATION, "OpenSearch credentials are invalid")
+        request = self.client.http_client.build_request(
+            "GET",
+            _document_url(self.client.cluster_url, input.index, input.document_id),
+            headers={"Accept": "application/json", "Authorization": authorization},
+        )
+        exchange = await self.client.request(request)
+        if exchange.status == 429:
+            return retry(FailureKind.RATE_LIMIT, "OpenSearch rate limited the request", exchange.retry_after)
+        if exchange.status in (408, 409) or exchange.status >= 500:
+            return retry(
+                FailureKind.AVAILABILITY, "OpenSearch is temporarily unavailable", exchange.retry_after
+            )
+        if exchange.error == "too_large":
+            return retry(
+                FailureKind.RESPONSE_TOO_LARGE, "OpenSearch document response exceeded the configured limit"
+            )
+        if exchange.error:
+            return retry(FailureKind.TRANSPORT, "OpenSearch document request failed")
+        body = _parse_json(exchange.body)
+        if exchange.status == 404:
+            if isinstance(body, dict) and (body.get("found") is None or type(body["found"]) is bool):
+                error = body.get("error")
+                if isinstance(error, dict) and error.get("type") == "index_not_found_exception":
+                    return failure(INDEX_NOT_FOUND, FailureKind.NOT_FOUND, "OpenSearch index was not found")
+                if body.get("found") is False and (
+                    error is None
+                    or isinstance(error, dict)
+                    and (error.get("type") is None or isinstance(error["type"], str))
+                ):
+                    return failure(NOT_FOUND, FailureKind.NOT_FOUND, "OpenSearch document was not found")
+            return failure(
+                INVALID_RESPONSE, FailureKind.PROTOCOL, "OpenSearch returned invalid missing-document data"
+            )
+        if exchange.status != 200:
+            return failure(
+                PROVIDER_REJECTED,
+                _rejection_kind(exchange.status),
+                f"OpenSearch rejected retrieval with HTTP {exchange.status}",
+            )
+        if (
+            not isinstance(body, dict)
+            or body.get("_index") != input.index
+            or body.get("_id") != input.document_id
+            or type(body.get("_version")) is not int
+            or not 0 < body["_version"] <= (1 << 63) - 1
+            or body.get("found") is not True
+            or not isinstance(body.get("_source"), dict)
+        ):
+            return failure(
+                INVALID_RESPONSE, FailureKind.PROTOCOL, "OpenSearch returned invalid document data"
+            )
+        value = RetrievedDocument(input.index, input.document_id, body["_source"], body["_version"])
+        return QueryAttempt.branch_result(FOUND, value, Receipt(observed_at=datetime.now(UTC)))
+
+
 class SearchDocumentsOperation:
     """Search one index with bounded Lucene query-string pagination."""
 
@@ -346,13 +437,17 @@ def _valid_index(index: str) -> bool:
 
 
 def _valid_document_id(document_id: str) -> bool:
-    return bool(document_id and len(document_id.encode()) <= 512 and not any(
+    try:
+        encoded = document_id.encode()
+    except UnicodeEncodeError:
+        return False
+    return bool(document_id and len(encoded) <= 512 and not any(
         character in document_id for character in "\r\n\x00"
     ))
 
 
 def _document_url(cluster_url: str, index: str, document_id: str) -> str:
-    return cluster_url + "/" + index + "/_doc/" + quote(document_id, safe="")
+    return cluster_url + "/" + index + "/_doc/" + quote(document_id, safe="$&+:=@")
 
 
 def _parse_json(body: bytes) -> Any:

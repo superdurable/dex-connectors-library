@@ -230,6 +230,111 @@
       "input": {},
       "name": "listModels-transport",
       "operation": "listModels"
+    },
+    {
+      "callId": "6cf51950-86f9-5ccf-8bba-f18962906f49",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"list\",\"data\":[{\"id\":\"reflected-sk-secret-api-key\",\"object\":\"model\",\"created\":0,\"owned_by\":\"\",\"max_output_length\":393216,\"context_length\":1024000,\"model_type\":\"大语言模型\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/maas/v1/models",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sk-secret-api-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "models": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listModels-credential-in-id",
+      "operation": "listModels"
+    },
+    {
+      "callId": "29a7e9dc-ddf1-537c-9401-a06c2aef6fe1",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"list\",\"data\":[{\"id\":\"deepseek-v4-pro\",\"object\":\"model\",\"created\":0,\"owned_by\":\"\",\"max_output_length\":393216,\"context_length\":1024000,\"model_type\":\"reflected-sk-secret-api-key\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/maas/v1/models",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sk-secret-api-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "models": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listModels-credential-in-type",
+      "operation": "listModels"
+    },
+    {
+      "callId": "6f8e3a53-2ad9-5519-b26b-10db22067d58",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"list\",\"data\":[{\"id\":\"deepseek-v4-pro\",\"object\":\"model\",\"created\":0,\"owned_by\":\"\",\"max_output_length\":393216,\"context_length\":-1,\"model_type\":\"大语言模型\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/maas/v1/models",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sk-secret-api-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "models": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listModels-negative-context-limit",
+      "operation": "listModels"
     }
   ],
   "schemaVersion": 1

@@ -9,3 +9,12 @@ The runnable [list-models example](go/examples/list-models/README.md) demonstrat
 ## Python
 
 The first Python package implements the read-only operation and all Go-recorded provider branches. See [Python package](python/README.md) and its [runnable Flow](python/examples/models/README.md). Live provider authorization and responses are unverified.
+
+The [Java Worker](java/examples/io/superdurable/dexconnectors/ppio/ModelCatalogWorker.java) and
+[Rust Worker](rust/examples/list_models.rs) serve the same model-list Query.
+Both examples read the key from `PPIO_API_KEY` in the Worker environment and use
+the static connection name `ppio`. Start Dex locally with `dexcli dev -open=false`,
+then run `./gradlew modelCatalogWorker` from `java/` or `cargo run --example list_models`
+from `rust/`. Start `JavaPpioModelCatalog` with an empty JSON string or `RustPpioModelCatalog` with `{}`.
+Run `./gradlew check dexDevTest` and `cargo test --all-targets` in those directories
+to replay Go scenarios and exercise retry through a real Worker and Client.

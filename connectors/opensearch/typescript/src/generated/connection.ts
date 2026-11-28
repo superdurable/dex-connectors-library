@@ -4,7 +4,7 @@
 
 import { ConnectionRefSchema, type ConnectionRef, type Mutation, type Query } from '@superdurable/connectors-sdk';
 import type { LoadedProject } from '@superdurable/connectors-sdk/projectconfig';
-import type { IndexDocumentInput, IndexedDocument, DeleteDocumentInput, DeletedDocument, SearchDocumentsInput, SearchPage } from './models.js';
+import type { IndexDocumentInput, IndexedDocument, DeleteDocumentInput, DeletedDocument, SearchDocumentsInput, SearchPage, GetDocumentInput, RetrievedDocument } from './models.js';
 import { ConnectorID, ProviderID } from './definitions.js';
 
 /** Typed operations supplied by a client or mock. */
@@ -15,6 +15,8 @@ export interface Operations {
   deleteDocument(): Mutation<DeleteDocumentInput, DeletedDocument>;
   /** Invoke searchDocuments through this connection. */
   searchDocuments(): Query<SearchDocumentsInput, SearchPage>;
+  /** Invoke getDocument through this connection. */
+  getDocument(): Query<GetDocumentInput, RetrievedDocument>;
 }
 
 /** Named connector connection kept outside Flow state. */

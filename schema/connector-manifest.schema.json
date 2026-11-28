@@ -62,6 +62,8 @@
               "properties": {
                 "endpoint": { "type": "string", "format": "uri", "pattern": "^https://" },
                 "keyPrefix": { "type": "string", "pattern": "^[A-Za-z0-9._-]*$" },
+                "jsonContentType": { "type": "boolean" },
+                "connectorResponse": { "type": "boolean" },
                 "objectTags": { "enum": ["lowercase", "uppercase", "absent"] },
                 "providerLabel": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9 ._-]*$" }
               }

@@ -141,9 +141,17 @@ Rust packages import `src/generated_definitions.rs`.
 For providers exposing a bearer-authenticated model list, `spec.codegen.modelCatalog`
 can generate the Java and Rust `listModels` clients. Set the fixed HTTPS `endpoint`
 and `providerLabel`, along with `keyPrefix` when the provider requires one.
+For a provider-specific output, set `connectorResponse: true`. Implement
+`ListModelsOutput.fromProviderModels` in the Java package and
+`model_response::ListModelsOutput::from_provider_models` in Rust.
+Each decoder receives the provider data array and a predicate that detects
+credential echoes when the provider contract requires rejection. It returns the typed output,
+or signals invalid provider data with Java `null` or Rust `None`.
+The shared client enforces request, retry, byte-limit and envelope validation.
 The `objectTags` setting accepts `lowercase` (the default), `uppercase`, or `absent`
-for the response's list and model type tags. The protocol validates the full response,
+for the response's list tag. The built-in decoder also validates the model tag,
 returns its total model count, and retains at most fifty model IDs in provider order.
+Set `jsonContentType: true` when the provider requires a JSON Content-Type on the GET.
 The [365 API manifest](../connectors/365api/connector.yaml) includes the complete
 declaration. Run the package's Go-recorded scenarios to verify the provider contract.
 

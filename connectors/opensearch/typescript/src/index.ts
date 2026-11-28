@@ -6,4 +6,4 @@ export * from './generated/definitions.js';
 export * from './generated/steps.js';
 export { Connection, newConnection, newConnectionWithOperations } from './generated/connection.js';
 export { newProjectConnection } from './project.js';
-export { OpenSearchClient, IndexDocumentOperation, DeleteDocumentOperation, SearchDocumentsOperation, type OpenSearchClientOptions } from './client.js';
+export { OpenSearchClient, GetDocumentOperation, IndexDocumentOperation, DeleteDocumentOperation, SearchDocumentsOperation, type OpenSearchClientOptions } from './client.js';

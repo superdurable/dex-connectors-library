@@ -5,7 +5,7 @@ import { it } from 'vitest';
 import { RetryError, runMutation, SecretString, type Call, type Mutation } from '@superdurable/connectors-sdk';
 import { ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
 import {
-  OpenSearchClient, DeleteDocumentInputSchema, IndexDocumentInputSchema, SearchDocumentsInputSchema,
+  OpenSearchClient, GetDocumentInputSchema, DeleteDocumentInputSchema, IndexDocumentInputSchema, SearchDocumentsInputSchema,
   type DeletedDocument, type IndexedDocument,
 } from '../src/index.js';
 import {
@@ -13,8 +13,7 @@ import {
   type ExchangeRecorder, type HeartbeatContext, type Scenario,
 } from '../../../../conformance/runners/typescript/connector_scenarios.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/opensearch/scenarios.json', import.meta.url))
-  .filter(scenario => ['indexDocument', 'deleteDocument', 'searchDocuments'].includes(scenario.operation));
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/opensearch/scenarios.json', import.meta.url));
 const connection = { provider: 'opensearch', name: 'opensearch' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeOpenSearch));
 
@@ -37,6 +36,8 @@ async function invokeOpenSearch(scenario: Scenario, recorder: ExchangeRecorder, 
       recording => runMutation(recording as Mutation<typeof input, DeletedDocument>, call, input),
       error => error instanceof RetryError);
   }
+  if (scenario.operation === 'getDocument')
+    return client.getDocument().invoke(call, GetDocumentInputSchema.parse(scenario.input));
   if (scenario.operation === 'searchDocuments')
     return client.searchDocuments().invoke(call, SearchDocumentsInputSchema.parse(scenario.input));
   throw new Error(`unknown OpenSearch operation ${scenario.operation}`);

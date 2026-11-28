@@ -7,6 +7,7 @@ from .client import (
     Config,
     Credentials,
     DeleteDocumentOperation,
+    GetDocumentOperation,
     IndexDocumentOperation,
     SearchDocumentsOperation,
 )
@@ -14,13 +15,20 @@ from .connection import Connection, new_connection, new_connection_with_operatio
 from .models import (
     DeletedDocument,
     DeleteDocumentInput,
+    GetDocumentInput,
     IndexDocumentInput,
     IndexedDocument,
+    RetrievedDocument,
     SearchDocumentsInput,
     SearchHit,
     SearchPage,
 )
-from .steps import new_delete_document_step, new_index_document_step, new_search_documents_step
+from .steps import (
+    new_delete_document_step,
+    new_get_document_step,
+    new_index_document_step,
+    new_search_documents_step,
+)
 
 __all__ = [
     "Client",
@@ -37,6 +45,10 @@ __all__ = [
     "DeletedDocument",
     "IndexDocumentInput",
     "IndexedDocument",
+    "GetDocumentInput",
+    "GetDocumentOperation",
+    "RetrievedDocument",
+    "new_get_document_step",
     "SearchDocumentsInput",
     "SearchHit",
     "SearchPage",
