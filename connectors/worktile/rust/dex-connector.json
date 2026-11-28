@@ -1,0 +1,65 @@
+{
+  "connectorId": "worktile",
+  "releaseTag": "connectors/worktile/go/v0.1.0",
+  "package": {
+    "ecosystem": "cargo",
+    "name": "dex-connector-worktile",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_list_projects_step",
+      "kind": "query",
+      "operationId": "listProjects",
+      "inputType": "ListProjectsInput",
+      "description": "List one zero-based page of projects available to the tenant.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListProjectsInput selects one zero-based page of projects.",
+        "properties": {
+          "pageIndex": {
+            "description": "PageIndex starts at zero.",
+            "type": "integer"
+          },
+          "pageSize": {
+            "description": "PageSize is the number of projects to request, from one through one hundred.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "pageIndex",
+          "pageSize"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

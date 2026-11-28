@@ -1,0 +1,42 @@
+{
+  "listProjects": {
+    "branches": [
+      {
+        "description": "Zadig returned a project page.",
+        "id": "listed",
+        "optional": false
+      },
+      {
+        "description": "Zadig rejected the token or project access.",
+        "id": "providerRejected",
+        "optional": true
+      },
+      {
+        "description": "Zadig returned malformed or oversized data.",
+        "id": "invalidResponse",
+        "optional": true
+      },
+      {
+        "description": "Local credentials or page options are invalid.",
+        "id": "defect",
+        "optional": true
+      }
+    ],
+    "operation": {
+      "connectorId": "zadig",
+      "operationId": "listProjects"
+    },
+    "stepDefaults": {
+      "executeDurability": 2,
+      "executeMethodTimeout": 30000000000,
+      "executeRetry": {
+        "BackoffCoefficient": 2,
+        "InitialInterval": 1000000000,
+        "MaximumAttempts": 0,
+        "MaximumInterval": 300000000000,
+        "TotalDuration": 3600000000000
+      },
+      "heartbeatTimeout": 0
+    }
+  }
+}

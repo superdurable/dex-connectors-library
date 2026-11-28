@@ -390,6 +390,520 @@
       },
       "name": "listProjects-defect",
       "operation": "listProjects"
+    },
+    {
+      "callId": "2a73540c-0dac-5e8e-b7fb-8a9c8046f454",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "projects": [],
+          "total": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageNum": 1000001,
+        "pageSize": 10
+      },
+      "name": "listProjects-bad-window",
+      "operation": "listProjects"
+    },
+    {
+      "callId": "866f850f-3f06-539d-9edc-6cee151d4ebc",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/projects/project",
+          "query": {
+            "pageNum": [
+              "2"
+            ],
+            "pageSize": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer private-test-key"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "projects": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageNum": 2,
+        "pageSize": 10
+      },
+      "name": "listProjects-forbidden",
+      "operation": "listProjects"
+    },
+    {
+      "callId": "d26b00a8-9c3d-5e3f-8a3b-e77b6601ee4a",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/projects/project",
+          "query": {
+            "pageNum": [
+              "2"
+            ],
+            "pageSize": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer private-test-key"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "projects": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageNum": 2,
+        "pageSize": 10
+      },
+      "name": "listProjects-provider-bad-request",
+      "operation": "listProjects"
+    },
+    {
+      "callId": "23e3a2e4-3e5f-58c2-83a9-be5a155c1ed1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/projects/project",
+          "query": {
+            "pageNum": [
+              "2"
+            ],
+            "pageSize": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer private-test-key"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 7000,
+        "uncertain": false
+      },
+      "input": {
+        "pageNum": 2,
+        "pageSize": 10
+      },
+      "name": "listProjects-retry-after",
+      "operation": "listProjects"
+    },
+    {
+      "callId": "d6c98b66-d67e-502f-8b72-4d8d79cd65c0",
+      "exchanges": [
+        {
+          "body": "{\"total\":25,\"projects\":[{\"project_key\":\"demo\",\"project_name\":\"Demo\",\"deploy_type\":null}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/projects/project",
+          "query": {
+            "pageNum": [
+              "2"
+            ],
+            "pageSize": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer private-test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "projects": [
+            {
+              "deployType": "",
+              "key": "demo",
+              "name": "Demo"
+            }
+          ],
+          "total": 25
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageNum": 2,
+        "pageSize": 10
+      },
+      "name": "listProjects-nullable-deployment",
+      "operation": "listProjects"
+    },
+    {
+      "callId": "22a79702-2c47-5fd0-85a1-54f05ede949a",
+      "exchanges": [
+        {
+          "body": "{\"total\":25,\"projects\":[{\"project_key\":\"demo\",\"project_name\":\"Demo\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/projects/project",
+          "query": {
+            "pageNum": [
+              "2"
+            ],
+            "pageSize": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer private-test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "projects": [
+            {
+              "deployType": "",
+              "key": "demo",
+              "name": "Demo"
+            }
+          ],
+          "total": 25
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageNum": 2,
+        "pageSize": 10
+      },
+      "name": "listProjects-missing-deployment",
+      "operation": "listProjects"
+    },
+    {
+      "callId": "d3fdd0e7-50b2-5af2-93e8-53c54a33cd47",
+      "exchanges": [
+        {
+          "body": "{\"total\":25,\"projects\":[{\"project_key\":\"demo\",\"project_name\":\"界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界ab\",\"deploy_type\":\"界界界界界界界界界界界界界界界界界界界界界a\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/projects/project",
+          "query": {
+            "pageNum": [
+              "2"
+            ],
+            "pageSize": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer private-test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "projects": [
+            {
+              "deployType": "界界界界界界界界界界界界界界界界界界界界界a",
+              "key": "demo",
+              "name": "界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界ab"
+            }
+          ],
+          "total": 25
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageNum": 2,
+        "pageSize": 10
+      },
+      "name": "listProjects-utf8-boundary",
+      "operation": "listProjects"
+    },
+    {
+      "callId": "6d71a52c-1299-5cb1-81f3-6333a6e8c776",
+      "exchanges": [
+        {
+          "body": "{\"total\":25,\"projects\":[{\"project_key\":\"demo\",\"project_name\":\"界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界\",\"deploy_type\":\"yaml\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/projects/project",
+          "query": {
+            "pageNum": [
+              "2"
+            ],
+            "pageSize": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer private-test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "projects": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageNum": 2,
+        "pageSize": 10
+      },
+      "name": "listProjects-utf8-overflow",
+      "operation": "listProjects"
+    },
+    {
+      "callId": "96c95f96-c4b7-52ab-9faa-4f6856a4a7a3",
+      "exchanges": [
+        {
+          "body": "{\"total\":25,\"projects\":[{\"project_key\":\"demo\",\"project_name\":\"Demo\",\"deploy_type\":\"界界界界界界界界界界界界界界界界界界界界界界\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/projects/project",
+          "query": {
+            "pageNum": [
+              "2"
+            ],
+            "pageSize": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer private-test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "projects": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageNum": 2,
+        "pageSize": 10
+      },
+      "name": "listProjects-deployment-overflow",
+      "operation": "listProjects"
+    },
+    {
+      "callId": "029b4689-860b-56fe-8c98-fa9ed783dc39",
+      "exchanges": [
+        {
+          "body": "{\"total\":25,\"projects\":[{\"project_key\":\"demo\",\"project_name\":\"Demo\",\"deploy_type\":\"yaml\"},{\"project_key\":\"demo\",\"project_name\":\"Demo\",\"deploy_type\":\"yaml\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/projects/project",
+          "query": {
+            "pageNum": [
+              "2"
+            ],
+            "pageSize": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer private-test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "projects": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageNum": 2,
+        "pageSize": 1
+      },
+      "name": "listProjects-oversized-page",
+      "operation": "listProjects"
+    },
+    {
+      "callId": "753878db-bdcb-509f-a195-969dfe4b17d8",
+      "exchanges": [
+        {
+          "body": "{\"total\":25,\"projects\":[{\"project_key\":\"demo\",\"project_name\":\"Demo\",\"deploy_type\":\"yaml\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/projects/project",
+          "query": {
+            "pageNum": [
+              "1"
+            ],
+            "pageSize": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer private-test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "projects": [
+            {
+              "deployType": "yaml",
+              "key": "demo",
+              "name": "Demo"
+            }
+          ],
+          "total": 25
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageNum": 0,
+        "pageSize": 0
+      },
+      "name": "listProjects-default-page",
+      "operation": "listProjects"
     }
   ],
   "schemaVersion": 1

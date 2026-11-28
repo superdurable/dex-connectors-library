@@ -15,4 +15,19 @@ The [project catalog Flow](go/examples/project-catalog/) is a runnable Worker wi
 
 The first Python package implements the read-only `listProjects` operation and replays all Go-recorded outcomes. See the [Python package](python/README.md) and its [runnable Flow](python/examples/project_list/README.md). Live provider authorization and responses remain unverified.
 
-The [TypeScript package](typescript/) (v0.1.0) includes a [runnable Dex Flow](typescript/examples/basic/) and Go conformance replay.
+The [TypeScript package](typescript/) (v0.1.1) includes a [runnable Dex Flow](typescript/examples/basic/) and Go conformance replay.
+
+## Java and Rust
+
+Both packages implement `listProjects` and bind it to a Dex Query Step. The result lists projects visible to the connection in provider order. Zadig authenticates with the API token for the configured deployment. Use `pageNum` and `pageSize` to select a page. Zero requests the first page or the default size of 20, respectively.
+
+The [Java Worker](java/examples/io/superdurable/dexconnectors/zadig/ProjectDirectoryWorker.java) serves `JavaZadigProjectDirectory`. From `java/`, run `./gradlew projectDirectoryWorker` with the deployment origin in `ZADIG_BASE_URL` and the API token supplied by your credential manager in `ZADIG_API_KEY`. Hosted Java applications can bind their loaded Dex project with `ProjectDirectory.fromProject(project, "zadig")`.
+
+The [Rust Worker](rust/examples/list_projects.rs) serves `RustZadigProjectDirectory`. Set `DEX_CONNECTOR_CONFIG_FILE` to the connections file exported by Dex Web with the named `zadig` connection. From `rust/`, run `cargo run --example list_projects`. Both examples use `DEX_FLOW_SERVICE_ADDRESS` to select the Dex server.
+
+Generate the Flow Definition Graphs from the connector directory.
+
+```sh
+dexcli visualize java/examples/io/superdurable/dexconnectors/zadig/ProjectDirectoryWorker.java --language java --schema-version 2.0 --lint app --open=false --json --out /tmp/zadig-java
+dexcli visualize rust/examples/list_projects.rs --language rust --schema-version 2.0 --lint app --open=false --json --out /tmp/zadig-rust
+```

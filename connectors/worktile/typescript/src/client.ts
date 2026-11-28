@@ -59,8 +59,8 @@ export class ListProjectsOperation implements Query<ListProjectsInput, ListProje
     if (!isRecord(document) || document.page_index !== input.pageIndex || !Number.isSafeInteger(document.page_size) || (document.page_size as number) < 1 || (document.page_size as number) > 100 || typeof document.has_more !== 'boolean' || !Array.isArray(document.items)) return branch('invalidResponse', 'PROTOCOL');
     const projects: Project[] = [];
     for (const item of document.items as unknown[]) {
-      if (!isRecord(item) || typeof item._id !== 'string' || !item._id || typeof item.name !== 'string' || !item.name || (item.visibility !== 1 && item.visibility !== 2)) return branch('invalidResponse', 'PROTOCOL');
-      projects.push({ id: item._id, name: item.name, identifier: typeof item.identifier === 'string' ? item.identifier : '', visibility: item.visibility });
+      if (!isRecord(item) || typeof item._id !== 'string' || !item._id || typeof item.name !== 'string' || !item.name || (item.identifier != null && typeof item.identifier !== 'string') || (item.visibility !== 1 && item.visibility !== 2)) return branch('invalidResponse', 'PROTOCOL');
+      projects.push({ id: item._id, name: item.name, identifier: item.identifier ?? '', visibility: item.visibility });
     }
     return newQueryBranch('found', { pageIndex: input.pageIndex, pageSize: document.page_size as number, hasMore: document.has_more, projects });
   }
@@ -81,7 +81,7 @@ export class ListProjectsOperation implements Query<ListProjectsInput, ListProje
 function validCredential(value: unknown): value is string { return typeof value === 'string' && value.length > 0 && value.length <= 1024 && /^[!-~]+$/.test(value); }
 function isRecord(value: unknown): value is Record<string, unknown> { return typeof value === 'object' && value !== null && !Array.isArray(value); }
 function classifyStatus(status: number, headers: ProviderResponse['headers']): QueryAttempt<ListProjectsOutput> {
-  const value = headers['retry-after']; const delay = parseRetryAfter(Array.isArray(value) ? value[0] ?? '' : value ?? '');
+  const value = Object.entries(headers).find(([name]) => name.toLowerCase() === 'retry-after')?.[1]; const delay = parseRetryAfter(Array.isArray(value) ? value[0] ?? '' : value ?? '');
   if (status === 429) return retry('RATE_LIMIT', delay);
   if (status === 408 || status >= 500) return retry('AVAILABILITY', delay);
   return branch('providerRejected', status === 401 ? 'AUTHENTICATION' : status === 403 ? 'AUTHORIZATION' : 'PROVIDER_REJECTION');

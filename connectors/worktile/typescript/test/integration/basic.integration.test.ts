@@ -17,7 +17,7 @@ it('retries Worktile 503 and persists a project page through real Dex', async ()
   if (!dexAddress) throw new Error('set DEX_FLOW_SERVICE_ADDRESS to a running dexcli dev service');
   let requests = 0;
   const tokenBody = new TextEncoder().encode(JSON.stringify({ tenant_access_token: 'REDACTED_WORKTILE_ACCESS_TOKEN', expires_in: 7200 }));
-  const projectBody = new TextEncoder().encode(JSON.stringify({ page_index: 0, page_size: 10, has_more: false, items: [{ _id: 'project-1', name: 'Example Project', identifier: 'ABC', visibility: 1, private: 'must not persist' }] }));
+  const projectBody = new TextEncoder().encode(JSON.stringify({ page_index: 0, page_size: 10, has_more: false, items: [{ _id: 'project-1', name: 'Example Project', identifier: null, visibility: 1, private: 'must not persist' }] }));
   const directory = await mkdtemp(join(tmpdir(), 'dex-worktile-ts-integration-'));
   const cache = openBlobCache({ directory, maxBytes: 64 * 1024 * 1024 });
   const provider = new WorktileClient({}, { resolve: async () => ({ clientId: new SecretString('REDACTED_WORKTILE_CLIENT_ID'), clientSecret: new SecretString('REDACTED_WORKTILE_CLIENT_SECRET') }) }, {
@@ -38,7 +38,7 @@ it('retries Worktile 503 and persists a project page through real Dex', async ()
     await client.startFlow(flow, flowId, { pageIndex: 0, pageSize: 10 });
     const result = await client.waitForFlow(flowId, 60_000);
     expect(result.status, result.errorMessage).toBe('completed');
-    expect(result.singleOutput()).toEqual({ pageIndex: 0, pageSize: 10, hasMore: false, projects: [{ id: 'project-1', name: 'Example Project', identifier: 'ABC', visibility: 1 }] });
+    expect(result.singleOutput()).toEqual({ pageIndex: 0, pageSize: 10, hasMore: false, projects: [{ id: 'project-1', name: 'Example Project', identifier: '', visibility: 1 }] });
     expect(requests).toBe(3);
   } finally {
     await client.close(); await worker.close(); cache.close();

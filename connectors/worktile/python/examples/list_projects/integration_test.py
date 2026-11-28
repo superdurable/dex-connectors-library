@@ -33,7 +33,7 @@ async def test_list_projects_retries_503(tmp_path: Path) -> None:
     token_body = '{"tenant_access_token":"REDACTED_WORKTILE_ACCESS_TOKEN","expires_in":7200}'
     project_body = (
         '{"page_index":1,"page_size":10,"has_more":true,"items":'
-        '[{"_id":"project-1","name":"Example Project","identifier":"ABC","visibility":1}]}'
+        '[{"_id":"project-1","name":"Example Project","identifier":null,"visibility":1}]}'
     )
 
     def answer(request: httpx.Request) -> httpx.Response:
@@ -68,7 +68,9 @@ async def test_list_projects_retries_503(tmp_path: Path) -> None:
                 result = await asyncio.wait_for(client.wait_for_flow(flow_id, timedelta(seconds=40)), 45)
                 assert result.status == dex.FlowStatus.COMPLETED, result.error_message
                 output = result.single_output(ListProjectsOutput)
-                assert output != ListProjectsOutput()
+                assert output.projects[0].id == "project-1"
+                assert output.projects[0].identifier == ""
+                assert output.has_more
                 assert len(requests) == 3
         finally:
             await worker.stop()

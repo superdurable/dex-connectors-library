@@ -1,0 +1,42 @@
+{
+  "listProjects": {
+    "branches": [
+      {
+        "description": "Worktile returned one page of projects.",
+        "id": "found",
+        "optional": false
+      },
+      {
+        "description": "Worktile rejected the token or project-list request.",
+        "id": "providerRejected",
+        "optional": true
+      },
+      {
+        "description": "Worktile returned malformed or oversized data.",
+        "id": "invalidResponse",
+        "optional": true
+      },
+      {
+        "description": "Local connection credentials, input, or settings are invalid.",
+        "id": "defect",
+        "optional": true
+      }
+    ],
+    "operation": {
+      "connectorId": "worktile",
+      "operationId": "listProjects"
+    },
+    "stepDefaults": {
+      "executeDurability": 2,
+      "executeMethodTimeout": 30000000000,
+      "executeRetry": {
+        "BackoffCoefficient": 2,
+        "InitialInterval": 1000000000,
+        "MaximumAttempts": 0,
+        "MaximumInterval": 300000000000,
+        "TotalDuration": 3600000000000
+      },
+      "heartbeatTimeout": 0
+    }
+  }
+}

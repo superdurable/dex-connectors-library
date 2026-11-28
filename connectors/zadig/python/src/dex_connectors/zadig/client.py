@@ -185,7 +185,9 @@ def _decode_projects(body: bytes, page_size: int) -> QueryAttempt[ListProjectsOu
         if not isinstance(entry, dict):
             return _branch("invalidResponse", FailureKind.PROTOCOL, "Zadig returned an invalid project")
         key, name = entry.get("project_key"), entry.get("project_name")
-        deploy_type = entry.get("deploy_type", "")
+        deploy_type = entry.get("deploy_type")
+        if deploy_type is None:
+            deploy_type = ""
         if (
             not isinstance(key, str)
             or not key

@@ -33,7 +33,7 @@ async def test_provider_query_retries_503(tmp_path: Path) -> None:
     scenarios = json.loads(
         (Path(__file__).parents[5] / "conformance/connectors/zadig/scenarios.json").read_text()
     )["scenarios"]
-    success = scenarios[0]
+    success = next(case for case in scenarios if case["name"] == "listProjects-nullable-deployment")
     exchanges = success["exchanges"]
     requests: list[httpx.Request] = []
 
@@ -68,7 +68,9 @@ async def test_provider_query_retries_503(tmp_path: Path) -> None:
                 result = await asyncio.wait_for(client.wait_for_flow(flow_id, timedelta(seconds=30)), 35)
                 assert result.status == dex.FlowStatus.COMPLETED, result.error_message
                 output = result.single_output(ListProjectsOutput)
-                assert len(output.projects) == len(success["expected"]["output"]["projects"])
+                assert output.projects[0].key == "demo"
+                assert output.projects[0].deploy_type == ""
+                assert output.total == 25
                 assert len(requests) == len(exchanges) + 1
         finally:
             await worker.stop()

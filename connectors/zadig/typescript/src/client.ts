@@ -45,26 +45,33 @@ export class ZadigClient {
     url.searchParams.set('pageNum', String(pageNum)); url.searchParams.set('pageSize', String(pageSize));
     const request: ProviderRequest = { url: url.toString(), method: 'GET', headers: { Accept: 'application/json', Authorization: 'Bearer ' + secret }, timeoutMs: this.timeoutMs, maxResponseBytes: this.maxResponseBytes, addressPolicy: this.baseUrl.startsWith('https:') ? 'publicHTTPS' : 'privateNetworkHTTP', signal: call.context.cancellationSignal };
     let response: ProviderResponse;
+    let oversized = false;
     try { response = await this.send(request); }
     catch (error) {
-      if (error instanceof BodyTooLargeError && error.status !== undefined) return branch('invalidResponse', 'RESPONSE_TOO_LARGE');
-      return retry('AVAILABILITY');
+      if (!(error instanceof BodyTooLargeError) || error.status === undefined) return retry('AVAILABILITY');
+      response = { status: error.status, headers: error.headers ?? {}, body: new Uint8Array() };
+      oversized = true;
     }
     const { status, body } = response;
     const retryHeader = Object.entries(response.headers).find(([key]) => key.toLowerCase() === 'retry-after')?.[1];
     const delay = parseRetryAfter(Array.isArray(retryHeader) ? retryHeader[0] ?? '' : retryHeader ?? '', this.now());
     if (status === 429) return retry('RATE_LIMIT', delay);
     if (status === 408 || status >= 500) return retry('AVAILABILITY', delay);
-    if (body.length > this.maxResponseBytes) return branch('invalidResponse', 'RESPONSE_TOO_LARGE');
-    if (status !== 200) return branch('providerRejected', status === 401 ? 'AUTHENTICATION' : status === 403 ? 'AUTHORIZATION' : status === 400 || status === 404 ? 'VALIDATION' : 'PROVIDER_REJECTION');
+    if (oversized || body.length > this.maxResponseBytes) return branch('invalidResponse', 'RESPONSE_TOO_LARGE');
+    if (status !== 200) return branch('providerRejected', status === 401 ? 'AUTHENTICATION' : status === 403 ? 'AUTHORIZATION' : 'PROVIDER_REJECTION');
     let wire: unknown;
     try { wire = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(body)) as unknown; }
     catch { return branch('invalidResponse', 'PROTOCOL'); }
     if (!isRecord(wire) || !Number.isSafeInteger(wire.total) || (wire.total as number) < 0 || !Array.isArray(wire.projects) || wire.projects.length > (input.pageSize || 20)) return branch('invalidResponse', 'PROTOCOL');
     const projects: ListProjectsOutput['projects'] = [];
     for (const item of wire.projects) {
-      if (!isRecord(item) || typeof item.project_key !== 'string' || !item.project_key || item.project_key.length > 256 || item.project_key.trim() !== item.project_key || typeof item.project_name !== 'string' || !item.project_name || item.project_name.length > 512 || typeof item.deploy_type !== 'string' || item.deploy_type.length > 64) return branch('invalidResponse', 'PROTOCOL');
-      projects.push({ key: item.project_key, name: item.project_name, deployType: item.deploy_type });
+      if (!isRecord(item)) return branch('invalidResponse', 'PROTOCOL');
+      const { project_key: key, project_name: name, deploy_type: deployment } = item;
+      const deployType = deployment ?? '';
+      if (typeof key !== 'string' || !key || Buffer.byteLength(key) > 256 || key.trim() !== key ||
+          typeof name !== 'string' || !name || Buffer.byteLength(name) > 512 ||
+          typeof deployType !== 'string' || Buffer.byteLength(deployType) > 64) return branch('invalidResponse', 'PROTOCOL');
+      projects.push({ key, name, deployType });
     }
     return newQueryBranch('listed', { projects, total: wire.total as number });
   }

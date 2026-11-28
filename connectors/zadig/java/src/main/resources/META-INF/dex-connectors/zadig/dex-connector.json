@@ -1,0 +1,65 @@
+{
+  "connectorId": "zadig",
+  "releaseTag": "connectors/zadig/go/v0.1.0",
+  "package": {
+    "ecosystem": "maven",
+    "name": "io.superdurable:dex-connector-zadig",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newListProjectsStep",
+      "kind": "query",
+      "operationId": "listProjects",
+      "inputType": "ListProjectsInput",
+      "description": "Read one page of project metadata.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListProjectsInput selects one project page. Zero page number and size use 1 and 20.",
+        "properties": {
+          "pageNum": {
+            "description": "PageNum is the one-based page number; zero selects the first page.",
+            "type": "integer"
+          },
+          "pageSize": {
+            "description": "PageSize is the number of projects to request, from 1 to 100; zero uses 20.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "pageNum",
+          "pageSize"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

@@ -197,14 +197,14 @@ class ListProjectsOperation:
                 or not item["name"]
                 or type(item.get("visibility")) is not int
                 or item["visibility"] not in (1, 2)
-                or not isinstance(item.get("identifier", ""), str)
+                or (item.get("identifier") is not None and not isinstance(item["identifier"], str))
             ):
                 return self._branch("invalidResponse", FailureKind.PROTOCOL)
             projects.append(
                 Project(
                     id=item["_id"],
                     name=item["name"],
-                    identifier=item.get("identifier", ""),
+                    identifier=item.get("identifier") or "",
                     visibility=item["visibility"],
                 )
             )

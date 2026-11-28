@@ -13,3 +13,18 @@ The [`python/`](python/) package implements the `listProjects` Query. Its checke
 ## TypeScript
 
 The TypeScript package under [`typescript/`](typescript/) implements `listProjects` with a runnable Dex Flow, Go-recorded conformance replay, and a real Dex integration test.
+
+## Java and Rust
+
+Both packages implement `listProjects` and bind it to a Dex Query Step. The result lists projects visible to the connection in provider order. Worktile exchanges the client ID and secret for a tenant token on each attempt. Supply a zero-based `pageIndex` and a `pageSize` from 1 to 100.
+
+The [Java Worker](java/examples/io/superdurable/dexconnectors/worktile/ProjectDirectoryWorker.java) serves `JavaWorktileProjectDirectory`. From `java/`, run `./gradlew projectDirectoryWorker` with `WORKTILE_CLIENT_ID` and `WORKTILE_CLIENT_SECRET` supplied by your credential manager. Hosted Java applications can bind their loaded Dex project with `ProjectDirectory.fromProject(project, "worktile")`.
+
+The [Rust Worker](rust/examples/list_projects.rs) serves `RustWorktileProjectDirectory`. Set `DEX_CONNECTOR_CONFIG_FILE` to the connections file exported by Dex Web with the named `worktile` connection. From `rust/`, run `cargo run --example list_projects`. Both examples use `DEX_FLOW_SERVICE_ADDRESS` to select the Dex server.
+
+Generate the Flow Definition Graphs from the connector directory.
+
+```sh
+dexcli visualize java/examples/io/superdurable/dexconnectors/worktile/ProjectDirectoryWorker.java --language java --schema-version 2.0 --lint app --open=false --json --out /tmp/worktile-java
+dexcli visualize rust/examples/list_projects.rs --language rust --schema-version 2.0 --lint app --open=false --json --out /tmp/worktile-rust
+```

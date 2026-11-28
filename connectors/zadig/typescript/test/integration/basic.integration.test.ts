@@ -18,10 +18,12 @@ it('retries one 503 and persists the provider result through real Dex', async ()
   const dexAddress = process.env.DEX_FLOW_SERVICE_ADDRESS;
   if (!dexAddress) throw new Error('set DEX_FLOW_SERVICE_ADDRESS to a running dexcli dev service');
   let requests = 0;
-  const bodies = [{ total: 1, projects: [{ project_key: "demo", project_name: "Demo", deploy_type: "yaml" }] }];
+  const bodies = [{ total: 1, projects: [{ project_key: "demo", project_name: "Demo", deploy_type: null }] }];
   const server = createServer((request, response) => {
     requests++;
-    if (requests === 1) { response.writeHead(503).end(); return; }
+    if (request.method !== 'GET' || request.url !== '/openapi/projects/project?pageNum=2&pageSize=10' ||
+        request.headers.authorization !== 'Bearer private-test-key') { response.writeHead(400).end(); return; }
+    if (requests === 1) { response.writeHead(503).end('x'.repeat(2048)); return; }
     const selected = bodies[0];
     response.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify(selected));
   });
@@ -31,12 +33,8 @@ it('retries one 503 and persists the provider result through real Dex', async ()
   if (!address || typeof address === 'string') throw new Error('Zadig fixture port unavailable');
   const directory = await mkdtemp(join(tmpdir(), 'dex-zadig-ts-integration-'));
   const cache = openBlobCache({ directory, maxBytes: 64 * 1024 * 1024 });
-  const provider = new ZadigClient({ baseUrl: 'http://127.0.0.1:1' }, { resolve: async () => ({ apiKey: new SecretString('private-test-key') }) }, {
-
-    send: async request => {
-      const reply = await fetch(`http://127.0.0.1:${address.port}${new URL(request.url).pathname}`, { method: request.method, headers: request.headers, body: request.body ? Buffer.from(request.body) : undefined });
-      return { status: reply.status, headers: Object.fromEntries(reply.headers), body: new Uint8Array(await reply.arrayBuffer()) };
-    },
+  const provider = new ZadigClient({ baseUrl: `http://127.0.0.1:${address.port}`, maxResponseBytes: 1024 }, {
+    resolve: async () => ({ apiKey: new SecretString('private-test-key') }),
   });
   const connection = newConnection(provider, { provider: 'zadig', name: ConnectionName });
   const flow = new ZadigInspectionFlow(connection);
@@ -50,7 +48,7 @@ it('retries one 503 and persists the provider result through real Dex', async ()
     await client.startFlow(flow, flowId, { pageNum: 2, pageSize: 10 });
     const result = await client.waitForFlow(flowId, 60_000);
     expect(result.status, result.errorMessage).toBe('completed');
-    expect(result.singleOutput()).toEqual({ projects: [{ key: "demo", name: "Demo", deployType: "yaml" }], total: 1 });
+    expect(result.singleOutput()).toEqual({ projects: [{ key: "demo", name: "Demo", deployType: "" }], total: 1 });
     expect(requests).toBe(2);
   } finally {
     await client.close(); await worker.close(); cache.close();
