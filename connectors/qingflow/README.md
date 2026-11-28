@@ -8,3 +8,16 @@ The public-cloud endpoint is fixed; DingTalk and private Qingflow deployments ha
 
 The [Python package](python/) implements the same `listApplications` Query and replays the seven Go-recorded provider scenarios. Its [runnable Flow](python/examples/application_directory/) verifies retry and persistence with a real local Dex Worker and Client.
 The [TypeScript package](typescript/) provides the same `ListApplications` operation, recorded conformance, and a runnable Dex Worker and Client example.
+
+## Java and Rust
+
+The [Java Worker](java/examples/io/superdurable/dexconnectors/qingflow/ApplicationDirectoryWorker.java) registers `JavaQingflowApplicationDirectory`. Run `./gradlew applicationDirectoryWorker` from `java/` with `QINGFLOW_ACCESS_TOKEN` supplied through your credential manager. Hosted Java applications can use `ApplicationDirectory.fromProject` with their loaded connection.
+
+The [Rust Worker](rust/examples/list_applications.rs) registers `RustQingflowApplicationDirectory`. From `rust/`, run `cargo run --example list_applications` with `DEX_CONNECTOR_CONFIG_FILE` pointing at the connections file exported by Dex Web. Both examples use the static `qingflow` connection name and `DEX_FLOW_SERVICE_ADDRESS` to select the Dex server. Start the Flow with an empty JSON object.
+
+Generate and lint the Flow Definition Graphs from the connector directory.
+
+```sh
+dexcli visualize java/examples/io/superdurable/dexconnectors/qingflow/ApplicationDirectoryWorker.java --language java --schema-version 2.0 --lint app --open=false --json --out /tmp/qingflow-java
+dexcli visualize rust/examples/list_applications.rs --language rust --schema-version 2.0 --lint app --open=false --json --out /tmp/qingflow-rust
+```

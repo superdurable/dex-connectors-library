@@ -75,7 +75,7 @@ export class ListTeamsOperation implements Query<ListTeamsInput, ListTeamsOutput
     if (!isRecord(wire) || !Number.isInteger(wire.total) || (wire.total as number) < 0 || !Array.isArray(wire.tenants) || wire.tenants.length > pageSize) return branch('invalidResponse', 'PROTOCOL');
     const teams: NonNullable<ListTeamsOutput['teams']> = [];
     for (const tenant of wire.tenants) {
-      if (!isRecord(tenant) || typeof tenant.tenant_id !== 'string' || !tenant.tenant_id || tenant.tenant_id.length > 256 || tenant.tenant_id.trim() !== tenant.tenant_id || typeof tenant.tenant_name !== 'string' || !tenant.tenant_name || tenant.tenant_name.length > 512 || (tenant.is_active !== undefined && typeof tenant.is_active !== 'boolean')) return branch('invalidResponse', 'PROTOCOL');
+      if (!isRecord(tenant) || typeof tenant.tenant_id !== 'string' || !tenant.tenant_id || Buffer.byteLength(tenant.tenant_id) > 256 || tenant.tenant_id.trim() !== tenant.tenant_id || typeof tenant.tenant_name !== 'string' || !tenant.tenant_name || Buffer.byteLength(tenant.tenant_name) > 512 || (tenant.is_active != null && typeof tenant.is_active !== 'boolean')) return branch('invalidResponse', 'PROTOCOL');
       teams.push({ id: tenant.tenant_id, name: tenant.tenant_name, active: tenant.is_active === true });
     }
     return newQueryBranch('listed', { teams, total: wire.total as number });

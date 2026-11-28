@@ -1,0 +1,52 @@
+{
+  "connectorId": "huoban",
+  "releaseTag": "connectors/huoban/go/v0.1.0",
+  "package": {
+    "ecosystem": "cargo",
+    "name": "dex-connector-huoban",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_list_spaces_step",
+      "kind": "query",
+      "operationId": "listSpaces",
+      "inputType": "ListSpacesInput",
+      "description": "List IDs and names of workspaces accessible to the API Key.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListSpacesInput requires no selection because the API Key determines authorized workspaces.",
+        "properties": {},
+        "type": "object"
+      }
+    }
+  ]
+}

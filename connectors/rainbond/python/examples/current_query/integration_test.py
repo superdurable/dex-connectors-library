@@ -37,7 +37,7 @@ async def test_query_retries_503(tmp_path: Path) -> None:
             return httpx.Response(503)
         return httpx.Response(
             200,
-            content=b'{"total":1,"tenants":[{"tenant_id":"team-1","tenant_name":"Engineering","is_active":true}]}',
+            content=b'{"total":1,"tenants":[{"tenant_id":"team-1","tenant_name":"Engineering","is_active":null}]}',
         )
 
     reference = ConnectionRef("rainbond", CONNECTION_NAME)
@@ -66,6 +66,7 @@ async def test_query_retries_503(tmp_path: Path) -> None:
                 result = await asyncio.wait_for(client.wait_for_flow(flow_id, timedelta(seconds=25)), 30)
                 assert result.status == dex.FlowStatus.COMPLETED, result.error_message
                 output = result.single_output(ListTeamsOutput)
+                assert not output.teams[0].active
                 assert len(output.teams) == 1
                 assert len(requests) == 2
         finally:

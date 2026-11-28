@@ -163,15 +163,17 @@ class ListTeamsOperation:
                 teams = []
                 for tenant in tenants:
                     team_id, name = tenant["tenant_id"], tenant["tenant_name"]
-                    active = tenant.get("is_active", False)
+                    active = tenant.get("is_active")
+                    if active is None:
+                        active = False
                     if (
                         not isinstance(team_id, str)
                         or not team_id
-                        or len(team_id) > 256
+                        or len(team_id.encode()) > 256
                         or team_id.strip() != team_id
                         or not isinstance(name, str)
                         or not name
-                        or len(name) > 512
+                        or len(name.encode()) > 512
                         or type(active) is not bool
                     ):
                         raise ValueError("invalid team")

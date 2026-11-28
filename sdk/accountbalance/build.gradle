@@ -29,7 +29,12 @@ publishing {
             from components.java
             pom {
                 name = project.name
-                description = 'Read account balances from a Dex Flow.'
+                description = providers.provider {
+                    def metadata = fileTree('src/main/resources/META-INF/dex-connectors') {
+                        include '**/dex-connector.json'
+                    }.singleFile
+                    new groovy.json.JsonSlurper().parse(metadata).factories*.description.unique().join(' ')
+                }
                 url = 'https://github.com/superdurable/dex-connectors-library'
                 licenses { license { name = 'MIT'; url = 'https://opensource.org/licenses/MIT' } }
                 developers { developer { name = 'Super Durable' } }

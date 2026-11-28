@@ -1,0 +1,204 @@
+// Copyright (c) 2026 Super Durable
+// SPDX-License-Identifier: MIT
+
+use std::collections::BTreeMap;
+use std::error::Error;
+use std::sync::Arc;
+
+use dex_connector_ones::{
+    ListTeamsInput, ListTeamsOperation, ListTeamsOutput, new_list_teams_step,
+};
+use dex_connectors_sdk::dex_sdk::{
+    BlobCache, BlobCacheConfig, Context, Flow, HandlerResult, Registry, Step, StepDecision,
+    StepList, Worker, WorkerOptions,
+};
+use dex_connectors_sdk::{
+    BranchTarget, ConnectionRef, QueryResult, QueryStep, QueryStepConfig, StepAnnotations,
+    ValidationError,
+};
+
+const CONNECTION_NAME: &str = "ones";
+
+// dex:group group-id:team-directory group-label:"Team catalog"
+// dex:explanation text:"Complete with the provider's visible team catalog."
+struct ReturnTeams;
+
+impl Step for ReturnTeams {
+    type Input = QueryResult<Option<ListTeamsOutput>>;
+
+    fn execute(&self, _: &mut Context, result: Self::Input) -> HandlerResult<StepDecision> {
+        Ok(StepDecision::graceful_complete(result.value))
+    }
+}
+
+struct TeamDirectoryFlow {
+    query: QueryStep<ListTeamsInput, ListTeamsOperation>,
+    complete: ReturnTeams,
+}
+
+impl TeamDirectoryFlow {
+    fn new(operation: ListTeamsOperation) -> Result<Self, ValidationError> {
+        let complete = ReturnTeams;
+        let config = QueryStepConfig::new(
+            "ListTeams",
+            StepAnnotations::new(
+                "team-directory",
+                "Team catalog",
+                "Read the available team catalog.",
+            ),
+            operation,
+            ConnectionRef::new("ones", CONNECTION_NAME),
+            |input: &ListTeamsInput| input.clone(),
+            BTreeMap::from([("listed".to_owned(), BranchTarget::to(&complete))]),
+        );
+        Ok(Self {
+            query: new_list_teams_step(config)?,
+            complete,
+        })
+    }
+}
+
+impl Flow for TeamDirectoryFlow {
+    type StartInput = ListTeamsInput;
+
+    fn flow_type(&self) -> &'static str {
+        "RustONESTeamDirectory"
+    }
+    fn steps(&self) -> StepList<'_, Self::StartInput> {
+        StepList::start(&self.query).and(&self.complete)
+    }
+}
+
+fn main() -> Result<(), Box<dyn Error>> {
+    let project = dex_connectors_sdk::projectconfig::load_from_environment()?;
+    let flow =
+        TeamDirectoryFlow::new(ListTeamsOperation::from_project(&project, CONNECTION_NAME)?)?;
+    let registry = Registry::new().register(flow)?;
+    let directory = tempfile::tempdir()?;
+    let cache = Arc::new(BlobCache::open(BlobCacheConfig::new(
+        directory.path(),
+        16 << 20,
+        1000,
+    )?)?);
+    let address =
+        std::env::var("DEX_FLOW_SERVICE_ADDRESS").unwrap_or_else(|_| "127.0.0.1:8801".into());
+    let worker = Worker::try_new(
+        registry,
+        Arc::clone(&cache),
+        WorkerOptions::new().server_address(address),
+    )?;
+    let result = worker.start();
+    cache.close()?;
+    result?;
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use dex_connectors_sdk::dex_sdk::{Client, ClientOptions, FlowStatus};
+    use dex_connectors_sdk::providerhttp::{
+        ProviderHttpClient, ProviderHttpError, ProviderHttpRequest, ProviderHttpResponse,
+        ProviderHttpTransport, ResponseHeaders,
+    };
+    use dex_connectors_sdk::{SecretString, StaticCredentialProvider};
+    use std::collections::HashMap;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::time::{Duration, SystemTime, UNIX_EPOCH};
+
+    #[derive(Default)]
+    struct TeamResponse(AtomicUsize);
+
+    impl ProviderHttpTransport for TeamResponse {
+        fn send(
+            &self,
+            request: &ProviderHttpRequest,
+            _: Duration,
+        ) -> Result<ProviderHttpResponse, ProviderHttpError> {
+            let index = self.0.fetch_add(1, Ordering::SeqCst);
+            assert_eq!(
+                request.url,
+                "https://ones.example.org/openapi/v2/account/teams"
+            );
+            let body = r#"{"result":"SUCCESS","data":{"teams":[{"id":"team-1","name":"Engineering","status":1,"owner":"private","createTime":123}]},"errorData":{"email":"private"}}"#;
+            Ok(ProviderHttpResponse::new(
+                if index == 0 { 503 } else { 200 },
+                ResponseHeaders::new(vec![]),
+                Box::new(std::io::Cursor::new(body.as_bytes())),
+            ))
+        }
+    }
+
+    #[test]
+    fn team_directory_retries_and_completes() -> Result<(), Box<dyn Error>> {
+        let provider = Arc::new(TeamResponse::default());
+        let connection = ConnectionRef::new("ones", CONNECTION_NAME);
+        let credentials = Arc::new(StaticCredentialProvider::new(HashMap::from([(
+            connection,
+            SecretString::new("key"),
+        )])));
+        let new_flow = || {
+            let http =
+                ProviderHttpClient::with_transport(provider.clone(), Duration::from_secs(10))?;
+            TeamDirectoryFlow::new(ListTeamsOperation::with_base_url(
+                credentials.clone(),
+                http,
+                1 << 20,
+                "https://ones.example.org",
+            )?)
+        };
+        let registry = Registry::new().register(new_flow()?)?;
+        let directory = tempfile::tempdir()?;
+        let cache = Arc::new(BlobCache::open(BlobCacheConfig::new(
+            directory.path(),
+            16 << 20,
+            1000,
+        )?)?);
+        let address =
+            std::env::var("DEX_FLOW_SERVICE_ADDRESS").unwrap_or_else(|_| "127.0.0.1:8801".into());
+        let worker = Arc::new(Worker::try_new(
+            registry.clone(),
+            cache.clone(),
+            WorkerOptions::new().server_address(&address),
+        )?);
+        let client = Client::try_new(
+            registry,
+            cache.clone(),
+            ClientOptions::new().server_address(address),
+        )?;
+        let running_worker = worker.clone();
+        let thread = std::thread::spawn(move || running_worker.start());
+        let verification = (|| -> Result<(), Box<dyn Error>> {
+            tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()?
+                .block_on(async {
+                    tokio::time::timeout(Duration::from_secs(30), worker.wait_pull_registered())
+                        .await
+                })??;
+            let flow_id = format!(
+                "rust-team-directory-{}",
+                SystemTime::now().duration_since(UNIX_EPOCH)?.as_nanos()
+            );
+            client.start_flow(&new_flow()?, &flow_id, ListTeamsInput::default())?;
+            let result = client.wait_for_flow_with_timeout(&flow_id, Duration::from_secs(30))?;
+            assert_eq!(
+                result.status(),
+                FlowStatus::Completed,
+                "{:?}",
+                result.error_message()
+            );
+            let output: ListTeamsOutput = result.single_output()?;
+
+            assert_eq!(output.teams[0].id, "team-1");
+            assert_eq!(output.teams[0].name, "Engineering");
+            assert_eq!(output.teams[0].status, 1);
+            assert_eq!(provider.0.load(Ordering::SeqCst), 2);
+            Ok(())
+        })();
+        worker.stop();
+        thread.join().expect("Worker thread")?;
+        cache.close()?;
+        verification
+    }
+}

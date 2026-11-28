@@ -1,0 +1,52 @@
+{
+  "connectorId": "vika",
+  "releaseTag": "connectors/vika/go/v0.1.0",
+  "package": {
+    "ecosystem": "maven",
+    "name": "io.superdurable:dex-connector-vika",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newListSpacesStep",
+      "kind": "query",
+      "operationId": "listSpaces",
+      "inputType": "ListSpacesInput",
+      "description": "List workspaces the token's user created or joined, returning only IDs, names, and administrator flags.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListSpacesInput requires no caller-provided selector; the token identifies the user.",
+        "properties": {},
+        "type": "object"
+      }
+    }
+  ]
+}

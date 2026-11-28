@@ -56,11 +56,11 @@ class Client:
     ) -> None:
         if config is None or credentials is None:
             raise ValueError("Vika configuration and credentials are required")
-        if config.timeout_seconds <= 0 or not 0 < config.max_response_bytes <= 16 << 20:
+        if config.timeout_seconds <= 0 or config.max_response_bytes <= 0:
             raise ValueError("Vika configuration is invalid")
         from dex_connectors.sdk.providerhttp import validate_base_url
 
-        base_url = validate_base_url(config.base_url)
+        base_url = validate_base_url(config.base_url or "https://vika.cn")
         self.credentials = credentials
         self.max_response_bytes = config.max_response_bytes
         self.http_client = http_client or new_provider_http_client(config.timeout_seconds)
@@ -105,8 +105,6 @@ class ListSpacesOperation:
                 return _retry(FailureKind.RATE_LIMIT, "Vika rate limited the request", delay)
             if status == 408 or status >= 500:
                 return _retry(FailureKind.AVAILABILITY, "Vika is temporarily unavailable", delay)
-            if status != 200 and not True:
-                return _http_rejection(status)
             try:
                 body = await read_bounded_body(response, self.client.max_response_bytes)
             except BodyTooLargeError:
@@ -180,6 +178,8 @@ def _decode(body: bytes, input: ListSpacesInput, delay: float) -> QueryAttempt[S
         return _branch("invalidResponse", FailureKind.PROTOCOL, "Vika returned an invalid workspace response")
     code = document["code"]
     if document["success"] is False:
+        if code == 200:
+            return QueryAttempt.branch_result("listed", SpacePage(()), Receipt())
         if code == 429:
             return _retry(FailureKind.RATE_LIMIT, "Vika rate limited the request", delay)
         if code >= 500:
@@ -203,10 +203,10 @@ def _decode(body: bytes, input: ListSpacesInput, delay: float) -> QueryAttempt[S
             or not item["id"].startswith("spc")
             or not isinstance(item.get("name"), str)
             or not item["name"]
-            or type(item.get("isAdmin", False)) is not bool
+            or (item.get("isAdmin") is not None and type(item["isAdmin"]) is not bool)
         ):
             return _branch(
                 "invalidResponse", FailureKind.PROTOCOL, "Vika returned an invalid workspace response"
             )
-        spaces.append(Space(item["id"], item["name"], item.get("isAdmin", False)))
+        spaces.append(Space(item["id"], item["name"], item.get("isAdmin") is True))
     return QueryAttempt.branch_result("listed", SpacePage(tuple(spaces)), Receipt())

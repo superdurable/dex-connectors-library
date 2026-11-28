@@ -13,3 +13,16 @@ The [Python package](python/) exposes the same Query and branch contract as Go. 
 ## TypeScript
 
 `@superdurable/connector-tingyun` provides the `listApplications` Query and a [runnable TypeScript Dex example](typescript/examples/basic/README.md). The package replays Go-recorded provider scenarios with `npm run check`, and `npm run test:integration` verifies retry and persistence against `dexcli dev -open=false`. Real provider credentials and live API behavior have not been verified.
+
+## Java and Rust
+
+The [Java Worker](java/examples/io/superdurable/dexconnectors/tingyun/ApplicationDirectoryWorker.java) registers `JavaTingyunApplicationDirectory`. Run `./gradlew applicationDirectoryWorker` from `java/` with `TINGYUN_ACCESS_TOKEN` supplied through your credential manager. Set `TINGYUN_API_HOST` to the configured provider origin. Hosted Java applications can use `ApplicationDirectory.fromProject` with their loaded connection.
+
+The [Rust Worker](rust/examples/list_applications.rs) registers `RustTingyunApplicationDirectory`. From `rust/`, run `cargo run --example list_applications` with `DEX_CONNECTOR_CONFIG_FILE` pointing at the connections file exported by Dex Web. Both examples use the static `tingyun` connection name and `DEX_FLOW_SERVICE_ADDRESS` to select the Dex server. Start the Flow with an empty JSON object.
+
+Generate and lint the Flow Definition Graphs from the connector directory.
+
+```sh
+dexcli visualize java/examples/io/superdurable/dexconnectors/tingyun/ApplicationDirectoryWorker.java --language java --schema-version 2.0 --lint app --open=false --json --out /tmp/tingyun-java
+dexcli visualize rust/examples/list_applications.rs --language rust --schema-version 2.0 --lint app --open=false --json --out /tmp/tingyun-rust
+```

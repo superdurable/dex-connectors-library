@@ -1,0 +1,42 @@
+{
+  "listSpaces": {
+    "branches": [
+      {
+        "description": "Huoban returned authorized workspace metadata.",
+        "id": "listed",
+        "optional": false
+      },
+      {
+        "description": "Huoban rejected authentication or access.",
+        "id": "providerRejected",
+        "optional": true
+      },
+      {
+        "description": "Huoban returned malformed or oversized metadata.",
+        "id": "invalidResponse",
+        "optional": true
+      },
+      {
+        "description": "Local API Key is invalid.",
+        "id": "defect",
+        "optional": true
+      }
+    ],
+    "operation": {
+      "connectorId": "huoban",
+      "operationId": "listSpaces"
+    },
+    "stepDefaults": {
+      "executeDurability": 2,
+      "executeMethodTimeout": 30000000000,
+      "executeRetry": {
+        "BackoffCoefficient": 2,
+        "InitialInterval": 1000000000,
+        "MaximumAttempts": 0,
+        "MaximumInterval": 300000000000,
+        "TotalDuration": 3600000000000
+      },
+      "heartbeatTimeout": 0
+    }
+  }
+}

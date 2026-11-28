@@ -296,6 +296,391 @@
       },
       "name": "listTeams-defect",
       "operation": "listTeams"
+    },
+    {
+      "callId": "39c0d619-f578-5fc7-a5be-675edd28c97c",
+      "exchanges": [
+        {
+          "body": "null",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/v1/teams",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "page_size": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "private-test-key"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "teams": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 1,
+        "pageSize": 20
+      },
+      "name": "listTeams-http-forbidden",
+      "operation": "listTeams"
+    },
+    {
+      "callId": "cf61e121-fdcd-5c1f-8b01-a2dfda642ac2",
+      "exchanges": [
+        {
+          "body": "null",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/v1/teams",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "page_size": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "private-test-key"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "teams": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 1,
+        "pageSize": 20
+      },
+      "name": "listTeams-http-bad-request",
+      "operation": "listTeams"
+    },
+    {
+      "callId": "f044510d-5623-5173-9e16-9f953052e0c3",
+      "exchanges": [
+        {
+          "body": "null",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/v1/teams",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "page_size": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "private-test-key"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 7000,
+        "uncertain": false
+      },
+      "input": {
+        "page": 1,
+        "pageSize": 20
+      },
+      "name": "listTeams-retry-after-503",
+      "operation": "listTeams"
+    },
+    {
+      "callId": "cba6ea0c-142a-5357-927e-557f058a7bf0",
+      "exchanges": [
+        {
+          "body": "{\"total\":5,\"tenants\":[{\"tenant_id\":\"tenant\",\"tenant_name\":\"工程\",\"is_active\":null},{\"tenant_id\":\"two\",\"tenant_name\":\"Second\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/v1/teams",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "page_size": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "private-test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "teams": [
+            {
+              "active": false,
+              "id": "tenant",
+              "name": "工程"
+            },
+            {
+              "active": false,
+              "id": "two",
+              "name": "Second"
+            }
+          ],
+          "total": 5
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 0,
+        "pageSize": 0
+      },
+      "name": "listTeams-active-default",
+      "operation": "listTeams"
+    },
+    {
+      "callId": "4b1ff315-d9b6-5a72-b161-161ea5e3ab2c",
+      "exchanges": [
+        {
+          "body": "{\"total\":1,\"tenants\":[{\"tenant_id\":\"界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界\",\"tenant_name\":\"工程\",\"is_active\":null}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/v1/teams",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "page_size": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "private-test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "teams": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 1,
+        "pageSize": 20
+      },
+      "name": "listTeams-utf8-id-limit",
+      "operation": "listTeams"
+    },
+    {
+      "callId": "2ea95a89-ce1c-53c9-8e4b-ad4cfa5895f8",
+      "exchanges": [
+        {
+          "body": "{\"total\":1,\"tenants\":[{\"tenant_id\":\"tenant\",\"tenant_name\":\"界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界\",\"is_active\":null}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/v1/teams",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "page_size": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "private-test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "teams": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 1,
+        "pageSize": 20
+      },
+      "name": "listTeams-utf8-name-limit",
+      "operation": "listTeams"
+    },
+    {
+      "callId": "cc73c16a-f015-541f-9458-aa4833ab97a7",
+      "exchanges": [
+        {
+          "body": "{\"total\":2,\"tenants\":[{\"tenant_id\":\"tenant\",\"tenant_name\":\"工程\",\"is_active\":null},{\"tenant_id\":\"tenant\",\"tenant_name\":\"工程\",\"is_active\":null}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/v1/teams",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "page_size": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "private-test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "teams": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "pageSize": 1
+      },
+      "name": "listTeams-page-overflow",
+      "operation": "listTeams"
+    },
+    {
+      "callId": "7db8aeac-7189-58f7-ab96-8b5da520b240",
+      "exchanges": [
+        {
+          "body": "{\"total\":2,\"tenants\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/v1/teams",
+          "query": {
+            "page": [
+              "3"
+            ],
+            "page_size": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "private-test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "teams": [],
+          "total": 2
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 3,
+        "pageSize": 1
+      },
+      "name": "listTeams-empty-last-page",
+      "operation": "listTeams"
     }
   ],
   "schemaVersion": 1

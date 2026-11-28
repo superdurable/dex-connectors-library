@@ -9,8 +9,10 @@ metadata:
   version: v0.1.0
 spec:
   languages:
-    typescript: {version: v0.1.0, operations: [listSpaces], triggers: []}
-    python: {version: v0.1.0, operations: [listSpaces], triggers: []}
+    java: {version: v0.1.0, operations: [listSpaces], triggers: []}
+    rust: {version: v0.1.0, operations: [listSpaces], triggers: []}
+    typescript: {version: v0.1.1, operations: [listSpaces], triggers: []}
+    python: {version: v0.1.1, operations: [listSpaces], triggers: []}
   provider: vika
   codegen:
     go:

@@ -14,3 +14,16 @@ The [team catalog Flow](go/examples/team-catalog/) is a runnable Worker with sta
 
 The [Python package](python/) implements `listTeams` and its [runnable Flow](python/examples/current_query/) verifies retry and persistence with a real local Dex Worker and Client.
 The [TypeScript package](typescript/) provides the same `ListTeams` operation, Go-recorded conformance, and a runnable Dex Worker and Client example.
+
+## Java and Rust
+
+The [Java Worker](java/examples/io/superdurable/dexconnectors/rainbond/TeamDirectoryWorker.java) registers `JavaRainbondTeamDirectory`. Run `./gradlew teamDirectoryWorker` from `java/` with `RAINBOND_API_KEY` supplied through your credential manager. Set `RAINBOND_BASE_URL` to the configured provider origin. Hosted Java applications can use `TeamDirectory.fromProject` with their loaded connection.
+
+The [Rust Worker](rust/examples/list_teams.rs) registers `RustRainbondTeamDirectory`. From `rust/`, run `cargo run --example list_teams` with `DEX_CONNECTOR_CONFIG_FILE` pointing at the connections file exported by Dex Web. Both examples use the static `rainbond` connection name and `DEX_FLOW_SERVICE_ADDRESS` to select the Dex server. Supply `page` and `pageSize`. Zero selects page one and twenty teams.
+
+Generate and lint the Flow Definition Graphs from the connector directory.
+
+```sh
+dexcli visualize java/examples/io/superdurable/dexconnectors/rainbond/TeamDirectoryWorker.java --language java --schema-version 2.0 --lint app --open=false --json --out /tmp/rainbond-java
+dexcli visualize rust/examples/list_teams.rs --language rust --schema-version 2.0 --lint app --open=false --json --out /tmp/rainbond-rust
+```

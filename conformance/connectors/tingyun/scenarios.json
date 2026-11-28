@@ -222,6 +222,294 @@
       "input": {},
       "name": "listApplications-defect",
       "operation": "listApplications"
+    },
+    {
+      "callId": "3ca4b3ca-7ab3-58d2-b883-20b732d5c06b",
+      "exchanges": [
+        {
+          "body": "null",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/app-api/app/list",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "token access-secret"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "applications": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listApplications-http-forbidden",
+      "operation": "listApplications"
+    },
+    {
+      "callId": "0d39aaa4-2374-512f-8560-aca8081f2294",
+      "exchanges": [
+        {
+          "body": "null",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/app-api/app/list",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "token access-secret"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "applications": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listApplications-http-bad-request",
+      "operation": "listApplications"
+    },
+    {
+      "callId": "cf139754-779a-532b-969e-c2e8fe24688d",
+      "exchanges": [
+        {
+          "body": "null",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/app-api/app/list",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "token access-secret"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 7000,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listApplications-retry-after-503",
+      "operation": "listApplications"
+    },
+    {
+      "callId": "193addaf-0f30-51c8-b414-7eb3d1e00544",
+      "exchanges": [
+        {
+          "body": "{\"id\":1,\"name\":\"app\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/app-api/app/list",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "token access-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "applications": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listApplications-wrong-root",
+      "operation": "listApplications"
+    },
+    {
+      "callId": "b3380fb1-4e74-5bb7-8587-45ea8d09fff9",
+      "exchanges": [
+        {
+          "body": "[{\"id\":0,\"name\":\"App\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/app-api/app/list",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "token access-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "applications": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listApplications-invalid-id",
+      "operation": "listApplications"
+    },
+    {
+      "callId": "06e7d364-9cb3-53c9-a777-4cb053102a72",
+      "exchanges": [
+        {
+          "body": "[{\"id\":\"1\",\"name\":\"app\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/app-api/app/list",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "token access-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "applications": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listApplications-wrong-id-type",
+      "operation": "listApplications"
+    },
+    {
+      "callId": "2162156c-a09f-591a-aa92-99e6d254dc75",
+      "exchanges": [
+        {
+          "body": "[]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/app-api/app/list",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "token access-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "applications": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listApplications-empty-directory",
+      "operation": "listApplications"
+    },
+    {
+      "callId": "28eb5565-8997-533d-9c7a-056c925de99e",
+      "exchanges": [
+        {
+          "body": "[{\"id\":9007199254740991,\"name\":\"工程\",\"supportEmail\":\"ignored\"},{\"id\":1,\"name\":\"Demo\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/app-api/app/list",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "token access-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "applications": [
+            {
+              "id": 9007199254740991,
+              "name": "工程"
+            },
+            {
+              "id": 1,
+              "name": "Demo"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listApplications-provider-order",
+      "operation": "listApplications"
     }
   ],
   "schemaVersion": 1

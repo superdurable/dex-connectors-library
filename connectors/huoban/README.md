@@ -9,3 +9,16 @@ The [official OpenAPI introduction](https://openapi.huoban.com/) specifies HTTPS
 The [Python package](python/) implements `listSpaces` and replays the Go-recorded provider scenarios. Its checked-in Flow tests retry and persistence against a real Dex Worker and Client.
 
 The [TypeScript package](typescript/) implements the same Query and Go-recorded scenarios. Its runnable Flow tests retry and persistence against a real Dex Worker and Client.
+
+## Java and Rust
+
+The [Java Worker](java/examples/io/superdurable/dexconnectors/huoban/SpaceDirectoryWorker.java) registers `JavaHuobanSpaceDirectory`. Run `./gradlew spaceDirectoryWorker` from `java/` with `HUOBAN_API_KEY` supplied through your credential manager. Hosted Java applications can use `SpaceDirectory.fromProject` with their loaded connection.
+
+The [Rust Worker](rust/examples/list_spaces.rs) registers `RustHuobanSpaceDirectory`. From `rust/`, run `cargo run --example list_spaces` with `DEX_CONNECTOR_CONFIG_FILE` pointing at the connections file exported by Dex Web. Both examples use the static `huoban` connection name and `DEX_FLOW_SERVICE_ADDRESS` to select the Dex server. Start the Flow with an empty JSON object.
+
+Generate and lint the Flow Definition Graphs from the connector directory.
+
+```sh
+dexcli visualize java/examples/io/superdurable/dexconnectors/huoban/SpaceDirectoryWorker.java --language java --schema-version 2.0 --lint app --open=false --json --out /tmp/huoban-java
+dexcli visualize rust/examples/list_spaces.rs --language rust --schema-version 2.0 --lint app --open=false --json --out /tmp/huoban-rust
+```

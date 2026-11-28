@@ -10,6 +10,8 @@ metadata:
 spec:
   provider: tingyun
   languages:
+    java: {version: v0.1.0, operations: [listApplications], triggers: []}
+    rust: {version: v0.1.0, operations: [listApplications], triggers: []}
     python: {version: v0.1.0, operations: [listApplications], triggers: []}
     typescript: {version: v0.1.0, operations: [listApplications], triggers: []}
   codegen:

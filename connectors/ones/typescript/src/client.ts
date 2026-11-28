@@ -33,7 +33,7 @@ export class OnesClient {
     let key = '';
     try { const fields = await this.credentials.resolve(call, call.context.cancellationSignal); key = fields.apiKey instanceof SecretString ? fields.apiKey.reveal() : ''; }
     catch { return { error: 'credential', retryAfterMs: 0 }; }
-    if (!key || key.length > 512 || key.split('').some(character => character.charCodeAt(0) <= 32 || character.charCodeAt(0) === 127)) return { error: 'credential', retryAfterMs: 0 };
+    if (!key || key.length > 512 || key.split('').some(character => character.charCodeAt(0) <= 32 || character.charCodeAt(0) >= 127)) return { error: 'credential', retryAfterMs: 0 };
     const url = `${this.baseURL}/openapi/v2/account/teams`;
     const method = 'GET'; const headers = { Accept: 'application/json', Authorization: `Bearer ${key}` }; const body = undefined;
     const providerRequest: ProviderRequest = { url, method, headers, body, timeoutMs: this.timeoutMs, maxResponseBytes: this.maxResponseBytes, addressPolicy: 'publicHTTPS', signal: call.context.cancellationSignal };
@@ -64,8 +64,8 @@ export class ListTeamsOperation implements Query<ListTeamsInput, ListTeamsOutput
     const { status, body } = exchange.response; const retryAfterMs = exchange.retryAfterMs;
     if (status === 429) return retry('RATE_LIMIT', retryAfterMs);
     if (status === 408 || status >= 500) return retry('AVAILABILITY', retryAfterMs);
-    if (status !== 200) return branch('providerRejected', status === 401 ? 'AUTHENTICATION' : status === 403 ? 'AUTHORIZATION' : 'PROVIDER_REJECTION');
     if (exchange.error === 'tooLarge') return branch('invalidResponse', 'RESPONSE_TOO_LARGE');
+    if (status !== 200) return branch('providerRejected', status === 401 ? 'AUTHENTICATION' : status === 403 ? 'AUTHORIZATION' : 'PROVIDER_REJECTION');
     let wire: unknown;
     try { wire = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(body)) as unknown; } catch { return bad(); }
     if (!isRecord(wire)) return bad();
@@ -74,7 +74,7 @@ export class ListTeamsOperation implements Query<ListTeamsInput, ListTeamsOutput
     if (wire.result !== 'SUCCESS' || !data || !Array.isArray(data.teams) || data.teams.length > 10000) return bad();
     const teams = [] as NonNullable<ListTeamsOutput['teams']>;
     for (const item of data.teams) {
-      if (!isRecord(item) || !validName(item.id, 256) || !validName(item.name, 512) || !Number.isInteger(item.status)) return bad();
+      if (!isRecord(item) || !validName(item.id, 256) || item.id.trim() !== item.id || !validName(item.name, 512) || !Number.isInteger(item.status)) return bad();
       teams.push({ id: item.id as string, name: item.name as string, status: item.status as number });
     }
     return newQueryBranch('listed', { teams });
@@ -82,6 +82,6 @@ export class ListTeamsOperation implements Query<ListTeamsInput, ListTeamsOutput
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> { return typeof value === 'object' && value !== null && !Array.isArray(value); }
-function validName(value: unknown, maximum: number): value is string { return typeof value === 'string' && !!value && value.length <= maximum && value.trim() === value; }
+function validName(value: unknown, maximum: number): value is string { return typeof value === 'string' && !!value && Buffer.byteLength(value) <= maximum; }
 function header(headers: ProviderResponse['headers'], name: string): string { const value = Object.entries(headers).find(([key]) => key.toLowerCase() === name)?.[1]; return Array.isArray(value) ? value[0] ?? '' : value ?? ''; }
 function failure(kind: Failure['kind']): Failure { return { provider: 'ones', operation: 'listTeams', kind, message: 'Ones listTeams failed' }; }

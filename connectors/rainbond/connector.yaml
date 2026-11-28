@@ -9,11 +9,13 @@ metadata:
   version: v0.1.0
 spec:
   languages:
+    java: {version: v0.1.0, operations: [listTeams], triggers: []}
+    rust: {version: v0.1.0, operations: [listTeams], triggers: []}
     python:
-      version: v0.1.0
+      version: v0.1.1
       operations: [listTeams]
       triggers: []
-    typescript: {version: v0.1.0, operations: [listTeams], triggers: []}
+    typescript: {version: v0.1.1, operations: [listTeams], triggers: []}
   provider: rainbond
   codegen:
     go:

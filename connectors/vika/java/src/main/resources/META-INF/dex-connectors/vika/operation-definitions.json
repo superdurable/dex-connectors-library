@@ -1,0 +1,42 @@
+{
+  "listSpaces": {
+    "branches": [
+      {
+        "description": "Vika returned the authorized workspace list, possibly empty.",
+        "id": "listed",
+        "optional": false
+      },
+      {
+        "description": "Vika rejected the token or permissions.",
+        "id": "providerRejected",
+        "optional": true
+      },
+      {
+        "description": "Vika returned malformed or oversized data.",
+        "id": "invalidResponse",
+        "optional": true
+      },
+      {
+        "description": "Local connection configuration or credentials are invalid.",
+        "id": "defect",
+        "optional": true
+      }
+    ],
+    "operation": {
+      "connectorId": "vika",
+      "operationId": "listSpaces"
+    },
+    "stepDefaults": {
+      "executeDurability": 2,
+      "executeMethodTimeout": 30000000000,
+      "executeRetry": {
+        "BackoffCoefficient": 2,
+        "InitialInterval": 1000000000,
+        "MaximumAttempts": 0,
+        "MaximumInterval": 300000000000,
+        "TotalDuration": 3600000000000
+      },
+      "heartbeatTimeout": 0
+    }
+  }
+}

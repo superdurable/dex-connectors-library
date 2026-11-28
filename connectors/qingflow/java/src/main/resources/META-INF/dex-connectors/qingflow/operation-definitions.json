@@ -1,0 +1,42 @@
+{
+  "listApplications": {
+    "branches": [
+      {
+        "description": "Qingflow returned workspace application metadata.",
+        "id": "listed",
+        "optional": false
+      },
+      {
+        "description": "Qingflow rejected authentication or access.",
+        "id": "providerRejected",
+        "optional": true
+      },
+      {
+        "description": "Qingflow returned malformed or oversized metadata.",
+        "id": "invalidResponse",
+        "optional": true
+      },
+      {
+        "description": "Local accessToken is invalid.",
+        "id": "defect",
+        "optional": true
+      }
+    ],
+    "operation": {
+      "connectorId": "qingflow",
+      "operationId": "listApplications"
+    },
+    "stepDefaults": {
+      "executeDurability": 2,
+      "executeMethodTimeout": 30000000000,
+      "executeRetry": {
+        "BackoffCoefficient": 2,
+        "InitialInterval": 1000000000,
+        "MaximumAttempts": 0,
+        "MaximumInterval": 300000000000,
+        "TotalDuration": 3600000000000
+      },
+      "heartbeatTimeout": 0
+    }
+  }
+}

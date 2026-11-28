@@ -257,6 +257,294 @@
       "input": {},
       "name": "listSpaces-transport",
       "operation": "listSpaces"
+    },
+    {
+      "callId": "26966346-1a87-55a2-9bd2-09943b00dccf",
+      "exchanges": [
+        {
+          "body": "null",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/v1/space/list",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Open-Authorization": [
+              "Bearer test-secret"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "spaces": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listSpaces-http-forbidden",
+      "operation": "listSpaces"
+    },
+    {
+      "callId": "79f29d04-92b4-50a6-9b03-22fb795275eb",
+      "exchanges": [
+        {
+          "body": "null",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/v1/space/list",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Open-Authorization": [
+              "Bearer test-secret"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "spaces": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listSpaces-http-bad-request",
+      "operation": "listSpaces"
+    },
+    {
+      "callId": "5b309fb6-73ad-5fea-9fdb-f9fffca279b6",
+      "exchanges": [
+        {
+          "body": "null",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/v1/space/list",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Open-Authorization": [
+              "Bearer test-secret"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 7000,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listSpaces-retry-after-503",
+      "operation": "listSpaces"
+    },
+    {
+      "callId": "be52690f-3574-53a9-9aed-903c96de8d67",
+      "exchanges": [
+        {
+          "body": "{\"code\":19}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/v1/space/list",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Open-Authorization": [
+              "Bearer test-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "spaces": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listSpaces-rejected-code",
+      "operation": "listSpaces"
+    },
+    {
+      "callId": "fba9563b-5a1f-5428-994f-6578eb5b3b53",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/v1/space/list",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Open-Authorization": [
+              "Bearer test-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "spaces": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listSpaces-missing-array",
+      "operation": "listSpaces"
+    },
+    {
+      "callId": "278399d3-39f4-5098-a7cc-70ad0b4547fa",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"spaces\":[]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/v1/space/list",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Open-Authorization": [
+              "Bearer test-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "spaces": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listSpaces-empty-directory",
+      "operation": "listSpaces"
+    },
+    {
+      "callId": "ccefef8c-4fc0-5641-aa24-a0024cff140f",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"spaces\":[{\"space_id\":\"z\",\"name\":\"界\",\"ownerEmail\":\"ignored\"},{\"space_id\":\"a\",\"name\":\" 例 \"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/v1/space/list",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Open-Authorization": [
+              "Bearer test-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "spaces": [
+            {
+              "name": "界",
+              "spaceId": "z"
+            },
+            {
+              "name": " 例 ",
+              "spaceId": "a"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listSpaces-provider-order",
+      "operation": "listSpaces"
+    },
+    {
+      "callId": "35a361a1-98ac-5abb-958a-1d5ceb0910b0",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"spaces\":[{\"space_id\":\"ok\",\"name\":2}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/v1/space/list",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Open-Authorization": [
+              "Bearer test-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "spaces": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listSpaces-wrong-name-type",
+      "operation": "listSpaces"
     }
   ],
   "schemaVersion": 1

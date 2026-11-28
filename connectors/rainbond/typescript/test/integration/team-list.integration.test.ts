@@ -25,7 +25,7 @@ it('retries Rainbond 503 through a real Dex Worker and persists the team list', 
       response.writeHead(400).end(); return;
     }
     if (requests === 1) { response.writeHead(503).end(); return; }
-    response.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify({ total: 1, tenants: [{ tenant_id: 'team-1', tenant_name: 'Engineering', is_active: true }], privateMessage: 'test-key' }));
+    response.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify({ total: 1, tenants: [{ tenant_id: 'team-1', tenant_name: 'Engineering', is_active: null }], privateMessage: 'test-key' }));
   });
   server.listen(0, '127.0.0.1');
   await once(server, 'listening');
@@ -47,7 +47,7 @@ it('retries Rainbond 503 through a real Dex Worker and persists the team list', 
     await client.startFlow(flow, flowId, { page: 1, pageSize: 20 });
     const result = await client.waitForFlow(flowId, 60_000);
     expect(result.status, result.errorMessage).toBe('completed');
-    expect(result.singleOutput<ListTeamsOutput>()).toEqual({ teams: [{ id: 'team-1', name: 'Engineering', active: true }], total: 1 });
+    expect(result.singleOutput<ListTeamsOutput>()).toEqual({ teams: [{ id: 'team-1', name: 'Engineering', active: false }], total: 1 });
     expect(requests).toBe(2);
   } finally {
     await client.close(); await worker.close(); cache.close();

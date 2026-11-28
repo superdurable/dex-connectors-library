@@ -223,6 +223,329 @@
       "input": {},
       "name": "listSpaces-defect",
       "operation": "listSpaces"
+    },
+    {
+      "callId": "9a4ff26e-e0bc-508b-ab32-800945deac48",
+      "exchanges": [
+        {
+          "body": "null",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/fusion/v1/spaces",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer uskTestToken"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "spaces": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listSpaces-http-forbidden",
+      "operation": "listSpaces"
+    },
+    {
+      "callId": "beb8d735-1fa4-5cab-9a53-150d2ccc076d",
+      "exchanges": [
+        {
+          "body": "null",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/fusion/v1/spaces",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer uskTestToken"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "VALIDATION",
+        "output": {
+          "spaces": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listSpaces-http-bad-request",
+      "operation": "listSpaces"
+    },
+    {
+      "callId": "de15ade6-7889-555b-8e56-08e56807f91f",
+      "exchanges": [
+        {
+          "body": "null",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/fusion/v1/spaces",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer uskTestToken"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 7000,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listSpaces-retry-after-503",
+      "operation": "listSpaces"
+    },
+    {
+      "callId": "ea018fb5-1a96-5c10-8acb-5d6f8c3fded1",
+      "exchanges": [
+        {
+          "body": "{\"success\":false,\"code\":429}",
+          "headers": {
+            "Retry-After": "3"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/fusion/v1/spaces",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer uskTestToken"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 3000,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listSpaces-api-rate-limit",
+      "operation": "listSpaces"
+    },
+    {
+      "callId": "5f0c6066-81ae-5a9f-bb37-f979f9d2f953",
+      "exchanges": [
+        {
+          "body": "{\"success\":false,\"code\":503}",
+          "headers": {
+            "Retry-After": "5"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/fusion/v1/spaces",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer uskTestToken"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 5000,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listSpaces-api-availability",
+      "operation": "listSpaces"
+    },
+    {
+      "callId": "ff97a63b-a989-5c8c-b323-b095cd6a5988",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"code\":429}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/fusion/v1/spaces",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer uskTestToken"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "spaces": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listSpaces-inconsistent-success",
+      "operation": "listSpaces"
+    },
+    {
+      "callId": "58c07d5e-de22-57c1-bdf3-fc005f414b4b",
+      "exchanges": [
+        {
+          "body": "{\"success\":false,\"code\":200}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/fusion/v1/spaces",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer uskTestToken"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "spaces": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listSpaces-unsuccessful-200",
+      "operation": "listSpaces"
+    },
+    {
+      "callId": "6a2d6400-234f-5126-88a5-ab4da6fb9cf7",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"code\":200,\"data\":{\"spaces\":[{\"id\":\"spcB\",\"name\":\"B\",\"isAdmin\":null},{\"id\":\"spcA\",\"name\":\"A\",\"private\":\"ignored\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/fusion/v1/spaces",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer uskTestToken"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "spaces": [
+            {
+              "id": "spcB",
+              "isAdmin": false,
+              "name": "B"
+            },
+            {
+              "id": "spcA",
+              "isAdmin": false,
+              "name": "A"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listSpaces-admin-default",
+      "operation": "listSpaces"
+    },
+    {
+      "callId": "0664aa1b-02f5-5ea8-a662-96e2a50c4ebc",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"code\":200,\"data\":{\"spaces\":[{\"id\":\"invalid\",\"name\":\"A\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/fusion/v1/spaces",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer uskTestToken"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "spaces": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listSpaces-bad-workspace-id",
+      "operation": "listSpaces"
     }
   ],
   "schemaVersion": 1

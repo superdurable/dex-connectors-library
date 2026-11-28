@@ -33,7 +33,7 @@ async def test_space_list_retries_503(tmp_path: Path) -> None:
             content=b"".join(
                 [
                     b'{"success":true,"code":200,"data":{"spaces":[{"id":"spczdmQD',
-                    b'fBAn5","name":"Example Workspace","isAdmin":true}]}}',
+                    b'fBAn5","name":"Example Workspace","isAdmin":null}]}}',
                 ]
             ),
         )
@@ -56,6 +56,7 @@ async def test_space_list_retries_503(tmp_path: Path) -> None:
                 result = await asyncio.wait_for(client.wait_for_flow(flow_id, timedelta(seconds=30)), 35)
                 assert result.status == dex.FlowStatus.COMPLETED, result.error_message
                 result_value = result.single_output(SpacePage)
+                assert not result_value.spaces[0].is_admin
                 assert result_value.spaces[0].id == "spczdmQDfBAn5"
                 assert len(requests) == 2
         finally:
