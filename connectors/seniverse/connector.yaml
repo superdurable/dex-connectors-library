@@ -6,14 +6,16 @@ metadata:
   description: Read the current weather for a specified city from Seniverse.
   company: Seniverse
   categories: [data-search]
-  version: v0.1.0
+  version: v0.1.1
 spec:
   languages:
+    java: {version: v0.1.0, operations: [getCurrentWeather], triggers: []}
+    rust: {version: v0.1.0, operations: [getCurrentWeather], triggers: []}
     python:
-      version: v0.1.0
+      version: v0.1.1
       operations: [getCurrentWeather]
       triggers: []
-    typescript: {version: v0.1.0, operations: [getCurrentWeather], triggers: []}
+    typescript: {version: v0.1.1, operations: [getCurrentWeather], triggers: []}
   provider: seniverse
   codegen:
     go:

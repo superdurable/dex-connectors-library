@@ -1,0 +1,42 @@
+{
+  "getCurrentWeather": {
+    "branches": [
+      {
+        "description": "Seniverse returned current weather for the location.",
+        "id": "fetched",
+        "optional": false
+      },
+      {
+        "description": "Seniverse rejected the key, permission, quota, or location.",
+        "id": "providerRejected",
+        "optional": true
+      },
+      {
+        "description": "Seniverse returned malformed or oversized data.",
+        "id": "invalidResponse",
+        "optional": true
+      },
+      {
+        "description": "Local input or connection configuration is invalid.",
+        "id": "defect",
+        "optional": true
+      }
+    ],
+    "operation": {
+      "connectorId": "seniverse",
+      "operationId": "getCurrentWeather"
+    },
+    "stepDefaults": {
+      "executeDurability": 2,
+      "executeMethodTimeout": 30000000000,
+      "executeRetry": {
+        "BackoffCoefficient": 2,
+        "InitialInterval": 1000000000,
+        "MaximumAttempts": 0,
+        "MaximumInterval": 300000000000,
+        "TotalDuration": 3600000000000
+      },
+      "heartbeatTimeout": 0
+    }
+  }
+}

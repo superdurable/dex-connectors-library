@@ -96,7 +96,7 @@ func (operation GetCurrentWeatherOperation) Invoke(call sdkgo.Call, input GetCur
 		return currentWeatherBranch(GetCurrentWeatherBranchProviderRejected, classifySeniverseError(providerError.StatusCode), "Seniverse rejected the request with HTTP "+strconv.Itoa(response.StatusCode))
 	}
 	output, err := decodeCurrentWeatherResponse(body, operation.client.unit)
-	if err != nil {
+	if err != nil || output.containsPrivateKey(credentials.PrivateKey.Reveal()) {
 		return currentWeatherBranch(GetCurrentWeatherBranchInvalidResponse, sdkgo.FailureProtocol, "Seniverse returned an invalid response")
 	}
 	return sdkgo.NewQueryBranch(GetCurrentWeatherBranchFetched, output, nil, sdkgo.Receipt{})
@@ -133,6 +133,15 @@ func decodeCurrentWeatherResponse(body []byte, unit string) (GetCurrentWeatherOu
 		return GetCurrentWeatherOutput{}, errors.New("invalid update time")
 	}
 	return GetCurrentWeatherOutput{LocationID: result.Location.ID, LocationName: result.Location.Name, Country: result.Location.Country, WeatherText: result.Now.Text, WeatherCode: result.Now.Code, Temperature: result.Now.Temperature, TemperatureUnit: unit, LastUpdate: result.LastUpdate}, nil
+}
+
+func (output GetCurrentWeatherOutput) containsPrivateKey(privateKey string) bool {
+	for _, field := range []string{output.LocationID, output.LocationName, output.Country, output.WeatherText, output.WeatherCode, output.Temperature, output.LastUpdate} {
+		if strings.Contains(field, privateKey) {
+			return true
+		}
+	}
+	return false
 }
 
 func isValidPrivateKey(privateKey string) bool {

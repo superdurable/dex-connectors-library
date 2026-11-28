@@ -4,8 +4,9 @@
 
 import json
 import math
+import re
+from calendar import monthrange
 from datetime import UTC, datetime
-from urllib.parse import urlsplit
 
 import httpx
 from dex_connectors.sdk import (
@@ -67,6 +68,45 @@ def _error_kind(code: str) -> FailureKind:
     return FailureKind.PROVIDER_REJECTION
 
 
+def _fields_by_name(fields: dict[str, object]) -> dict[str, object]:
+    return {name.lower(): value for name, value in fields.items()}
+
+
+def _valid_time(text: str) -> bool:
+    parts = re.fullmatch(
+        r"([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{1,2}):([0-9]{2}):([0-9]{2})(?:[.,][0-9]+)?(?:Z|[+-]([0-9]{2}):([0-9]{2}))",
+        text,
+    )
+    if not parts:
+        return False
+    year, month, day, hour, minute, second, zone_hour, zone_minute = (int(v or 0) for v in parts.groups())
+    return (
+        1 <= month <= 12
+        and 1 <= day <= monthrange(year, month)[1]
+        and hour < 24
+        and minute < 60
+        and second < 60
+        and zone_hour <= 24
+        and zone_minute <= 60
+    )
+
+
+_TEMPERATURE = re.compile(
+    r"[+-]?(?:(?:[0-9](?:_?[0-9])*(?:\.(?:[0-9](?:_?[0-9])*)?)?|\.[0-9](?:_?[0-9])*)(?:[Ee][+-]?[0-9](?:_?[0-9])*)?|0[xX](?:_?[0-9A-Fa-f](?:_?[0-9A-Fa-f])*(?:\.(?:[0-9A-Fa-f](?:_?[0-9A-Fa-f])*)?)?|\.[0-9A-Fa-f](?:_?[0-9A-Fa-f])*)[pP][+-]?[0-9](?:_?[0-9])*)"
+)
+
+
+def _valid_temperature(text: str) -> bool:
+    if not _TEMPERATURE.fullmatch(text):
+        return False
+    literal = text.replace("_", "")
+    try:
+        value = float.fromhex(literal) if literal.lstrip("+-").lower().startswith("0x") else float(literal)
+    except OverflowError:
+        return False
+    return math.isfinite(value)
+
+
 class Client:
     """Own Seniverse API origin, language, unit, and bounded HTTP transport."""
 
@@ -80,15 +120,12 @@ class Client:
             config is None
             or credentials is None
             or config.timeout_seconds <= 0
-            or not 0 < config.max_response_bytes <= 16 << 20
+            or config.max_response_bytes <= 0
         ):
             raise ValueError("Seniverse configuration and credential source are required")
         if config.language not in _ALLOWED_LANGUAGES or config.unit not in ("c", "f"):
             raise ValueError("Seniverse language or unit is invalid")
         base_url = validate_base_url(config.base_url)
-        parsed = urlsplit(base_url)
-        if parsed.path not in ("", "/") or parsed.query or parsed.fragment:
-            raise ValueError("Seniverse base URL must be an HTTPS origin")
         self.base_url = base_url.rstrip("/")
         self.language = config.language
         self.unit = config.unit
@@ -128,7 +165,7 @@ class GetCurrentWeatherOperation:
             not isinstance(location, str)
             or not location
             or location.strip() != location
-            or len(location) > 256
+            or len(location.encode("utf-8")) > 256
         ):
             return _branch("defect", FailureKind.VALIDATION, "location is invalid")
         try:
@@ -174,7 +211,9 @@ class GetCurrentWeatherOperation:
                 return _retry(FailureKind.AVAILABILITY, "Seniverse response was interrupted")
             if response.status_code != 200:
                 try:
-                    provider_code = json.loads(body).get("status_code", "")
+                    provider_code = json.loads(body, object_hook=_fields_by_name).get("status_code", "")
+                    if not isinstance(provider_code, str):
+                        provider_code = ""
                 except (ValueError, AttributeError, TypeError):
                     provider_code = ""
                 if provider_code == "AP010014":
@@ -185,7 +224,11 @@ class GetCurrentWeatherOperation:
                     f"Seniverse rejected with HTTP {response.status_code}",
                 )
             try:
-                wire = json.loads(body, parse_constant=lambda _: (_ for _ in ()).throw(ValueError()))
+                wire = json.loads(
+                    body,
+                    object_hook=_fields_by_name,
+                    parse_constant=lambda _: (_ for _ in ()).throw(ValueError()),
+                )
                 results = wire["results"]
                 if not isinstance(results, list) or len(results) != 1:
                     raise ValueError("invalid result count")
@@ -201,14 +244,17 @@ class GetCurrentWeatherOperation:
                 )
                 if any(not isinstance(value, str) or not value for value in values):
                     raise ValueError("missing weather field")
-                temperature = float(now["temperature"])
-                if not math.isfinite(temperature):
-                    raise ValueError("invalid temperature")
-                datetime.fromisoformat(result["last_update"].replace("Z", "+00:00"))
+                country = place.get("country")
+                if country is None:
+                    country = ""
+                if not isinstance(country, str) or any(key in field for field in (*values, country)):
+                    raise ValueError("invalid weather fields")
+                if not _valid_temperature(now["temperature"]) or not _valid_time(result["last_update"]):
+                    raise ValueError("invalid temperature or timestamp")
                 output = GetCurrentWeatherOutput(
                     place["id"],
                     place["name"],
-                    place.get("country", ""),
+                    country,
                     now["text"],
                     now["code"],
                     now["temperature"],

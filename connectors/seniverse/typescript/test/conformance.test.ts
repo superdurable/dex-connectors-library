@@ -15,14 +15,14 @@ it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario,
 async function invokeSeniverse(scenario: Scenario, recorder: ExchangeRecorder) {
   if (scenario.operation !== 'getCurrentWeather') throw new Error(`unknown Seniverse operation ${scenario.operation}`);
   return withScenarioHTTPServer(recorder, async baseUrl => {
-    const credentials: Credentials = { privateKey: new SecretString(scenario.name === 'getCurrentWeather-defect' ? '' : 'private-test-key') };
-    const client = new SeniverseClient({ baseUrl: "https://console.example.test", ...(scenario.name === 'getCurrentWeather-oversized' ? { maxResponseBytes: 16 } : {}) }, new StaticCredentialProvider<Credentials>([[connection, credentials]]), {
+    const credentials: Credentials = { privateKey: new SecretString(scenario.name === 'getCurrentWeather-missingCredential' ? '' : 'private-test-key') };
+    const client = new SeniverseClient({ baseUrl: "https://console.example.test", ...(scenario.name.endsWith('-smallLimit') ? { maxResponseBytes: 16 } : {}) }, new StaticCredentialProvider<Credentials>([[connection, credentials]]), {
       send: request => {
         if (scenario.exchanges[0]?.transportFailure) {
           recorder.record({ method: request.method, url: request.url, headers: request.headers ?? {}, body: request.body });
           throw new Error('synthetic provider transport failure');
         }
-        return sendProviderRequest({ ...request, url: `${baseUrl}/v3/weather/now.json${new URL(request.url).search}`, addressPolicy: 'privateNetworkHTTP' });
+        return sendProviderRequest({ ...request, url: `${baseUrl}${new URL(request.url).pathname}${new URL(request.url).search}`, addressPolicy: 'privateNetworkHTTP' });
       },
     });
     const call: Call = {
