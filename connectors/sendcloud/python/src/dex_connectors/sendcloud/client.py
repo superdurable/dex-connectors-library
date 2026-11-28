@@ -3,9 +3,9 @@
 """Read China SendCloud balances without exposing credential or contact data."""
 
 import json
+import math
+import re
 from datetime import UTC, datetime
-from decimal import Decimal, InvalidOperation
-from typing import Any
 
 import httpx
 from dex_connectors.sdk import (
@@ -133,14 +133,28 @@ class GetAccountBalanceOperation:
             except ProviderTransportError:
                 return _retry(FailureKind.AVAILABILITY, "SendCloud response was interrupted")
             try:
-                wire: Any = json.loads(body, parse_float=Decimal)
-                if (
-                    not isinstance(wire, dict)
-                    or type(wire.get("result")) is not bool
-                    or type(wire.get("statusCode")) is not int
-                ):
-                    raise ValueError("invalid envelope")
-            except (ValueError, TypeError, UnicodeDecodeError):
+                wire = json.loads(
+                    body,
+                    parse_float=_NumberToken,
+                    parse_int=_NumberToken,
+                    parse_constant=_invalid_constant,
+                    object_hook=lambda fields: {name.lower(): value for name, value in fields.items()},
+                )
+                if not isinstance(wire, dict) or type(wire.get("result")) is not bool:
+                    raise ValueError("Invalid result")
+                code = _integer(wire.get("statuscode"))
+                if code is None:
+                    raise ValueError("Missing status code")
+                info = wire.get("info")
+                if info is None:
+                    info = {}
+                if not isinstance(info, dict):
+                    raise ValueError("Invalid account info")
+                available = _amount(info.get("avaliablebalance"))
+                balance = _amount(info.get("balance"))
+                quota = _integer(info.get("quota"))
+                used = _integer(info.get("todayusedquota"))
+            except (ValueError, UnicodeDecodeError):
                 if status != 200:
                     return _branch(
                         "providerRejected",
@@ -150,7 +164,6 @@ class GetAccountBalanceOperation:
                 return _branch(
                     "invalidResponse", FailureKind.PROTOCOL, "SendCloud returned an invalid response"
                 )
-            code = wire["statusCode"]
             if code == 50000:
                 return _retry(FailureKind.RATE_LIMIT, "SendCloud rate limited the request", delay)
             if status != 200 or not wire["result"] or code != 200:
@@ -162,33 +175,52 @@ class GetAccountBalanceOperation:
                     else FailureKind.PROVIDER_REJECTION
                 )
                 return _branch("providerRejected", kind, "SendCloud rejected the account balance request")
-            info = wire.get("info")
-            if not isinstance(info, dict):
+            if (
+                available is None
+                or balance is None
+                or quota is None
+                or used is None
+                or not math.isfinite(float(available))
+                or not math.isfinite(float(balance))
+                or quota < 0
+                or used < 0
+            ):
                 return _branch(
-                    "invalidResponse", FailureKind.PROTOCOL, "SendCloud returned an invalid response"
-                )
-            try:
-                available = Decimal(str(info["avaliableBalance"]))
-                balance = Decimal(str(info["balance"]))
-                quota = info["quota"]
-                used = info["todayUsedQuota"]
-                if (
-                    not available.is_finite()
-                    or not balance.is_finite()
-                    or type(quota) is not int
-                    or type(used) is not int
-                    or quota < 0
-                    or used < 0
-                ):
-                    raise ValueError("invalid balance")
-            except (KeyError, ValueError, TypeError, InvalidOperation):
-                return _branch(
-                    "invalidResponse", FailureKind.PROTOCOL, "SendCloud returned an invalid response"
+                    "invalidResponse", FailureKind.PROTOCOL, "SendCloud returned an invalid balance or quota"
                 )
             return QueryAttempt.branch_result(
                 "retrieved",
-                GetAccountBalanceOutput(str(available), str(balance), quota, used),
+                GetAccountBalanceOutput(available, balance, quota, used),
                 Receipt(),
             )
         finally:
             await response.aclose()
+
+
+class _NumberToken(str):
+    pass
+
+
+def _invalid_constant(token: str) -> None:
+    raise ValueError("Invalid JSON number")
+
+
+def _integer(value: object) -> int | None:
+    if value is None:
+        return None
+    if not isinstance(value, _NumberToken) or len(value) > 20 or not re.fullmatch(r"-?[0-9]+", value):
+        raise ValueError("Invalid integer")
+    number = int(value)
+    if not -(1 << 63) <= number < 1 << 63:
+        raise ValueError("Integer out of range")
+    return number
+
+
+def _amount(value: object) -> str | None:
+    if value is None:
+        return None
+    if not isinstance(value, str) or not re.fullmatch(
+        r"-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?", value
+    ):
+        raise ValueError("Invalid decimal")
+    return str(value)

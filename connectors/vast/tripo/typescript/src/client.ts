@@ -6,6 +6,8 @@ import { BodyTooLargeError, parseRetryAfter, sendProviderRequest, type ProviderR
 import { GetAccountBalanceDefinition } from './generated/definitions.js';
 import type { Config, Credentials, GetAccountBalanceInput, GetAccountBalanceOutput } from './generated/models.js';
 
+import { parseBalanceResponse, exactAmount, integerCode } from './decimal-response.js';
+
 const emptyOutput: GetAccountBalanceOutput = { availableCredits: '', frozenCredits: '' };
 /** Send a Tripo request through caller-owned HTTP transport. */
 export type BalanceRequestSender = (request: ProviderRequest) => Promise<ProviderResponse>;
@@ -49,31 +51,32 @@ export class GetAccountBalanceOperation implements Query<GetAccountBalanceInput,
     if (!apiKey || apiKey.length > 512 || !/^[!-~]+$/.test(apiKey)) return branch('defect', 'AUTHENTICATION', 'connection credentials are unavailable or invalid');
     let response: ProviderResponse;
     try {
-      response = await this.client.send({ url: `${this.client.baseUrl}/v3/account/balance`, method: 'GET', headers: { Accept: 'application/json', Authorization: `Bearer ${apiKey}` }, timeoutMs: this.client.timeoutMs, maxResponseBytes: this.client.maxResponseBytes, addressPolicy: 'publicHTTPS', signal: call.context.cancellationSignal });
+      response = await this.client.send({ url: `${this.client.baseUrl.replace(/\/$/, '')}/v3/account/balance`, method: 'GET', headers: { Accept: 'application/json', Authorization: `Bearer ${apiKey}` }, timeoutMs: this.client.timeoutMs, maxResponseBytes: this.client.maxResponseBytes, addressPolicy: 'publicHTTPS', signal: call.context.cancellationSignal });
     } catch (error) {
-      if (error instanceof BodyTooLargeError && error.status === 200) return branch('invalidResponse', 'RESPONSE_TOO_LARGE', 'Tripo response exceeded the configured limit');
+      if (error instanceof BodyTooLargeError && !(error.status === 408 || error.status === 429 || (error.status ?? 0) >= 500)) return branch('invalidResponse', 'RESPONSE_TOO_LARGE', 'Tripo response exceeded the configured limit');
       if (error instanceof BodyTooLargeError && error.status !== undefined) return classifyStatus(error.status, error.headers ?? {});
       return retry('AVAILABILITY', 'Tripo request failed');
     }
+    if (response.status === 408 || response.status === 429 || response.status >= 500) return classifyStatus(response.status, response.headers);
+    if (response.body.length > this.client.maxResponseBytes) return branch('invalidResponse', 'RESPONSE_TOO_LARGE', 'Tripo response exceeded the configured limit');
     if (response.status !== 200) return classifyStatus(response.status, response.headers);
-    let text: string; let wire: unknown;
-    try { text = new TextDecoder('utf-8', { fatal: true }).decode(response.body); wire = JSON.parse(text) as unknown; }
-    catch { return branch('invalidResponse', 'PROTOCOL', 'Tripo returned an invalid response'); }
-    if (!isRecord(wire) || !Number.isInteger(wire.code)) return branch('invalidResponse', 'PROTOCOL', 'Tripo returned an invalid response');
-    const code = wire.code as number;
-    if (code !== 0) return classifyCode(code);
-    if (!isRecord(wire.data)) return branch('invalidResponse', 'PROTOCOL', 'Tripo response lacks valid credit balances');
-    const values = extractCreditDecimals(text);
-    if (!values || !isCreditDecimal(values.availableCredits) || !isCreditDecimal(values.frozenCredits)) return branch('invalidResponse', 'PROTOCOL', 'Tripo response lacks valid credit balances');
-    return newQueryBranch('fetched', values);
+    let wire: unknown;
+    try { wire = parseBalanceResponse(response.body); }
+    catch { return invalidResponse(); }
+    if (!isRecord(wire)) return invalidResponse();
+    const code = integerCode(wire.code);
+    if (code === undefined || (wire.data != null && !isRecord(wire.data))) return invalidResponse();
+    const fields = wire.data ?? {};
+    const available = exactAmount(fields.balance);
+    const frozen = exactAmount(fields.frozen);
+    if ((fields.balance != null && available === undefined) || (fields.frozen != null && frozen === undefined)) return invalidResponse();
+    if (code !== 0n) return classifyCode(Number(code));
+    if (available === undefined || frozen === undefined || !isCreditDecimal(available) || !isCreditDecimal(frozen)) return invalidResponse();
+    return newQueryBranch('fetched', { availableCredits: available, frozenCredits: frozen });
   }
 }
-function extractCreditDecimals(text: string): GetAccountBalanceOutput | undefined {
-  const data = /"data"\s*:\s*\{([^{}]*)\}/.exec(text)?.[1];
-  if (!data) return undefined;
-  const balance = /"balance"\s*:\s*("?)(\d+(?:\.\d+)?)\1/.exec(data)?.[2];
-  const frozen = /"frozen"\s*:\s*("?)(\d+(?:\.\d+)?)\1/.exec(data)?.[2];
-  return balance !== undefined && frozen !== undefined ? { availableCredits: balance, frozenCredits: frozen } : undefined;
+function invalidResponse(): QueryAttempt<GetAccountBalanceOutput> {
+  return branch('invalidResponse', 'PROTOCOL', 'Tripo returned an invalid response');
 }
 function isCreditDecimal(value: string): boolean { return value.length <= 30 && /^(?:\d+)(?:\.\d{1,2})?$/.test(value); }
 function classifyCode(code: number): QueryAttempt<GetAccountBalanceOutput> {
@@ -90,7 +93,7 @@ function classifyStatus(status: number, headers: ProviderResponse['headers']): Q
   const kind: Failure['kind'] = status === 401 ? 'AUTHENTICATION' : status === 403 ? 'AUTHORIZATION' : 'PROVIDER_REJECTION';
   return branch('providerRejected', kind, `Tripo rejected the request with HTTP ${status}`);
 }
-function isRecord(value: unknown): value is Record<string, unknown> { return typeof value === 'object' && value !== null && !Array.isArray(value); }
+function isRecord(value: unknown): value is Record<string, unknown> { return typeof value === 'object' && value !== null && Object.getPrototypeOf(value) === Object.prototype; }
 function failure(kind: Failure['kind'], message: string): Failure { return { provider: 'tripo', operation: 'getAccountBalance', kind, message }; }
 function branch(id: string, kind: Failure['kind'], message: string): QueryAttempt<GetAccountBalanceOutput> { return newQueryBranch(id, emptyOutput, {}, failure(kind, message)); }
 function retry(kind: Failure['kind'], message: string, delayMs = 0): QueryAttempt<GetAccountBalanceOutput> { return newQueryRetry(failure(kind, message), delayMs); }

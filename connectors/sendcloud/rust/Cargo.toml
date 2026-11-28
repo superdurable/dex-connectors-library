@@ -1,0 +1,21 @@
+[package]
+name = "dex-connector-sendcloud"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.97"
+license = "MIT"
+description = "SendCloud account balance queries for Dex Flows"
+repository = "https://github.com/superdurable/dex-connectors-library"
+
+[dependencies]
+dex-connectors-sdk = "=0.1.0"
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["raw_value"] }
+
+regex = "1"
+
+form_urlencoded = "1"
+
+[dev-dependencies]
+tempfile = "3"
+tokio = { version = "1", features = ["rt", "time"] }

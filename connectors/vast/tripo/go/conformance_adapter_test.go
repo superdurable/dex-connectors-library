@@ -20,7 +20,11 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	if scenario.Name == "getAccountBalance-defect" {
 		credentials = Credentials{}
 	}
-	client, err := New(Config{BaseURL: endpoint}, sdkgo.StaticCredentialProvider[Credentials]{testConnection: credentials}, WithHTTPClient(transport))
+	config := Config{BaseURL: endpoint}
+	if scenario.Name == "getAccountBalance-oversize" {
+		config.MaxResponseBytes = 8
+	}
+	client, err := New(config, sdkgo.StaticCredentialProvider[Credentials]{testConnection: credentials}, WithHTTPClient(transport))
 	require.NoError(t, err)
 	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
 		"getAccountBalance": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetAccountBalance(), testConnection),

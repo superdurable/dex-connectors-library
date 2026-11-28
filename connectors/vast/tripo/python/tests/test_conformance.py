@@ -25,7 +25,9 @@ def make_client(http_client: httpx.AsyncClient, recorder: Any) -> connector.Clie
     defect = bool(recorder.scenario["name"].endswith("-defect"))
     credentials = connector.Credentials(sdk.SecretString("" if defect else "test-api-key"))
     return connector.Client(
-        connector.Config(),
+        connector.Config(max_response_bytes=8)
+        if recorder.scenario["name"].endswith("-oversize")
+        else connector.Config(),
         conformance.static_credentials(CONNECTION, credentials),
         http_client,
     )

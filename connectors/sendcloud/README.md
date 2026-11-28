@@ -7,3 +7,7 @@ SendCloud's [API rules](https://www.sendcloud.net/doc/email_v2/) define `result`
 This is the Chinese email platform operated by [武汉闪达科技有限公司](https://www.sendcloud.net/aboutUs/), distinct from the European shipping service with a similar name. The logo comes from SendCloud's official site.
 
 The [TypeScript package](typescript/README.md) implements the same `getAccountBalance` Query with Go-recorded provider conformance and a real Dex Worker/Client example. Live SendCloud authorization requires user-controlled credentials and remains unverified here.
+
+## Java and Rust
+
+The [Java Worker](java/examples/io/superdurable/dexconnectors/sendcloud/AccountBalanceWorker.java) and [Rust Worker](rust/examples/get_account_balance.rs) read balances and daily quotas with the `sendcloud` connection. Supply `SENDCLOUD_API_USER` and `SENDCLOUD_API_KEY` through the Worker environment. With Dex running, use `./gradlew accountBalanceWorker` from `java/` or `cargo run --example get_account_balance` from `rust/`.

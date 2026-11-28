@@ -15,7 +15,7 @@ async function invokeTripo(scenario: Scenario, recorder: ExchangeRecorder) {
   if (scenario.operation !== 'getAccountBalance') throw new Error(`unknown Tripo operation ${scenario.operation}`);
   const isDefect = scenario.name.endsWith('-defect');
   const credentials = new StaticCredentialProvider([[connection, { apiKey: new SecretString(isDefect ? '' : 'test-api-key') }]]);
-  const client = new TripoClient({}, credentials, { send: request => answerRecordedRequest(recorder, request, before => new ProviderTransportError(before)) });
+  const client = new TripoClient(scenario.name.endsWith('-oversize') ? { maxResponseBytes: 8 } : {}, credentials, { send: request => answerRecordedRequest(recorder, request, before => new ProviderTransportError(before)) });
   const call: Call = {
     context: { flowId: 'tripo-conformance', cancellationSignal: new AbortController().signal } as Call['context'],
     id: scenario.callId, connection, operation: { connectorId: 'tripo', operationId: scenario.operation },

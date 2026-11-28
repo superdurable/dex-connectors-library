@@ -5,8 +5,6 @@
 import json
 import re
 from datetime import UTC, datetime
-from decimal import Decimal
-from typing import Any
 
 import httpx
 from dex_connectors.sdk import (
@@ -108,8 +106,6 @@ class GetAccountBalanceOperation:
                 return _retry(FailureKind.RATE_LIMIT, "Tripo rate limited the request", delay)
             if status == 408 or status >= 500:
                 return _retry(FailureKind.AVAILABILITY, "Tripo is temporarily unavailable", delay)
-            if status != 200 and not True:
-                return _http_rejection(status)
             try:
                 body = await read_bounded_body(response, self.client.max_response_bytes)
             except BodyTooLargeError:
@@ -124,7 +120,7 @@ class GetAccountBalanceOperation:
                 return _http_rejection(status)
         finally:
             await response.aclose()
-        return _decode(body, input, delay)
+        return _decode(body)
 
 
 def _valid_key(value: str) -> bool:
@@ -162,25 +158,48 @@ def _http_rejection(status: int) -> QueryAttempt[GetAccountBalanceOutput]:
     return _branch("providerRejected", kind, f"Tripo rejected the request with HTTP {status}")
 
 
-def _credit(value: Any) -> str | None:
-    if isinstance(value, bool) or not isinstance(value, (Decimal, int)):
-        return None
-    text = str(value)
-    if len(text) > 30 or not re.fullmatch(r"[0-9]+(?:\.[0-9]{1,2})?", text):
-        return None
-    return text
+class _NumberToken(str):
+    pass
 
 
-def _decode(
-    body: bytes, input: GetAccountBalanceInput, delay: float
-) -> QueryAttempt[GetAccountBalanceOutput]:
+def _decimal(value: object) -> str | None:
+    if not isinstance(value, str) or not re.fullmatch(
+        r"-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?", value
+    ):
+        return None
+    return str(value)
+
+
+def _decode(body: bytes) -> QueryAttempt[GetAccountBalanceOutput]:
     try:
-        document: Any = json.loads(body, parse_float=Decimal)
+        document = json.loads(
+            body,
+            parse_float=_NumberToken,
+            parse_int=_NumberToken,
+            object_hook=lambda fields: {name.lower(): value for name, value in fields.items()},
+            parse_constant=_invalid_constant,
+        )
     except (ValueError, UnicodeDecodeError):
         document = None
-    if not isinstance(document, dict) or type(document.get("code")) is not int:
-        return _branch("invalidResponse", FailureKind.PROTOCOL, "Tripo returned an invalid response")
-    code = document["code"]
+    invalid = _branch("invalidResponse", FailureKind.PROTOCOL, "Tripo returned an invalid response")
+    if not isinstance(document, dict):
+        return invalid
+    token = document.get("code")
+    if not isinstance(token, _NumberToken) or len(token) > 20 or not re.fullmatch(r"-?[0-9]+", token):
+        return invalid
+    code = int(token)
+    if not -(1 << 63) <= code < 1 << 63:
+        return invalid
+    data = document.get("data")
+    if data is not None and not isinstance(data, dict):
+        return invalid
+    fields = data or {}
+    balance = _decimal(fields.get("balance"))
+    frozen = _decimal(fields.get("frozen"))
+    if (fields.get("balance") is not None and balance is None) or (
+        fields.get("frozen") is not None and frozen is None
+    ):
+        return invalid
     if code in (1000, 1001):
         return _retry(FailureKind.AVAILABILITY, "Tripo service is temporarily unavailable")
     if code in (1007, 2000):
@@ -193,11 +212,17 @@ def _decode(
         return _branch(
             "providerRejected", FailureKind.PROVIDER_REJECTION, "Tripo rejected the account request"
         )
-    data = document.get("data")
     if (
-        not isinstance(data, dict)
-        or (balance := _credit(data.get("balance"))) is None
-        or (frozen := _credit(data.get("frozen"))) is None
+        balance is None
+        or frozen is None
+        or not all(
+            len(value) <= 30 and re.fullmatch(r"[0-9]+(?:\.[0-9]{1,2})?", value)
+            for value in (balance, frozen)
+        )
     ):
-        return _branch("invalidResponse", FailureKind.PROTOCOL, "Tripo response lacks valid credit balances")
+        return invalid
     return QueryAttempt.branch_result("fetched", GetAccountBalanceOutput(balance, frozen), Receipt())
+
+
+def _invalid_constant(token: str) -> None:
+    raise ValueError("Invalid JSON number")

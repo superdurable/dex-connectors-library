@@ -6,6 +6,8 @@ import { BodyTooLargeError, parseRetryAfter, sendProviderRequest, type ProviderR
 import { GetAccountBalanceDefinition } from './generated/definitions.js';
 import type { Config, Credentials, GetAccountBalanceInput, GetAccountBalanceOutput } from './generated/models.js';
 
+import { exactAmount, integerCode, parseBalanceResponse } from './decimal-response.js';
+
 /** Optional HTTP sender for SendCloud provider tests. */
 export interface SendCloudClientOptions { /** Sender; omitted uses the SDK HTTP transport. */ send?: (request: ProviderRequest) => Promise<ProviderResponse>; }
 
@@ -45,7 +47,7 @@ export class SendCloudClient {
     let response: ProviderResponse;
     try { response = await this.send(request); }
     catch (error) {
-      if (error instanceof BodyTooLargeError && error.status !== undefined) return { response: { status: error.status, headers: error.headers ?? {}, body: new Uint8Array() }, error: 'tooLarge', retryAfterMs: 0 };
+      if (error instanceof BodyTooLargeError && error.status !== undefined) return { response: { status: error.status, headers: error.headers ?? {}, body: new Uint8Array() }, error: 'tooLarge', retryAfterMs: parseRetryAfter(header(error.headers ?? {}, 'retry-after')) };
       return { error: 'transport', retryAfterMs: 0 };
     }
     return { response, error: response.body.length > this.maxResponseBytes ? 'tooLarge' : undefined, retryAfterMs: parseRetryAfter(header(response.headers, 'retry-after')) };
@@ -66,23 +68,30 @@ export class GetAccountBalanceOperation implements Query<GetAccountBalanceInput,
     if (status === 408 || status >= 500) return retry('AVAILABILITY', exchange.retryAfterMs);
     if (exchange.error === 'tooLarge') return branch('invalidResponse', 'RESPONSE_TOO_LARGE');
     let wire: unknown;
-    try { wire = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(body)) as unknown; } catch { wire = undefined; }
-    if (!isObject(wire) || typeof wire.result !== 'boolean' || !Number.isSafeInteger(wire.statusCode)) return status === 200 ? branch('invalidResponse', 'PROTOCOL') : branch('providerRejected', 'PROVIDER_REJECTION');
-    const code = wire.statusCode as number;
-    if (code === 50000) return retry('RATE_LIMIT', exchange.retryAfterMs);
-    if (status !== 200 || !wire.result || code !== 200) return branch('providerRejected', code === 40005 ? 'AUTHENTICATION' : [40018, 40025, 40026, 6001].includes(code) ? 'AUTHORIZATION' : 'PROVIDER_REJECTION');
-    if (!isObject(wire.info)) return branch('invalidResponse', 'PROTOCOL');
-    const info = wire.info;
-    const availableBalance = decimal(info.avaliableBalance);
-    const balance = decimal(info.balance);
-    if (availableBalance === undefined || balance === undefined || !Number.isSafeInteger(info.quota) || (info.quota as number) < 0 || !Number.isSafeInteger(info.todayUsedQuota) || (info.todayUsedQuota as number) < 0) return branch('invalidResponse', 'PROTOCOL');
-    return newQueryBranch('retrieved', { availableBalance, balance, dailyQuota: info.quota as number, todayUsedQuota: info.todayUsedQuota as number });
+    try { wire = parseBalanceResponse(body); } catch { return invalidResponse(status); }
+    if (!isObject(wire) || typeof wire.result !== 'boolean' || (wire.info != null && !isObject(wire.info))) return invalidResponse(status);
+    const code = integerCode(wire.statuscode);
+    if (code === undefined) return invalidResponse(status);
+    const info = wire.info ?? {};
+    const availableBalance = exactAmount(info.avaliablebalance);
+    const balance = exactAmount(info.balance);
+    const quota = integerCode(info.quota);
+    const used = integerCode(info.todayusedquota);
+    if ((info.avaliablebalance != null && availableBalance === undefined) || (info.balance != null && balance === undefined)
+        || (info.quota != null && quota === undefined) || (info.todayusedquota != null && used === undefined)) return invalidResponse(status);
+    if (code === 50000n) return retry('RATE_LIMIT', exchange.retryAfterMs);
+    if (status !== 200 || !wire.result || code !== 200n) return branch('providerRejected', code === 40005n ? 'AUTHENTICATION' : [40018n, 40025n, 40026n, 6001n].includes(code) ? 'AUTHORIZATION' : 'PROVIDER_REJECTION');
+    if (availableBalance === undefined || balance === undefined || !Number.isFinite(Number(availableBalance)) || !Number.isFinite(Number(balance))
+        || quota === undefined || used === undefined || quota < 0n || used < 0n || !Number.isSafeInteger(Number(quota)) || !Number.isSafeInteger(Number(used))) return invalidResponse(status);
+    return newQueryBranch('retrieved', { availableBalance, balance, dailyQuota: Number(quota), todayUsedQuota: Number(used) });
   }
 }
 
 function validCredential(value: string): boolean { return !!value && value.length <= 512 && /^[!-~]+$/.test(value); }
-function isObject(value: unknown): value is Record<string, unknown> { return typeof value === 'object' && value !== null && !Array.isArray(value); }
-function decimal(value: unknown): string | undefined { const text = typeof value === 'number' || typeof value === 'string' ? String(value) : ''; return text && Number.isFinite(Number(text)) ? text : undefined; }
+function isObject(value: unknown): value is Record<string, unknown> { return typeof value === 'object' && value !== null && Object.getPrototypeOf(value) === Object.prototype; }
+function invalidResponse(status: number): QueryAttempt<GetAccountBalanceOutput> {
+  return status === 200 ? branch('invalidResponse', 'PROTOCOL') : branch('providerRejected', 'PROVIDER_REJECTION');
+}
 function header(headers: ProviderResponse['headers'], name: string): string { const value = Object.entries(headers).find(([key]) => key.toLowerCase() === name)?.[1]; return Array.isArray(value) ? value[0] ?? '' : value ?? ''; }
 function failure(kind: Failure['kind']): Failure { return { provider: 'sendcloud', operation: 'getAccountBalance', kind, message: 'SendCloud account balance query failed' }; }
 function branch(name: string, kind: Failure['kind']): QueryAttempt<GetAccountBalanceOutput> { return newQueryBranch(name, { availableBalance: '', balance: '', dailyQuota: 0, todayUsedQuota: 0 }, {}, failure(kind)); }

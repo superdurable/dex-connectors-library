@@ -43,6 +43,9 @@ publishing {
     }
 }
 
+def connectorPath = findProperty('connectorPath') ?: projectDir.parentFile.name
+def conformanceDir = file('../' * (connectorPath.tokenize('/').size() + 2) + 'conformance')
+
 sourceSets {
     example {
         java.srcDir 'examples'
@@ -50,7 +53,7 @@ sourceSets {
         runtimeClasspath += output + compileClasspath
     }
     test {
-        java.srcDir '../../../conformance/runners/java'
+        java.srcDir new File(conformanceDir, 'runners/java')
         compileClasspath += sourceSets.example.output
         runtimeClasspath += sourceSets.example.output
     }
@@ -63,7 +66,7 @@ tasks.register('accountBalanceWorker', JavaExec) {
 
 test {
     inputs.file(providers.environmentVariable('CONNECTOR_CONFORMANCE_FIXTURE')
-            .orElse("../../../conformance/connectors/${projectDir.parentFile.name}/scenarios.json".toString()))
+            .orElse(new File(conformanceDir, "connectors/${connectorPath}/scenarios.json").absolutePath))
     useJUnitPlatform { excludeTags 'dex-dev' }
 }
 tasks.register('dexDevTest', Test) {

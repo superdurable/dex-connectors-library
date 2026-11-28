@@ -1,0 +1,42 @@
+{
+  "getAccountBalance": {
+    "branches": [
+      {
+        "description": "SendCloud returned account balance and daily quota counters.",
+        "id": "retrieved",
+        "optional": false
+      },
+      {
+        "description": "SendCloud rejected credentials or access to the user information API.",
+        "id": "providerRejected",
+        "optional": true
+      },
+      {
+        "description": "SendCloud returned malformed or oversized data.",
+        "id": "invalidResponse",
+        "optional": true
+      },
+      {
+        "description": "Local connection configuration is invalid.",
+        "id": "defect",
+        "optional": true
+      }
+    ],
+    "operation": {
+      "connectorId": "sendcloud",
+      "operationId": "getAccountBalance"
+    },
+    "stepDefaults": {
+      "executeDurability": 2,
+      "executeMethodTimeout": 30000000000,
+      "executeRetry": {
+        "BackoffCoefficient": 2,
+        "InitialInterval": 1000000000,
+        "MaximumAttempts": 0,
+        "MaximumInterval": 300000000000,
+        "TotalDuration": 3600000000000
+      },
+      "heartbeatTimeout": 0
+    }
+  }
+}

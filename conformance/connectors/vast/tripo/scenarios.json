@@ -221,6 +221,566 @@
       "input": {},
       "name": "getAccountBalance-defect",
       "operation": "getAccountBalance"
+    },
+    {
+      "callId": "84258c7d-6053-5125-a5b8-848ccba83db4",
+      "exchanges": [
+        {
+          "body": "{\"code\":1000}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/account/balance",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-api-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-code-1000",
+      "operation": "getAccountBalance"
+    },
+    {
+      "callId": "52e7bb71-b231-5a5a-8c15-1a6946b1bf1d",
+      "exchanges": [
+        {
+          "body": "{\"code\":1001}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/account/balance",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-api-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-code-1001",
+      "operation": "getAccountBalance"
+    },
+    {
+      "callId": "d8ece9c4-1323-5cb8-ad98-4ec1c95572c6",
+      "exchanges": [
+        {
+          "body": "{\"code\":1007}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/account/balance",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-api-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-code-1007",
+      "operation": "getAccountBalance"
+    },
+    {
+      "callId": "d90608ff-1de8-585b-bb64-1f16da8536ea",
+      "exchanges": [
+        {
+          "body": "{\"code\":2000}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/account/balance",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-api-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-code-2000",
+      "operation": "getAccountBalance"
+    },
+    {
+      "callId": "f6944dea-c4be-5b3a-afa0-a4cf547e120a",
+      "exchanges": [
+        {
+          "body": "{\"code\":2}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/account/balance",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-api-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "availableCredits": "",
+          "frozenCredits": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-code-2",
+      "operation": "getAccountBalance"
+    },
+    {
+      "callId": "93c09bf5-99a5-5407-b2f7-1eaea81d3087",
+      "exchanges": [
+        {
+          "body": "{\"code\":1002}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/account/balance",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-api-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "availableCredits": "",
+          "frozenCredits": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-code-1002",
+      "operation": "getAccountBalance"
+    },
+    {
+      "callId": "c42b47c5-fb70-58b0-bca1-9693dd61a6c3",
+      "exchanges": [
+        {
+          "body": "{\"code\":2010}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/account/balance",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-api-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "QUOTA_EXHAUSTED",
+        "output": {
+          "availableCredits": "",
+          "frozenCredits": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-code-2010",
+      "operation": "getAccountBalance"
+    },
+    {
+      "callId": "cac4f916-8807-5e93-bea7-6c7b899b0888",
+      "exchanges": [
+        {
+          "body": "{\"code\":12345}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/account/balance",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-api-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "availableCredits": "",
+          "frozenCredits": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-code-12345",
+      "operation": "getAccountBalance"
+    },
+    {
+      "callId": "ef84f660-b41b-506b-91e8-0295525fe5be",
+      "exchanges": [
+        {
+          "body": "{\"noise\":{\"data\":{\"balance\":1,\"frozen\":2}},\"CODE\":0,\"DATA\":{\"BALANCE\":\"123456789012345678901234567.20\",\"frozen\":0.00}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/account/balance",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-api-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "fetched",
+        "failureKind": "",
+        "output": {
+          "availableCredits": "123456789012345678901234567.20",
+          "frozenCredits": "0.00"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-nested-case-quoted",
+      "operation": "getAccountBalance"
+    },
+    {
+      "callId": "50e6efa2-2b24-5c28-8a14-e337963b7151",
+      "exchanges": [
+        {
+          "body": "{\"code\":1007,\"data\":{\"balance\":true}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/account/balance",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-api-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "availableCredits": "",
+          "frozenCredits": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-malformed-error",
+      "operation": "getAccountBalance"
+    },
+    {
+      "callId": "a39e80de-5b38-5805-9558-f14fe1d3ef5a",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"balance\":1e1,\"frozen\":0}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/account/balance",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-api-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "availableCredits": "",
+          "frozenCredits": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-exponent",
+      "operation": "getAccountBalance"
+    },
+    {
+      "callId": "91ba4aad-b1ce-5c41-a9c8-cb341a5255eb",
+      "exchanges": [
+        {
+          "body": "{\"code\":0.0,\"data\":{\"balance\":1,\"frozen\":0}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/account/balance",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-api-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "availableCredits": "",
+          "frozenCredits": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-decimal-code",
+      "operation": "getAccountBalance"
+    },
+    {
+      "callId": "f29f12a3-fc44-5d24-a949-ab3a82c9dd1f",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"balance\":-0,\"frozen\":0}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/account/balance",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-api-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "availableCredits": "",
+          "frozenCredits": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-negative-zero",
+      "operation": "getAccountBalance"
+    },
+    {
+      "callId": "0e0bb3f5-38f5-5576-8bf2-fa9eca3c4d8c",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"balance\":1.230,\"frozen\":0}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/account/balance",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-api-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "availableCredits": "",
+          "frozenCredits": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-too-many-places",
+      "operation": "getAccountBalance"
+    },
+    {
+      "callId": "5032e442-638e-5c59-97df-8c9b20e58cb6",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"balance\":1234567890123456789012345678901,\"frozen\":0}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/account/balance",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-api-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "availableCredits": "",
+          "frozenCredits": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-too-long",
+      "operation": "getAccountBalance"
+    },
+    {
+      "callId": "df3fd6dd-b6e5-5e8e-9cd2-4394cfb8d519",
+      "exchanges": [
+        {
+          "body": "forbidden response",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/account/balance",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-api-key"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "availableCredits": "",
+          "frozenCredits": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-oversize",
+      "operation": "getAccountBalance"
     }
   ],
   "schemaVersion": 1

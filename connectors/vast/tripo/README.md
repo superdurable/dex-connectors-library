@@ -11,3 +11,7 @@ Python v0.1.0: [package and runnable example](python/README.md).
 ## TypeScript
 
 `@superdurable/connector-vast-tripo` provides `getAccountBalance` and a runnable Dex Flow in `typescript/examples/basic/`. Its conformance suite replays the Go-recorded provider scenarios.
+
+## Java and Rust
+
+The [Java Worker](java/examples/io/superdurable/dexconnectors/tripo/AccountBalanceWorker.java) and [Rust Worker](rust/examples/get_account_balance.rs) run the same balance query with the `tripo` connection. Set `TRIPO_API_KEY` in the Worker environment. With Dex running, use `./gradlew accountBalanceWorker` from `java/` or `cargo run --example get_account_balance` from `rust/`. The returned credit strings preserve the provider's decimal places.
