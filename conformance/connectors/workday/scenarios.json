@@ -703,6 +703,703 @@
       },
       "name": "listWorkers-defect",
       "operation": "listWorkers"
+    },
+    {
+      "callId": "7ac9d744-56b1-5ee6-be12-147a460ae953",
+      "exchanges": [
+        {
+          "body": "{\"data\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/common/v1/demo/workers",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-workday-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "data": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listWorkers-empty-page",
+      "operation": "listWorkers"
+    },
+    {
+      "callId": "1edd22f7-06d9-5f01-ab5c-1ca443cc704b",
+      "exchanges": [
+        {
+          "body": "{\"TOTAL\":null,\"DATA\":[{\"ID\":\"0123456789abcdef0123456789abcdef\",\"DESCRIPTOR\":\"Li\",\"salary\":10}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/common/v1/demo/workers",
+          "query": {
+            "search": [
+              " 李 "
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-workday-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "data": [
+            {
+              "descriptor": "Li",
+              "id": "0123456789abcdef0123456789abcdef"
+            }
+          ],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "search": " 李 "
+      },
+      "name": "listWorkers-unicode-search",
+      "operation": "listWorkers"
+    },
+    {
+      "callId": "4fdf3e21-ca41-5713-9395-918fc4c87e81",
+      "exchanges": [
+        {
+          "body": "{\"total\":1.0,\"data\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/common/v1/demo/workers",
+          "query": {
+            "limit": [
+              "5"
+            ],
+            "offset": [
+              "2"
+            ],
+            "search": [
+              "Ada"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-workday-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "data": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 5,
+        "offset": 2,
+        "search": "Ada"
+      },
+      "name": "listWorkers-fractional-total",
+      "operation": "listWorkers"
+    },
+    {
+      "callId": "ef058731-372e-5085-be79-f40219d209cb",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"bad\",\"descriptor\":\"Li\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/common/v1/demo/workers",
+          "query": {
+            "limit": [
+              "5"
+            ],
+            "offset": [
+              "2"
+            ],
+            "search": [
+              "Ada"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-workday-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "data": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 5,
+        "offset": 2,
+        "search": "Ada"
+      },
+      "name": "listWorkers-bad-worker-id",
+      "operation": "listWorkers"
+    },
+    {
+      "callId": "8f6a8c05-19b3-5060-ae96-ddd57249c633",
+      "exchanges": [
+        {
+          "body": "{\"data\":null}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/common/v1/demo/workers",
+          "query": {
+            "limit": [
+              "5"
+            ],
+            "offset": [
+              "2"
+            ],
+            "search": [
+              "Ada"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-workday-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "data": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 5,
+        "offset": 2,
+        "search": "Ada"
+      },
+      "name": "listWorkers-null-data",
+      "operation": "listWorkers"
+    },
+    {
+      "callId": "ed6c3d5e-542a-5d27-a436-78e1e3183526",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"test-workday-token\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/common/v1/demo/workers",
+          "query": {
+            "limit": [
+              "5"
+            ],
+            "offset": [
+              "2"
+            ],
+            "search": [
+              "Ada"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-workday-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "data": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 5,
+        "offset": 2,
+        "search": "Ada"
+      },
+      "name": "listWorkers-credential-reflection",
+      "operation": "listWorkers"
+    },
+    {
+      "callId": "2e123555-8d13-5715-ae05-bc37585f7f24",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/common/v1/demo/workers",
+          "query": {
+            "limit": [
+              "5"
+            ],
+            "offset": [
+              "2"
+            ],
+            "search": [
+              "Ada"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-workday-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "data": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 5,
+        "offset": 2,
+        "search": "Ada"
+      },
+      "name": "listWorkers-not-found",
+      "operation": "listWorkers"
+    },
+    {
+      "callId": "57f5611b-845e-500a-9a89-db0d7b329717",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "3"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/common/v1/demo/workers",
+          "query": {
+            "limit": [
+              "5"
+            ],
+            "offset": [
+              "2"
+            ],
+            "search": [
+              "Ada"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-workday-token"
+            ]
+          },
+          "status": 408
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 3000,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 5,
+        "offset": 2,
+        "search": "Ada"
+      },
+      "name": "listWorkers-request-timeout",
+      "operation": "listWorkers"
+    },
+    {
+      "callId": "29ae53a6-0f4f-5ebb-8685-24024eb28ff2",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "data": [],
+          "total": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "offset": -1
+      },
+      "name": "listWorkers-negative-offset",
+      "operation": "listWorkers"
+    },
+    {
+      "callId": "ee663718-50c8-50c0-ae3f-ea436b5a88c1",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "data": [],
+          "total": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "search": " ab "
+      },
+      "name": "listWorkers-short-search",
+      "operation": "listWorkers"
+    },
+    {
+      "callId": "2bacb2bd-ab3d-55e0-a893-1abd4e96c70e",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"larger than sixteen bytes\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/common/v1/demo/workers/0123456789abcdef0123456789abcdef",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-workday-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "descriptor": "",
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "workerId": "0123456789abcdef0123456789abcdef"
+      },
+      "name": "getWorker-oversized-smallLimit",
+      "operation": "getWorker"
+    },
+    {
+      "callId": "53200695-e4fa-55f9-ad2f-58abec2180c3",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"larger than sixteen bytes\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/common/v1/demo/workers/0123456789abcdef0123456789abcdef",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-workday-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "descriptor": "",
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "workerId": "0123456789abcdef0123456789abcdef"
+      },
+      "name": "getWorker-rejected-smallLimit",
+      "operation": "getWorker"
+    },
+    {
+      "callId": "8fefd551-3273-55c5-9793-3a2f4f6096e8",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"larger than sixteen bytes\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/common/v1/demo/workers/0123456789abcdef0123456789abcdef",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-workday-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "descriptor": "",
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "workerId": "0123456789abcdef0123456789abcdef"
+      },
+      "name": "getWorker-missing-smallLimit",
+      "operation": "getWorker"
+    },
+    {
+      "callId": "cff799c6-5e1f-5c52-89b7-7651ad86d56a",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"larger than sixteen bytes\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/common/v1/demo/workers",
+          "query": {
+            "limit": [
+              "5"
+            ],
+            "offset": [
+              "2"
+            ],
+            "search": [
+              "Ada"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-workday-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "data": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 5,
+        "offset": 2,
+        "search": "Ada"
+      },
+      "name": "listWorkers-oversized-smallLimit",
+      "operation": "listWorkers"
+    },
+    {
+      "callId": "d737d78a-988b-5fd0-80b2-770868e1f116",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"larger than sixteen bytes\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/common/v1/demo/workers",
+          "query": {
+            "limit": [
+              "5"
+            ],
+            "offset": [
+              "2"
+            ],
+            "search": [
+              "Ada"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-workday-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "data": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 5,
+        "offset": 2,
+        "search": "Ada"
+      },
+      "name": "listWorkers-rejected-smallLimit",
+      "operation": "listWorkers"
+    },
+    {
+      "callId": "4793da2d-bc66-5f99-8853-dd9e443dbe8d",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"larger than sixteen bytes\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/common/v1/demo/workers",
+          "query": {
+            "limit": [
+              "5"
+            ],
+            "offset": [
+              "2"
+            ],
+            "search": [
+              "Ada"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-workday-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "data": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 5,
+        "offset": 2,
+        "search": "Ada"
+      },
+      "name": "listWorkers-missing-smallLimit",
+      "operation": "listWorkers"
     }
   ],
   "schemaVersion": 1

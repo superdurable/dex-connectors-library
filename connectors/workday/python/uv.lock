@@ -298,7 +298,7 @@ wheels = [
 
 [[package]]
 name = "dex-connector-workday"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "." }
 dependencies = [
     { name = "dex-connectors-sdk" },
@@ -318,7 +318,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dex-connectors-sdk", specifier = "==0.7.0" },
+    { name = "dex-connectors-sdk", specifier = "==0.8.0" },
     { name = "dex-python-sdk", specifier = ">=1.28.0" },
     { name = "httpx", specifier = ">=0.27" },
 ]
@@ -335,7 +335,7 @@ dev = [
 
 [[package]]
 name = "dex-connectors-sdk"
-version = "0.7.0"
+version = "0.8.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
@@ -345,9 +345,9 @@ dependencies = [
     { name = "httpcore" },
     { name = "httpx" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/39/5e/4c472bd0ee3b44904b012609f74283eeef0ee1ed69721b5efa29470414d2/dex_connectors_sdk-0.7.0.tar.gz", hash = "sha256:e1465e66a5f7f6fd6d9c2c8255fe78de6b6847e9bf3b2cf8f65e06037df0df4e", size = 227375, upload-time = "2026-11-05T16:54:57.229Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/21/e9/3c979cfc128d8d0456f4fb5b42653bbffc06c68b07db7ee3febcafeaff3c/dex_connectors_sdk-0.8.0.tar.gz", hash = "sha256:bd3266406d62c42cabefaee37cf6f5e22862072d9c0967afb7fa5def1504a681", size = 230042, upload-time = "2026-11-06T05:54:24.892Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/66/cd/4fbd34d4ff9d925005601a2002e13e0cb68c10eefc3d19779c067f96880b/dex_connectors_sdk-0.7.0-py3-none-any.whl", hash = "sha256:dbd679f11a06dc101841b9ee229bf004cbe8d3b99b86e1a3da5a4606bfe2f1f4", size = 119827, upload-time = "2026-11-05T16:54:56.058Z" },
+    { url = "https://files.pythonhosted.org/packages/d9/29/1a49b59ee5d59a6e61eca498ba154df7ceb98be77d4bff4ba740cb5e29f3/dex_connectors_sdk-0.8.0-py3-none-any.whl", hash = "sha256:5c5a46a739c451f1b57dedc91b173860f8ea9c983f323f058f0c95965cc67ffc", size = 120810, upload-time = "2026-11-06T05:54:23.817Z" },
 ]
 
 [[package]]

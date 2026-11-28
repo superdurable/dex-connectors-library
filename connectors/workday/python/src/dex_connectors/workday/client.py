@@ -25,7 +25,7 @@ from ._generated.config import Config as Config
 from ._generated.config import Credentials as Credentials
 
 if TYPE_CHECKING:
-    from .operations import GetWorkerOperation
+    from .operations import GetWorkerOperation, ListWorkersOperation
 
 
 @dataclass(frozen=True, slots=True)
@@ -52,9 +52,16 @@ class Client:
         if config.timeout_seconds <= 0 or config.max_response_bytes < 1:
             raise ValueError("Workday request limits must be positive")
         self.base_url = validate_base_url(config.base_url).rstrip("/")
+        self.timeout_seconds = config.timeout_seconds
         self.max_response_bytes = config.max_response_bytes
         self.credentials = credentials
         self.http_client = http_client or new_provider_http_client(config.timeout_seconds)
+
+    def list_workers(self) -> ListWorkersOperation:
+        """Bind the worker directory Query."""
+        from .operations import ListWorkersOperation
+
+        return ListWorkersOperation(self)
 
     def get_worker(self) -> GetWorkerOperation:
         """Bind the worker profile Query."""
@@ -81,6 +88,7 @@ class Client:
             request = self.http_client.build_request(
                 "GET",
                 self.base_url + path,
+                timeout=self.timeout_seconds,
                 headers={"Accept": "application/json", "Authorization": "Bearer " + token},
             )
             response, _ = await send_traced(self.http_client, request)

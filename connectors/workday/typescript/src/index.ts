@@ -7,4 +7,4 @@ export * from './generated/steps.js';
 export { Connection, newConnection, newConnectionWithOperations } from './generated/connection.js';
 export { newProjectConnection } from './project.js';
 export { WorkdayClient, type WorkdayClientOptions } from './client.js';
-export { GetWorkerOperation } from './operations.js';
+export { GetWorkerOperation, ListWorkersOperation } from './operations.js';

@@ -21,7 +21,13 @@ export function newProjectConnection(project: LoadedProject, connectionName: str
   if (!project) throw new TypeError('Workday project is required');
   const selected = project.configuration.connections.find(entry => entry.connectorId === 'workday' && entry.connectionName === connectionName);
   if (!selected || selected.provider !== 'workday') throw new TypeError('Workday project connection is not configured');
-  const config = ConfigSchema.parse(selected.configuration) as Config;
+  const fields = selected.configuration;
+  let config: Config = ConfigSchema.parse(fields);
+  if (fields.timeout !== undefined && fields.timeout !== '') {
+    if (typeof fields.timeout !== 'number' || !Number.isSafeInteger(fields.timeout) || fields.timeout <= 0)
+      throw new TypeError('Workday timeout must be a positive nanosecond duration');
+    config = { ...config, timeoutMs: Math.ceil(fields.timeout / 1_000_000) };
+  }
   const provider = newProjectCredentialProvider(project, connectionName, decodeCredentials, encodeCredentials, decodeSharedCredentials);
   return newConnection(new WorkdayClient(config, provider, options), { provider: 'workday', name: connectionName });
 }

@@ -14,22 +14,19 @@ ROOT = Path(__file__).parents[4]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 import connector_scenarios as conformance  # noqa: E402
 
-SCENARIOS = [
-    scenario
-    for scenario in conformance.load_scenarios(ROOT / "conformance/connectors/workday/scenarios.json")
-    if scenario["operation"] == "getWorker"
-]
+SCENARIOS = conformance.load_scenarios(ROOT / "conformance/connectors/workday/scenarios.json")
 CONNECTION = sdk.ConnectionRef("workday", "workday")
 ADAPTER = conformance.PythonOperationAdapter(
     "workday",
     CONNECTION,
     workday,
-    lambda http_client, _: workday.Client(
+    lambda http_client, recorder: workday.Client(
         workday.Config(
             base_url="http://127.0.0.1:8848/api/common/v1/demo",
             authorization_endpoint="http://127.0.0.1:8848/authorize",
             token_endpoint="http://127.0.0.1:8848/token",
             scopes=("Staffing",),
+            max_response_bytes=16 if recorder.scenario["name"].endswith("-smallLimit") else 1048576,
         ),
         conformance.static_credentials(
             CONNECTION,

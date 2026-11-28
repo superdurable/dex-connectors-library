@@ -108,10 +108,14 @@ export function decodeSharedCredentials(value: unknown): Credentials {
 /** Host-owned source of private connector credentials. */
 export type CredentialSource = RefreshingCredentialProvider<Credentials>;
 
-/** GetWorkerInput identifies a worker by its Workday ID. */
-export interface GetWorkerInput {
-  /** WorkerID is the WID returned by the Workday workers REST endpoint. */
-  "workerId": string;
+/** ListWorkersInput selects a page of workers and an optional name-prefix search. */
+export interface ListWorkersInput {
+  /** Limit is the page size from 1 to 100; zero uses Workday's default of 20. */
+  "limit"?: number | undefined;
+  /** Offset is the zero-based position of the first worker. */
+  "offset"?: number | undefined;
+  /** Search is at least three consecutive characters from a worker name when set. */
+  "search"?: string | undefined;
 }
 /** WorkerSummary contains the stable WID and displayed worker name. */
 export interface WorkerSummary {
@@ -120,14 +124,39 @@ export interface WorkerSummary {
   /** Descriptor is the worker's display name. */
   "descriptor": string;
 }
+/** WorkerPage contains one page and the total count of accessible workers. */
+export interface WorkerPage {
+  /** Total is the number of accessible workers matching the search. */
+  "total": number;
+  /** Data contains the workers in this page. */
+  "data": Array<WorkerSummary> | null;
+}
+/** GetWorkerInput identifies a worker by its Workday ID. */
+export interface GetWorkerInput {
+  /** WorkerID is the WID returned by the Workday workers REST endpoint. */
+  "workerId": string;
+}
 
-/** Runtime validator for GetWorkerInput. */
-export const GetWorkerInputSchema = z.strictObject({
-  "workerId": z.string(),
-}) satisfies z.ZodType<GetWorkerInput>;
+/** Runtime validator for ListWorkersInput. */
+export const ListWorkersInputSchema = z.strictObject({
+  "limit": z.number().int().optional(),
+  "offset": z.number().int().optional(),
+  "search": z.string().optional(),
+}) satisfies z.ZodType<ListWorkersInput>;
 
 /** Runtime validator for WorkerSummary. */
 export const WorkerSummarySchema = z.strictObject({
   "id": z.string(),
   "descriptor": z.string(),
 }) satisfies z.ZodType<WorkerSummary>;
+
+/** Runtime validator for WorkerPage. */
+export const WorkerPageSchema = z.strictObject({
+  "total": z.number().int(),
+  "data": z.array(WorkerSummarySchema).nullable(),
+}) satisfies z.ZodType<WorkerPage>;
+
+/** Runtime validator for GetWorkerInput. */
+export const GetWorkerInputSchema = z.strictObject({
+  "workerId": z.string(),
+}) satisfies z.ZodType<GetWorkerInput>;

@@ -7,7 +7,10 @@ From the TypeScript package directory, link this unreleased local package, then 
 ```sh
 mkdir -p node_modules/@superdurable
 ln -s ../.. node_modules/@superdurable/connector-workday
-dexcli visualize examples/worker-inspection/flow.ts --schema-version 2.0 --lint app --json --out /tmp/workday-typescript-fdg
+dexcli visualize examples/worker-inspection/flow.ts --schema-version 2.0 --lint app --open=false --json --out /tmp/workday-typescript-fdg
+dexcli visualize examples/worker-inspection/list-flow.ts --schema-version 2.0 --lint app --open=false --json --out /tmp/workday-typescript-page-fdg
 ```
 
 With `dexcli dev` running and `DEX_FLOW_SERVICE_ADDRESS` set, `npm run test:integration` exercises the Flow through a real Dex Worker and Client against a local provider fixture. Live Workday authorization requires a user-controlled account.
+
+The same worker also serves [WorkdayWorkerListTypeScript](list-flow.ts) using `newListWorkersStep`. Start that Flow in Dex Web with a zero-based offset, a page size up to 100, and an optional search prefix. For example, the input `{"limit":2,"offset":5,"search":"Ada"}` requests two matches starting at offset five. The Flow returns the total and the matching WIDs and display names.

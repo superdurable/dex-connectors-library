@@ -13,6 +13,7 @@ from dex_connectors.sdk.projectconfig import load_from_environment
 from dex_connectors.workday import new_project_connection
 
 from .flow import CONNECTION_NAME, WorkerFlow
+from .list_flow import WorkerListFlow
 
 
 async def run_worker() -> None:
@@ -22,7 +23,9 @@ async def run_worker() -> None:
     cache = None
     try:
         connection = new_project_connection(project, CONNECTION_NAME)
-        registry = dex.Registry([WorkerFlow(connection)], allow_async_handlers=True)
+        registry = dex.Registry(
+            [WorkerFlow(connection), WorkerListFlow(connection)], allow_async_handlers=True
+        )
         cache_directory = os.environ.get(
             "DEX_BLOB_CACHE_DIR",
             str(Path(tempfile.gettempdir()) / "dex-workday-python-page-blobs"),

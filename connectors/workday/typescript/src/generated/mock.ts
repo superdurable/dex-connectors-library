@@ -4,20 +4,46 @@
 
 import { branchCase, retryCase, type Case, newQuery, type MockQuery } from '@superdurable/connectors-sdk/connectormock';
 import type { Failure } from '@superdurable/connectors-sdk';
-import type { GetWorkerInput, WorkerSummary } from './models.js';
-import { GetWorkerInputSchema, WorkerSummarySchema } from './models.js';
-import { ProviderID, GetWorkerDefinition } from './definitions.js';
+import type { ListWorkersInput, WorkerSummary, WorkerPage, GetWorkerInput } from './models.js';
+import { ListWorkersInputSchema, WorkerSummarySchema, WorkerPageSchema, GetWorkerInputSchema } from './models.js';
+import { ProviderID, ListWorkersDefinition, GetWorkerDefinition } from './definitions.js';
 import { newConnectionWithOperations, type Connection, type Operations } from './connection.js';
 
-/** Go zero value for GetWorkerInput in scripted cases. */
-export const emptyGetWorkerInput: GetWorkerInput = GetWorkerInputSchema.parse({
-  "workerId": '',
+/** Go zero value for ListWorkersInput in scripted cases. */
+export const emptyListWorkersInput: ListWorkersInput = ListWorkersInputSchema.parse({
 });
 /** Go zero value for WorkerSummary in scripted cases. */
 export const emptyWorkerSummary: WorkerSummary = WorkerSummarySchema.parse({
   "id": '',
   "descriptor": '',
 });
+/** Go zero value for WorkerPage in scripted cases. */
+export const emptyWorkerPage: WorkerPage = WorkerPageSchema.parse({
+  "total": 0,
+  "data": [],
+});
+/** Go zero value for GetWorkerInput in scripted cases. */
+export const emptyGetWorkerInput: GetWorkerInput = GetWorkerInputSchema.parse({
+  "workerId": '',
+});
+
+/** Script the found branch. */
+export function listWorkersFound(value: WorkerPage, failure?: Failure): Case<WorkerPage> { return branchCase("found", value, failure); }
+/** Script the providerRejected branch. */
+export function listWorkersProviderRejected(value: WorkerPage, failure?: Failure): Case<WorkerPage> { return branchCase("providerRejected", value, failure); }
+/** Script the invalidResponse branch. */
+export function listWorkersInvalidResponse(value: WorkerPage, failure?: Failure): Case<WorkerPage> { return branchCase("invalidResponse", value, failure); }
+/** Script the defect branch. */
+export function listWorkersDefect(value: WorkerPage, failure?: Failure): Case<WorkerPage> { return branchCase("defect", value, failure); }
+/** Script a safe retry of listWorkers. */
+export function listWorkersRetry(failure: Failure, retryAfterMs = 0): Case<WorkerPage> { return retryCase(failure, retryAfterMs); }
+/** Manifest scenario foundDefault for listWorkers. */
+export function listWorkersFoundDefault(): Case<WorkerPage> {
+  const value = WorkerPageSchema.parse({"data":[{"descriptor":"Ada Lovelace","id":"0123456789abcdef0123456789abcdef"}],"total":1});
+  return branchCase("found", value);
+}
+/** Default listWorkers scenario. */
+export function listWorkersDefault(): Case<WorkerPage> { return listWorkersFoundDefault(); }
 
 /** Script the found branch. */
 export function getWorkerFound(value: WorkerSummary, failure?: Failure): Case<WorkerSummary> { return branchCase("found", value, failure); }
@@ -41,17 +67,21 @@ export function getWorkerDefault(): Case<WorkerSummary> { return getWorkerFoundD
 
 /** Scripted operations and manifest defaults for this connector. */
 export class GeneratedMock implements Operations {
+  readonly #listWorkers: MockQuery<ListWorkersInput, WorkerPage>;
   readonly #getWorker: MockQuery<GetWorkerInput, WorkerSummary>;
   readonly #connection: Connection;
 
   constructor(connectionName: string) {
+    this.#listWorkers = newQuery<ListWorkersInput, WorkerPage>(ListWorkersDefinition).default(listWorkersDefault());
     this.#getWorker = newQuery<GetWorkerInput, WorkerSummary>(GetWorkerDefinition).default(getWorkerDefault());
     this.#connection = newConnectionWithOperations(this, { provider: ProviderID, name: connectionName });
   }
 
   connection(): Connection { return this.#connection; }
+  listWorkers(): MockQuery<ListWorkersInput, WorkerPage> { return this.#listWorkers; }
   getWorker(): MockQuery<GetWorkerInput, WorkerSummary> { return this.#getWorker; }
   assertNoFailures(): void {
+    this.#listWorkers.assertNoFailures();
     this.#getWorker.assertNoFailures();
   }
 }

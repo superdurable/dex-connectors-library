@@ -14,7 +14,7 @@ from dex_connectors.sdk import (
 )
 
 from ..connection import Connection
-from ..models import GetWorkerInput, WorkerSummary
+from ..models import GetWorkerInput, ListWorkersInput, WorkerPage, WorkerSummary
 
 StepInput = TypeVar("StepInput")
 
@@ -70,6 +70,56 @@ def new_get_worker_step(
     )
 
 setattr(new_get_worker_step, '__module__', 'dex_connectors.workday.steps')
+
+def new_list_workers_step(
+    *,
+    step_type: str,
+    step_input_type: type[StepInput],
+    annotations: StepAnnotations | Mapping[str, str],
+    connection: Connection,
+    connection_name: str,
+    map_to_operation_input: Callable[[StepInput], ListWorkersInput],
+    found: dex.StepTarget[QueryResult[WorkerPage]],
+    provider_rejected: dex.StepTarget[QueryResult[WorkerPage]] | None = None,
+    invalid_response: dex.StepTarget[QueryResult[WorkerPage]] | None = None,
+    defect: dex.StepTarget[QueryResult[WorkerPage]] | None = None,
+    result_attribute: dex.Attribute[QueryResult[WorkerPage]] | None = None,
+    step_options_override: dex.StepOptions | None = None,
+) -> QueryStep[StepInput, ListWorkersInput, WorkerPage]:
+    if connection is None or connection.reference.name != connection_name:
+        raise ValueError("Workday Step connection name must match its connection reference")
+    if isinstance(annotations, StepAnnotations):
+        step_annotations = annotations
+    else:
+        if not isinstance(annotations, Mapping) or set(annotations) != {"groupId", "groupLabel", "explanation"}:
+            raise ValueError("Workday Step annotations require groupId, groupLabel, and explanation")
+        if any(not isinstance(value, str) for value in annotations.values()):
+            raise ValueError("Workday Step annotations must be strings")
+        step_annotations = StepAnnotations(annotations["groupId"], annotations["groupLabel"], annotations["explanation"])
+    branches = {
+        "found": found,
+    }
+    if provider_rejected is not None:
+        branches["providerRejected"] = provider_rejected
+    if invalid_response is not None:
+        branches["invalidResponse"] = invalid_response
+    if defect is not None:
+        branches["defect"] = defect
+    return QueryStep(
+        QueryStepConfig(
+            step_type=step_type,
+            step_input_type=step_input_type,
+            annotations=step_annotations,
+            operation=_bound_operation(connection, "list_workers"),
+            connection=connection.reference,
+            map_to_operation_input=map_to_operation_input,
+            branches=branches,
+            result_attribute=result_attribute,
+            step_options_override=step_options_override,
+        )
+    )
+
+setattr(new_list_workers_step, '__module__', 'dex_connectors.workday.steps')
 
 
 def _bound_operation(connection: Connection, operation_name: str) -> Any:

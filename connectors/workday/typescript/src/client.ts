@@ -6,7 +6,7 @@ import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oa
 import { BodyTooLargeError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { Authorization, CredentialFields } from './generated/refresh.js';
 import type { Config, Credentials } from './generated/models.js';
-import { GetWorkerOperation } from './operations.js';
+import { GetWorkerOperation, ListWorkersOperation } from './operations.js';
 
 /** Injectable Workday transport and OAuth refresh dependencies. */
 export interface WorkdayClientOptions {
@@ -53,6 +53,8 @@ export class WorkdayClient {
   }
 
   /** Bind the worker profile Query. */ getWorker(): GetWorkerOperation { return new GetWorkerOperation(this); }
+
+  /** Bind the worker directory Query. */ listWorkers(): ListWorkersOperation { return new ListWorkersOperation(this); }
 
   /** Send one bounded GET with a bearer token held outside Flow state. */
   async get(call: Call, path: string): Promise<WorkdayExchange> {

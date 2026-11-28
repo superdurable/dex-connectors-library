@@ -11,14 +11,14 @@ spec:
   provider: workday
   languages:
     python:
-      version: v0.1.0
+      version: v0.2.0
       package: dex-connector-workday
-      operations: [getWorker]
+      operations: [getWorker, listWorkers]
       triggers: []
     typescript:
-      version: v0.1.0
+      version: v0.2.0
       package: '@superdurable/connector-workday'
-      operations: [getWorker]
+      operations: [getWorker, listWorkers]
       triggers: []
   codegen:
     go:
