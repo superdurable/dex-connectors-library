@@ -110,7 +110,7 @@ func (operation GetCurrentWeatherOperation) Invoke(call sdkgo.Call, input GetCur
 			} `json:"realtime"`
 		} `json:"result"`
 	}
-	if err := json.Unmarshal(body, &wire); err != nil || wire.Status != "ok" || wire.Result.Realtime.Status != "ok" || wire.Result.Realtime.Temperature == nil || wire.Result.Realtime.Humidity == nil || wire.Result.Realtime.Wind.Speed == nil || wire.Result.Realtime.Skycon == "" || !isFiniteInRange(*wire.Result.Realtime.Humidity, 0, 1) || !isFiniteInRange(*wire.Result.Realtime.Temperature, -150, 150) || !isFiniteInRange(*wire.Result.Realtime.Wind.Speed, 0, 200) {
+	if err := json.Unmarshal(body, &wire); err != nil || wire.Status != "ok" || wire.Result.Realtime.Status != "ok" || wire.Result.Realtime.Temperature == nil || wire.Result.Realtime.Humidity == nil || wire.Result.Realtime.Wind.Speed == nil || wire.Result.Realtime.Skycon == "" || strings.Contains(wire.Result.Realtime.Skycon, appKey) || strings.Contains(wire.Result.Realtime.Skycon, credentials.AppSecret.Reveal()) || !isFiniteInRange(*wire.Result.Realtime.Humidity, 0, 1) || !isFiniteInRange(*wire.Result.Realtime.Temperature, -150, 150) || !isFiniteInRange(*wire.Result.Realtime.Wind.Speed, 0, 200) {
 		return currentWeatherBranch(GetCurrentWeatherBranchInvalidResponse, sdkgo.FailureProtocol, "Caiyun returned invalid realtime weather data")
 	}
 	output := GetCurrentWeatherOutput{TemperatureCelsius: *wire.Result.Realtime.Temperature, RelativeHumidity: *wire.Result.Realtime.Humidity, SkyCondition: wire.Result.Realtime.Skycon, WindSpeedMetersPerSecond: *wire.Result.Realtime.Wind.Speed}

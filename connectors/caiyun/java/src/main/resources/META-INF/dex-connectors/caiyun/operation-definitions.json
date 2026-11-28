@@ -1,0 +1,42 @@
+{
+  "getCurrentWeather": {
+    "branches": [
+      {
+        "description": "Caiyun returned current weather for the coordinate.",
+        "id": "fetched",
+        "optional": false
+      },
+      {
+        "description": "Caiyun rejected credentials, permission, or coordinate. HTTP 429 rate or quota limits retry instead.",
+        "id": "providerRejected",
+        "optional": true
+      },
+      {
+        "description": "Caiyun returned malformed or oversized weather data.",
+        "id": "invalidResponse",
+        "optional": true
+      },
+      {
+        "description": "Local coordinate or connection credentials are invalid.",
+        "id": "defect",
+        "optional": true
+      }
+    ],
+    "operation": {
+      "connectorId": "caiyun",
+      "operationId": "getCurrentWeather"
+    },
+    "stepDefaults": {
+      "executeDurability": 2,
+      "executeMethodTimeout": 30000000000,
+      "executeRetry": {
+        "BackoffCoefficient": 2,
+        "InitialInterval": 2000000000,
+        "MaximumAttempts": 2,
+        "MaximumInterval": 10000000000,
+        "TotalDuration": 60000000000
+      },
+      "heartbeatTimeout": 0
+    }
+  }
+}

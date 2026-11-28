@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-caiyun",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Caiyun connector for Dex TypeScript applications",
   "repository": {
     "type": "git",

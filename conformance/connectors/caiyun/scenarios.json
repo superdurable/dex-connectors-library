@@ -596,6 +596,1924 @@
       },
       "name": "getCurrentWeather-transportFailure",
       "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "81470bf5-f542-55a8-9295-044d703ace73",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"ok\",\"result\":{\"realtime\":{\"status\":\"ok\",\"temperature\":20,\"humidity\":0.5,\"skycon\":\"CLEAR_DAY\",\"wind\":{\"speed\":2}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2.6/test-app-key/-180,-90/realtime",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Cy-Nonce": [
+              "0195c68a42e77243bff2ac97a78b837d"
+            ],
+            "X-Cy-Signature": [
+              "nnGxWzgqEzwIt1gMRxDgPBm7msmf3AcVarxzj4_6Dtw="
+            ],
+            "X-Cy-Timestamp": [
+              "1792654000"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "fetched",
+        "failureKind": "",
+        "output": {
+          "relativeHumidity": 0.5,
+          "skyCondition": "CLEAR_DAY",
+          "temperatureCelsius": 20,
+          "windSpeedMetersPerSecond": 2
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": -90,
+        "longitude": -180
+      },
+      "name": "getCurrentWeather-westPole",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "c5b618c4-4020-5ae3-ba74-ae4adb372246",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"ok\",\"result\":{\"realtime\":{\"status\":\"ok\",\"temperature\":20,\"humidity\":0.5,\"skycon\":\"CLEAR_DAY\",\"wind\":{\"speed\":2}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2.6/test-app-key/180,90/realtime",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Cy-Nonce": [
+              "0195c68a42e77243bff2ac97a78b837d"
+            ],
+            "X-Cy-Signature": [
+              "w8yScgAg3tZ3W_Xn5xGLQy-nux5TrpV2SB5A5_fInzw="
+            ],
+            "X-Cy-Timestamp": [
+              "1792654000"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "fetched",
+        "failureKind": "",
+        "output": {
+          "relativeHumidity": 0.5,
+          "skyCondition": "CLEAR_DAY",
+          "temperatureCelsius": 20,
+          "windSpeedMetersPerSecond": 2
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 90,
+        "longitude": 180
+      },
+      "name": "getCurrentWeather-eastPole",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "0e4eb09d-cd19-5ea2-aa4a-0c5d8f6056a4",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"ok\",\"result\":{\"realtime\":{\"status\":\"ok\",\"temperature\":20,\"humidity\":0.5,\"skycon\":\"CLEAR_DAY\",\"wind\":{\"speed\":2}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2.6/test-app-key/1,2/realtime",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Cy-Nonce": [
+              "0195c68a42e77243bff2ac97a78b837d"
+            ],
+            "X-Cy-Signature": [
+              "HU5bz-o20xXwogs0N3M_WiA2nLnUN6pkOKrfS0vlNpo="
+            ],
+            "X-Cy-Timestamp": [
+              "1792654000"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "fetched",
+        "failureKind": "",
+        "output": {
+          "relativeHumidity": 0.5,
+          "skyCondition": "CLEAR_DAY",
+          "temperatureCelsius": 20,
+          "windSpeedMetersPerSecond": 2
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 2,
+        "longitude": 1
+      },
+      "name": "getCurrentWeather-integer",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "f38365f2-429d-5b50-94f2-a18f1573a37b",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"ok\",\"result\":{\"realtime\":{\"status\":\"ok\",\"temperature\":20,\"humidity\":0.5,\"skycon\":\"CLEAR_DAY\",\"wind\":{\"speed\":2}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2.6/test-app-key/-0.00000001,0.000000000000000000000001/realtime",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Cy-Nonce": [
+              "0195c68a42e77243bff2ac97a78b837d"
+            ],
+            "X-Cy-Signature": [
+              "FNsLZe-5nHg1U2P_kWF5V-4pZFYV_lUck_XNLqQZ0eE="
+            ],
+            "X-Cy-Timestamp": [
+              "1792654000"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "fetched",
+        "failureKind": "",
+        "output": {
+          "relativeHumidity": 0.5,
+          "skyCondition": "CLEAR_DAY",
+          "temperatureCelsius": 20,
+          "windSpeedMetersPerSecond": 2
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 1e-24,
+        "longitude": -1e-8
+      },
+      "name": "getCurrentWeather-tiny",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "36612cd2-83ae-5323-a99f-94f2dd152a5a",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"ok\",\"result\":{\"realtime\":{\"status\":\"ok\",\"temperature\":20,\"humidity\":0.5,\"skycon\":\"CLEAR_DAY\",\"wind\":{\"speed\":2}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2.6/test-app-key/0.000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000005,-0.00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001/realtime",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Cy-Nonce": [
+              "0195c68a42e77243bff2ac97a78b837d"
+            ],
+            "X-Cy-Signature": [
+              "__l8IInUgl0697n12xtd68nJquH-XA9vmr17ClsVHOQ="
+            ],
+            "X-Cy-Timestamp": [
+              "1792654000"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "fetched",
+        "failureKind": "",
+        "output": {
+          "relativeHumidity": 0.5,
+          "skyCondition": "CLEAR_DAY",
+          "temperatureCelsius": 20,
+          "windSpeedMetersPerSecond": 2
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": -1e-323,
+        "longitude": 5e-324
+      },
+      "name": "getCurrentWeather-subnormal",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "27ad9033-7be0-5cb1-baf1-641e6b5e4e04",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"ok\",\"result\":{\"realtime\":{\"status\":\"ok\",\"temperature\":20,\"humidity\":0.5,\"skycon\":\"CLEAR_DAY\",\"wind\":{\"speed\":2}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2.6/test-app-key/0.000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000022250738585072014,-0.000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000007795/realtime",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Cy-Nonce": [
+              "0195c68a42e77243bff2ac97a78b837d"
+            ],
+            "X-Cy-Signature": [
+              "ZVzQmAOhwgpmXZA5ZlepYRP1q_I2lWRfVGD7pAMGg0E="
+            ],
+            "X-Cy-Timestamp": [
+              "1792654000"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "fetched",
+        "failureKind": "",
+        "output": {
+          "relativeHumidity": 0.5,
+          "skyCondition": "CLEAR_DAY",
+          "temperatureCelsius": 20,
+          "windSpeedMetersPerSecond": 2
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": -7.795e-306,
+        "longitude": 2.2250738585072014e-308
+      },
+      "name": "getCurrentWeather-smallNormal",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "8e0ec765-98d1-5aa4-847e-ae3e81ca06f3",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"ok\",\"result\":{\"realtime\":{\"status\":\"ok\",\"temperature\":20,\"humidity\":0.5,\"skycon\":\"CLEAR_DAY\",\"wind\":{\"speed\":2}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2.6/test-app-key/12.500000000000002,-0.10000000000000002/realtime",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Cy-Nonce": [
+              "0195c68a42e77243bff2ac97a78b837d"
+            ],
+            "X-Cy-Signature": [
+              "1_y9-HlwySTWzY8x9cHIt84KTeCpRCa9-93ihSa2gnM="
+            ],
+            "X-Cy-Timestamp": [
+              "1792654000"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "fetched",
+        "failureKind": "",
+        "output": {
+          "relativeHumidity": 0.5,
+          "skyCondition": "CLEAR_DAY",
+          "temperatureCelsius": 20,
+          "windSpeedMetersPerSecond": 2
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": -0.10000000000000002,
+        "longitude": 12.500000000000002
+      },
+      "name": "getCurrentWeather-decimal",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "ea314582-a139-57b4-a1ad-3bd69b593053",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "relativeHumidity": 0,
+          "skyCondition": "",
+          "temperatureCelsius": 0,
+          "windSpeedMetersPerSecond": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": -91,
+        "longitude": 10
+      },
+      "name": "getCurrentWeather-negativeLatitude",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "d30194a0-99de-5f55-a4df-739bc4975370",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "relativeHumidity": 0,
+          "skyCondition": "",
+          "temperatureCelsius": 0,
+          "windSpeedMetersPerSecond": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 1,
+        "longitude": -180.1
+      },
+      "name": "getCurrentWeather-negativeLongitude",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "01ce8cc9-24a1-586f-8b1e-944bba4fad80",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2.6/test-app-key/116.3176,39.976/realtime",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Cy-Nonce": [
+              "0195c68a42e77243bff2ac97a78b837d"
+            ],
+            "X-Cy-Signature": [
+              "StCEDxxdbA5aHTIZYU-2SOaTTd13AE9MPHASxj1iPUw="
+            ],
+            "X-Cy-Timestamp": [
+              "1792654000"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 7000,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 39.976,
+        "longitude": 116.3176
+      },
+      "name": "getCurrentWeather-server",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "38e0fedd-5079-56b6-9b14-e0f2da5cbe88",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2.6/test-app-key/116.3176,39.976/realtime",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Cy-Nonce": [
+              "0195c68a42e77243bff2ac97a78b837d"
+            ],
+            "X-Cy-Signature": [
+              "StCEDxxdbA5aHTIZYU-2SOaTTd13AE9MPHASxj1iPUw="
+            ],
+            "X-Cy-Timestamp": [
+              "1792654000"
+            ]
+          },
+          "status": 408
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 7000,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 39.976,
+        "longitude": 116.3176
+      },
+      "name": "getCurrentWeather-requestTimeout",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "7b829cf2-5ea0-56d8-9a11-82192c9d7aee",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"ok\",\"result\":{\"realtime\":{\"status\":\"ok\",\"temperature\":20,\"humidity\":0.5,\"skycon\":\"CLEAR_DAY\",\"wind\":{\"speed\":2}}}}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2.6/test-app-key/116.3176,39.976/realtime",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Cy-Nonce": [
+              "0195c68a42e77243bff2ac97a78b837d"
+            ],
+            "X-Cy-Signature": [
+              "StCEDxxdbA5aHTIZYU-2SOaTTd13AE9MPHASxj1iPUw="
+            ],
+            "X-Cy-Timestamp": [
+              "1792654000"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 7000,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 39.976,
+        "longitude": 116.3176
+      },
+      "name": "getCurrentWeather-rateDespiteBody",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "3ff2a017-e35a-57b1-b5f9-aab6a915bfea",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"ok\",\"result\":{\"realtime\":{\"status\":\"ok\",\"temperature\":20,\"humidity\":0.5,\"skycon\":\"CLEAR_DAY\",\"wind\":{\"speed\":2}}}}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2.6/test-app-key/116.3176,39.976/realtime",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Cy-Nonce": [
+              "0195c68a42e77243bff2ac97a78b837d"
+            ],
+            "X-Cy-Signature": [
+              "StCEDxxdbA5aHTIZYU-2SOaTTd13AE9MPHASxj1iPUw="
+            ],
+            "X-Cy-Timestamp": [
+              "1792654000"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 7000,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 39.976,
+        "longitude": 116.3176
+      },
+      "name": "getCurrentWeather-unavailableDespiteBody",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "6fe34f66-e5ce-57a6-9ad2-38ef2ac6d8d4",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2.6/test-app-key/116.3176,39.976/realtime",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Cy-Nonce": [
+              "0195c68a42e77243bff2ac97a78b837d"
+            ],
+            "X-Cy-Signature": [
+              "StCEDxxdbA5aHTIZYU-2SOaTTd13AE9MPHASxj1iPUw="
+            ],
+            "X-Cy-Timestamp": [
+              "1792654000"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "relativeHumidity": 0,
+          "skyCondition": "",
+          "temperatureCelsius": 0,
+          "windSpeedMetersPerSecond": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 39.976,
+        "longitude": 116.3176
+      },
+      "name": "getCurrentWeather-unknown",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "d94ebeb5-5d22-531b-a665-2ca83602b7f9",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"ok\",\"result\":{\"realtime\":{\"status\":\"ok\",\"temperature\":20,\"humidity\":0.5,\"skycon\":\"CLEAR_DAY\",\"wind\":{\"speed\":2}}}}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2.6/test-app-key/116.3176,39.976/realtime",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Cy-Nonce": [
+              "0195c68a42e77243bff2ac97a78b837d"
+            ],
+            "X-Cy-Signature": [
+              "StCEDxxdbA5aHTIZYU-2SOaTTd13AE9MPHASxj1iPUw="
+            ],
+            "X-Cy-Timestamp": [
+              "1792654000"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "relativeHumidity": 0,
+          "skyCondition": "",
+          "temperatureCelsius": 0,
+          "windSpeedMetersPerSecond": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 39.976,
+        "longitude": 116.3176
+      },
+      "name": "getCurrentWeather-unauthorizedDespiteBody",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "7064e487-bbac-51f5-979a-301809e866ba",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"ok\",\"result\":{\"realtime\":{\"status\":\"ok\",\"temperature\":20,\"humidity\":0.5,\"skycon\":\"CLEAR_DAY\",\"wind\":{\"speed\":2}}}}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2.6/test-app-key/116.3176,39.976/realtime",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Cy-Nonce": [
+              "0195c68a42e77243bff2ac97a78b837d"
+            ],
+            "X-Cy-Signature": [
+              "StCEDxxdbA5aHTIZYU-2SOaTTd13AE9MPHASxj1iPUw="
+            ],
+            "X-Cy-Timestamp": [
+              "1792654000"
+            ]
+          },
+          "status": 422
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "VALIDATION",
+        "output": {
+          "relativeHumidity": 0,
+          "skyCondition": "",
+          "temperatureCelsius": 0,
+          "windSpeedMetersPerSecond": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 39.976,
+        "longitude": 116.3176
+      },
+      "name": "getCurrentWeather-badCoordDespiteBody",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "1d3c279f-48cf-548d-8383-10d6bdbfc1db",
+      "exchanges": [
+        {
+          "body": "{\"status\": \"ok\", \"result\": {\"realtime\": {\"status\": \"ok\", \"temperature\": 20, \"humidity\": 0.5, \"skycon\": \"CLEAR_DAY\", \"wind\": {\"speed\": 2}}}}{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2.6/test-app-key/116.3176,39.976/realtime",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Cy-Nonce": [
+              "0195c68a42e77243bff2ac97a78b837d"
+            ],
+            "X-Cy-Signature": [
+              "StCEDxxdbA5aHTIZYU-2SOaTTd13AE9MPHASxj1iPUw="
+            ],
+            "X-Cy-Timestamp": [
+              "1792654000"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "relativeHumidity": 0,
+          "skyCondition": "",
+          "temperatureCelsius": 0,
+          "windSpeedMetersPerSecond": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 39.976,
+        "longitude": 116.3176
+      },
+      "name": "getCurrentWeather-extraJSON",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "8f92323b-7955-5cb5-a844-5c91655c4c51",
+      "exchanges": [
+        {
+          "body": "﻿{\"status\": \"ok\", \"result\": {\"realtime\": {\"status\": \"ok\", \"temperature\": 20, \"humidity\": 0.5, \"skycon\": \"CLEAR_DAY\", \"wind\": {\"speed\": 2}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2.6/test-app-key/116.3176,39.976/realtime",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Cy-Nonce": [
+              "0195c68a42e77243bff2ac97a78b837d"
+            ],
+            "X-Cy-Signature": [
+              "StCEDxxdbA5aHTIZYU-2SOaTTd13AE9MPHASxj1iPUw="
+            ],
+            "X-Cy-Timestamp": [
+              "1792654000"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "relativeHumidity": 0,
+          "skyCondition": "",
+          "temperatureCelsius": 0,
+          "windSpeedMetersPerSecond": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 39.976,
+        "longitude": 116.3176
+      },
+      "name": "getCurrentWeather-utf8BOM",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "4ef05deb-32d5-589e-8510-a73cd783d508",
+      "exchanges": [
+        {
+          "body": "[]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2.6/test-app-key/116.3176,39.976/realtime",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Cy-Nonce": [
+              "0195c68a42e77243bff2ac97a78b837d"
+            ],
+            "X-Cy-Signature": [
+              "StCEDxxdbA5aHTIZYU-2SOaTTd13AE9MPHASxj1iPUw="
+            ],
+            "X-Cy-Timestamp": [
+              "1792654000"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "relativeHumidity": 0,
+          "skyCondition": "",
+          "temperatureCelsius": 0,
+          "windSpeedMetersPerSecond": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 39.976,
+        "longitude": 116.3176
+      },
+      "name": "getCurrentWeather-badRoot",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "da815ff5-4abe-51f0-b44e-3c64c35f77a3",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"ok\",\"result\":{\"realtime\":{\"status\":\"ok\",\"temperature\":-150,\"humidity\":0.5,\"skycon\":\"CLEAR_DAY\",\"wind\":{\"speed\":2}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2.6/test-app-key/116.3176,39.976/realtime",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Cy-Nonce": [
+              "0195c68a42e77243bff2ac97a78b837d"
+            ],
+            "X-Cy-Signature": [
+              "StCEDxxdbA5aHTIZYU-2SOaTTd13AE9MPHASxj1iPUw="
+            ],
+            "X-Cy-Timestamp": [
+              "1792654000"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "fetched",
+        "failureKind": "",
+        "output": {
+          "relativeHumidity": 0.5,
+          "skyCondition": "CLEAR_DAY",
+          "temperatureCelsius": -150,
+          "windSpeedMetersPerSecond": 2
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 39.976,
+        "longitude": 116.3176
+      },
+      "name": "getCurrentWeather-cold",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "029cabbd-98bb-542e-863f-361eefa3a2ed",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"ok\",\"result\":{\"realtime\":{\"status\":\"ok\",\"temperature\":150,\"humidity\":0.5,\"skycon\":\"CLEAR_DAY\",\"wind\":{\"speed\":2}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2.6/test-app-key/116.3176,39.976/realtime",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Cy-Nonce": [
+              "0195c68a42e77243bff2ac97a78b837d"
+            ],
+            "X-Cy-Signature": [
+              "StCEDxxdbA5aHTIZYU-2SOaTTd13AE9MPHASxj1iPUw="
+            ],
+            "X-Cy-Timestamp": [
+              "1792654000"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "fetched",
+        "failureKind": "",
+        "output": {
+          "relativeHumidity": 0.5,
+          "skyCondition": "CLEAR_DAY",
+          "temperatureCelsius": 150,
+          "windSpeedMetersPerSecond": 2
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 39.976,
+        "longitude": 116.3176
+      },
+      "name": "getCurrentWeather-hot",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "e59cecef-7b88-5040-a08e-3f2c60fa3d22",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"ok\",\"result\":{\"realtime\":{\"status\":\"ok\",\"temperature\":150.0000000001,\"humidity\":0.5,\"skycon\":\"CLEAR_DAY\",\"wind\":{\"speed\":2}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2.6/test-app-key/116.3176,39.976/realtime",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Cy-Nonce": [
+              "0195c68a42e77243bff2ac97a78b837d"
+            ],
+            "X-Cy-Signature": [
+              "StCEDxxdbA5aHTIZYU-2SOaTTd13AE9MPHASxj1iPUw="
+            ],
+            "X-Cy-Timestamp": [
+              "1792654000"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "relativeHumidity": 0,
+          "skyCondition": "",
+          "temperatureCelsius": 0,
+          "windSpeedMetersPerSecond": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 39.976,
+        "longitude": 116.3176
+      },
+      "name": "getCurrentWeather-tooHot",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "bc8e177e-ccee-5073-87d9-6d5be555e93b",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"ok\",\"result\":{\"realtime\":{\"status\":\"ok\",\"temperature\":-150.01,\"humidity\":0.5,\"skycon\":\"CLEAR_DAY\",\"wind\":{\"speed\":2}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2.6/test-app-key/116.3176,39.976/realtime",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Cy-Nonce": [
+              "0195c68a42e77243bff2ac97a78b837d"
+            ],
+            "X-Cy-Signature": [
+              "StCEDxxdbA5aHTIZYU-2SOaTTd13AE9MPHASxj1iPUw="
+            ],
+            "X-Cy-Timestamp": [
+              "1792654000"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "relativeHumidity": 0,
+          "skyCondition": "",
+          "temperatureCelsius": 0,
+          "windSpeedMetersPerSecond": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 39.976,
+        "longitude": 116.3176
+      },
+      "name": "getCurrentWeather-tooCold",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "891d65a7-5809-530c-8f49-2d2816e014b1",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"ok\",\"result\":{\"realtime\":{\"status\":\"ok\",\"temperature\":20,\"humidity\":0,\"skycon\":\"CLEAR_DAY\",\"wind\":{\"speed\":2}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2.6/test-app-key/116.3176,39.976/realtime",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Cy-Nonce": [
+              "0195c68a42e77243bff2ac97a78b837d"
+            ],
+            "X-Cy-Signature": [
+              "StCEDxxdbA5aHTIZYU-2SOaTTd13AE9MPHASxj1iPUw="
+            ],
+            "X-Cy-Timestamp": [
+              "1792654000"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "fetched",
+        "failureKind": "",
+        "output": {
+          "relativeHumidity": 0,
+          "skyCondition": "CLEAR_DAY",
+          "temperatureCelsius": 20,
+          "windSpeedMetersPerSecond": 2
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 39.976,
+        "longitude": 116.3176
+      },
+      "name": "getCurrentWeather-zeroHumidity",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "d53d382d-6815-51ac-9976-54cc4040c890",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"ok\",\"result\":{\"realtime\":{\"status\":\"ok\",\"temperature\":20,\"humidity\":1,\"skycon\":\"CLEAR_DAY\",\"wind\":{\"speed\":2}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2.6/test-app-key/116.3176,39.976/realtime",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Cy-Nonce": [
+              "0195c68a42e77243bff2ac97a78b837d"
+            ],
+            "X-Cy-Signature": [
+              "StCEDxxdbA5aHTIZYU-2SOaTTd13AE9MPHASxj1iPUw="
+            ],
+            "X-Cy-Timestamp": [
+              "1792654000"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "fetched",
+        "failureKind": "",
+        "output": {
+          "relativeHumidity": 1,
+          "skyCondition": "CLEAR_DAY",
+          "temperatureCelsius": 20,
+          "windSpeedMetersPerSecond": 2
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 39.976,
+        "longitude": 116.3176
+      },
+      "name": "getCurrentWeather-fullHumidity",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "1a253756-2dfb-5204-a20d-9450aed6630a",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"ok\",\"result\":{\"realtime\":{\"status\":\"ok\",\"temperature\":20,\"humidity\":1.000000001,\"skycon\":\"CLEAR_DAY\",\"wind\":{\"speed\":2}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2.6/test-app-key/116.3176,39.976/realtime",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Cy-Nonce": [
+              "0195c68a42e77243bff2ac97a78b837d"
+            ],
+            "X-Cy-Signature": [
+              "StCEDxxdbA5aHTIZYU-2SOaTTd13AE9MPHASxj1iPUw="
+            ],
+            "X-Cy-Timestamp": [
+              "1792654000"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "relativeHumidity": 0,
+          "skyCondition": "",
+          "temperatureCelsius": 0,
+          "windSpeedMetersPerSecond": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 39.976,
+        "longitude": 116.3176
+      },
+      "name": "getCurrentWeather-wet",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "ded4aa01-69f0-5826-b544-b72d8c4f751b",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"ok\",\"result\":{\"realtime\":{\"status\":\"ok\",\"temperature\":20,\"humidity\":-0.001,\"skycon\":\"CLEAR_DAY\",\"wind\":{\"speed\":2}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2.6/test-app-key/116.3176,39.976/realtime",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Cy-Nonce": [
+              "0195c68a42e77243bff2ac97a78b837d"
+            ],
+            "X-Cy-Signature": [
+              "StCEDxxdbA5aHTIZYU-2SOaTTd13AE9MPHASxj1iPUw="
+            ],
+            "X-Cy-Timestamp": [
+              "1792654000"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "relativeHumidity": 0,
+          "skyCondition": "",
+          "temperatureCelsius": 0,
+          "windSpeedMetersPerSecond": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 39.976,
+        "longitude": 116.3176
+      },
+      "name": "getCurrentWeather-negativeHumidity",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "7bfa3e94-ad53-514e-97ea-7e86d6cdc915",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"ok\",\"result\":{\"realtime\":{\"status\":\"ok\",\"temperature\":20,\"humidity\":0.5,\"skycon\":\"CLEAR_DAY\",\"wind\":{\"speed\":0}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2.6/test-app-key/116.3176,39.976/realtime",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Cy-Nonce": [
+              "0195c68a42e77243bff2ac97a78b837d"
+            ],
+            "X-Cy-Signature": [
+              "StCEDxxdbA5aHTIZYU-2SOaTTd13AE9MPHASxj1iPUw="
+            ],
+            "X-Cy-Timestamp": [
+              "1792654000"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "fetched",
+        "failureKind": "",
+        "output": {
+          "relativeHumidity": 0.5,
+          "skyCondition": "CLEAR_DAY",
+          "temperatureCelsius": 20,
+          "windSpeedMetersPerSecond": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 39.976,
+        "longitude": 116.3176
+      },
+      "name": "getCurrentWeather-calm",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "b5433436-0c79-553e-834a-66640abdbbbc",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"ok\",\"result\":{\"realtime\":{\"status\":\"ok\",\"temperature\":20,\"humidity\":0.5,\"skycon\":\"CLEAR_DAY\",\"wind\":{\"speed\":200}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2.6/test-app-key/116.3176,39.976/realtime",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Cy-Nonce": [
+              "0195c68a42e77243bff2ac97a78b837d"
+            ],
+            "X-Cy-Signature": [
+              "StCEDxxdbA5aHTIZYU-2SOaTTd13AE9MPHASxj1iPUw="
+            ],
+            "X-Cy-Timestamp": [
+              "1792654000"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "fetched",
+        "failureKind": "",
+        "output": {
+          "relativeHumidity": 0.5,
+          "skyCondition": "CLEAR_DAY",
+          "temperatureCelsius": 20,
+          "windSpeedMetersPerSecond": 200
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 39.976,
+        "longitude": 116.3176
+      },
+      "name": "getCurrentWeather-windLimit",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "9f1c93ac-341e-59e3-a647-3aaf0b934cc6",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"ok\",\"result\":{\"realtime\":{\"status\":\"ok\",\"temperature\":20,\"humidity\":0.5,\"skycon\":\"CLEAR_DAY\",\"wind\":{\"speed\":200.00001}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2.6/test-app-key/116.3176,39.976/realtime",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Cy-Nonce": [
+              "0195c68a42e77243bff2ac97a78b837d"
+            ],
+            "X-Cy-Signature": [
+              "StCEDxxdbA5aHTIZYU-2SOaTTd13AE9MPHASxj1iPUw="
+            ],
+            "X-Cy-Timestamp": [
+              "1792654000"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "relativeHumidity": 0,
+          "skyCondition": "",
+          "temperatureCelsius": 0,
+          "windSpeedMetersPerSecond": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 39.976,
+        "longitude": 116.3176
+      },
+      "name": "getCurrentWeather-windHigh",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "1373bda7-f607-5e4c-b1f1-b79a229d5023",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"ok\",\"result\":{\"realtime\":{\"status\":\"ok\",\"temperature\":20,\"humidity\":0.5,\"skycon\":\"CLEAR_DAY\",\"wind\":{\"speed\":-0.01}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2.6/test-app-key/116.3176,39.976/realtime",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Cy-Nonce": [
+              "0195c68a42e77243bff2ac97a78b837d"
+            ],
+            "X-Cy-Signature": [
+              "StCEDxxdbA5aHTIZYU-2SOaTTd13AE9MPHASxj1iPUw="
+            ],
+            "X-Cy-Timestamp": [
+              "1792654000"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "relativeHumidity": 0,
+          "skyCondition": "",
+          "temperatureCelsius": 0,
+          "windSpeedMetersPerSecond": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 39.976,
+        "longitude": 116.3176
+      },
+      "name": "getCurrentWeather-windNegative",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "d2947133-14a2-5555-9ec5-db2deec276e5",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"ok\",\"result\":{\"realtime\":{\"status\":\"ok\",\"temperature\":\"20\",\"humidity\":0.5,\"skycon\":\"CLEAR_DAY\",\"wind\":{\"speed\":2}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2.6/test-app-key/116.3176,39.976/realtime",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Cy-Nonce": [
+              "0195c68a42e77243bff2ac97a78b837d"
+            ],
+            "X-Cy-Signature": [
+              "StCEDxxdbA5aHTIZYU-2SOaTTd13AE9MPHASxj1iPUw="
+            ],
+            "X-Cy-Timestamp": [
+              "1792654000"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "relativeHumidity": 0,
+          "skyCondition": "",
+          "temperatureCelsius": 0,
+          "windSpeedMetersPerSecond": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 39.976,
+        "longitude": 116.3176
+      },
+      "name": "getCurrentWeather-stringTemp",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "e9001ab9-5a51-5472-9c7c-8cf2b719c42d",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"ok\",\"result\":{\"realtime\":{\"status\":\"ok\",\"temperature\":null,\"humidity\":0.5,\"skycon\":\"CLEAR_DAY\",\"wind\":{\"speed\":2}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2.6/test-app-key/116.3176,39.976/realtime",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Cy-Nonce": [
+              "0195c68a42e77243bff2ac97a78b837d"
+            ],
+            "X-Cy-Signature": [
+              "StCEDxxdbA5aHTIZYU-2SOaTTd13AE9MPHASxj1iPUw="
+            ],
+            "X-Cy-Timestamp": [
+              "1792654000"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "relativeHumidity": 0,
+          "skyCondition": "",
+          "temperatureCelsius": 0,
+          "windSpeedMetersPerSecond": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 39.976,
+        "longitude": 116.3176
+      },
+      "name": "getCurrentWeather-nullTemp",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "81015e87-b6f9-57fb-ab0a-9e30d27635fe",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"ok\",\"result\":{\"realtime\":{\"status\":\"ok\",\"temperature\":20,\"humidity\":true,\"skycon\":\"CLEAR_DAY\",\"wind\":{\"speed\":2}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2.6/test-app-key/116.3176,39.976/realtime",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Cy-Nonce": [
+              "0195c68a42e77243bff2ac97a78b837d"
+            ],
+            "X-Cy-Signature": [
+              "StCEDxxdbA5aHTIZYU-2SOaTTd13AE9MPHASxj1iPUw="
+            ],
+            "X-Cy-Timestamp": [
+              "1792654000"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "relativeHumidity": 0,
+          "skyCondition": "",
+          "temperatureCelsius": 0,
+          "windSpeedMetersPerSecond": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 39.976,
+        "longitude": 116.3176
+      },
+      "name": "getCurrentWeather-boolHumidity",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "c216fd2d-f094-5862-b525-06a9113a1cdc",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"ok\",\"result\":{\"realtime\":{\"status\":\"ok\",\"temperature\":20,\"humidity\":0.5,\"skycon\":\"CLEAR_DAY\",\"wind\":\"2\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2.6/test-app-key/116.3176,39.976/realtime",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Cy-Nonce": [
+              "0195c68a42e77243bff2ac97a78b837d"
+            ],
+            "X-Cy-Signature": [
+              "StCEDxxdbA5aHTIZYU-2SOaTTd13AE9MPHASxj1iPUw="
+            ],
+            "X-Cy-Timestamp": [
+              "1792654000"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "relativeHumidity": 0,
+          "skyCondition": "",
+          "temperatureCelsius": 0,
+          "windSpeedMetersPerSecond": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 39.976,
+        "longitude": 116.3176
+      },
+      "name": "getCurrentWeather-badWind",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "9bb26473-1514-5085-93b3-fb99e9ee0c53",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"ok\",\"result\":{\"realtime\":{\"status\":\"\",\"temperature\":20,\"humidity\":0.5,\"skycon\":\"CLEAR_DAY\",\"wind\":{\"speed\":2}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2.6/test-app-key/116.3176,39.976/realtime",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Cy-Nonce": [
+              "0195c68a42e77243bff2ac97a78b837d"
+            ],
+            "X-Cy-Signature": [
+              "StCEDxxdbA5aHTIZYU-2SOaTTd13AE9MPHASxj1iPUw="
+            ],
+            "X-Cy-Timestamp": [
+              "1792654000"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "relativeHumidity": 0,
+          "skyCondition": "",
+          "temperatureCelsius": 0,
+          "windSpeedMetersPerSecond": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 39.976,
+        "longitude": 116.3176
+      },
+      "name": "getCurrentWeather-missingStatus",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "023a73e1-2863-5705-830d-94bc38407d39",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"ok\",\"result\":{\"realtime\":{\"status\":\"ok\",\"temperature\":20,\"humidity\":0.5,\"skycon\":\"\",\"wind\":{\"speed\":2}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2.6/test-app-key/116.3176,39.976/realtime",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Cy-Nonce": [
+              "0195c68a42e77243bff2ac97a78b837d"
+            ],
+            "X-Cy-Signature": [
+              "StCEDxxdbA5aHTIZYU-2SOaTTd13AE9MPHASxj1iPUw="
+            ],
+            "X-Cy-Timestamp": [
+              "1792654000"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "relativeHumidity": 0,
+          "skyCondition": "",
+          "temperatureCelsius": 0,
+          "windSpeedMetersPerSecond": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 39.976,
+        "longitude": 116.3176
+      },
+      "name": "getCurrentWeather-missingSky",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "fbe16781-2eca-5669-b801-0a7d459084de",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"ok\",\"result\":{\"realtime\":{\"status\":\"ok\",\"temperature\":20,\"humidity\":0.5,\"skycon\":\"prefix test-app-secret\",\"wind\":{\"speed\":2}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2.6/test-app-key/116.3176,39.976/realtime",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Cy-Nonce": [
+              "0195c68a42e77243bff2ac97a78b837d"
+            ],
+            "X-Cy-Signature": [
+              "StCEDxxdbA5aHTIZYU-2SOaTTd13AE9MPHASxj1iPUw="
+            ],
+            "X-Cy-Timestamp": [
+              "1792654000"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "relativeHumidity": 0,
+          "skyCondition": "",
+          "temperatureCelsius": 0,
+          "windSpeedMetersPerSecond": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 39.976,
+        "longitude": 116.3176
+      },
+      "name": "getCurrentWeather-secretEcho",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "870cd13a-2278-5b8a-8b74-b2d39242753b",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"ok\",\"result\":{\"realtime\":{\"status\":\"ok\",\"temperature\":20,\"humidity\":0.5,\"skycon\":\"test-app-key\",\"wind\":{\"speed\":2}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2.6/test-app-key/116.3176,39.976/realtime",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Cy-Nonce": [
+              "0195c68a42e77243bff2ac97a78b837d"
+            ],
+            "X-Cy-Signature": [
+              "StCEDxxdbA5aHTIZYU-2SOaTTd13AE9MPHASxj1iPUw="
+            ],
+            "X-Cy-Timestamp": [
+              "1792654000"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "relativeHumidity": 0,
+          "skyCondition": "",
+          "temperatureCelsius": 0,
+          "windSpeedMetersPerSecond": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 39.976,
+        "longitude": 116.3176
+      },
+      "name": "getCurrentWeather-keyEcho",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "0e28c63a-c913-5fc7-b296-9ddd5a227453",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"ok\",\"result\":{\"realtime\":{\"status\":\"ok\",\"temperature\":20,\"humidity\":0.5,\"skycon\":\"阵雨\",\"wind\":{\"speed\":2}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2.6/test-app-key/116.3176,39.976/realtime",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Cy-Nonce": [
+              "0195c68a42e77243bff2ac97a78b837d"
+            ],
+            "X-Cy-Signature": [
+              "StCEDxxdbA5aHTIZYU-2SOaTTd13AE9MPHASxj1iPUw="
+            ],
+            "X-Cy-Timestamp": [
+              "1792654000"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "fetched",
+        "failureKind": "",
+        "output": {
+          "relativeHumidity": 0.5,
+          "skyCondition": "阵雨",
+          "temperatureCelsius": 20,
+          "windSpeedMetersPerSecond": 2
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 39.976,
+        "longitude": 116.3176
+      },
+      "name": "getCurrentWeather-nonASCII",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "56b67cc6-9aae-552a-b1d5-1a653dc1f488",
+      "exchanges": [
+        {
+          "body": "{\"status\": \"ok\", \"result\": {\"realtime\": {\"status\": \"ok\", \"temperature\": 1e400, \"humidity\": 0.5, \"skycon\": \"CLEAR_DAY\", \"wind\": {\"speed\": 2}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2.6/test-app-key/116.3176,39.976/realtime",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Cy-Nonce": [
+              "0195c68a42e77243bff2ac97a78b837d"
+            ],
+            "X-Cy-Signature": [
+              "StCEDxxdbA5aHTIZYU-2SOaTTd13AE9MPHASxj1iPUw="
+            ],
+            "X-Cy-Timestamp": [
+              "1792654000"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "relativeHumidity": 0,
+          "skyCondition": "",
+          "temperatureCelsius": 0,
+          "windSpeedMetersPerSecond": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 39.976,
+        "longitude": 116.3176
+      },
+      "name": "getCurrentWeather-overflow",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "a91abae8-f12e-5184-98d5-18ba12a96de5",
+      "exchanges": [
+        {
+          "body": "{\"STATUS\":\"ok\",\"RESULT\":{\"RealTime\":{\"sTaTuS\":\"ok\",\"Temperature\":13.25,\"Humidity\":0.25,\"SkyCon\":\"CLEAR_DAY\",\"Wind\":{\"Speed\":3.125}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2.6/test-app-key/116.3176,39.976/realtime",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Cy-Nonce": [
+              "0195c68a42e77243bff2ac97a78b837d"
+            ],
+            "X-Cy-Signature": [
+              "StCEDxxdbA5aHTIZYU-2SOaTTd13AE9MPHASxj1iPUw="
+            ],
+            "X-Cy-Timestamp": [
+              "1792654000"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "fetched",
+        "failureKind": "",
+        "output": {
+          "relativeHumidity": 0.25,
+          "skyCondition": "CLEAR_DAY",
+          "temperatureCelsius": 13.25,
+          "windSpeedMetersPerSecond": 3.125
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 39.976,
+        "longitude": 116.3176
+      },
+      "name": "getCurrentWeather-upperFields",
+      "operation": "getCurrentWeather"
     }
   ],
   "schemaVersion": 1

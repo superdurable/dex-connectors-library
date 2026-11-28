@@ -45,7 +45,7 @@ export class CaiyunClient {
   /** Bind the getCurrentWeather Query. */ getCurrentWeather(): GetCurrentWeatherOperation { return new GetCurrentWeatherOperation(this); }
 
   /** Resolve credentials and send one signed realtime weather request. */
-  async requestWeather(call: Call, input: GetCurrentWeatherInput): Promise<{ response?: ProviderResponse; tooLarge?: boolean; credentialFailed?: boolean; transportFailed?: boolean; nonceFailed?: boolean }> {
+  async requestWeather(call: Call, input: GetCurrentWeatherInput): Promise<{ response?: ProviderResponse; observation?: GetCurrentWeatherOutput; tooLarge?: boolean; credentialFailed?: boolean; transportFailed?: boolean; nonceFailed?: boolean }> {
     let appKey: string;
     let appSecret: string;
     try {
@@ -69,7 +69,13 @@ export class CaiyunClient {
       timeoutMs: this.timeoutMs, maxResponseBytes: this.maxResponseBytes,
       addressPolicy: this.baseURL.startsWith('https:') ? 'publicHTTPS' : 'privateNetworkHTTP', signal: call.context.cancellationSignal,
     };
-    try { return { response: await this.send(request) }; }
+    try {
+      const response = await this.send(request);
+      if (response.status !== 200) return { response };
+      if (response.body.length > this.maxResponseBytes) return { response, tooLarge: true };
+      const observation = decodeObservation(response.body, appKey, appSecret);
+      return observation ? { response, observation } : { response };
+    }
     catch (error) {
       if (error instanceof BodyTooLargeError && error.status !== undefined)
         return { response: { status: error.status, headers: error.headers ?? {}, body: new Uint8Array() }, tooLarge: true };
@@ -102,26 +108,30 @@ export class GetCurrentWeatherOperation implements Query<GetCurrentWeatherInput,
     if (response.status === 429) return newQueryRetry(failure('RATE_LIMIT', 'Caiyun rate or quota limit reached'), retryAfter);
     if (response.status !== 200) return terminal('providerRejected', classifyHTTP(response.status), 'Caiyun rejected the weather request');
     if (result.tooLarge) return terminal('invalidResponse', 'RESPONSE_TOO_LARGE', 'Caiyun response exceeded the configured limit');
-    let value: unknown;
-    try { value = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(response.body)); }
-    catch { return terminal('invalidResponse', 'PROTOCOL', 'Caiyun returned invalid realtime weather data'); }
-    if (!value || typeof value !== 'object' || Array.isArray(value)) return terminal('invalidResponse', 'PROTOCOL', 'Caiyun returned invalid realtime weather data');
-    const envelope = value as Record<string, unknown>;
-    const resultValue = envelope.result;
-    const realtimeValue = resultValue && typeof resultValue === 'object' && !Array.isArray(resultValue) ? (resultValue as Record<string, unknown>).realtime : undefined;
-    if (envelope.status !== 'ok' || !realtimeValue || typeof realtimeValue !== 'object' || Array.isArray(realtimeValue))
-      return terminal('invalidResponse', 'PROTOCOL', 'Caiyun returned invalid realtime weather data');
-    const realtime = realtimeValue as Record<string, unknown>;
-    const wind = realtime.wind;
-    const speed = wind && typeof wind === 'object' && !Array.isArray(wind) ? (wind as Record<string, unknown>).speed : undefined;
-    if (realtime.status !== 'ok' || !inRange(realtime.temperature, -150, 150) || !inRange(realtime.humidity, 0, 1) ||
-        typeof realtime.skycon !== 'string' || !realtime.skycon || !inRange(speed, 0, 200))
-      return terminal('invalidResponse', 'PROTOCOL', 'Caiyun returned invalid realtime weather data');
-    return newQueryBranch('fetched', {
-      temperatureCelsius: realtime.temperature, relativeHumidity: realtime.humidity,
-      skyCondition: realtime.skycon, windSpeedMetersPerSecond: speed,
-    }, zeroReceipt());
+    if (!result.observation) return terminal('invalidResponse', 'PROTOCOL', 'Caiyun returned invalid realtime weather data');
+    return newQueryBranch('fetched', result.observation, zeroReceipt());
   }
+}
+
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function decodeObservation(body: Uint8Array, appKey: string, appSecret: string): GetCurrentWeatherOutput | undefined {
+  let document: unknown;
+  try {
+    document = JSON.parse(new TextDecoder('utf-8', { ignoreBOM: true }).decode(body), (_name: string, value: unknown) => {
+      if (!isObject(value)) return value;
+      return Object.fromEntries(Object.entries(value).map(([name, field]) => [name.toLowerCase(), field]));
+    });
+  } catch { return undefined; }
+  if (!isObject(document) || document.status !== 'ok' || !isObject(document.result)) return undefined;
+  const observation = document.result.realtime;
+  if (!isObject(observation) || observation.status !== 'ok' || !isObject(observation.wind)) return undefined;
+  const { skycon, temperature, humidity, wind } = observation;
+  if (!inRange(temperature, -150, 150) || !inRange(humidity, 0, 1) || !inRange(wind.speed, 0, 200)
+      || typeof skycon !== 'string' || !skycon || skycon.includes(appKey) || skycon.includes(appSecret)) return undefined;
+  return { temperatureCelsius: temperature, relativeHumidity: humidity, skyCondition: skycon, windSpeedMetersPerSecond: wind.speed };
 }
 
 function inRange(value: unknown, min: number, max: number): value is number { return typeof value === 'number' && Number.isFinite(value) && value >= min && value <= max; }

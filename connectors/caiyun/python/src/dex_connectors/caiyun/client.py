@@ -121,7 +121,7 @@ class GetCurrentWeatherOperation:
         except (OSError, ValueError, TypeError):
             return _retry(FailureKind.AVAILABILITY, "Caiyun request nonce could not be generated")
         nonce = nonce_bytes.hex()
-        timestamp = str(int(self.client.clock().timestamp()))
+        timestamp = str(math.floor(self.client.clock().timestamp()))
         path = f"/v2.6/{app_key}/{_go_float(input.longitude)},{_go_float(input.latitude)}/realtime"
         signature = _sign_weather_request(app_key, app_secret, path, "", nonce, timestamp)
         try:
@@ -163,7 +163,7 @@ class GetCurrentWeatherOperation:
             except ProviderTransportError:
                 return _retry(FailureKind.AVAILABILITY, "Caiyun response was interrupted")
             try:
-                output = _decode_weather(body)
+                output = _decode_weather(body, app_key, app_secret)
             except (UnicodeDecodeError, ValueError, TypeError):
                 return _branch(
                     INVALID_RESPONSE, FailureKind.PROTOCOL, "Caiyun returned invalid realtime weather data"
@@ -188,12 +188,7 @@ def _go_float(value: float) -> str:
 
 
 def _finite_in_range(value: object, minimum: float, maximum: float) -> TypeGuard[int | float]:
-    return (
-        isinstance(value, (int, float))
-        and not isinstance(value, bool)
-        and math.isfinite(value)
-        and minimum <= value <= maximum
-    )
+    return isinstance(value, (int, float)) and not isinstance(value, bool) and minimum <= value <= maximum
 
 
 def _valid_app_key(value: object) -> bool:
@@ -218,9 +213,15 @@ def _classify_http(status: int) -> FailureKind:
     return FailureKind.PROVIDER_REJECTION
 
 
-def _decode_weather(body: bytes) -> GetCurrentWeatherOutput:
+def _lowercase_fields(fields: dict[str, Any]) -> dict[str, Any]:
+    return {name.lower(): value for name, value in fields.items()}
+
+
+def _decode_weather(body: bytes, app_key: str, app_secret: str) -> GetCurrentWeatherOutput:
     document: Any = json.loads(
-        body.decode("utf-8"), parse_constant=lambda _: (_ for _ in ()).throw(ValueError("invalid number"))
+        body.decode("utf-8", errors="replace"),
+        object_hook=_lowercase_fields,
+        parse_constant=lambda _: (_ for _ in ()).throw(ValueError("invalid number")),
     )
     if not isinstance(document, dict) or document.get("status") != "ok":
         raise ValueError("invalid Caiyun status")
@@ -243,6 +244,8 @@ def _decode_weather(body: bytes) -> GetCurrentWeatherOutput:
         or not _finite_in_range(speed, 0, 200)
         or not isinstance(sky, str)
         or not sky
+        or app_key in sky
+        or app_secret in sky
     ):
         raise ValueError("invalid weather fields")
     return GetCurrentWeatherOutput(float(temperature), float(humidity), sky, float(speed))

@@ -26,8 +26,11 @@ from .flow import CONNECTION_NAME, CurrentWeatherFlow
 
 
 @pytest.mark.asyncio
-async def test_current_weather_retries_503(tmp_path: Path) -> None:
-    """Persist one metric observation after an unavailable provider response."""
+@pytest.mark.parametrize(
+    "sky_condition", ["CLEAR_DAY", "test-app-secret"], ids=["fetched", "credential-echo"]
+)
+async def test_current_weather_retries_503(tmp_path: Path, sky_condition: str) -> None:
+    """Verify fresh retry signatures and rejection of echoed credentials across a Worker and Client."""
     address = os.environ["DEX_FLOW_SERVICE_ADDRESS"]
     requests: list[httpx.Request] = []
 
@@ -48,7 +51,7 @@ async def test_current_weather_retries_503(tmp_path: Path) -> None:
                         "status": "ok",
                         "temperature": 20,
                         "humidity": 0.5,
-                        "skycon": "CLEAR_DAY",
+                        "skycon": sky_condition,
                         "wind": {"speed": 2},
                     }
                 },
@@ -75,11 +78,18 @@ async def test_current_weather_retries_503(tmp_path: Path) -> None:
                 flow_id = f"caiyun-python-{uuid4().hex}"
                 await client.start_flow(flow, flow_id, GetCurrentWeatherInput(116.3176, 39.976))
                 result = await asyncio.wait_for(client.wait_for_flow(flow_id, timedelta(seconds=25)), 30)
-                assert result.status == dex.FlowStatus.COMPLETED, result.error_message
-                output = result.single_output(GetCurrentWeatherOutput)
-                assert output.temperature_celsius == 20
-                assert output.sky_condition == "CLEAR_DAY"
+                if sky_condition == "CLEAR_DAY":
+                    assert result.status == dex.FlowStatus.COMPLETED, result.error_message
+                    output = result.single_output(GetCurrentWeatherOutput)
+                    assert output.temperature_celsius == 20
+                    assert output.sky_condition == sky_condition
+                else:
+                    assert result.status == dex.FlowStatus.FAILED
+                    assert sky_condition not in (result.error_message or "")
+                    assert not result.completions
                 assert len(requests) == 2
+                assert requests[0].headers["x-cy-nonce"] != requests[1].headers["x-cy-nonce"]
+                assert requests[0].headers["x-cy-signature"] != requests[1].headers["x-cy-signature"]
         finally:
             await worker.stop()
             await worker_task
