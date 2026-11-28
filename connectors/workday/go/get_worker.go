@@ -4,7 +4,6 @@
 package workday
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -90,7 +89,7 @@ func (operation GetWorkerOperation) Invoke(call sdkgo.Call, input GetWorkerInput
 	defer func() { _ = response.Body.Close() }()
 	retryAfter := providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now())
 	body, readErr := providerhttp.ReadBoundedBody(response.Body, operation.client.maxResponseBytes)
-	if bytes.Contains(body, []byte(accessToken)) {
+	if containsAccessToken(body, accessToken) {
 		return workerBranch(GetWorkerBranchDefect, sdkgo.FailureAuthentication, "Workday response contained a credential")
 	}
 	if response.StatusCode == http.StatusTooManyRequests {

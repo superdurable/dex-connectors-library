@@ -5,9 +5,12 @@
 package workday
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
@@ -54,4 +57,24 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	client.httpClient = providerhttp.NewProviderHTTPClient(client.httpClient, config.Timeout)
 	client.refreshDriver = NewCredentialRefreshDriver(client.httpClient, config.TokenEndpoint)
 	return client, nil
+}
+
+func containsAccessToken(body []byte, token string) bool {
+	if bytes.Contains(body, []byte(token)) {
+		return true
+	}
+	if !bytes.ContainsRune(body, '\\') {
+		return false
+	}
+	decoder := json.NewDecoder(bytes.NewReader(body))
+	decoder.UseNumber()
+	for {
+		field, err := decoder.Token()
+		if err != nil {
+			return false
+		}
+		if text, ok := field.(string); ok && strings.Contains(text, token) {
+			return true
+		}
+	}
 }

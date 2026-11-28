@@ -30,7 +30,7 @@ def _branch(
 
 def _document(body: bytes) -> dict[str, Any] | None:
     try:
-        value: Any = json.loads(body)
+        value: Any = json.loads(body.decode("utf-8", errors="replace"))
     except (ValueError, UnicodeDecodeError):
         return None
     return value if isinstance(value, dict) else None

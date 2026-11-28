@@ -6,10 +6,12 @@ metadata:
   description: Read and search worker profiles from a Workday tenant REST API.
   company: Workday
   categories: [hr-recruiting]
-  version: v0.2.0
+  version: v0.2.1
 spec:
   provider: workday
   languages:
+    java: {version: v0.1.0, operations: [getWorker, listWorkers], triggers: []}
+    rust: {version: v0.1.0, operations: [getWorker, listWorkers], triggers: []}
     python:
       version: v0.2.0
       package: dex-connector-workday

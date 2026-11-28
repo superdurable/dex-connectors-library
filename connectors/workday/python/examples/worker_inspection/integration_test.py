@@ -60,6 +60,14 @@ async def test_worker_retries_503(tmp_path: Path) -> None:
         if request.url.path == "/api/common/v1/demo/workers":
             requests.append(request)
             assert request.method == "GET"
+            if request.url.params.get("search") == "reflected":
+                return httpx.Response(
+                    200,
+                    content=(
+                        rb'{"data":[{"id":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",'
+                        rb'"descriptor":"\u0073ynthetic-workday-token"}]}'
+                    ),
+                )
             assert dict(request.url.params) == {"limit": "2", "offset": "5", "search": " Li+ "}
             if len(requests) == 3:
                 return httpx.Response(503)
@@ -140,6 +148,18 @@ async def test_worker_retries_503(tmp_path: Path) -> None:
                 assert page.status == dex.FlowStatus.COMPLETED, page.error_message
                 assert page.single_output(WorkerPage) == WorkerPage(10, (WorkerSummary("a" * 32, "Li"),))
                 assert len(requests) == 4
+                reflected_id = f"workday-reflection-{uuid4().hex}"
+                await client.start_flow(page_flow, reflected_id, WorkerPageRequest(search="reflected"))
+                rejected = await asyncio.wait_for(
+                    client.wait_for_flow(reflected_id, timedelta(seconds=25)), 30
+                )
+                assert rejected.status == dex.FlowStatus.FAILED
+                assert rejected.error_message is not None
+                assert (
+                    "defect" in rejected.error_message
+                    and "synthetic-workday-token" not in rejected.error_message
+                )
+                assert len(requests) == 5
                 assert len(token_requests) == 1
         finally:
             await worker.stop()

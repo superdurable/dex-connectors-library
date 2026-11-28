@@ -39,6 +39,11 @@ it('retries a provider 503 and persists a worker through real Dex', async () => 
     if (request.headers.authorization !== 'Bearer synthetic-workday-token') { response.writeHead(401).end(); return; }
     const requestURL = new URL(request.url ?? '', 'http://127.0.0.1');
     if (requestURL.pathname === '/api/common/v1/demo/workers') {
+      if (requestURL.searchParams.get('search') === 'reflected') {
+        attempts++;
+        response.writeHead(200).end(String.raw`{"data":[{"id":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","descriptor":"\u0073ynthetic-workday-token"}]}`);
+        return;
+      }
       if (request.method !== 'GET' || requestURL.searchParams.get('limit') !== '2'
           || requestURL.searchParams.get('offset') !== '5' || requestURL.searchParams.get('search') !== ' Li+ ') {
         response.writeHead(400).end();
@@ -112,6 +117,13 @@ it('retries a provider 503 and persists a worker through real Dex', async () => 
     expect(page.status, page.errorMessage).toBe('completed');
     expect(page.singleOutput<WorkerPage>()).toEqual({ total: 10, data: [{ id: 'a'.repeat(32), descriptor: 'Li' }] });
     expect(attempts).toBe(4);
+    const reflectedId = `workday-reflection-${randomUUID()}`;
+    await client.startFlow(pageFlow, reflectedId, { search: 'reflected' });
+    const rejected = await client.waitForFlow(reflectedId, 60_000);
+    expect(rejected.status).toBe('failed');
+    expect(rejected.errorMessage).toContain('defect');
+    expect(rejected.errorMessage).not.toContain('synthetic-workday-token');
+    expect(attempts).toBe(5);
     expect(exchanges).toBe(1);
   } finally {
     tokenFetch.mockRestore();

@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
@@ -103,8 +104,27 @@ class Client:
                 body, read_error = b"", "too_large"
             except ProviderTransportError:
                 body, read_error = b"", "read"
-            if token.encode() in body:
+            if _contains_access_token(body, token):
                 return Exchange(response.status_code, b"", retry_after, "credential")
             return Exchange(response.status_code, body, retry_after, read_error)
         finally:
             await response.aclose()
+
+
+def _contains_access_token(body: bytes, token: str) -> bool:
+    if token.encode() in body:
+        return True
+    if b"\\" not in body:
+        return False
+    text = body.decode("utf-8", errors="replace")
+    decoder = json.JSONDecoder()
+    position = text.find('"')
+    while position >= 0:
+        try:
+            field, end = decoder.raw_decode(text, position)
+        except ValueError:
+            return False
+        if token in field:
+            return True
+        position = text.find('"', end)
+    return False

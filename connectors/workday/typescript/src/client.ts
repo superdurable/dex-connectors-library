@@ -81,7 +81,7 @@ export class WorkdayClient {
       return failedExchange('request');
     }
     const retryAfterMs = parseRetryAfter(header(response.headers, 'retry-after'), this.now());
-    if (Buffer.from(response.body).includes(token)) return { ...failedExchange('credential'), status: response.status, retryAfterMs };
+    if (containsAccessToken(response.body, token)) return { ...failedExchange('credential'), status: response.status, retryAfterMs };
     return { status: response.status, body: response.body, retryAfterMs };
   }
 }
@@ -92,4 +92,25 @@ function failedExchange(error: NonNullable<WorkdayExchange['error']>): WorkdayEx
 function header(headers: ProviderResponse['headers'], name: string): string {
   const value = Object.entries(headers).find(([key]) => key.toLowerCase() === name.toLowerCase())?.[1];
   return Array.isArray(value) ? value[0] ?? '' : value ?? '';
+}
+
+function containsAccessToken(body: Uint8Array, token: string): boolean {
+  const bytes = Buffer.from(body);
+  if (bytes.includes(token)) return true;
+  if (!bytes.includes(0x5c)) return false;
+  let document: unknown;
+  try { document = JSON.parse(bytes.toString('utf8')); }
+  catch { return false; }
+  const pending: unknown[] = [document];
+  while (pending.length) {
+    const value = pending.pop();
+    if (typeof value === 'string' && value.includes(token)) return true;
+    if (value !== null && typeof value === 'object') {
+      for (const [name, field] of Object.entries(value)) {
+        if (name.includes(token)) return true;
+        pending.push(field);
+      }
+    }
+  }
+  return false;
 }

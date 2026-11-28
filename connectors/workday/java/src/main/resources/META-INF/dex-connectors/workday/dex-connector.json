@@ -1,0 +1,119 @@
+{
+  "connectorId": "workday",
+  "releaseTag": "connectors/workday/go/v0.2.1",
+  "package": {
+    "ecosystem": "maven",
+    "name": "io.superdurable:dex-connector-workday",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newListWorkersStep",
+      "kind": "query",
+      "operationId": "listWorkers",
+      "inputType": "ListWorkersInput",
+      "description": "List a page of accessible Workday workers, optionally searching by name prefix.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListWorkersInput selects a page of workers and an optional name-prefix search.",
+        "properties": {
+          "limit": {
+            "description": "Limit is the page size from 1 to 100; zero uses Workday's default of 20.",
+            "type": "integer"
+          },
+          "offset": {
+            "description": "Offset is the zero-based position of the first worker.",
+            "type": "integer"
+          },
+          "search": {
+            "description": "Search is at least three consecutive characters from a worker name when set.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    {
+      "name": "newGetWorkerStep",
+      "kind": "query",
+      "operationId": "getWorker",
+      "inputType": "GetWorkerInput",
+      "description": "Read one Workday worker's WID and display name.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "notFound",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetWorkerInput identifies a worker by its Workday ID.",
+        "properties": {
+          "workerId": {
+            "description": "WorkerID is the WID returned by the Workday workers REST endpoint.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "workerId"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

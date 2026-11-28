@@ -1,0 +1,87 @@
+{
+  "getWorker": {
+    "branches": [
+      {
+        "description": "Workday returned the requested worker.",
+        "id": "found",
+        "optional": false
+      },
+      {
+        "description": "No accessible worker has this WID.",
+        "id": "notFound",
+        "optional": true
+      },
+      {
+        "description": "Workday conclusively rejected the lookup.",
+        "id": "providerRejected",
+        "optional": true
+      },
+      {
+        "description": "Workday returned malformed or oversized worker JSON.",
+        "id": "invalidResponse",
+        "optional": true
+      },
+      {
+        "description": "Local input or connection credentials are invalid.",
+        "id": "defect",
+        "optional": true
+      }
+    ],
+    "operation": {
+      "connectorId": "workday",
+      "operationId": "getWorker"
+    },
+    "stepDefaults": {
+      "executeDurability": 2,
+      "executeMethodTimeout": 30000000000,
+      "executeRetry": {
+        "BackoffCoefficient": 2,
+        "InitialInterval": 1000000000,
+        "MaximumAttempts": 0,
+        "MaximumInterval": 300000000000,
+        "TotalDuration": 3600000000000
+      },
+      "heartbeatTimeout": 0
+    }
+  },
+  "listWorkers": {
+    "branches": [
+      {
+        "description": "Workday returned the requested worker page.",
+        "id": "found",
+        "optional": false
+      },
+      {
+        "description": "Workday conclusively rejected the search.",
+        "id": "providerRejected",
+        "optional": true
+      },
+      {
+        "description": "Workday returned malformed or oversized worker JSON.",
+        "id": "invalidResponse",
+        "optional": true
+      },
+      {
+        "description": "Local input or connection credentials are invalid.",
+        "id": "defect",
+        "optional": true
+      }
+    ],
+    "operation": {
+      "connectorId": "workday",
+      "operationId": "listWorkers"
+    },
+    "stepDefaults": {
+      "executeDurability": 2,
+      "executeMethodTimeout": 30000000000,
+      "executeRetry": {
+        "BackoffCoefficient": 2,
+        "InitialInterval": 1000000000,
+        "MaximumAttempts": 0,
+        "MaximumInterval": 300000000000,
+        "TotalDuration": 3600000000000
+      },
+      "heartbeatTimeout": 0
+    }
+  }
+}

@@ -1400,6 +1400,278 @@
       },
       "name": "listWorkers-missing-smallLimit",
       "operation": "listWorkers"
+    },
+    {
+      "callId": "197356e1-0aa8-5314-bb52-c2c2a079e8f9",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"0123456789abcdef0123456789abcdef\",\"descriptor\":\"\\u0074est-workday-token\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/common/v1/demo/workers/0123456789abcdef0123456789abcdef",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-workday-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "descriptor": "",
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "workerId": "0123456789abcdef0123456789abcdef"
+      },
+      "name": "getWorker-escaped-credential",
+      "operation": "getWorker"
+    },
+    {
+      "callId": "bd16fe63-9612-58be-a7cc-46d10f09bf50",
+      "exchanges": [
+        {
+          "body": "{\"total\":1,\"data\":[{\"id\":\"0123456789abcdef0123456789abcdef\",\"descriptor\":\"\\u0074est-workday-token\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/common/v1/demo/workers",
+          "query": {
+            "limit": [
+              "5"
+            ],
+            "offset": [
+              "2"
+            ],
+            "search": [
+              "Ada"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-workday-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "data": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 5,
+        "offset": 2,
+        "search": "Ada"
+      },
+      "name": "listWorkers-escaped-credential",
+      "operation": "listWorkers"
+    },
+    {
+      "callId": "e5527a0a-799a-53bb-b629-51d75bc86c41",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"0123456789abcdef0123456789abcdef\",\"descriptor\":\"Dr. \\\"Li\\\"\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/common/v1/demo/workers/0123456789abcdef0123456789abcdef",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-workday-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "descriptor": "Dr. \"Li\"",
+          "id": "0123456789abcdef0123456789abcdef"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "workerId": "0123456789abcdef0123456789abcdef"
+      },
+      "name": "getWorker-quoted-descriptor",
+      "operation": "getWorker"
+    },
+    {
+      "callId": "1c320e25-0e9f-5376-a65a-fc45bbb4b0e2",
+      "exchanges": [
+        {
+          "body": "{\"total\":1,\"data\":[{\"id\":\"0123456789abcdef0123456789abcdef\",\"descriptor\":\"Dr. \\\"Li\\\"\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/common/v1/demo/workers",
+          "query": {
+            "limit": [
+              "5"
+            ],
+            "offset": [
+              "2"
+            ],
+            "search": [
+              "Ada"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-workday-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "data": [
+            {
+              "descriptor": "Dr. \"Li\"",
+              "id": "0123456789abcdef0123456789abcdef"
+            }
+          ],
+          "total": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 5,
+        "offset": 2,
+        "search": "Ada"
+      },
+      "name": "listWorkers-quoted-descriptor",
+      "operation": "listWorkers"
+    },
+    {
+      "callId": "2288ef8a-14af-57c1-8ff9-bf32531f9085",
+      "exchanges": [
+        {
+          "body": "{\u0000\"\u0000i\u0000d\u0000\"\u0000:\u0000\"\u00000\u00001\u00002\u00003\u00004\u00005\u00006\u00007\u00008\u00009\u0000a\u0000b\u0000c\u0000d\u0000e\u0000f\u00000\u00001\u00002\u00003\u00004\u00005\u00006\u00007\u00008\u00009\u0000a\u0000b\u0000c\u0000d\u0000e\u0000f\u0000\"\u0000,\u0000\"\u0000d\u0000e\u0000s\u0000c\u0000r\u0000i\u0000p\u0000t\u0000o\u0000r\u0000\"\u0000:\u0000\"\u0000t\u0000e\u0000s\u0000t\u0000-\u0000w\u0000o\u0000r\u0000k\u0000d\u0000a\u0000y\u0000-\u0000t\u0000o\u0000k\u0000e\u0000n\u0000\"\u0000}\u0000",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/common/v1/demo/workers/0123456789abcdef0123456789abcdef",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-workday-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "descriptor": "",
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "workerId": "0123456789abcdef0123456789abcdef"
+      },
+      "name": "getWorker-utf16-response",
+      "operation": "getWorker"
+    },
+    {
+      "callId": "5458b337-fe5e-5652-bc0a-862215a1dc8d",
+      "exchanges": [
+        {
+          "body": "{\u0000\"\u0000t\u0000o\u0000t\u0000a\u0000l\u0000\"\u0000:\u00001\u0000,\u0000\"\u0000d\u0000a\u0000t\u0000a\u0000\"\u0000:\u0000[\u0000{\u0000\"\u0000i\u0000d\u0000\"\u0000:\u0000\"\u00000\u00001\u00002\u00003\u00004\u00005\u00006\u00007\u00008\u00009\u0000a\u0000b\u0000c\u0000d\u0000e\u0000f\u00000\u00001\u00002\u00003\u00004\u00005\u00006\u00007\u00008\u00009\u0000a\u0000b\u0000c\u0000d\u0000e\u0000f\u0000\"\u0000,\u0000\"\u0000d\u0000e\u0000s\u0000c\u0000r\u0000i\u0000p\u0000t\u0000o\u0000r\u0000\"\u0000:\u0000\"\u0000t\u0000e\u0000s\u0000t\u0000-\u0000w\u0000o\u0000r\u0000k\u0000d\u0000a\u0000y\u0000-\u0000t\u0000o\u0000k\u0000e\u0000n\u0000\"\u0000}\u0000]\u0000}\u0000",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/common/v1/demo/workers",
+          "query": {
+            "limit": [
+              "5"
+            ],
+            "offset": [
+              "2"
+            ],
+            "search": [
+              "Ada"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-workday-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "data": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 5,
+        "offset": 2,
+        "search": "Ada"
+      },
+      "name": "listWorkers-utf16-response",
+      "operation": "listWorkers"
     }
   ],
   "schemaVersion": 1
