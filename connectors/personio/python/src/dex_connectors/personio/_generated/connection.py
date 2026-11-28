@@ -11,30 +11,37 @@ from dex_connectors.sdk.projectconfig.provider import RefreshingCredentialProvid
 from dex_connectors.sdk.oauthtoken import ManifestCredentialRefreshDriver
 
 from ..client import Client, Config, Credentials
-from .definitions import CONNECTOR_ID, GET_PERSON_DEFINITION
+from .definitions import CONNECTOR_ID, GET_PERSON_DEFINITION, LIST_PERSONS_DEFINITION
 from .refresh import AUTHORIZATION, CREDENTIAL_FIELDS
-from ..models import GetPersonInput, PersonProfile
+from ..models import GetPersonInput, ListPersonsInput, PersonPage, PersonProfile
 
 class Connection:
 
-    __slots__ = ('_get_person', '_client', 'reference')
+    __slots__ = ('_get_person', '_list_persons', '_client', 'reference')
 
     def __init__(self,
         reference: ConnectionRef,
         get_person: Query[GetPersonInput, PersonProfile],
+        list_persons: Query[ListPersonsInput, PersonPage],
         client: Client | None = None,
     ) -> None:
         reference.validate()
-        if reference.provider != CONNECTOR_ID or get_person is None:
+        if reference.provider != CONNECTOR_ID or get_person is None or list_persons is None:
             raise ValueError("Personio connection provider and operations are required")
         if get_person.definition().operation != GET_PERSON_DEFINITION.operation:
             raise ValueError("Personio connection operation identity differs")
+        if list_persons.definition().operation != LIST_PERSONS_DEFINITION.operation:
+            raise ValueError("Personio connection operation identity differs")
         self.reference = reference
         self._get_person = get_person
+        self._list_persons = list_persons
         self._client = client
 
     def get_person(self) -> Query[GetPersonInput, PersonProfile]:
         return self._get_person
+
+    def list_persons(self) -> Query[ListPersonsInput, PersonPage]:
+        return self._list_persons
 
     async def aclose(self) -> None:
         if self._client is not None:
@@ -52,16 +59,17 @@ setattr(Connection, '__module__', 'dex_connectors.personio.connection')
 def new_connection(client: Client, reference: ConnectionRef) -> Connection:
     if client is None:
         raise ValueError("Personio client is required")
-    return Connection(reference, client.get_person(), client)
+    return Connection(reference, client.get_person(), client.list_persons(), client)
 
 setattr(new_connection, '__module__', 'dex_connectors.personio.connection')
 
 
 def new_connection_with_operations(
     get_person: Query[GetPersonInput, PersonProfile],
+    list_persons: Query[ListPersonsInput, PersonPage],
     reference: ConnectionRef,
 ) -> Connection:
-    return Connection(reference, get_person)
+    return Connection(reference, get_person, list_persons)
 
 setattr(new_connection_with_operations, '__module__', 'dex_connectors.personio.connection')
 

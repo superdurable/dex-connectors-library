@@ -4,9 +4,71 @@
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-personio",
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   "factories": [
+    {
+      "name": "newListPersonsStep",
+      "kind": "query",
+      "operationId": "listPersons",
+      "inputType": "ListPersonsInput",
+      "description": "List one page of persons with optional name and employment-status filters.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListPersonsInput selects a page and optional Personio filters.",
+        "properties": {
+          "cursor": {
+            "description": "Cursor is the opaque cursor from a previous page; blank starts at the first page.",
+            "type": "string"
+          },
+          "firstName": {
+            "description": "FirstName filters exact first names; blank disables the filter.",
+            "type": "string"
+          },
+          "lastName": {
+            "description": "LastName filters exact last names; blank disables the filter.",
+            "type": "string"
+          },
+          "limit": {
+            "description": "Limit is 1 to 50 persons; zero uses Personio's default page size.",
+            "type": "integer"
+          },
+          "status": {
+            "description": "Status is ACTIVE or INACTIVE; blank includes both.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
     {
       "name": "newGetPersonStep",
       "kind": "query",

@@ -11,14 +11,14 @@ spec:
   provider: personio
   languages:
     python:
-      version: v0.1.0
+      version: v0.2.0
       package: dex-connector-personio
-      operations: [getPerson]
+      operations: [getPerson, listPersons]
       triggers: []
     typescript:
-      version: v0.1.0
+      version: v0.2.0
       package: '@superdurable/connector-personio'
-      operations: [getPerson]
+      operations: [getPerson, listPersons]
       triggers: []
   codegen:
     go:

@@ -8,8 +8,8 @@ import json
 import re
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Any
-from urllib.parse import urlsplit
+from typing import Any, TypeVar
+from urllib.parse import parse_qs, unquote, urlencode, urlsplit
 
 import httpx
 from dex_connectors.sdk import (
@@ -35,8 +35,8 @@ from dex_connectors.sdk.providerhttp import (
 
 from ._generated.config import Config as Config
 from ._generated.config import Credentials as Credentials
-from ._generated.definitions import GET_PERSON_DEFINITION
-from .models import GetPersonInput, PersonProfile
+from ._generated.definitions import GET_PERSON_DEFINITION, LIST_PERSONS_DEFINITION
+from .models import GetPersonInput, ListPersonsInput, PersonPage, PersonProfile
 
 
 @dataclass(frozen=True, slots=True)
@@ -49,20 +49,63 @@ class _Exchange:
     error: str = ""
 
 
-def _failure(kind: FailureKind, message: str) -> Failure:
-    return Failure(kind, "personio", "getPerson", message)
+_PersonOutput = TypeVar("_PersonOutput", PersonProfile, PersonPage)
 
 
-def _branch(branch: str, kind: FailureKind, message: str) -> QueryAttempt[PersonProfile]:
-    return QueryAttempt.branch_result(branch, PersonProfile(), Receipt(), _failure(kind, message))
+def _exchange_failure(
+    exchange: _Exchange, operation: str, empty: _PersonOutput
+) -> QueryAttempt[_PersonOutput] | None:
+    def terminal(branch: str, kind: FailureKind, message: str) -> QueryAttempt[_PersonOutput]:
+        return QueryAttempt.branch_result(
+            branch, empty, Receipt(), Failure(kind, "personio", operation, message)
+        )
+
+    def retry(kind: FailureKind, message: str) -> QueryAttempt[_PersonOutput]:
+        return QueryAttempt.retry(Failure(kind, "personio", operation, message), exchange.retry_after)
+
+    if exchange.error == "credential":
+        return terminal("defect", FailureKind.AUTHENTICATION, "Personio connection needs authorization")
+    if exchange.error == "request":
+        return retry(FailureKind.TRANSPORT, "Personio request failed")
+    if exchange.status == 429:
+        return retry(FailureKind.RATE_LIMIT, "Personio rate limited the request")
+    if exchange.status == 408 or exchange.status >= 500:
+        return retry(FailureKind.AVAILABILITY, "Personio is temporarily unavailable")
+    if exchange.status == 404 and operation == "getPerson":
+        return terminal("notFound", FailureKind.NOT_FOUND, "Personio person was not found")
+    if exchange.status != 200:
+        return terminal(
+            "providerRejected", FailureKind.PROVIDER_REJECTION, f"Personio rejected HTTP {exchange.status}"
+        )
+    if exchange.error == "too_large":
+        return terminal(
+            "invalidResponse",
+            FailureKind.RESPONSE_TOO_LARGE,
+            "Personio response exceeded the configured limit",
+        )
+    if exchange.error == "interrupted":
+        return QueryAttempt.retry(
+            Failure(FailureKind.TRANSPORT, "personio", operation, "Personio response was interrupted")
+        )
+    return None
 
 
-def _retry(kind: FailureKind, message: str, delay: float = 0) -> QueryAttempt[PersonProfile]:
-    return QueryAttempt.retry(_failure(kind, message), delay)
+def _invalid(
+    branch: str, kind: FailureKind, message: str, operation: str, empty: _PersonOutput
+) -> QueryAttempt[_PersonOutput]:
+    return QueryAttempt.branch_result(branch, empty, Receipt(), Failure(kind, "personio", operation, message))
+
+
+def _read_json(body: bytes) -> Any:
+    return json.loads(
+        body,
+        object_pairs_hook=lambda pairs: {key.lower(): value for key, value in pairs},
+        parse_constant=lambda _: (_ for _ in ()).throw(ValueError("invalid JSON number")),
+    )
 
 
 def _decode_person(body: bytes, requested_id: str) -> PersonProfile:
-    raw: Any = json.loads(body)
+    raw: Any = _read_json(body)
     if not isinstance(raw, dict) or raw.get("id") != requested_id:
         raise ValueError("person ID mismatch")
     first_name = raw.get("first_name")
@@ -104,12 +147,16 @@ class Client:
         """Bind the getPerson Query to this client."""
         return GetPersonOperation(self)
 
+    def list_persons(self) -> ListPersonsOperation:
+        """Bind the filtered, cursor-paginated persons Query."""
+        return ListPersonsOperation(self)
+
     async def aclose(self) -> None:
         """Close the HTTP client only when this client created it."""
         if self._owns_client:
             await self.http_client.aclose()
 
-    async def _get(self, call: Call, person_id: str) -> _Exchange:
+    async def _request_persons(self, call: Call, suffix: str) -> _Exchange:
         try:
             credential = await self.credentials.resolve(call)
             token = credential.access_token.reveal()
@@ -119,13 +166,13 @@ class Client:
             return _Exchange(error="request")
         if not is_header_safe_credential(token):
             return _Exchange(error="credential")
-        return await self._send(call, token, person_id)
+        return await self._send(token, suffix)
 
-    async def _send(self, call: Call, token: str, person_id: str) -> _Exchange:
+    async def _send(self, token: str, suffix: str) -> _Exchange:
         try:
             request = self.http_client.build_request(
                 "GET",
-                self.base_url + "/persons/" + person_id,
+                self.base_url + "/persons" + suffix,
                 headers={"Accept": "application/json", "Authorization": "Bearer " + token},
             )
             response, _ = await send_traced(self.http_client, request)
@@ -163,40 +210,136 @@ class GetPersonOperation:
             or not isinstance(input.person_id, str)
             or re.fullmatch(r"[A-Za-z0-9_-]{1,128}", input.person_id) is None
         ):
-            return _branch("defect", FailureKind.VALIDATION, "Personio person ID must be an API ID")
-        exchange = await self.client._get(call, input.person_id)
-        if exchange.error == "credential":
-            return _branch(
-                "defect", FailureKind.AUTHENTICATION, "Personio connection needs authorization"
+            return _invalid(
+                "defect",
+                FailureKind.VALIDATION,
+                "Personio person ID must be an API ID",
+                "getPerson",
+                PersonProfile(),
             )
-        if exchange.error == "request":
-            return _retry(FailureKind.TRANSPORT, "Personio request failed")
-        if exchange.status == 429:
-            return _retry(FailureKind.RATE_LIMIT, "Personio rate limited the request", exchange.retry_after)
-        if exchange.status == 408 or exchange.status >= 500:
-            return _retry(
-                FailureKind.AVAILABILITY, "Personio is temporarily unavailable", exchange.retry_after
-            )
-        if exchange.status == 404:
-            return _branch("notFound", FailureKind.NOT_FOUND, "Personio person was not found")
-        if exchange.status != 200:
-            return _branch(
-                "providerRejected",
-                FailureKind.PROVIDER_REJECTION,
-                f"Personio rejected HTTP {exchange.status}",
-            )
-        if exchange.error == "too_large":
-            return _branch(
-                "invalidResponse",
-                FailureKind.RESPONSE_TOO_LARGE,
-                "Personio response exceeded the configured limit",
-            )
-        if exchange.error == "interrupted":
-            return _retry(FailureKind.TRANSPORT, "Personio response was interrupted")
+        exchange = await self.client._request_persons(call, "/" + input.person_id)
+        failure = _exchange_failure(exchange, "getPerson", PersonProfile())
+        if failure is not None:
+            return failure
         try:
             profile = _decode_person(exchange.body, input.person_id)
         except (ValueError, TypeError, UnicodeDecodeError):
-            return _branch(
-                "invalidResponse", FailureKind.PROTOCOL, "Personio returned invalid person JSON"
+            return _invalid(
+                "invalidResponse",
+                FailureKind.PROTOCOL,
+                "Personio returned invalid person JSON",
+                "getPerson",
+                PersonProfile(),
             )
         return QueryAttempt.branch_result("found", profile, Receipt())
+
+
+class ListPersonsOperation:
+    """Read one Personio page, projecting IDs and names and returning the next cursor."""
+
+    def __init__(self, client: Client) -> None:
+        if client is None:
+            raise ValueError("Personio client is required")
+        self.client = client
+
+    def definition(self) -> QueryDefinition:
+        """Return the generated listPersons definition."""
+        return LIST_PERSONS_DEFINITION
+
+    async def invoke(self, call: Call, input: ListPersonsInput) -> QueryAttempt[PersonPage]:
+        """Apply optional filters and read one bounded page with the current credentials."""
+        if (
+            not isinstance(input, ListPersonsInput)
+            or type(input.limit) is not int
+            or not 0 <= input.limit <= 50
+            or not all(
+                isinstance(v, str) for v in (input.cursor, input.first_name, input.last_name, input.status)
+            )
+            or input.status not in ("", "ACTIVE", "INACTIVE")
+            or len(input.cursor.encode()) > 1024
+        ):
+            return _invalid(
+                "defect",
+                FailureKind.VALIDATION,
+                "Personio list filters are invalid",
+                "listPersons",
+                PersonPage(),
+            )
+        filters = {
+            "cursor": input.cursor,
+            "first_name": input.first_name,
+            "last_name": input.last_name,
+            "limit": str(input.limit) if input.limit else "",
+            "status": input.status,
+        }
+        query = urlencode({key: value for key, value in filters.items() if value})
+        exchange = await self.client._request_persons(call, "?" + query if query else "")
+        failure = _exchange_failure(exchange, "listPersons", PersonPage())
+        if failure is not None:
+            return failure
+        try:
+            page = _read_page(exchange.body, self.client.base_url)
+        except (ValueError, TypeError, UnicodeError):
+            return _invalid(
+                "invalidResponse",
+                FailureKind.PROTOCOL,
+                "Personio returned invalid persons JSON",
+                "listPersons",
+                PersonPage(),
+            )
+        return QueryAttempt.branch_result("listed", page, Receipt())
+
+
+def _object(value: object) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        raise ValueError("expected Personio object")
+    return value
+
+
+def _string(value: object) -> str:
+    if value is None:
+        return ""
+    if not isinstance(value, str):
+        raise ValueError("expected Personio string")
+    return value
+
+
+def _read_page(body: bytes, base_url: str) -> PersonPage:
+    record = _object(_read_json(body))
+    rows = record.get("_data")
+    if not isinstance(rows, list):
+        raise ValueError("missing persons")
+    persons = []
+    for row in rows:
+        item = _object(row)
+        identifier = _string(item.get("id"))
+        if re.fullmatch(r"[A-Za-z0-9_-]{1,128}", identifier) is None:
+            raise ValueError("invalid person ID")
+        persons.append(
+            PersonProfile(identifier, _string(item.get("first_name")), _string(item.get("last_name")))
+        )
+    links = record
+    for key in ("_meta", "links", "next"):
+        nested = links.get(key)
+        links = {} if nested is None else _object(nested)
+    href = _string(links.get("href"))
+    cursor = ""
+    if href:
+        if any(ord(char) < 32 or ord(char) == 127 for char in href):
+            raise ValueError("invalid Personio link")
+        next_page = urlsplit(href)
+        base = urlsplit(base_url)
+        if unquote(next_page.path) != "/v2/persons" or (
+            next_page.scheme
+            and (next_page.scheme, next_page.netloc.rsplit("@", 1)[-1]) != (base.scheme, base.netloc)
+        ):
+            raise ValueError("invalid Personio next-page link")
+        valid_query = "&".join(
+            pair
+            for pair in next_page.query.split("&")
+            if ";" not in pair and re.search(r"%(?![0-9a-fA-F]{2})", pair) is None
+        )
+        cursor = parse_qs(valid_query, keep_blank_values=True).get("cursor", [""])[0]
+        if not cursor:
+            raise ValueError("missing Personio next cursor")
+    return PersonPage(tuple(persons), cursor)

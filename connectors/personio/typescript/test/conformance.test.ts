@@ -5,11 +5,10 @@ import { it } from 'vitest';
 import { SecretString, StaticCredentialProvider, type Call } from '@superdurable/connectors-sdk';
 import { ProviderTransportError } from '@superdurable/connectors-sdk/providerhttp';
 import { PersonioClient } from '../src/client.js';
-import { GetPersonInputSchema } from '../src/generated/models.js';
+import { GetPersonInputSchema, ListPersonsInputSchema } from '../src/generated/models.js';
 import { answerRecordedRequest, loadScenarios, replay, type ExchangeRecorder, type Scenario } from '../../../../conformance/runners/typescript/connector_scenarios.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/personio/scenarios.json', import.meta.url))
-  .filter(scenario => scenario.operation === 'getPerson');
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/personio/scenarios.json', import.meta.url));
 const connection = { provider: 'personio', name: 'personio' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokePersonio, '/v2'));
 
@@ -24,5 +23,6 @@ async function invokePersonio(scenario: Scenario, recorder: ExchangeRecorder) {
     reportProgress() {}, writeText() {}, hasProgressStream: () => false, hasTextStream: () => false,
   };
   if (scenario.operation === 'getPerson') return client.getPerson().invoke(call, GetPersonInputSchema.parse(scenario.input));
+  if (scenario.operation === 'listPersons') return client.listPersons().invoke(call, ListPersonsInputSchema.parse(scenario.input));
   throw new Error(`unknown Personio operation ${scenario.operation}`);
 }

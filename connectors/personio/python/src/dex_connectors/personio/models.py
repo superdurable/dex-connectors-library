@@ -5,4 +5,6 @@
 from ._generated.config import Config as Config
 from ._generated.config import Credentials as Credentials
 from ._generated.models import GetPersonInput as GetPersonInput
+from ._generated.models import ListPersonsInput as ListPersonsInput
+from ._generated.models import PersonPage as PersonPage
 from ._generated.models import PersonProfile as PersonProfile

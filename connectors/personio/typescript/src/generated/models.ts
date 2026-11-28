@@ -91,10 +91,18 @@ export function decodeSharedCredentials(value: unknown): Credentials {
 /** Host-owned source of private connector credentials. */
 export type CredentialSource = RefreshingCredentialProvider<Credentials>;
 
-/** GetPersonInput selects one Personio person by its stable API ID. */
-export interface GetPersonInput {
-  /** PersonID is the ID returned by the Personio v2 Persons API. */
-  "personId": string;
+/** ListPersonsInput selects a page and optional Personio filters. */
+export interface ListPersonsInput {
+  /** Limit is 1 to 50 persons; zero uses Personio's default page size. */
+  "limit"?: number | undefined;
+  /** Cursor is the opaque cursor from a previous page; blank starts at the first page. */
+  "cursor"?: string | undefined;
+  /** FirstName filters exact first names; blank disables the filter. */
+  "firstName"?: string | undefined;
+  /** LastName filters exact last names; blank disables the filter. */
+  "lastName"?: string | undefined;
+  /** Status is ACTIVE or INACTIVE; blank includes both. */
+  "status"?: string | undefined;
 }
 /** PersonProfile contains selected names and an ID, excluding email and other personnel data. */
 export interface PersonProfile {
@@ -105,11 +113,27 @@ export interface PersonProfile {
   /** LastName is the person's last name, or empty when absent. */
   "lastName": string;
 }
+/** PersonPage contains selected person fields and the next page cursor. */
+export interface PersonPage {
+  /** Persons contains non-secret ID and name fields only. */
+  "persons": Array<PersonProfile> | null;
+  /** NextCursor is blank when no following page is advertised. */
+  "nextCursor": string;
+}
+/** GetPersonInput selects one Personio person by its stable API ID. */
+export interface GetPersonInput {
+  /** PersonID is the ID returned by the Personio v2 Persons API. */
+  "personId": string;
+}
 
-/** Runtime validator for GetPersonInput. */
-export const GetPersonInputSchema = z.strictObject({
-  "personId": z.string(),
-}) satisfies z.ZodType<GetPersonInput>;
+/** Runtime validator for ListPersonsInput. */
+export const ListPersonsInputSchema = z.strictObject({
+  "limit": z.number().int().optional(),
+  "cursor": z.string().optional(),
+  "firstName": z.string().optional(),
+  "lastName": z.string().optional(),
+  "status": z.string().optional(),
+}) satisfies z.ZodType<ListPersonsInput>;
 
 /** Runtime validator for PersonProfile. */
 export const PersonProfileSchema = z.strictObject({
@@ -117,3 +141,14 @@ export const PersonProfileSchema = z.strictObject({
   "firstName": z.string(),
   "lastName": z.string(),
 }) satisfies z.ZodType<PersonProfile>;
+
+/** Runtime validator for PersonPage. */
+export const PersonPageSchema = z.strictObject({
+  "persons": z.array(PersonProfileSchema).nullable(),
+  "nextCursor": z.string(),
+}) satisfies z.ZodType<PersonPage>;
+
+/** Runtime validator for GetPersonInput. */
+export const GetPersonInputSchema = z.strictObject({
+  "personId": z.string(),
+}) satisfies z.ZodType<GetPersonInput>;

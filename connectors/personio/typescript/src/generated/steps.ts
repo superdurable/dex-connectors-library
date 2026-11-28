@@ -5,7 +5,35 @@
 import { goToBranch, newQueryStep, type Query, type QueryResult, type QueryStep, type QueryStepConfig } from '@superdurable/connectors-sdk';
 import type { StepTarget } from '@superdurable/dex';
 import type { Connection } from './connection.js';
-import type { GetPersonInput, PersonProfile } from './models.js';
+import type { ListPersonsInput, PersonPage, GetPersonInput, PersonProfile } from './models.js';
+
+/** Configuration for the listPersons connector Step. */
+export interface ListPersonsStepConfig<StepInput, OperationInput = ListPersonsInput, OperationOutput = PersonPage> extends Omit<QueryStepConfig<StepInput, OperationInput, OperationOutput>, 'operation' | 'connection' | 'branches'> {
+  /** Named connection supplying this operation. */
+  connection: Connection<{ listPersons(): Query<OperationInput, OperationOutput> }>;
+  /** Name matching the bound connection. */
+  connectionName: string;
+  /** Personio returned one page of selected persons. */
+  listed: StepTarget<QueryResult<OperationOutput>>;
+  /** Personio conclusively rejected the list request. */
+  providerRejected?: StepTarget<QueryResult<OperationOutput>>;
+  /** Personio returned malformed or oversized JSON. */
+  invalidResponse?: StepTarget<QueryResult<OperationOutput>>;
+  /** Local filters or connection credentials are invalid. */
+  defect?: StepTarget<QueryResult<OperationOutput>>;
+}
+
+/** Build the listPersons Step from a named connection. */
+export function newListPersonsStep<StepInput, OperationInput = ListPersonsInput, OperationOutput = PersonPage>(configuration: ListPersonsStepConfig<StepInput, OperationInput, OperationOutput>): QueryStep<StepInput, OperationInput, OperationOutput> {
+  const { connection, connectionName, listed, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
+  if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
+  return newQueryStep({ ...stepConfiguration, operation: connection.operations.listPersons(), connection: connection.reference, branches: [
+    goToBranch("listed", listed),
+    ...(providerRejected ? [goToBranch("providerRejected", providerRejected)] : []),
+    ...(invalidResponse ? [goToBranch("invalidResponse", invalidResponse)] : []),
+    ...(defect ? [goToBranch("defect", defect)] : []),
+  ] });
+}
 
 /** Configuration for the getPerson connector Step. */
 export interface GetPersonStepConfig<StepInput, OperationInput = GetPersonInput, OperationOutput = PersonProfile> extends Omit<QueryStepConfig<StepInput, OperationInput, OperationOutput>, 'operation' | 'connection' | 'branches'> {

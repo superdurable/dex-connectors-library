@@ -1,6 +1,6 @@
 # Personio connector
 
-The Go connector v0.2.0 provides `getPerson` and `listPersons` Queries. `listPersons` accepts a cursor, a page limit up to 50, exact first and last names, and ACTIVE or INACTIVE status. It returns only IDs and names plus the next cursor. The Python and TypeScript v0.1.0 packages still provide `getPerson` only. Both Go reads omit email and other personnel fields. A missing person selects `notFound`; HTTP 429 and temporary service failures request a retry.
+The Go connector v0.2.0 provides `getPerson` and `listPersons` Queries. `listPersons` accepts a cursor, a page limit up to 50, exact first and last names, and ACTIVE or INACTIVE status. It returns only IDs and names plus the next cursor. The Python and TypeScript v0.2.0 packages provide both queries. A missing ID selects `notFound` for `getPerson`. Both queries retry HTTP 429 and temporary service failures.
 
 ## Connection
 
@@ -9,3 +9,7 @@ In Personio, open **Marketplace → Connected integrations → Create custom int
 The [runnable Go](go/examples/person-inspection/README.md), [Python](python/examples/person_inspection/README.md), and [TypeScript](typescript/examples/person-inspection/README.md) Flows use this static connection name. Optional branches are unwired and fail the Flow when selected. Real Personio authorization and retrieval have not been verified live.
 
 The operations follow Personio's [Retrieve a person](https://developer.personio.de/reference/get_v2-persons-id), [List persons](https://developer.personio.de/reference/get_v2-persons), [Obtain Access Token](https://developer.personio.de/reference/post_v2-auth-token), and [Getting started](https://developer.personio.de/docs/getting-started-with-the-personio-api) contracts.
+
+## Persons directory
+
+`listPersons` reads one page with optional first name, last name, status, limit and cursor filters. Each person contains only the ID and names. Use the returned `nextCursor` in the next request, and stop when it is empty. The [Python example](python/examples/person_directory/README.md) and [TypeScript example](typescript/examples/person-directory/README.md) run the query through the `personio` connection.

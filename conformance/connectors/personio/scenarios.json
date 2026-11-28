@@ -722,6 +722,567 @@
       },
       "name": "getPerson-transportFailure",
       "operation": "getPerson"
+    },
+    {
+      "callId": "665732ab-f6a7-5c48-9876-fd95b9c92970",
+      "exchanges": [
+        {
+          "body": "{\"_data\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/persons",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "nextCursor": "",
+          "persons": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listPersons-default-empty",
+      "operation": "listPersons"
+    },
+    {
+      "callId": "8dfe9613-fb52-5cf9-8bf6-a7939a08e1c3",
+      "exchanges": [
+        {
+          "body": "{\"_DATA\":[{\"ID\":\"employee_1\",\"FIRST_NAME\":null,\"LAST_NAME\":\"L\",\"email\":\"exclude\"},{\"ID\":\"employee_1\",\"FIRST_NAME\":null,\"LAST_NAME\":\"L\",\"email\":\"exclude\"}],\"_META\":{\"LINKS\":{\"NEXT\":{\"HREF\":\"/v2/persons?cursor=opaque%2B%26%3D\"}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/persons",
+          "query": {
+            "cursor": [
+              "cur-page-2"
+            ],
+            "first_name": [
+              "Jane"
+            ],
+            "last_name": [
+              "Doe"
+            ],
+            "limit": [
+              "10"
+            ],
+            "status": [
+              "ACTIVE"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "nextCursor": "opaque+\u0026=",
+          "persons": [
+            {
+              "firstName": "",
+              "id": "employee_1",
+              "lastName": "L"
+            },
+            {
+              "firstName": "",
+              "id": "employee_1",
+              "lastName": "L"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "cur-page-2",
+        "firstName": "Jane",
+        "lastName": "Doe",
+        "limit": 10,
+        "status": "ACTIVE"
+      },
+      "name": "listPersons-mixed-case-next",
+      "operation": "listPersons"
+    },
+    {
+      "callId": "8231d48b-5fcf-576b-a026-0643382aeb5f",
+      "exchanges": [
+        {
+          "body": "{\"_data\":[],\"_meta\":{\"links\":false}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/persons",
+          "query": {
+            "cursor": [
+              "cur-page-2"
+            ],
+            "first_name": [
+              "Jane"
+            ],
+            "last_name": [
+              "Doe"
+            ],
+            "limit": [
+              "10"
+            ],
+            "status": [
+              "ACTIVE"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "nextCursor": "",
+          "persons": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "cur-page-2",
+        "firstName": "Jane",
+        "lastName": "Doe",
+        "limit": 10,
+        "status": "ACTIVE"
+      },
+      "name": "listPersons-invalid-meta",
+      "operation": "listPersons"
+    },
+    {
+      "callId": "7a9b92cf-6902-594b-9980-cd62ae4231bf",
+      "exchanges": [
+        {
+          "body": "{\"_data\":[{\"ID\":\"bad/id\",\"FIRST_NAME\":null,\"LAST_NAME\":\"L\",\"email\":\"exclude\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/persons",
+          "query": {
+            "cursor": [
+              "cur-page-2"
+            ],
+            "first_name": [
+              "Jane"
+            ],
+            "last_name": [
+              "Doe"
+            ],
+            "limit": [
+              "10"
+            ],
+            "status": [
+              "ACTIVE"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "nextCursor": "",
+          "persons": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "cur-page-2",
+        "firstName": "Jane",
+        "lastName": "Doe",
+        "limit": 10,
+        "status": "ACTIVE"
+      },
+      "name": "listPersons-invalid-person-id",
+      "operation": "listPersons"
+    },
+    {
+      "callId": "b5be57f5-4251-5776-bc14-24f60fb91f26",
+      "exchanges": [
+        {
+          "body": "{\"_data\":[{\"ID\":\"employee_1\",\"FIRST_NAME\":7,\"LAST_NAME\":\"L\",\"email\":\"exclude\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/persons",
+          "query": {
+            "cursor": [
+              "cur-page-2"
+            ],
+            "first_name": [
+              "Jane"
+            ],
+            "last_name": [
+              "Doe"
+            ],
+            "limit": [
+              "10"
+            ],
+            "status": [
+              "ACTIVE"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "nextCursor": "",
+          "persons": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "cur-page-2",
+        "firstName": "Jane",
+        "lastName": "Doe",
+        "limit": 10,
+        "status": "ACTIVE"
+      },
+      "name": "listPersons-invalid-name",
+      "operation": "listPersons"
+    },
+    {
+      "callId": "ea48c3ca-a123-57cd-a624-ac4f17061230",
+      "exchanges": [
+        {
+          "body": "{\"_data\":[],\"_meta\":{\"links\":{\"next\":{\"href\":\"https://other.example/v2/persons?cursor=value\"}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/persons",
+          "query": {
+            "cursor": [
+              "cur-page-2"
+            ],
+            "first_name": [
+              "Jane"
+            ],
+            "last_name": [
+              "Doe"
+            ],
+            "limit": [
+              "10"
+            ],
+            "status": [
+              "ACTIVE"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "nextCursor": "",
+          "persons": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "cur-page-2",
+        "firstName": "Jane",
+        "lastName": "Doe",
+        "limit": 10,
+        "status": "ACTIVE"
+      },
+      "name": "listPersons-foreign-next-origin",
+      "operation": "listPersons"
+    },
+    {
+      "callId": "517a08c0-4409-5857-8894-d564830030e8",
+      "exchanges": [
+        {
+          "body": "{\"_data\":[],\"_meta\":{\"links\":{\"next\":{\"href\":\"/v2/persons?cursor=%gg\"}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/persons",
+          "query": {
+            "cursor": [
+              "cur-page-2"
+            ],
+            "first_name": [
+              "Jane"
+            ],
+            "last_name": [
+              "Doe"
+            ],
+            "limit": [
+              "10"
+            ],
+            "status": [
+              "ACTIVE"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "nextCursor": "",
+          "persons": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "cur-page-2",
+        "firstName": "Jane",
+        "lastName": "Doe",
+        "limit": 10,
+        "status": "ACTIVE"
+      },
+      "name": "listPersons-malformed-cursor",
+      "operation": "listPersons"
+    },
+    {
+      "callId": "f7ff36ad-7820-55ec-9070-d5b7a761d9b3",
+      "exchanges": [
+        {
+          "body": "{\"_data\":[],\"_meta\":{\"links\":{\"next\":{\"href\":\"/v2/persons?limit=10\"}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/persons",
+          "query": {
+            "cursor": [
+              "cur-page-2"
+            ],
+            "first_name": [
+              "Jane"
+            ],
+            "last_name": [
+              "Doe"
+            ],
+            "limit": [
+              "10"
+            ],
+            "status": [
+              "ACTIVE"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "nextCursor": "",
+          "persons": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "cur-page-2",
+        "firstName": "Jane",
+        "lastName": "Doe",
+        "limit": 10,
+        "status": "ACTIVE"
+      },
+      "name": "listPersons-missing-cursor",
+      "operation": "listPersons"
+    },
+    {
+      "callId": "5be82902-ea38-5183-a5f0-b066f546a7e5",
+      "exchanges": [
+        {
+          "body": "{\"_data\":[{\"id\":\"3003\",\"first_name\":\"Jane\",\"last_name\":\"Doe\",\"email\":\"private@example.com\"}],\"_meta\":{\"links\":{\"next\":{\"href\":\"/v2/persons?cursor=cur-page-3\"}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/persons",
+          "query": {
+            "cursor": [
+              "cur-page-2"
+            ],
+            "first_name": [
+              "Jane"
+            ],
+            "last_name": [
+              "Doe"
+            ],
+            "limit": [
+              "10"
+            ],
+            "status": [
+              "ACTIVE"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "nextCursor": "",
+          "persons": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "cur-page-2",
+        "firstName": "Jane",
+        "lastName": "Doe",
+        "limit": 10,
+        "status": "ACTIVE"
+      },
+      "name": "listPersons-page-not-found",
+      "operation": "listPersons"
+    },
+    {
+      "callId": "38637af5-4553-5930-a74d-abf0d725c786",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "nextCursor": "",
+          "persons": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "status": "ARCHIVED"
+      },
+      "name": "listPersons-bad-status",
+      "operation": "listPersons"
+    },
+    {
+      "callId": "5ba28d88-5742-5feb-977f-be2a55ef7cc4",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "nextCursor": "",
+          "persons": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界"
+      },
+      "name": "listPersons-cursor-byte-limit",
+      "operation": "listPersons"
     }
   ],
   "schemaVersion": 1

@@ -9,6 +9,35 @@ export const ConnectorID = "personio";
 /** Provider identity for named connections. */
 export const ProviderID = "personio";
 
+/** Branch IDs for listPersons. */
+export const ListPersonsBranch = {
+  Listed: "listed",
+  ProviderRejected: "providerRejected",
+  InvalidResponse: "invalidResponse",
+  Defect: "defect",
+} as const;
+/** Personio returned one page of selected persons. */
+export const ListPersonsBranchListed = ListPersonsBranch.Listed;
+/** Personio conclusively rejected the list request. */
+export const ListPersonsBranchProviderRejected = ListPersonsBranch.ProviderRejected;
+/** Personio returned malformed or oversized JSON. */
+export const ListPersonsBranchInvalidResponse = ListPersonsBranch.InvalidResponse;
+/** Local filters or connection credentials are invalid. */
+export const ListPersonsBranchDefect = ListPersonsBranch.Defect;
+/** Manifest definition for listPersons. */
+export const ListPersonsDefinition: QueryDefinition = {
+  operation: { connectorId: ConnectorID, operationId: "listPersons" },
+  branches: [
+    { id: "listed", description: "Personio returned one page of selected persons." },
+    { id: "providerRejected", description: "Personio conclusively rejected the list request.", optional: true },
+    { id: "invalidResponse", description: "Personio returned malformed or oversized JSON.", optional: true },
+    { id: "defect", description: "Local filters or connection credentials are invalid.", optional: true },
+  ],
+  stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
+};
+/** Manifest metadata for listPersons. */
+export const ListPersonsMetadata = { kind: "query", idempotency: "none", authorization: "required" } as const;
+
 /** Branch IDs for getPerson. */
 export const GetPersonBranch = {
   Found: "found",

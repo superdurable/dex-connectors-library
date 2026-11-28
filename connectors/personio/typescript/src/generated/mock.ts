@@ -4,14 +4,13 @@
 
 import { branchCase, retryCase, type Case, newQuery, type MockQuery } from '@superdurable/connectors-sdk/connectormock';
 import type { Failure } from '@superdurable/connectors-sdk';
-import type { GetPersonInput, PersonProfile } from './models.js';
-import { GetPersonInputSchema, PersonProfileSchema } from './models.js';
-import { ProviderID, GetPersonDefinition } from './definitions.js';
+import type { ListPersonsInput, PersonProfile, PersonPage, GetPersonInput } from './models.js';
+import { ListPersonsInputSchema, PersonProfileSchema, PersonPageSchema, GetPersonInputSchema } from './models.js';
+import { ProviderID, ListPersonsDefinition, GetPersonDefinition } from './definitions.js';
 import { newConnectionWithOperations, type Connection, type Operations } from './connection.js';
 
-/** Go zero value for GetPersonInput in scripted cases. */
-export const emptyGetPersonInput: GetPersonInput = GetPersonInputSchema.parse({
-  "personId": '',
+/** Go zero value for ListPersonsInput in scripted cases. */
+export const emptyListPersonsInput: ListPersonsInput = ListPersonsInputSchema.parse({
 });
 /** Go zero value for PersonProfile in scripted cases. */
 export const emptyPersonProfile: PersonProfile = PersonProfileSchema.parse({
@@ -19,6 +18,33 @@ export const emptyPersonProfile: PersonProfile = PersonProfileSchema.parse({
   "firstName": '',
   "lastName": '',
 });
+/** Go zero value for PersonPage in scripted cases. */
+export const emptyPersonPage: PersonPage = PersonPageSchema.parse({
+  "persons": [],
+  "nextCursor": '',
+});
+/** Go zero value for GetPersonInput in scripted cases. */
+export const emptyGetPersonInput: GetPersonInput = GetPersonInputSchema.parse({
+  "personId": '',
+});
+
+/** Script the listed branch. */
+export function listPersonsListed(value: PersonPage, failure?: Failure): Case<PersonPage> { return branchCase("listed", value, failure); }
+/** Script the providerRejected branch. */
+export function listPersonsProviderRejected(value: PersonPage, failure?: Failure): Case<PersonPage> { return branchCase("providerRejected", value, failure); }
+/** Script the invalidResponse branch. */
+export function listPersonsInvalidResponse(value: PersonPage, failure?: Failure): Case<PersonPage> { return branchCase("invalidResponse", value, failure); }
+/** Script the defect branch. */
+export function listPersonsDefect(value: PersonPage, failure?: Failure): Case<PersonPage> { return branchCase("defect", value, failure); }
+/** Script a safe retry of listPersons. */
+export function listPersonsRetry(failure: Failure, retryAfterMs = 0): Case<PersonPage> { return retryCase(failure, retryAfterMs); }
+/** Manifest scenario listedDefault for listPersons. */
+export function listPersonsListedDefault(): Case<PersonPage> {
+  const value = PersonPageSchema.parse({"nextCursor":"","persons":[{"firstName":"Jane","id":"3003","lastName":"Doe"}]});
+  return branchCase("listed", value);
+}
+/** Default listPersons scenario. */
+export function listPersonsDefault(): Case<PersonPage> { return listPersonsListedDefault(); }
 
 /** Script the found branch. */
 export function getPersonFound(value: PersonProfile, failure?: Failure): Case<PersonProfile> { return branchCase("found", value, failure); }
@@ -42,17 +68,21 @@ export function getPersonDefault(): Case<PersonProfile> { return getPersonFoundD
 
 /** Scripted operations and manifest defaults for this connector. */
 export class GeneratedMock implements Operations {
+  readonly #listPersons: MockQuery<ListPersonsInput, PersonPage>;
   readonly #getPerson: MockQuery<GetPersonInput, PersonProfile>;
   readonly #connection: Connection;
 
   constructor(connectionName: string) {
+    this.#listPersons = newQuery<ListPersonsInput, PersonPage>(ListPersonsDefinition).default(listPersonsDefault());
     this.#getPerson = newQuery<GetPersonInput, PersonProfile>(GetPersonDefinition).default(getPersonDefault());
     this.#connection = newConnectionWithOperations(this, { provider: ProviderID, name: connectionName });
   }
 
   connection(): Connection { return this.#connection; }
+  listPersons(): MockQuery<ListPersonsInput, PersonPage> { return this.#listPersons; }
   getPerson(): MockQuery<GetPersonInput, PersonProfile> { return this.#getPerson; }
   assertNoFailures(): void {
+    this.#listPersons.assertNoFailures();
     this.#getPerson.assertNoFailures();
   }
 }
