@@ -14,7 +14,7 @@ it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario,
 
 async function invokeRippling(scenario: Scenario, recorder: ExchangeRecorder) {
   const credentials: Array<[typeof connection, { apiToken: SecretString }]> = [[connection, { apiToken: new SecretString('sample-rippling-api-token') }]];
-  const client = new RipplingClient({ baseUrl: 'http://127.0.0.1:12345/api' }, new StaticCredentialProvider(credentials), {
+  const client = new RipplingClient({ baseUrl: 'http://127.0.0.1:12345/api', maxResponseBytes: scenario.name.endsWith('-smallLimit') ? 16 : 1048576 }, new StaticCredentialProvider(credentials), {
     send: request => answerRecordedRequest(recorder, request, before => new ProviderTransportError(before)),
   });
   const call: Call = {

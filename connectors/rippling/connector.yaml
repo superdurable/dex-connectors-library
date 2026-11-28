@@ -6,10 +6,12 @@ metadata:
   description: Read visible worker status and title from Rippling, individually or by page.
   company: Rippling
   categories: [hr-recruiting]
-  version: v0.2.0
+  version: v0.2.1
 spec:
   provider: rippling
   languages:
+    java: {version: v0.1.0, operations: [getWorker, listWorkers], triggers: []}
+    rust: {version: v0.1.0, operations: [getWorker, listWorkers], triggers: []}
     python:
       version: v0.2.0
       package: dex-connector-rippling

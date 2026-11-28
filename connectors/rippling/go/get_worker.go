@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
@@ -76,6 +77,9 @@ func (operation GetWorkerOperation) Invoke(call sdkgo.Call, input GetWorkerInput
 	if err != nil {
 		return workerBranch(GetWorkerBranchInvalidResponse, sdkgo.FailureProtocol, "Rippling returned invalid worker JSON")
 	}
+	if workerSummary.containsCredential(response.apiToken) {
+		return workerBranch(GetWorkerBranchDefect, sdkgo.FailureAuthentication, "Rippling response included a credential")
+	}
 	return sdkgo.NewQueryBranch(GetWorkerBranchFound, workerSummary, nil, sdkgo.Receipt{})
 }
 
@@ -114,4 +118,9 @@ func workerFailure(kind sdkgo.FailureKind, message string) sdkgo.Failure {
 func workerBranch(branch sdkgo.BranchID, kind sdkgo.FailureKind, message string) sdkgo.QueryAttempt[WorkerSummary] {
 	failure := workerFailure(kind, message)
 	return sdkgo.NewQueryBranch(branch, WorkerSummary{}, &failure, sdkgo.Receipt{})
+}
+
+func (summary WorkerSummary) containsCredential(token sdkgo.SecretString) bool {
+	value := token.Reveal()
+	return strings.Contains(summary.ID, value) || strings.Contains(summary.Title, value) || strings.Contains(summary.Status, value)
 }

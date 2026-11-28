@@ -21,8 +21,11 @@ ADAPTER = conformance.PythonOperationAdapter(
     "rippling",
     CONNECTION,
     rippling,
-    lambda http_client, _recorder: rippling.Client(
-        rippling.Config(base_url="http://127.0.0.1:8848/api"),
+    lambda http_client, recorder: rippling.Client(
+        rippling.Config(
+            base_url="http://127.0.0.1:8848/api",
+            max_response_bytes=16 if recorder.scenario["name"].endswith("-smallLimit") else 1048576,
+        ),
         conformance.static_credentials(CONNECTION, TEST_CREDENTIALS),
         http_client,
     ),

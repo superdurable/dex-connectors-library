@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
@@ -101,6 +102,14 @@ func (operation ListWorkersOperation) Invoke(call sdkgo.Call, input ListWorkersI
 			return listWorkersBranch(ListWorkersBranchInvalidResponse, sdkgo.FailureProtocol, "Rippling returned an invalid worker page link")
 		}
 		page.NextCursor = nextURL.Query().Get("cursor")
+	}
+	if strings.Contains(page.NextCursor, response.apiToken.Reveal()) {
+		return listWorkersBranch(ListWorkersBranchDefect, sdkgo.FailureAuthentication, "Rippling response included a credential")
+	}
+	for _, worker := range page.Workers {
+		if worker.containsCredential(response.apiToken) {
+			return listWorkersBranch(ListWorkersBranchDefect, sdkgo.FailureAuthentication, "Rippling response included a credential")
+		}
 	}
 	return sdkgo.NewQueryBranch(ListWorkersBranchFound, page, nil, sdkgo.Receipt{})
 }

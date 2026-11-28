@@ -26,7 +26,9 @@ it('retries a provider 503 and persists the worker through real Dex', async () =
     const url = new URL(request.url ?? '/', 'http://127.0.0.1');
     if (url.pathname === '/workers/') {
       const cursor = url.searchParams.get('cursor');
-      if (cursor === 'a+/=' && url.searchParams.size === 1) {
+      if (cursor === 'reflected') {
+        response.writeHead(200).end(JSON.stringify({ results: [], next_link: '?cursor=%73ample-rippling-api-token' }));
+      } else if (cursor === 'a+/=' && url.searchParams.size === 1) {
         response.writeHead(200).end(JSON.stringify({ results: [] }));
       } else if (url.searchParams.get('limit') === '2' && url.searchParams.size === 1) {
         response.writeHead(200).end(JSON.stringify({
@@ -80,6 +82,12 @@ it('retries a provider 503 and persists the worker through real Dex', async () =
     const last = await client.waitForFlow(lastId, 30_000);
     expect(last.status, last.errorMessage).toBe('completed');
     expect(last.singleOutput<WorkerPage>()).toEqual({ workers: [], nextCursor: '' });
+    const reflectedId = `rippling-reflected-${randomUUID()}`;
+    await client.startFlow(pageFlow, reflectedId, { cursor: 'reflected' });
+    const rejected = await client.waitForFlow(reflectedId, 30_000);
+    expect(rejected.status).toBe('failed');
+    expect(rejected.errorMessage).toContain('defect');
+    expect(rejected.errorMessage).not.toContain('sample-rippling-api-token');
   } finally {
     await client.close(); await worker.close(); cache.close();
     await rm(directory, { recursive: true, force: true });

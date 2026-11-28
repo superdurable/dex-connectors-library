@@ -1,0 +1,73 @@
+// Copyright (c) 2026 Super Durable
+// SPDX-License-Identifier: MIT
+
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+}
+
+repositories { mavenCentral() }
+
+dependencies {
+    api "io.superdurable:dex-connectors-sdk:${dexConnectorsSdkVersion}"
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.11.4'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.11.4'
+}
+
+java {
+    withSourcesJar()
+    withJavadocJar()
+}
+tasks.withType(JavaCompile).configureEach {
+    options.release = 8
+    options.encoding = 'UTF-8'
+}
+
+publishing {
+    publications {
+        connector(MavenPublication) {
+            from components.java
+            pom {
+                name = project.name
+                description = 'Read Rippling profiles from a Dex Flow.'
+                url = 'https://github.com/superdurable/dex-connectors-library'
+                licenses { license { name = 'MIT'; url = 'https://opensource.org/licenses/MIT' } }
+                developers { developer { name = 'Super Durable' } }
+                scm {
+                    url = 'https://github.com/superdurable/dex-connectors-library'
+                    connection = 'scm:git:https://github.com/superdurable/dex-connectors-library.git'
+                    developerConnection = 'scm:git:ssh://git@github.com/superdurable/dex-connectors-library.git'
+                }
+            }
+        }
+    }
+}
+
+sourceSets {
+    example {
+        java.srcDir 'examples'
+        compileClasspath += sourceSets.main.output + configurations.testRuntimeClasspath
+        runtimeClasspath += output + compileClasspath
+    }
+    test {
+        compileClasspath += sourceSets.example.output
+        runtimeClasspath += sourceSets.example.output
+    }
+}
+
+tasks.register('workerDirectoryWorker', JavaExec) {
+    classpath = sourceSets.example.runtimeClasspath
+    mainClass = 'io.superdurable.dexconnectors.rippling.WorkerDirectoryWorker'
+}
+
+test {
+    inputs.file(providers.environmentVariable('CONNECTOR_CONFORMANCE_FIXTURE')
+            .orElse('../../../conformance/connectors/rippling/scenarios.json'))
+    useJUnitPlatform { excludeTags 'dex-dev' }
+}
+tasks.register('dexDevTest', Test) {
+    useJUnitPlatform { includeTags 'dex-dev' }
+    outputs.upToDateWhen { false }
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+}

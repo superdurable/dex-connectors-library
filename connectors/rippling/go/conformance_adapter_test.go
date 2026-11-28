@@ -5,6 +5,7 @@ package rippling
 
 import (
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -17,7 +18,11 @@ const conformanceFixturePathPrefix = ""
 func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint string, transport *http.Client) conformanceInvoker {
 	t.Helper()
 	reference := sdkgo.ConnectionRef{Provider: "rippling", Name: "rippling"}
-	client, err := New(Config{BaseURL: endpoint}, sdkgo.StaticCredentialProvider[Credentials]{
+	config := Config{BaseURL: endpoint}
+	if strings.HasSuffix(scenario.Name, "-smallLimit") {
+		config.MaxResponseBytes = 16
+	}
+	client, err := New(config, sdkgo.StaticCredentialProvider[Credentials]{
 		reference: {APIToken: sdkgo.NewSecretString("sample-rippling-api-token")},
 	}, WithHTTPClient(transport))
 	require.NoError(t, err)

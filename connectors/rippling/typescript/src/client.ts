@@ -47,7 +47,7 @@ export class RipplingClient {
 
   /** Resolve the API token and send one bounded worker lookup. */
   async get(call: Call, workerID: string): Promise<Exchange> {
-    return this.readWorkers(call, `/workers/${encodeURIComponent(workerID)}/`);
+    return this.readWorkers(call, `/workers/${encodeURIComponent(workerID)}/`, workerID);
   }
 
   /** Send a bounded worker-page request with the supplied opaque cursor and limit. */
@@ -58,7 +58,7 @@ export class RipplingClient {
     return this.readWorkers(call, query.size ? `/workers/?${query}` : '/workers/');
   }
 
-  private async readWorkers(call: Call, path: string): Promise<Exchange> {
+  private async readWorkers(call: Call, path: string, workerID?: string): Promise<Exchange> {
     let apiToken: string;
     try {
       const credentials = await this.credentials.resolve(call, call.context.cancellationSignal);
@@ -84,6 +84,8 @@ export class RipplingClient {
     const retryAfterMs = parseRetryAfter(header(response.headers, 'retry-after'));
     if (isTooLarge || response.body.length > this.maxResponseBytes)
       return { status: response.status, body: new Uint8Array(), retryAfterMs, error: 'tooLarge' };
+    if (response.status === 200 && responseReflectsToken(response.body, apiToken, workerID))
+      return emptyExchange('credential');
     return { status: response.status, body: response.body, retryAfterMs };
   }
 }
@@ -154,7 +156,8 @@ function header(headers: ProviderResponse['headers'], name: string): string {
 }
 function isObject(value: unknown): value is Record<string, unknown> { return typeof value === 'object' && value !== null && !Array.isArray(value); }
 function parseDocument(body: Uint8Array): unknown {
-  try { return JSON.parse(Buffer.from(body).toString('utf8')) as unknown; } catch { return undefined; }
+  try { return JSON.parse(Buffer.from(body).toString('utf8'), (_name, value: unknown) =>
+    isObject(value) ? Object.fromEntries(Object.entries(value).map(([key, field]) => [key.toLowerCase(), field])) : value) as unknown; } catch { return undefined; }
 }
 
 function decodeWorker(body: Uint8Array, workerId: string): WorkerSummary | undefined {
@@ -168,7 +171,7 @@ function workerSummary(raw: unknown): WorkerSummary | undefined {
   return { id: raw.id, title: raw.title ?? '', status: raw.status ?? '' };
 }
 
-function decodeWorkerPage(body: Uint8Array): WorkerPage | undefined {
+function decodeWorkerPage(body: Uint8Array): { workers: WorkerSummary[]; nextCursor: string } | undefined {
   const document = parseDocument(body);
   if (!isObject(document) || !Array.isArray(document.results)) return undefined;
   const workers: WorkerSummary[] = [];
@@ -182,7 +185,7 @@ function decodeWorkerPage(body: Uint8Array): WorkerPage | undefined {
   if (typeof link !== 'string' || Array.from(link).some(char => char.charCodeAt(0) < 32 || char.charCodeAt(0) === 127)) return undefined;
   try {
     const url = new URL(link, 'https://rest.ripplingapis.com');
-    if (/%(?![0-9a-f]{2})/i.test(url.pathname)) return undefined;
+    if (/%(?![0-9a-f]{2})/i.test(url.pathname + '#' + url.hash)) return undefined;
     for (const pair of url.search.slice(1).split('&')) {
       if (pair.includes(';') || /%(?![0-9a-f]{2})/i.test(pair)) continue;
       const cursor = new URLSearchParams(pair).get('cursor');
@@ -190,4 +193,16 @@ function decodeWorkerPage(body: Uint8Array): WorkerPage | undefined {
     }
   } catch { return undefined; }
   return undefined;
+}
+
+function responseReflectsToken(body: Uint8Array, token: string, workerID?: string): boolean {
+  const bytes = Buffer.from(body);
+  if (!bytes.includes(token) && !bytes.includes(0x5c) && !bytes.includes(0x25)) return false;
+  const containsToken = (worker: WorkerSummary) => [worker.id, worker.title, worker.status].some(value => value.includes(token));
+  if (workerID === undefined) {
+    const result = decodeWorkerPage(body);
+    return result !== undefined && (result.nextCursor.includes(token) || result.workers.some(containsToken));
+  }
+  const result = decodeWorker(body, workerID);
+  return result !== undefined && containsToken(result);
 }

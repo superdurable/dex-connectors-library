@@ -36,6 +36,8 @@ async def test_worker_inspection_retries_503(tmp_path: Path) -> None:
     def answer(request: httpx.Request) -> httpx.Response:
         if request.url.path == "/workers/":
             assert request.headers["Authorization"] == "Bearer sample-rippling-api-token"
+            if request.url.params.get("cursor") == "reflected":
+                return httpx.Response(200, json={"results": [], "next_link": "?cursor=%73ample-rippling-api-token"})
             if "cursor" in request.url.params:
                 assert dict(request.url.params) == {"cursor": "a+/="}
                 return httpx.Response(200, json={"results": []})
@@ -97,6 +99,12 @@ async def test_worker_inspection_retries_503(tmp_path: Path) -> None:
                 last = await asyncio.wait_for(client.wait_for_flow(last_id, timedelta(seconds=25)), 30)
                 assert last.status == dex.FlowStatus.COMPLETED, last.error_message
                 assert last.single_output(WorkerPage) == WorkerPage()
+                reflected_id = f"rippling-reflected-{uuid4().hex}"
+                await client.start_flow(page_flow, reflected_id, WorkerPageRequest(cursor="reflected"))
+                rejected = await asyncio.wait_for(client.wait_for_flow(reflected_id, timedelta(seconds=25)), 30)
+                assert rejected.status == dex.FlowStatus.FAILED
+                assert rejected.error_message and "defect" in rejected.error_message
+                assert "sample-rippling-api-token" not in rejected.error_message
         finally:
             await worker.stop()
             await worker_task

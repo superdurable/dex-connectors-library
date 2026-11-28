@@ -60,6 +60,7 @@ var errCredential = errors.New("Rippling credential unavailable")
 var errRequest = errors.New("Rippling request failed")
 
 type providerResponse struct {
+	apiToken   sdkgo.SecretString
 	body       []byte
 	status     int
 	retryAfter time.Duration
@@ -88,5 +89,5 @@ func (client *Client) get(call sdkgo.Call, path string) providerResponse {
 	defer func() { _ = response.Body.Close() }()
 	retryAfter := providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now())
 	body, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
-	return providerResponse{body: body, status: response.StatusCode, retryAfter: retryAfter, err: err}
+	return providerResponse{apiToken: credentials.APIToken, body: body, status: response.StatusCode, retryAfter: retryAfter, err: err}
 }

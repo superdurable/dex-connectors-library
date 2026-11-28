@@ -1,0 +1,87 @@
+{
+  "getWorker": {
+    "branches": [
+      {
+        "description": "Rippling returned the worker.",
+        "id": "found",
+        "optional": false
+      },
+      {
+        "description": "Rippling did not expose the worker.",
+        "id": "notFound",
+        "optional": true
+      },
+      {
+        "description": "Rippling conclusively rejected the lookup.",
+        "id": "providerRejected",
+        "optional": true
+      },
+      {
+        "description": "Rippling returned malformed or oversized JSON.",
+        "id": "invalidResponse",
+        "optional": true
+      },
+      {
+        "description": "Local input or connection credentials are invalid.",
+        "id": "defect",
+        "optional": true
+      }
+    ],
+    "operation": {
+      "connectorId": "rippling",
+      "operationId": "getWorker"
+    },
+    "stepDefaults": {
+      "executeDurability": 2,
+      "executeMethodTimeout": 30000000000,
+      "executeRetry": {
+        "BackoffCoefficient": 2,
+        "InitialInterval": 1000000000,
+        "MaximumAttempts": 0,
+        "MaximumInterval": 300000000000,
+        "TotalDuration": 3600000000000
+      },
+      "heartbeatTimeout": 0
+    }
+  },
+  "listWorkers": {
+    "branches": [
+      {
+        "description": "Rippling returned the worker page.",
+        "id": "found",
+        "optional": false
+      },
+      {
+        "description": "Rippling conclusively rejected the list request.",
+        "id": "providerRejected",
+        "optional": true
+      },
+      {
+        "description": "Rippling returned malformed or oversized JSON.",
+        "id": "invalidResponse",
+        "optional": true
+      },
+      {
+        "description": "Local input or connection credentials are invalid.",
+        "id": "defect",
+        "optional": true
+      }
+    ],
+    "operation": {
+      "connectorId": "rippling",
+      "operationId": "listWorkers"
+    },
+    "stepDefaults": {
+      "executeDurability": 2,
+      "executeMethodTimeout": 30000000000,
+      "executeRetry": {
+        "BackoffCoefficient": 2,
+        "InitialInterval": 1000000000,
+        "MaximumAttempts": 0,
+        "MaximumInterval": 300000000000,
+        "TotalDuration": 3600000000000
+      },
+      "heartbeatTimeout": 0
+    }
+  }
+}

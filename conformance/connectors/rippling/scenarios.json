@@ -739,6 +739,903 @@
       },
       "name": "listWorkers-invalid-worker-id",
       "operation": "listWorkers"
+    },
+    {
+      "callId": "639e02f2-6cf0-5ef0-8557-a344858e0970",
+      "exchanges": [
+        {
+          "body": "{\"ID\": \"65699281fb7bc7c3510f44a6\", \"TITLE\": null, \"STATUS\": \"ONBOARDING\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/workers/65699281fb7bc7c3510f44a6/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-rippling-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "id": "65699281fb7bc7c3510f44a6",
+          "status": "ONBOARDING",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "workerId": "65699281fb7bc7c3510f44a6"
+      },
+      "name": "getWorker-mixed-case",
+      "operation": "getWorker"
+    },
+    {
+      "callId": "6083b6b2-44ce-5151-b6c5-efe1f6cf2113",
+      "exchanges": [
+        {
+          "body": "{\"id\": \"65699281fb7bc7c3510f44a6\", \"title\": 32, \"status\": \"ACTIVE\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/workers/65699281fb7bc7c3510f44a6/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-rippling-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "status": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "workerId": "65699281fb7bc7c3510f44a6"
+      },
+      "name": "getWorker-wrong-title-type",
+      "operation": "getWorker"
+    },
+    {
+      "callId": "2fa653a3-68b4-5529-836b-b7cb2b6e1675",
+      "exchanges": [
+        {
+          "body": "{\"id\": \"65699281fb7bc7c3510f44a6\", \"title\": \"\\u0073ample-rippling-api-token\", \"status\": \"ACTIVE\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/workers/65699281fb7bc7c3510f44a6/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-rippling-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "id": "",
+          "status": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "workerId": "65699281fb7bc7c3510f44a6"
+      },
+      "name": "getWorker-escaped-credential",
+      "operation": "getWorker"
+    },
+    {
+      "callId": "c0338dd9-f7d6-54c6-b0e4-47e52acec056",
+      "exchanges": [
+        {
+          "body": "{\u0000\"\u0000i\u0000d\u0000\"\u0000:\u0000 \u0000\"\u00006\u00005\u00006\u00009\u00009\u00002\u00008\u00001\u0000f\u0000b\u00007\u0000b\u0000c\u00007\u0000c\u00003\u00005\u00001\u00000\u0000f\u00004\u00004\u0000a\u00006\u0000\"\u0000,\u0000 \u0000\"\u0000t\u0000i\u0000t\u0000l\u0000e\u0000\"\u0000:\u0000 \u0000\"\u0000E\u0000n\u0000g\u0000i\u0000n\u0000e\u0000e\u0000r\u0000\"\u0000,\u0000 \u0000\"\u0000s\u0000t\u0000a\u0000t\u0000u\u0000s\u0000\"\u0000:\u0000 \u0000\"\u0000A\u0000C\u0000T\u0000I\u0000V\u0000E\u0000\"\u0000}\u0000",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/workers/65699281fb7bc7c3510f44a6/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-rippling-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "status": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "workerId": "65699281fb7bc7c3510f44a6"
+      },
+      "name": "getWorker-utf16-response",
+      "operation": "getWorker"
+    },
+    {
+      "callId": "77a4718d-1e25-50ef-8136-da97ccb01beb",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "5"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/workers/65699281fb7bc7c3510f44a6/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-rippling-api-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 5000,
+        "uncertain": false
+      },
+      "input": {
+        "workerId": "65699281fb7bc7c3510f44a6"
+      },
+      "name": "getWorker-retry-after-503",
+      "operation": "getWorker"
+    },
+    {
+      "callId": "9bc54257-db36-5d6c-93fd-c9b27d5838b4",
+      "exchanges": [
+        {
+          "body": "{\"id\": \"65699281fb7bc7c3510f44a6\", \"title\": \"Engineer\", \"status\": \"ACTIVE\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/workers/65699281fb7bc7c3510f44a6/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-rippling-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "id": "",
+          "status": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "workerId": "65699281fb7bc7c3510f44a6"
+      },
+      "name": "getWorker-oversized-smallLimit",
+      "operation": "getWorker"
+    },
+    {
+      "callId": "1ee4d724-fa39-5ebd-bbbb-9230f876a5b0",
+      "exchanges": [
+        {
+          "body": "{\"id\": \"65699281fb7bc7c3510f44a6\", \"title\": \"Engineer\", \"status\": \"ACTIVE\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/workers/65699281fb7bc7c3510f44a6/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-rippling-api-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "status": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "workerId": "65699281fb7bc7c3510f44a6"
+      },
+      "name": "getWorker-missing-smallLimit",
+      "operation": "getWorker"
+    },
+    {
+      "callId": "a8d2ba7a-4add-57b6-9ca4-20073c346e45",
+      "exchanges": [
+        {
+          "body": "{\"RESULTS\": [{\"ID\": \"65699281fb7bc7c3510f44a6\", \"TITLE\": null, \"STATUS\": \"ONBOARDING\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/workers/",
+          "query": {
+            "cursor": [
+              "next-page"
+            ],
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-rippling-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "nextCursor": "",
+          "workers": [
+            {
+              "id": "65699281fb7bc7c3510f44a6",
+              "status": "ONBOARDING",
+              "title": ""
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-page",
+        "limit": 2
+      },
+      "name": "listWorkers-mixed-case",
+      "operation": "listWorkers"
+    },
+    {
+      "callId": "8e358919-46bf-5fe0-8c72-586a7c8db3a0",
+      "exchanges": [
+        {
+          "body": "{\"results\": [{\"id\": \"65699281fb7bc7c3510f44a6\", \"title\": 32, \"status\": \"ACTIVE\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/workers/",
+          "query": {
+            "cursor": [
+              "next-page"
+            ],
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-rippling-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "nextCursor": "",
+          "workers": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-page",
+        "limit": 2
+      },
+      "name": "listWorkers-wrong-title-type",
+      "operation": "listWorkers"
+    },
+    {
+      "callId": "911a707e-6a62-5ae9-a0bb-e55dcb558cf1",
+      "exchanges": [
+        {
+          "body": "{\"results\": [{\"id\": \"65699281fb7bc7c3510f44a6\", \"title\": \"\\u0073ample-rippling-api-token\", \"status\": \"ACTIVE\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/workers/",
+          "query": {
+            "cursor": [
+              "next-page"
+            ],
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-rippling-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "nextCursor": "",
+          "workers": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-page",
+        "limit": 2
+      },
+      "name": "listWorkers-escaped-credential",
+      "operation": "listWorkers"
+    },
+    {
+      "callId": "411b3b4e-0645-5cd6-a77d-6740728f19f5",
+      "exchanges": [
+        {
+          "body": "{\u0000\"\u0000r\u0000e\u0000s\u0000u\u0000l\u0000t\u0000s\u0000\"\u0000:\u0000 \u0000[\u0000{\u0000\"\u0000i\u0000d\u0000\"\u0000:\u0000 \u0000\"\u00006\u00005\u00006\u00009\u00009\u00002\u00008\u00001\u0000f\u0000b\u00007\u0000b\u0000c\u00007\u0000c\u00003\u00005\u00001\u00000\u0000f\u00004\u00004\u0000a\u00006\u0000\"\u0000,\u0000 \u0000\"\u0000t\u0000i\u0000t\u0000l\u0000e\u0000\"\u0000:\u0000 \u0000\"\u0000E\u0000n\u0000g\u0000i\u0000n\u0000e\u0000e\u0000r\u0000\"\u0000,\u0000 \u0000\"\u0000s\u0000t\u0000a\u0000t\u0000u\u0000s\u0000\"\u0000:\u0000 \u0000\"\u0000A\u0000C\u0000T\u0000I\u0000V\u0000E\u0000\"\u0000}\u0000]\u0000}\u0000",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/workers/",
+          "query": {
+            "cursor": [
+              "next-page"
+            ],
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-rippling-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "nextCursor": "",
+          "workers": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-page",
+        "limit": 2
+      },
+      "name": "listWorkers-utf16-response",
+      "operation": "listWorkers"
+    },
+    {
+      "callId": "7c472b61-ed03-507c-9554-4b706450f2e4",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "5"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/workers/",
+          "query": {
+            "cursor": [
+              "next-page"
+            ],
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-rippling-api-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 5000,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-page",
+        "limit": 2
+      },
+      "name": "listWorkers-retry-after-503",
+      "operation": "listWorkers"
+    },
+    {
+      "callId": "e750c611-cf4a-5c69-8dd7-1853f1861c71",
+      "exchanges": [
+        {
+          "body": "{\"results\": [{\"id\": \"65699281fb7bc7c3510f44a6\", \"title\": \"Engineer\", \"status\": \"ACTIVE\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/workers/",
+          "query": {
+            "cursor": [
+              "next-page"
+            ],
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-rippling-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "nextCursor": "",
+          "workers": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-page",
+        "limit": 2
+      },
+      "name": "listWorkers-oversized-smallLimit",
+      "operation": "listWorkers"
+    },
+    {
+      "callId": "7116f121-96ef-59db-885b-81736d1b383d",
+      "exchanges": [
+        {
+          "body": "{\"results\": [{\"id\": \"65699281fb7bc7c3510f44a6\", \"title\": \"Engineer\", \"status\": \"ACTIVE\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/workers/",
+          "query": {
+            "cursor": [
+              "next-page"
+            ],
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-rippling-api-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "nextCursor": "",
+          "workers": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-page",
+        "limit": 2
+      },
+      "name": "listWorkers-missing-smallLimit",
+      "operation": "listWorkers"
+    },
+    {
+      "callId": "223ed8f5-2566-5a5a-bb92-d7e5c235b1d6",
+      "exchanges": [
+        {
+          "body": "{\"results\": [{\"id\": \"65699281fb7bc7c3510f44a6\", \"title\": \"Engineer\", \"status\": \"ACTIVE\"}], \"next_link\": \"?cursor=%73ample-rippling-api-token\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/workers/",
+          "query": {
+            "cursor": [
+              "next-page"
+            ],
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-rippling-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "nextCursor": "",
+          "workers": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-page",
+        "limit": 2
+      },
+      "name": "listWorkers-encoded-credential",
+      "operation": "listWorkers"
+    },
+    {
+      "callId": "1d409e0e-1d27-5bf9-8dc5-ecda3753fcd4",
+      "exchanges": [
+        {
+          "body": "{\"results\": [{\"id\": \"65699281fb7bc7c3510f44a6\", \"title\": \"Engineer\", \"status\": \"ACTIVE\"}], \"next_link\": \"/workers/?cursor=first\u0026cursor=second\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/workers/",
+          "query": {
+            "cursor": [
+              "next-page"
+            ],
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-rippling-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "nextCursor": "first",
+          "workers": [
+            {
+              "id": "65699281fb7bc7c3510f44a6",
+              "status": "ACTIVE",
+              "title": "Engineer"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-page",
+        "limit": 2
+      },
+      "name": "listWorkers-duplicate-cursor",
+      "operation": "listWorkers"
+    },
+    {
+      "callId": "3b3d1a8b-b74b-504b-a48a-6d5aa1fd776e",
+      "exchanges": [
+        {
+          "body": "{\"results\": [{\"id\": \"65699281fb7bc7c3510f44a6\", \"title\": \"Engineer\", \"status\": \"ACTIVE\"}], \"next_link\": \"?cursor=%Q\u0026cursor=good%2B\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/workers/",
+          "query": {
+            "cursor": [
+              "next-page"
+            ],
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-rippling-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "nextCursor": "good+",
+          "workers": [
+            {
+              "id": "65699281fb7bc7c3510f44a6",
+              "status": "ACTIVE",
+              "title": "Engineer"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-page",
+        "limit": 2
+      },
+      "name": "listWorkers-discard-bad-escape",
+      "operation": "listWorkers"
+    },
+    {
+      "callId": "b1a4f89d-f1cb-551c-9174-8e0c33873a65",
+      "exchanges": [
+        {
+          "body": "{\"results\": [{\"id\": \"65699281fb7bc7c3510f44a6\", \"title\": \"Engineer\", \"status\": \"ACTIVE\"}], \"next_link\": \"?cursor=\u0026cursor=second\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/workers/",
+          "query": {
+            "cursor": [
+              "next-page"
+            ],
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-rippling-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "nextCursor": "",
+          "workers": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-page",
+        "limit": 2
+      },
+      "name": "listWorkers-empty-first-cursor",
+      "operation": "listWorkers"
+    },
+    {
+      "callId": "c38f4b2e-e9ba-52f1-86d7-a3c31829293a",
+      "exchanges": [
+        {
+          "body": "{\"results\": [{\"id\": \"65699281fb7bc7c3510f44a6\", \"title\": \"Engineer\", \"status\": \"ACTIVE\"}], \"next_link\": \"/bad%zz?cursor=next\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/workers/",
+          "query": {
+            "cursor": [
+              "next-page"
+            ],
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-rippling-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "nextCursor": "",
+          "workers": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-page",
+        "limit": 2
+      },
+      "name": "listWorkers-malformed-path",
+      "operation": "listWorkers"
+    },
+    {
+      "callId": "06d3f600-8106-5ef4-8c64-bfb6360dd024",
+      "exchanges": [
+        {
+          "body": "{\"results\": [{\"id\": \"65699281fb7bc7c3510f44a6\", \"title\": \"Engineer\", \"status\": \"ACTIVE\"}], \"next_link\": \"?cursor=valid#bad%xx\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/workers/",
+          "query": {
+            "cursor": [
+              "next-page"
+            ],
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-rippling-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "nextCursor": "",
+          "workers": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-page",
+        "limit": 2
+      },
+      "name": "listWorkers-malformed-fragment",
+      "operation": "listWorkers"
     }
   ],
   "schemaVersion": 1

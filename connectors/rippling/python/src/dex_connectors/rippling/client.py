@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import json
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import TypeVar
 from urllib.parse import parse_qs, quote, urlencode, urlsplit
@@ -20,6 +20,7 @@ from dex_connectors.sdk import (
     QueryAttempt,
     QueryDefinition,
     Receipt,
+    SecretString,
 )
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
@@ -46,6 +47,10 @@ class _Exchange:
     body: bytes = b""
     retry_after: float = 0
     error: str = ""
+    api_token: SecretString | None = field(default=None, repr=False)
+
+    def reflects(self, *fields: str) -> bool:
+        return self.api_token is not None and any(self.api_token.reveal() in value for value in fields)
 
 
 _Output = TypeVar("_Output")
@@ -139,7 +144,12 @@ class Client:
                 return _Exchange(status=response.status_code, retry_after=retry_after, error="too_large")
             except ProviderTransportError:
                 return _Exchange(status=response.status_code, retry_after=retry_after, error="interrupted")
-            return _Exchange(status=response.status_code, body=body, retry_after=retry_after)
+            return _Exchange(
+                status=response.status_code,
+                body=body,
+                retry_after=retry_after,
+                api_token=credential.api_token,
+            )
         finally:
             await response.aclose()
 
@@ -169,7 +179,9 @@ class GetWorkerOperation:
         if failed is not None:
             return failed
         try:
-            worker = _decode_worker(json.loads(exchange.body))
+            worker = _decode_worker(
+                json.loads(exchange.body.decode("utf-8", errors="replace"), object_pairs_hook=_worker_fields)
+            )
             if worker.id != input.worker_id:
                 raise ValueError("worker identity does not match request")
         except (ValueError, TypeError, UnicodeDecodeError):
@@ -179,6 +191,14 @@ class GetWorkerOperation:
                 "invalidResponse",
                 FailureKind.PROTOCOL,
                 "Rippling returned invalid worker JSON",
+            )
+        if exchange.reflects(worker.id, worker.title, worker.status):
+            return _branch(
+                "getWorker",
+                WorkerSummary(),
+                "defect",
+                FailureKind.AUTHENTICATION,
+                "Rippling response included a credential",
             )
         return QueryAttempt.branch_result("found", worker, Receipt())
 
@@ -263,7 +283,9 @@ class ListWorkersOperation:
         if failed is not None:
             return failed
         try:
-            document = json.loads(exchange.body)
+            document = json.loads(
+                exchange.body.decode("utf-8", errors="replace"), object_pairs_hook=_worker_fields
+            )
             if not isinstance(document, dict) or not isinstance(document.get("results"), list):
                 raise ValueError("worker page is invalid")
             workers = tuple(_decode_worker(record) for record in document["results"])
@@ -276,6 +298,16 @@ class ListWorkersOperation:
                 FailureKind.PROTOCOL,
                 "Rippling returned invalid worker page JSON",
             )
+        if exchange.reflects(page.next_cursor) or any(
+            exchange.reflects(w.id, w.title, w.status) for w in page.workers
+        ):
+            return _branch(
+                "listWorkers",
+                WorkerPage(),
+                "defect",
+                FailureKind.AUTHENTICATION,
+                "Rippling response included a credential",
+            )
         return QueryAttempt.branch_result("found", page, Receipt())
 
 
@@ -285,7 +317,7 @@ def _next_cursor(link: object) -> str:
     if not isinstance(link, str) or re.search(r"[\x00-\x1f\x7f]", link):
         raise ValueError("invalid worker page link")
     parsed = urlsplit(link)
-    if re.search(r"%(?![0-9a-fA-F]{2})", parsed.path):
+    if re.search(r"%(?![0-9a-fA-F]{2})", parsed.path + "#" + parsed.fragment):
         raise ValueError("invalid worker page path")
     for pair in parsed.query.split("&"):
         if ";" in pair or re.search(r"%(?![0-9a-fA-F]{2})", pair):
@@ -296,3 +328,7 @@ def _next_cursor(link: object) -> str:
                 return values[0]
             break
     raise ValueError("worker page cursor missing")
+
+
+def _worker_fields(pairs: list[tuple[str, object]]) -> dict[str, object]:
+    return {name.lower(): value for name, value in pairs}

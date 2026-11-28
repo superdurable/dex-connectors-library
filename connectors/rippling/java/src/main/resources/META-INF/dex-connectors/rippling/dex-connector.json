@@ -1,0 +1,115 @@
+{
+  "connectorId": "rippling",
+  "releaseTag": "connectors/rippling/go/v0.2.1",
+  "package": {
+    "ecosystem": "maven",
+    "name": "io.superdurable:dex-connector-rippling",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newGetWorkerStep",
+      "kind": "query",
+      "operationId": "getWorker",
+      "inputType": "GetWorkerInput",
+      "description": "Read one worker's ID, status, and title without personal or compensation details.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "notFound",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetWorkerInput selects a worker by its non-secret Rippling ID.",
+        "properties": {
+          "workerId": {
+            "description": "WorkerID is the ID shown in Rippling Workers or returned by the API.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "workerId"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "newListWorkersStep",
+      "kind": "query",
+      "operationId": "listWorkers",
+      "inputType": "ListWorkersInput",
+      "description": "List one page of visible workers without personal or compensation details.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListWorkersInput selects one page of visible worker summaries.",
+        "properties": {
+          "cursor": {
+            "description": "Cursor is the opaque pagination cursor returned by an earlier page.",
+            "type": "string"
+          },
+          "limit": {
+            "description": "Limit is the number of workers to return, from 1 to 100. Zero uses Rippling's default.",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
+    }
+  ]
+}
