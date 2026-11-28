@@ -44,7 +44,7 @@ async def test_list_tags_retries_503(tmp_path: Path) -> None:
             json={
                 "code": 0,
                 "data": {
-                    "items": [{"id": 166007, "name": "Example Tag", "level": 1}],
+                    "items": [{"id": 166007, "name": "Example Tag", "level": None}],
                     "_meta": {"totalCount": 21, "currentPage": 2, "perPage": 10},
                 },
             },
@@ -70,6 +70,7 @@ async def test_list_tags_retries_503(tmp_path: Path) -> None:
                 output = result.single_output(ListTagsOutput)
                 assert output.next_page == 3
                 assert output.tags[0].id == 166007
+                assert output.tags[0].level == 0
                 assert len(requests) == 3
         finally:
             await worker.stop()

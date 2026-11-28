@@ -59,9 +59,8 @@ class Client:
             raise ValueError("JINGdigital configuration and credential source are required")
         if config.timeout_seconds <= 0 or config.max_response_bytes <= 0:
             raise ValueError("JINGdigital timeout or response limit is invalid")
-        self.base_url = validate_base_url(config.base_url)
-        parsed = httpx.URL(self.base_url)
-        if parsed.host != "jingopenapi.jingsocial.com" or parsed.path not in {"", "/"}:
+        self.base_url = validate_base_url(config.base_url or "https://jingopenapi.jingsocial.com")
+        if self.base_url != "https://jingopenapi.jingsocial.com":
             raise ValueError("JINGdigital base URL must be the documented HTTPS production origin")
         self.credentials = credentials
         self.max_response_bytes = config.max_response_bytes
@@ -206,7 +205,7 @@ def _decode_tags(body: bytes, page: int, page_size: int) -> QueryAttempt[ListTag
     items, meta = data.get("items"), data.get("_meta")
     if not isinstance(items, list) or not isinstance(meta, dict) or len(items) > page_size:
         return _branch("invalidResponse", FailureKind.PROTOCOL, "JINGdigital returned invalid tag page")
-    total = meta.get("totalCount")
+    total = 0 if meta.get("totalCount") is None else meta["totalCount"]
     current_page = meta.get("currentPage")
     per_page = meta.get("perPage")
     if (
@@ -225,12 +224,14 @@ def _decode_tags(body: bytes, page: int, page_size: int) -> QueryAttempt[ListTag
                 "invalidResponse", FailureKind.PROTOCOL, "JINGdigital returned invalid tag metadata"
             )
         tag_id, name, level = item.get("id"), item.get("name"), item.get("level")
+        if level is None:
+            level = 0
         if (
             type(tag_id) is not int
             or tag_id <= 0
             or not isinstance(name, str)
             or not name
-            or len(name) > 512
+            or len(name.encode("utf-8", "replace")) > 512
             or type(level) is not int
             or not 0 <= level <= 10
         ):

@@ -13,3 +13,20 @@ The [`python/`](python/) package implements the `listTags` Query. Its checked-in
 ## TypeScript
 
 The TypeScript package under [`typescript/`](typescript/) implements `listTags` with a runnable Dex Flow, Go-recorded conformance replay, and a real Dex integration test.
+
+The connector returns the first ten tags. Missing names or groups are returned as empty strings.
+
+## Java and Rust
+
+The `listTags` Step exchanges the application credentials for an access token on every attempt. Start with `{}` to request the first ten tags and the total count.
+
+The [Java Worker](java/examples/io/superdurable/dexconnectors/weiban/TagDirectoryWorker.java) serves `JavaWeibanTagDirectory`. From `java/`, run `./gradlew tagDirectoryWorker` with `WEIBAN_CORP_ID` and `WEIBAN_SECRET` supplied by your credential manager. Hosted Java applications can bind their loaded Dex project with `TagDirectory.fromProject(project, "weiban")`.
+
+The [Rust Worker](rust/examples/list_tags.rs) serves `RustWeibanTagDirectory`. Set `DEX_CONNECTOR_CONFIG_FILE` to the connections file exported by Dex Web with the named `weiban` connection. From `rust/`, run `cargo run --example list_tags`. Both examples use `DEX_FLOW_SERVICE_ADDRESS` to select the Dex server.
+
+Generate the Flow Definition Graphs from the connector directory.
+
+```sh
+dexcli visualize java/examples/io/superdurable/dexconnectors/weiban/TagDirectoryWorker.java --language java --schema-version 2.0 --lint app --open=false --json --out /tmp/weiban-java
+dexcli visualize rust/examples/list_tags.rs --language rust --schema-version 2.0 --lint app --open=false --json --out /tmp/weiban-rust
+```

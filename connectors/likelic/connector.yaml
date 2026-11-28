@@ -10,8 +10,10 @@ metadata:
 spec:
   provider: likelic
   languages:
-    python: {version: v0.1.0, operations: [listRooms], triggers: []}
-    typescript: {version: v0.1.0, operations: [listRooms], triggers: []}
+    java: {version: v0.1.0, operations: [listRooms], triggers: []}
+    rust: {version: v0.1.0, operations: [listRooms], triggers: []}
+    python: {version: v0.1.1, operations: [listRooms], triggers: []}
+    typescript: {version: v0.1.1, operations: [listRooms], triggers: []}
   codegen:
     go:
       package: likelic

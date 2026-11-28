@@ -22,7 +22,6 @@ export class WeibanClient {
   constructor(config: Config, credentials: CredentialProvider<Credentials>, options: WeibanClientOptions = {}) {
     if (!config || !credentials) throw new TypeError('Weiban configuration and credentials are required');
     this.baseUrl = validateBaseURL(config.baseUrl || 'https://open.weibanzhushou.com').replace(/\/$/, '');
-    if (new URL(this.baseUrl).pathname !== '/') throw new TypeError('Weiban URL must be an origin');
     this.timeoutMs = config.timeoutMs ?? 15_000;
     this.maxResponseBytes = config.maxResponseBytes ?? 262_144;
     if (!Number.isSafeInteger(this.timeoutMs) || this.timeoutMs <= 0 || !Number.isSafeInteger(this.maxResponseBytes) || this.maxResponseBytes <= 0) throw new TypeError('Weiban request limits must be positive');
@@ -65,27 +64,29 @@ export class ListTagsOperation implements Query<ListTagsInput, TagsResult> {
     const tags: TagMetadata[] = [];
     for (const item of document.tag_list as unknown[]) {
       if (tags.length === 10) break;
-      if (!isRecord(item) || typeof item.tag_id !== 'string' || !item.tag_id || item.tag_id.length > 128 || (item.tag_name !== undefined && (typeof item.tag_name !== 'string' || item.tag_name.length > 512)) || (item.tag_group !== undefined && (typeof item.tag_group !== 'string' || item.tag_group.length > 512))) return branch('invalidResponse', 'PROTOCOL');
+      if (!isRecord(item) || typeof item.tag_id !== 'string' || !item.tag_id || Buffer.byteLength(item.tag_id) > 128 || (item.tag_name != null && (typeof item.tag_name !== 'string' || Buffer.byteLength(item.tag_name) > 512)) || (item.tag_group != null && (typeof item.tag_group !== 'string' || Buffer.byteLength(item.tag_group) > 512))) return branch('invalidResponse', 'PROTOCOL');
       tags.push({ id: item.tag_id, name: typeof item.tag_name === 'string' ? item.tag_name : '', group: typeof item.tag_group === 'string' ? item.tag_group : '' });
     }
     return newQueryBranch('listed', { total: document.total as number, tags });
   }
   private async request(call: Call, fields: Pick<ProviderRequest, 'url' | 'method' | 'headers' | 'body'>): Promise<{ response: ProviderResponse } | { attempt: QueryAttempt<TagsResult> }> {
     let response: ProviderResponse;
+    let oversized = false;
     try { response = await this.client.send({ ...fields, timeoutMs: this.client.timeoutMs, maxResponseBytes: this.client.maxResponseBytes,
-      addressPolicy: 'publicHTTPS', signal: call.context.cancellationSignal }); }
+      addressPolicy: this.client.baseUrl.startsWith('https:') ? 'publicHTTPS' : 'privateNetworkHTTP', signal: call.context.cancellationSignal }); }
     catch (error) {
-      if (error instanceof BodyTooLargeError && error.status === 200) return { attempt: branch('invalidResponse', 'RESPONSE_TOO_LARGE') };
-      if (error instanceof BodyTooLargeError && error.status !== undefined) return { attempt: classifyStatus(error.status, error.headers ?? {}) };
-      return { attempt: retry('AVAILABILITY') };
+      if (!(error instanceof BodyTooLargeError) || error.status === undefined) return { attempt: retry('AVAILABILITY') };
+      response = { status: error.status, headers: error.headers ?? {}, body: new Uint8Array() };
+      oversized = true;
     }
+    if (response.status === 429 || response.status === 408 || response.status >= 500) return { attempt: classifyStatus(response.status, response.headers) };
+    if (oversized || response.body.length > this.client.maxResponseBytes) return { attempt: branch('invalidResponse', 'RESPONSE_TOO_LARGE') };
     if (response.status !== 200) return { attempt: classifyStatus(response.status, response.headers) };
-    if (response.body.length > this.client.maxResponseBytes) return { attempt: branch('invalidResponse', 'RESPONSE_TOO_LARGE') };
     return { response };
   }
 }
 function isRecord(value: unknown): value is Record<string, unknown> { return typeof value === 'object' && value !== null && !Array.isArray(value); }
-function validCredential(value: unknown): value is string { return typeof value === 'string' && value.length > 0 && value.length <= 2048 && value.trim() === value; }
+function validCredential(value: unknown): value is string { return typeof value === 'string' && value.length > 0 && Buffer.byteLength(value) <= 2048 && value.trim() === value; }
 function isBusy(code: number): boolean { return [500, 10051, 10052, 10053].includes(code); }
 function classifyStatus(status: number, headers: ProviderResponse['headers']): QueryAttempt<TagsResult> {
   const value = headers['retry-after']; const delay = parseRetryAfter(Array.isArray(value) ? value[0] ?? '' : value ?? '');

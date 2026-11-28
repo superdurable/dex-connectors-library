@@ -627,6 +627,455 @@
       "input": {},
       "name": "listTags-defect",
       "operation": "listTags"
+    },
+    {
+      "callId": "34334640-8b84-5d2f-8342-51b2f0c24997",
+      "exchanges": [
+        {
+          "body": "{\"access_token\":\"REDACTED_WEIBAN_ACCESS_TOKEN\",\"errcode\":0,\"errmsg\":\"ok\",\"expires_in\":7200}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/open-api/access_token/get",
+          "requestBody": {
+            "corp_id": "corp_test",
+            "secret": "REDACTED_WEIBAN_SECRET"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"errcode\":0,\"errmsg\":\"ok\",\"total\":1,\"tag_list\":[{\"tag_id\":\"tag_123\",\"tag_name\":null,\"tag_group\":null}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open-api/tag/list",
+          "query": {
+            "access_token": [
+              "REDACTED_WEIBAN_ACCESS_TOKEN"
+            ],
+            "limit": [
+              "10"
+            ],
+            "offset": [
+              "0"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "tags": [
+            {
+              "group": "",
+              "id": "tag_123",
+              "name": ""
+            }
+          ],
+          "total": 1
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listTags-nullMetadata",
+      "operation": "listTags"
+    },
+    {
+      "callId": "fd0fe107-4c68-5035-ab44-b950916f4245",
+      "exchanges": [
+        {
+          "body": "{\"access_token\":\"REDACTED_WEIBAN_ACCESS_TOKEN\",\"errcode\":0,\"errmsg\":\"ok\",\"expires_in\":7200}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/open-api/access_token/get",
+          "requestBody": {
+            "corp_id": "corp_test",
+            "secret": "REDACTED_WEIBAN_SECRET"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"errcode\":0,\"errmsg\":\"ok\",\"total\":1,\"tag_list\":[{\"tag_id\":\"籤籤籤籤籤籤籤籤籤籤籤籤籤籤籤籤籤籤籤籤籤籤籤籤籤籤籤籤籤籤籤籤籤籤籤籤籤籤籤籤籤籤籤\",\"tag_name\":\"Returning\",\"tag_group\":\"Lifecycle\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open-api/tag/list",
+          "query": {
+            "access_token": [
+              "REDACTED_WEIBAN_ACCESS_TOKEN"
+            ],
+            "limit": [
+              "10"
+            ],
+            "offset": [
+              "0"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "tags": [],
+          "total": 0
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listTags-utf8ID",
+      "operation": "listTags"
+    },
+    {
+      "callId": "77861f68-b83c-5fc8-8a3b-a3cc6cf5e988",
+      "exchanges": [
+        {
+          "body": "{\"access_token\":\"REDACTED_WEIBAN_ACCESS_TOKEN\",\"errcode\":0,\"errmsg\":\"ok\",\"expires_in\":7200}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/open-api/access_token/get",
+          "requestBody": {
+            "corp_id": "corp_test",
+            "secret": "REDACTED_WEIBAN_SECRET"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"errcode\":0,\"total\":11,\"tag_list\":[{\"tag_id\":\"0\"},{\"tag_id\":\"1\"},{\"tag_id\":\"2\"},{\"tag_id\":\"3\"},{\"tag_id\":\"4\"},{\"tag_id\":\"5\"},{\"tag_id\":\"6\"},{\"tag_id\":\"7\"},{\"tag_id\":\"8\"},{\"tag_id\":\"9\"},{}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open-api/tag/list",
+          "query": {
+            "access_token": [
+              "REDACTED_WEIBAN_ACCESS_TOKEN"
+            ],
+            "limit": [
+              "10"
+            ],
+            "offset": [
+              "0"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "tags": [
+            {
+              "group": "",
+              "id": "0",
+              "name": ""
+            },
+            {
+              "group": "",
+              "id": "1",
+              "name": ""
+            },
+            {
+              "group": "",
+              "id": "2",
+              "name": ""
+            },
+            {
+              "group": "",
+              "id": "3",
+              "name": ""
+            },
+            {
+              "group": "",
+              "id": "4",
+              "name": ""
+            },
+            {
+              "group": "",
+              "id": "5",
+              "name": ""
+            },
+            {
+              "group": "",
+              "id": "6",
+              "name": ""
+            },
+            {
+              "group": "",
+              "id": "7",
+              "name": ""
+            },
+            {
+              "group": "",
+              "id": "8",
+              "name": ""
+            },
+            {
+              "group": "",
+              "id": "9",
+              "name": ""
+            }
+          ],
+          "total": 11
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listTags-firstTen",
+      "operation": "listTags"
+    },
+    {
+      "callId": "a49a2fb1-7280-5641-b082-efa59f45e05d",
+      "exchanges": [
+        {
+          "body": "{\"access_token\":\"REDACTED_WEIBAN_ACCESS_TOKEN\",\"errcode\":0,\"errmsg\":\"ok\",\"expires_in\":7200}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/open-api/access_token/get",
+          "requestBody": {
+            "corp_id": "corp_test",
+            "secret": "REDACTED_WEIBAN_SECRET"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"errcode\":0,\"total\":0,\"tag_list\":[{\"tag_id\":\"1\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open-api/tag/list",
+          "query": {
+            "access_token": [
+              "REDACTED_WEIBAN_ACCESS_TOKEN"
+            ],
+            "limit": [
+              "10"
+            ],
+            "offset": [
+              "0"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "tags": [],
+          "total": 0
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listTags-countMismatch",
+      "operation": "listTags"
+    },
+    {
+      "callId": "0fd25884-1f3d-5327-be52-087aec63bb9e",
+      "exchanges": [
+        {
+          "body": "{\"errcode\":10051}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/open-api/access_token/get",
+          "requestBody": {
+            "corp_id": "corp_test",
+            "secret": "REDACTED_WEIBAN_SECRET"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listTags-authBusy",
+      "operation": "listTags"
+    },
+    {
+      "callId": "d5e81fa6-ae99-5dbb-92ae-9895fb9029f9",
+      "exchanges": [
+        {
+          "body": "{\"access_token\":\"REDACTED_WEIBAN_ACCESS_TOKEN\",\"errcode\":0,\"errmsg\":\"ok\",\"expires_in\":7200}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/open-api/access_token/get",
+          "requestBody": {
+            "corp_id": "corp_test",
+            "secret": "REDACTED_WEIBAN_SECRET"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"errcode\":10053}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open-api/tag/list",
+          "query": {
+            "access_token": [
+              "REDACTED_WEIBAN_ACCESS_TOKEN"
+            ],
+            "limit": [
+              "10"
+            ],
+            "offset": [
+              "0"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listTags-tagsBusy",
+      "operation": "listTags"
+    },
+    {
+      "callId": "e68fccb4-a435-52b5-be7c-8bc8fe60f975",
+      "exchanges": [
+        {
+          "body": "{\"errcode\":0,\"access_token\":\"expired\",\"expires_in\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/open-api/access_token/get",
+          "requestBody": {
+            "corp_id": "corp_test",
+            "secret": "REDACTED_WEIBAN_SECRET"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "tags": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listTags-tokenExpiry",
+      "operation": "listTags"
     }
   ],
   "schemaVersion": 1

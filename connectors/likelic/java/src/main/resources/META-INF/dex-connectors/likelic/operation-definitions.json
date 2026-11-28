@@ -1,0 +1,42 @@
+{
+  "listRooms": {
+    "branches": [
+      {
+        "description": "Likelic returned a room page.",
+        "id": "found",
+        "optional": false
+      },
+      {
+        "description": "Likelic rejected authorization, permission, or the request.",
+        "id": "providerRejected",
+        "optional": true
+      },
+      {
+        "description": "Likelic returned malformed or oversized room data.",
+        "id": "invalidResponse",
+        "optional": true
+      },
+      {
+        "description": "The local credentials or page are invalid.",
+        "id": "defect",
+        "optional": true
+      }
+    ],
+    "operation": {
+      "connectorId": "likelic",
+      "operationId": "listRooms"
+    },
+    "stepDefaults": {
+      "executeDurability": 2,
+      "executeMethodTimeout": 30000000000,
+      "executeRetry": {
+        "BackoffCoefficient": 2,
+        "InitialInterval": 1000000000,
+        "MaximumAttempts": 0,
+        "MaximumInterval": 300000000000,
+        "TotalDuration": 3600000000000
+      },
+      "heartbeatTimeout": 0
+    }
+  }
+}

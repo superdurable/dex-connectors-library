@@ -362,6 +362,370 @@
       },
       "name": "listRooms-transport",
       "operation": "listRooms"
+    },
+    {
+      "callId": "2be91851-eb3a-5323-b2c2-3c118bbc21a6",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"data\":[{\"channel\":\"qq\",\"instance_id\":3,\"room_id\":\"room-123\",\"push_state\":\"blocked\",\"room_name\":\"private group\",\"company_name\":\"private customer\",\"member_count\":12}],\"meta\":{\"page\":1,\"limit\":20,\"total\":1}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/rooms",
+          "query": {
+            "limit": [
+              "20"
+            ],
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "sk-0123456789abcdef0123456789abcdef0123456789abcdef"
+            ],
+            "X-Customer-Code": [
+              "demo_company"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "page": 1,
+          "rooms": [
+            {
+              "channel": "qq",
+              "instanceID": 3,
+              "pushState": "blocked",
+              "roomID": "room-123"
+            }
+          ],
+          "total": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 1
+      },
+      "name": "listRooms-qqBlocked",
+      "operation": "listRooms"
+    },
+    {
+      "callId": "cf468239-496f-5df8-bbd2-ba1e35053c10",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"data\":[{\"channel\":\"wework\",\"instance_id\":3,\"room_id\":\"room-123\",\"push_state\":\"unknown\",\"room_name\":\"private group\",\"company_name\":\"private customer\",\"member_count\":12}],\"meta\":{\"page\":1,\"limit\":20,\"total\":1}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/rooms",
+          "query": {
+            "limit": [
+              "20"
+            ],
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "sk-0123456789abcdef0123456789abcdef0123456789abcdef"
+            ],
+            "X-Customer-Code": [
+              "demo_company"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "page": 1,
+          "rooms": [
+            {
+              "channel": "wework",
+              "instanceID": 3,
+              "pushState": "unknown",
+              "roomID": "room-123"
+            }
+          ],
+          "total": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 1
+      },
+      "name": "listRooms-unknownState",
+      "operation": "listRooms"
+    },
+    {
+      "callId": "cc774c71-3cef-5ba3-82e1-e98906f2e876",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"data\":[{\"channel\":\"wework\",\"instance_id\":3,\"room_id\":\"room-123\",\"push_state\":[\"ready\"],\"room_name\":\"private group\",\"company_name\":\"private customer\",\"member_count\":12}],\"meta\":{\"page\":1,\"limit\":20,\"total\":1}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/rooms",
+          "query": {
+            "limit": [
+              "20"
+            ],
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "sk-0123456789abcdef0123456789abcdef0123456789abcdef"
+            ],
+            "X-Customer-Code": [
+              "demo_company"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "page": 0,
+          "rooms": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 1
+      },
+      "name": "listRooms-badState",
+      "operation": "listRooms"
+    },
+    {
+      "callId": "e175b037-f814-588e-aa56-cc3f7d52cf27",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"data\":[{\"channel\":\"wework\",\"instance_id\":3,\"room_id\":\"房房房房房房房房房房房房房房房房房房房房房房房房房房房房房房房房房房房房房房房房房房房房房房房房房房房房房房房房房房房房房房房房房房房房房房房房房房房房房房房房房房房房房房\",\"push_state\":\"ready\",\"room_name\":\"private group\",\"company_name\":\"private customer\",\"member_count\":12}],\"meta\":{\"page\":1,\"limit\":20,\"total\":1}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/rooms",
+          "query": {
+            "limit": [
+              "20"
+            ],
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "sk-0123456789abcdef0123456789abcdef0123456789abcdef"
+            ],
+            "X-Customer-Code": [
+              "demo_company"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "page": 0,
+          "rooms": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 1
+      },
+      "name": "listRooms-longRoomID",
+      "operation": "listRooms"
+    },
+    {
+      "callId": "9fd6dc29-ebe4-5ab8-bc07-119d07f38676",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"data\":[{\"channel\":\"wework\",\"instance_id\":3,\"room_id\":\"room\\r1\",\"push_state\":\"ready\",\"room_name\":\"private group\",\"company_name\":\"private customer\",\"member_count\":12}],\"meta\":{\"page\":1,\"limit\":20,\"total\":1}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/rooms",
+          "query": {
+            "limit": [
+              "20"
+            ],
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "sk-0123456789abcdef0123456789abcdef0123456789abcdef"
+            ],
+            "X-Customer-Code": [
+              "demo_company"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "page": 0,
+          "rooms": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 1
+      },
+      "name": "listRooms-controlInID",
+      "operation": "listRooms"
+    },
+    {
+      "callId": "cc72115a-6393-569f-9060-e305cbbb07c3",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"data\":[],\"meta\":{\"page\":1,\"limit\":20}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/rooms",
+          "query": {
+            "limit": [
+              "20"
+            ],
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "sk-0123456789abcdef0123456789abcdef0123456789abcdef"
+            ],
+            "X-Customer-Code": [
+              "demo_company"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "page": 1,
+          "rooms": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 1
+      },
+      "name": "listRooms-missingTotal",
+      "operation": "listRooms"
+    },
+    {
+      "callId": "6eaa6243-2bd6-5765-ac0c-b8c845628f92",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"data\":[],\"meta\":{\"page\":2,\"limit\":20}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/rooms",
+          "query": {
+            "limit": [
+              "20"
+            ],
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "sk-0123456789abcdef0123456789abcdef0123456789abcdef"
+            ],
+            "X-Customer-Code": [
+              "demo_company"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "page": 0,
+          "rooms": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 1
+      },
+      "name": "listRooms-wrongPage",
+      "operation": "listRooms"
     }
   ],
   "schemaVersion": 1

@@ -145,6 +145,7 @@ class ListRoomsOperation:
                 wire: Any = json.loads(body)
                 meta = wire["meta"]
                 items = wire["data"]
+                total = 0 if isinstance(meta, dict) and meta.get("total") is None else meta["total"]
                 if (
                     wire.get("success") is not True
                     or not isinstance(items, list)
@@ -153,8 +154,8 @@ class ListRoomsOperation:
                     or meta["page"] != input.page
                     or type(meta.get("limit")) is not int
                     or meta["limit"] != 20
-                    or type(meta.get("total")) is not int
-                    or meta["total"] < 0
+                    or type(total) is not int
+                    or total < 0
                     or len(items) > 20
                 ):
                     raise ValueError("invalid room page")
@@ -173,7 +174,7 @@ class ListRoomsOperation:
                     or room.instance_id <= 0
                     or not isinstance(room.room_id, str)
                     or not room.room_id
-                    or len(room.room_id) > 256
+                    or len(room.room_id.encode("utf-8", "replace")) > 256
                     or any(char in room.room_id for char in "\r\n\0")
                     or room.push_state not in ("ready", "blocked", "unknown")
                     for room in rooms
@@ -182,7 +183,7 @@ class ListRoomsOperation:
             except (KeyError, TypeError, ValueError, UnicodeDecodeError):
                 return _branch("invalidResponse", FailureKind.PROTOCOL, "Likelic returned invalid room data")
             return QueryAttempt.branch_result(
-                "found", ListRoomsOutput(input.page, meta["total"], rooms), Receipt()
+                "found", ListRoomsOutput(input.page, total, rooms), Receipt()
             )
         finally:
             await response.aclose()

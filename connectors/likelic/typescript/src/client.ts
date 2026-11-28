@@ -64,13 +64,14 @@ export class ListRoomsOperation implements Query<ListRoomsInput, ListRoomsOutput
     let document: unknown;
     try { document = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(response.body)) as unknown; }
     catch { return branch('invalidResponse', 'PROTOCOL', 'Likelic returned invalid room page'); }
-    if (!isRecord(document) || document.success !== true || !Array.isArray(document.data) || !isRecord(document.meta) || document.meta.page !== input.page || document.meta.limit !== 20 || !Number.isInteger(document.meta.total) || (document.meta.total as number) < 0 || document.data.length > 20) return branch('invalidResponse', 'PROTOCOL', 'Likelic returned invalid room page');
+    const total = isRecord(document) && isRecord(document.meta) ? document.meta.total ?? 0 : undefined;
+    if (!isRecord(document) || document.success !== true || !Array.isArray(document.data) || !isRecord(document.meta) || document.meta.page !== input.page || document.meta.limit !== 20 || !Number.isSafeInteger(total) || (total as number) < 0 || document.data.length > 20) return branch('invalidResponse', 'PROTOCOL', 'Likelic returned invalid room page');
     const rooms: Room[] = [];
     for (const item of document.data as unknown[]) {
-      if (!isRecord(item) || (item.channel !== 'wework' && item.channel !== 'qq') || !Number.isSafeInteger(item.instance_id) || (item.instance_id as number) <= 0 || typeof item.room_id !== 'string' || !item.room_id || item.room_id.length > 256 || /[\r\n\0]/.test(item.room_id) || !['ready','blocked','unknown'].includes(String(item.push_state))) return branch('invalidResponse', 'PROTOCOL', 'Likelic returned invalid room data');
+      if (!isRecord(item) || (item.channel !== 'wework' && item.channel !== 'qq') || !Number.isSafeInteger(item.instance_id) || (item.instance_id as number) <= 0 || typeof item.room_id !== 'string' || !item.room_id || Buffer.byteLength(item.room_id) > 256 || /[\r\n\0]/.test(item.room_id) || (typeof item.push_state !== 'string' || !['ready','blocked','unknown'].includes(item.push_state))) return branch('invalidResponse', 'PROTOCOL', 'Likelic returned invalid room data');
       rooms.push({ channel: item.channel, instanceID: item.instance_id as number, roomID: item.room_id, pushState: item.push_state as string });
     }
-    return newQueryBranch('found', { page: input.page, total: document.meta.total as number, rooms });
+    return newQueryBranch('found', { page: input.page, total: total as number, rooms });
   }
 }
 function isRecord(value: unknown): value is Record<string, unknown> { return typeof value === 'object' && value !== null && !Array.isArray(value); }

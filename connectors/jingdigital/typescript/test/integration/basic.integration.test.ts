@@ -22,7 +22,7 @@ it('retries a provider 503 and persists the result through real Dex', async () =
     attempts++;
     if (attempts === 1) { response.writeHead(503).end(); return; }
     if (request.url === '/v1/oauth2/token') { response.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify({ code: 0, data: { access_token: 'temporary-token' } })); return; }
-    response.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify({ code: 0, data: { items: [{ id: 166007, name: 'Example Tag', level: 1 }], _meta: { totalCount: 1, currentPage: 2, perPage: 10 } } }));
+    response.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify({ code: 0, data: { items: [{ id: 166007, name: 'Example Tag' }], _meta: { totalCount: 1, currentPage: 2, perPage: 10 } } }));
   });
   server.listen(0, '127.0.0.1');
   await once(server, 'listening');
@@ -44,7 +44,7 @@ it('retries a provider 503 and persists the result through real Dex', async () =
     await client.startFlow(flow, flowId, { page: 2, pageSize: 10 });
     const result = await client.waitForFlow(flowId, 60_000);
     expect(result.status, result.errorMessage).toBe('completed');
-    expect(result.singleOutput()).toEqual({ tags: [{ id: 166007, name: 'Example Tag', level: 1 }], total: 1, nextPage: 0 });
+    expect(result.singleOutput()).toEqual({ tags: [{ id: 166007, name: 'Example Tag', level: 0 }], total: 1, nextPage: 0 });
     expect(attempts).toBe(3);
   } finally {
     await client.close(); await worker.close(); cache.close();

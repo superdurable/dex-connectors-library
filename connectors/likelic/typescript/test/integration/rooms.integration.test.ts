@@ -23,7 +23,7 @@ it('retries Likelic 503 through a real Dex Worker and persists room identifiers'
     requests++;
     if (request.method !== 'GET' || request.url !== '/api/v1/rooms?page=1&limit=20' || request.headers['x-customer-code'] !== 'demo_company' || request.headers['x-api-key'] !== 'sk-0123456789abcdef0123456789abcdef0123456789abcdef') { response.writeHead(400).end(); return; }
     if (requests === 1) { response.writeHead(503).end(); return; }
-    response.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify({ success: true, data: [{ channel: 'wework', instance_id: 3, room_id: 'room-123', push_state: 'ready', room_name: 'secret' }], meta: { page: 1, limit: 20, total: 1 } }));
+    response.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify({ success: true, data: [{ channel: 'wework', instance_id: 3, room_id: 'room-123', push_state: 'ready', room_name: 'secret' }], meta: { page: 1, limit: 20, total: null } }));
   });
   server.listen(0, '127.0.0.1');
   await once(server, 'listening');
@@ -45,7 +45,7 @@ it('retries Likelic 503 through a real Dex Worker and persists room identifiers'
     await client.startFlow(flow, flowId, { page: 1 });
     const result = await client.waitForFlow(flowId, 60_000);
     expect(result.status, result.errorMessage).toBe('completed');
-    expect(result.singleOutput<ListRoomsOutput>()).toEqual({ page: 1, total: 1, rooms: [{ channel: 'wework', instanceID: 3, roomID: 'room-123', pushState: 'ready' }] });
+    expect(result.singleOutput<ListRoomsOutput>()).toEqual({ page: 1, total: 0, rooms: [{ channel: 'wework', instanceID: 3, roomID: 'room-123', pushState: 'ready' }] });
     expect(requests).toBe(2);
   } finally {
     await client.close(); await worker.close(); cache.close();

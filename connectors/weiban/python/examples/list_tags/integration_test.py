@@ -33,7 +33,7 @@ async def test_list_tags_retries_503(tmp_path: Path) -> None:
     token_body = '{"access_token":"REDACTED_WEIBAN_ACCESS_TOKEN","errcode":0,"expires_in":7200}'
     tag_body = (
         '{"errcode":0,"total":1,"tag_list":'
-        '[{"tag_id":"tag_123","tag_name":"Returning","tag_group":"Lifecycle"}]}'
+        '[{"tag_id":"tag_123","tag_name":"Returning","tag_group":null}]}'
     )
 
     def answer(request: httpx.Request) -> httpx.Response:
@@ -66,7 +66,7 @@ async def test_list_tags_retries_503(tmp_path: Path) -> None:
                 result = await asyncio.wait_for(client.wait_for_flow(flow_id, timedelta(seconds=40)), 45)
                 assert result.status == dex.FlowStatus.COMPLETED, result.error_message
                 output = result.single_output(TagsResult)
-                assert output != TagsResult()
+                assert output.tags and output.tags[0].group == ""
                 assert len(requests) == 3
         finally:
             await worker.stop()

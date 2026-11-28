@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { SecretString, newQueryBranch, newQueryRetry, type Call, type CredentialProvider, type Failure, type Query, type QueryAttempt, type QueryDefinition } from '@superdurable/connectors-sdk';
-import { BodyTooLargeError, parseRetryAfter, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { BodyTooLargeError, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ListTagsDefinition } from './generated/definitions.js';
 import type { Config, Credentials, ListTagsInput, ListTagsOutput } from './generated/models.js';
 
@@ -19,12 +19,11 @@ export class JINGdigitalClient {
   /** Validate the documented JINGdigital origin and request limits. */
   constructor(config: Config, private readonly credentials: CredentialProvider<Credentials>, options: JINGdigitalClientOptions = {}) {
     if (!config || !credentials) throw new TypeError('JINGdigital configuration and credential source are required');
-    const origin = new URL(config.baseUrl ?? 'https://jingopenapi.jingsocial.com');
-    if (origin.protocol !== 'https:' || origin.hostname !== 'jingopenapi.jingsocial.com' || origin.pathname !== '/' || origin.search || origin.hash || origin.username || origin.password) throw new TypeError('JINGdigital base URL must be the documented production origin');
-    this.baseUrl = origin.origin;
+    this.baseUrl = validateBaseURL(config.baseUrl || 'https://jingopenapi.jingsocial.com');
+    if (this.baseUrl !== 'https://jingopenapi.jingsocial.com') throw new TypeError('JINGdigital requires its production origin');
     this.timeoutMs = config.timeoutMs ?? 10_000;
     this.maxResponseBytes = config.maxResponseBytes ?? 262_144;
-    if (!Number.isSafeInteger(this.timeoutMs) || this.timeoutMs <= 0 || !Number.isSafeInteger(this.maxResponseBytes) || this.maxResponseBytes <= 0 || this.maxResponseBytes > (16 << 20)) throw new TypeError('JINGdigital request limits are invalid');
+    if (!Number.isSafeInteger(this.timeoutMs) || this.timeoutMs <= 0 || !Number.isSafeInteger(this.maxResponseBytes) || this.maxResponseBytes <= 0) throw new TypeError('JINGdigital request limits are invalid');
     this.send = options.send ?? sendProviderRequest;
   }
   /** Bind the read-only ordinary-tag Query. */ listTags(): ListTagsOperation { return new ListTagsOperation(this); }
@@ -77,15 +76,17 @@ export class ListTagsOperation implements Query<ListTagsInput, ListTagsOutput> {
     if (document.code !== 0) return providerCode(document.code as number);
     const data = document.data;
     const meta = isRecord(data) ? data._meta : undefined;
-    if (!isRecord(data) || !Array.isArray(data.items) || !isRecord(meta) || !Number.isSafeInteger(meta.totalCount) || (meta.totalCount as number) < 0 || meta.currentPage !== page || !Number.isSafeInteger(meta.perPage) || (meta.perPage as number) < 1 || data.items.length > pageSize) return branch('invalidResponse', 'PROTOCOL');
+    const total = isRecord(meta) ? meta.totalCount ?? 0 : undefined;
+    if (!isRecord(data) || !Array.isArray(data.items) || !isRecord(meta) || !Number.isSafeInteger(total) || (total as number) < 0 || meta.currentPage !== page || !Number.isSafeInteger(meta.perPage) || (meta.perPage as number) < 1 || data.items.length > pageSize) return branch('invalidResponse', 'PROTOCOL');
     const selected: NonNullable<ListTagsOutput['tags']> = [];
     for (const item of data.items) {
-      if (!isRecord(item) || !Number.isSafeInteger(item.id) || (item.id as number) <= 0 || typeof item.name !== 'string' || !item.name || item.name.length > 512 || !Number.isSafeInteger(item.level) || (item.level as number) < 0 || (item.level as number) > 10) return branch('invalidResponse', 'PROTOCOL');
-      selected.push({ id: item.id as number, name: item.name, level: item.level as number });
+      const level = isRecord(item) ? item.level ?? 0 : undefined;
+      if (!isRecord(item) || !Number.isSafeInteger(item.id) || (item.id as number) <= 0 || typeof item.name !== 'string' || !item.name || Buffer.byteLength(item.name) > 512 || !Number.isSafeInteger(level) || (level as number) < 0 || (level as number) > 10) return branch('invalidResponse', 'PROTOCOL');
+      selected.push({ id: item.id as number, name: item.name, level: level as number });
     }
-    const nextPage = page * (meta.perPage as number) < (meta.totalCount as number) ? page + 1 : 0;
+    const nextPage = page * (meta.perPage as number) < (total as number) ? page + 1 : 0;
     if (nextPage && (!selected.length || page === 1_000_000)) return branch('invalidResponse', 'PROTOCOL');
-    return newQueryBranch('listed', { tags: selected, total: meta.totalCount as number, nextPage });
+    return newQueryBranch('listed', { tags: selected, total: total as number, nextPage });
   }
 }
 function classify(exchange: Exchange): QueryAttempt<ListTagsOutput> | undefined {

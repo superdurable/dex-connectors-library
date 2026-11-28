@@ -23,6 +23,7 @@ from dex_connectors.sdk.providerhttp import (
     parse_retry_after,
     read_bounded_body,
     send_traced,
+    validate_base_url,
 )
 
 from ._generated.config import Config as Config
@@ -32,7 +33,11 @@ from .models import ListTagsInput, TagMetadata, TagsResult
 
 
 def _credential(value: object) -> bool:
-    return isinstance(value, str) and 0 < len(value) <= 2048 and value.strip() == value
+    return (
+        isinstance(value, str)
+        and 0 < len(value.encode("utf-8", "replace")) <= 2048
+        and value.strip() == value
+    )
 
 
 class Client:
@@ -48,12 +53,10 @@ class Client:
             config is None
             or credentials is None
             or config.timeout_seconds <= 0
-            or not 0 < config.max_response_bytes <= 16 << 20
+            or config.max_response_bytes <= 0
         ):
             raise ValueError("Weiban configuration and credentials are required")
-        parsed = httpx.URL(config.base_url)
-        if parsed.scheme != "https" or parsed.query or parsed.fragment:
-            raise ValueError("Weiban API URL must be HTTPS")
+        self.base_url = validate_base_url(config.base_url or "https://open.weibanzhushou.com")
         self.config = config
         self.credentials = credentials
         self.http_client = http_client or new_provider_http_client(config.timeout_seconds)
@@ -133,7 +136,7 @@ class ListTagsOperation:
             return self._branch("defect", FailureKind.AUTHENTICATION)
         token_request = self.client.http_client.build_request(
             "POST",
-            self.client.config.base_url.rstrip("/") + "/open-api/access_token/get",
+            self.client.base_url + "/open-api/access_token/get",
             content=json.dumps(
                 {"corp_id": credentials.corp_id, "secret": credentials.secret.reveal()}, separators=(",", ":")
             ),
@@ -163,7 +166,7 @@ class ListTagsOperation:
         )
         request = self.client.http_client.build_request(
             "GET",
-            self.client.config.base_url.rstrip("/") + "/open-api/tag/list?" + query,
+            self.client.base_url + "/open-api/tag/list?" + query,
             headers={"Accept": "application/json"},
         )
         body = await self._response(request)
@@ -191,18 +194,20 @@ class ListTagsOperation:
             return self._branch("invalidResponse", FailureKind.PROTOCOL)
         tags = []
         for item in items[:10]:
+            if not isinstance(item, dict):
+                return self._branch("invalidResponse", FailureKind.PROTOCOL)
+            tag_id = item.get("tag_id")
+            name = "" if item.get("tag_name") is None else item["tag_name"]
+            group = "" if item.get("tag_group") is None else item["tag_group"]
             if (
-                not isinstance(item, dict)
-                or not isinstance(item.get("tag_id"), str)
-                or not item["tag_id"]
-                or len(item["tag_id"]) > 128
-                or not isinstance(item.get("tag_name", ""), str)
-                or len(item.get("tag_name", "")) > 512
-                or not isinstance(item.get("tag_group", ""), str)
-                or len(item.get("tag_group", "")) > 512
+                not isinstance(tag_id, str)
+                or not tag_id
+                or len(tag_id.encode("utf-8", "replace")) > 128
+                or not isinstance(name, str)
+                or len(name.encode("utf-8", "replace")) > 512
+                or not isinstance(group, str)
+                or len(group.encode("utf-8", "replace")) > 512
             ):
                 return self._branch("invalidResponse", FailureKind.PROTOCOL)
-            tags.append(
-                TagMetadata(id=item["tag_id"], name=item.get("tag_name", ""), group=item.get("tag_group", ""))
-            )
+            tags.append(TagMetadata(id=tag_id, name=name, group=group))
         return QueryAttempt.branch_result("listed", TagsResult(total=total, tags=tuple(tags)), Receipt())

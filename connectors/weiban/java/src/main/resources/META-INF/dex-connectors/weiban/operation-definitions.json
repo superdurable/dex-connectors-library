@@ -1,0 +1,42 @@
+{
+  "listTags": {
+    "branches": [
+      {
+        "description": "Weiban returned the first tag page.",
+        "id": "listed",
+        "optional": false
+      },
+      {
+        "description": "Weiban rejected the credentials or query.",
+        "id": "providerRejected",
+        "optional": true
+      },
+      {
+        "description": "Weiban returned malformed or oversized data.",
+        "id": "invalidResponse",
+        "optional": true
+      },
+      {
+        "description": "The connection is invalid.",
+        "id": "defect",
+        "optional": true
+      }
+    ],
+    "operation": {
+      "connectorId": "weiban",
+      "operationId": "listTags"
+    },
+    "stepDefaults": {
+      "executeDurability": 2,
+      "executeMethodTimeout": 30000000000,
+      "executeRetry": {
+        "BackoffCoefficient": 2,
+        "InitialInterval": 1000000000,
+        "MaximumAttempts": 0,
+        "MaximumInterval": 300000000000,
+        "TotalDuration": 3600000000000
+      },
+      "heartbeatTimeout": 0
+    }
+  }
+}
