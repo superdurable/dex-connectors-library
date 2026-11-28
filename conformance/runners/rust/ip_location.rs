@@ -5,8 +5,8 @@ use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use crate::connector::{Credentials, LookupIPLocationInput, LookupIPLocationOperation};
-use crate::{CONNECTOR_ID, KEY, ORIGIN};
+use crate::connector::{LookupIPLocationInput, LookupIPLocationOperation};
+use crate::{CONNECTOR_ID, ORIGIN, scenario_credentials};
 
 const FIXTURE: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/support/scenarios.json");
 use dex_connectors_sdk::providerhttp::{
@@ -14,10 +14,20 @@ use dex_connectors_sdk::providerhttp::{
     ProviderHttpTransport, ProviderTransportError, ResponseHeaders,
 };
 use dex_connectors_sdk::{
-    Call, CallId, ConnectionRef, OperationRef, Query, QueryAttempt, SecretString,
-    StaticCredentialProvider,
+    Call, CallId, ConnectionRef, OperationRef, Query, QueryAttempt, StaticCredentialProvider,
 };
 use serde_json::{Value, json};
+
+fn decoded_parameters(form: &[u8]) -> BTreeMap<String, Vec<String>> {
+    let mut parameters: BTreeMap<String, Vec<String>> = BTreeMap::new();
+    for (key, value) in form_urlencoded::parse(form) {
+        parameters
+            .entry(key.into_owned())
+            .or_default()
+            .push(value.into_owned());
+    }
+    parameters
+}
 
 struct RecordedProvider {
     exchanges: Mutex<VecDeque<Value>>,
@@ -46,13 +56,7 @@ impl ProviderHttpTransport for RecordedProvider {
             "{}",
             self.scenario
         );
-        let mut parameters: BTreeMap<String, Vec<String>> = BTreeMap::new();
-        for (key, value) in form_urlencoded::parse(query.as_bytes()) {
-            parameters
-                .entry(key.into_owned())
-                .or_default()
-                .push(value.into_owned());
-        }
+        let parameters = decoded_parameters(query.as_bytes());
         assert_eq!(
             json!(parameters),
             exchange.get("query").cloned().unwrap_or(json!({})),
@@ -70,7 +74,14 @@ impl ProviderHttpTransport for RecordedProvider {
             "{}",
             self.scenario
         );
-        if let Some(body) = exchange.get("requestBody") {
+        if let Some(form) = exchange.get("form") {
+            assert_eq!(
+                &json!(decoded_parameters(&request.body)),
+                form,
+                "{}",
+                self.scenario
+            );
+        } else if let Some(body) = exchange.get("requestBody") {
             assert_eq!(
                 &serde_json::from_slice::<Value>(&request.body).unwrap(),
                 body,
@@ -125,7 +136,7 @@ fn replay_go_ip_location() {
         let connection = ConnectionRef::new(CONNECTOR_ID, CONNECTOR_ID);
         let credentials = StaticCredentialProvider::new(HashMap::from([(
             connection.clone(),
-            Credentials::from(SecretString::new(KEY)),
+            scenario_credentials(name),
         )]));
         let limit = if name == "lookupIPLocation-oversized" {
             16
@@ -134,9 +145,32 @@ fn replay_go_ip_location() {
         };
         let http =
             ProviderHttpClient::with_transport(recorded.clone(), Duration::from_secs(15)).unwrap();
-        let operation =
-            LookupIPLocationOperation::with_http_client(Arc::new(credentials), http, limit)
-                .unwrap();
+        let clock: Arc<dyn Fn() -> std::time::SystemTime + Send + Sync> =
+            if let Some(wire) = scenario["fixedClock"].as_str() {
+                let nanos = dex_connectors_sdk::Rfc3339NanoTimestamp::from_wire(wire)
+                    .unwrap()
+                    .unix_nanoseconds();
+                let magnitude = nanos.unsigned_abs();
+                let offset = Duration::new(
+                    (magnitude / 1_000_000_000).try_into().unwrap(),
+                    (magnitude % 1_000_000_000) as u32,
+                );
+                let instant = if nanos < 0 {
+                    std::time::UNIX_EPOCH - offset
+                } else {
+                    std::time::UNIX_EPOCH + offset
+                };
+                Arc::new(move || instant)
+            } else {
+                Arc::new(std::time::SystemTime::now)
+            };
+        let operation = LookupIPLocationOperation::with_http_client_and_clock(
+            Arc::new(credentials),
+            http,
+            limit,
+            clock,
+        )
+        .unwrap();
         let call = Call::new(
             CallId::new(scenario["callId"].as_str().unwrap()),
             connection,

@@ -4,7 +4,9 @@
 use dex_connector_maiyun as connector;
 const CONNECTOR_ID: &str = "maiyun";
 const ORIGIN: &str = "https://lts.maiyun.net";
-const KEY: &str = "private-test-key";
+fn scenario_credentials(_: &str) -> connector::Credentials {
+    dex_connectors_sdk::SecretString::new("private-test-key").into()
+}
 
 #[path = "support/ip_location.rs"]
 mod ip_location;

@@ -38,7 +38,7 @@ public abstract class QueryScenarios {
         this.smallBodyCase = smallBodyCase;
     }
 
-    protected abstract QueryAttempt<?> invoke(Call call, JsonNode input, CredentialProvider<SecretString> credentials,
+    protected abstract QueryAttempt<?> invokeScenario(Call call, JsonNode scenario, CredentialProvider<SecretString> credentials,
                                               ProviderHttpTransport transport, int limit) throws Exception;
 
     private static final ObjectMapper JSON = new ObjectMapper();
@@ -61,7 +61,7 @@ public abstract class QueryScenarios {
         RecordedProvider provider = new RecordedProvider(scenario.get("exchanges"));
         Call call = Call.create(CallId.of(scenario.get("callId").asText()), new ConnectionRef(connector, connector),
                 new OperationRef(connector, operation), null, 1);
-        QueryAttempt<?> attempt = invoke(call, scenario.get("input"),
+        QueryAttempt<?> attempt = invokeScenario(call, scenario,
                 ignored -> new SecretString(name.equals(missingKeyCase) ? "" : key), provider,
                 smallBodyCase.equals(name) ? 16 : 1 << 20);
         JsonNode expected = scenario.get("expected");
@@ -73,6 +73,18 @@ public abstract class QueryScenarios {
         if (expected.has("output")) assertEquals(expected.get("output"), JSON.readTree(JSON.writeValueAsBytes(attempt.getValue())));
         assertEquals(expected.get("requestCount").asInt(), provider.sent);
         assertEquals(provider.exchanges.size(), provider.attempted);
+    }
+
+    private static Map<String, List<String>> decodedParameters(String form) throws IOException {
+        Map<String, List<String>> parameters = new LinkedHashMap<>();
+        if (form.isEmpty()) return parameters;
+        for (String pair : form.split("&")) {
+            String[] parts = pair.split("=", 2);
+            String key = java.net.URLDecoder.decode(parts[0], "UTF-8");
+            String value = java.net.URLDecoder.decode(parts.length == 2 ? parts[1] : "", "UTF-8");
+            parameters.computeIfAbsent(key, ignored -> new java.util.ArrayList<>()).add(value);
+        }
+        return parameters;
     }
 
     private final class RecordedProvider implements ProviderHttpTransport {
@@ -88,19 +100,14 @@ public abstract class QueryScenarios {
             assertEquals(exchange.get("method").asText(), request.getMethod());
             String[] url = request.getUrl().split("\\?", 2);
             assertEquals(origin + exchange.get("path").asText(), url[0]);
-            Map<String, List<String>> parameters = new LinkedHashMap<>();
-            if (url.length == 2) {
-                for (String pair : url[1].split("&")) {
-                    String[] parts = pair.split("=", 2);
-                    String key = java.net.URLDecoder.decode(parts[0], "UTF-8");
-                    parameters.computeIfAbsent(key, ignored -> new java.util.ArrayList<>()).add(java.net.URLDecoder.decode(parts[1], "UTF-8"));
-                }
-            }
+            Map<String, List<String>> parameters = decodedParameters(url.length == 2 ? url[1] : "");
             assertEquals(exchange.has("query") ? exchange.get("query") : JSON.createObjectNode(), JSON.valueToTree(parameters));
             Map<String, List<String>> headers = new LinkedHashMap<>();
             request.getHeaders().forEach((name, value) -> headers.put(name, Collections.singletonList(value)));
             assertEquals(exchange.get("requestHeaders"), JSON.valueToTree(headers));
-            if (exchange.has("requestBody")) {
+            if (exchange.has("form")) {
+                assertEquals(exchange.get("form"), JSON.valueToTree(decodedParameters(new String(request.getBody(), StandardCharsets.UTF_8))));
+            } else if (exchange.has("requestBody")) {
                 assertEquals(exchange.get("requestBody"), JSON.readTree(request.getBody()));
             } else {
                 assertTrue(request.getBody() == null || request.getBody().length == 0);

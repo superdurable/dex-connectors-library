@@ -14,8 +14,8 @@ it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario,
 
 async function invokeIhuyi(scenario: Scenario, recorder: ExchangeRecorder) {
   const credentials = new StaticCredentialProvider([[connection, { apiId: 'test-account', apiKey: new SecretString('private-test-key') }]]);
-  const client = new IhuyiClient({ maxResponseBytes: scenario.name.endsWith('oversized') ? 8 : 65_536 }, credentials, {
-    now: () => new Date('2026-01-01T00:00:00Z'),
+  const client = new IhuyiClient({ maxResponseBytes: scenario.name.endsWith('oversized') ? 16 : 65_536 }, credentials, {
+    now: () => new Date(scenario.fixedClock!),
     send: request => answerRecordedRequest(recorder, request, before => new ProviderTransportError(before)),
   });
   const call: Call = {

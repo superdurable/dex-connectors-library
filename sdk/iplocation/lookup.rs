@@ -48,6 +48,7 @@ pub struct LookupIPLocationOperation {
     credentials: Arc<dyn CredentialProvider<Credentials>>,
     http: ProviderHttpClient,
     max_response_bytes: usize,
+    clock: Arc<dyn Fn() -> SystemTime + Send + Sync>,
 }
 
 impl LookupIPLocationOperation {
@@ -66,6 +67,21 @@ impl LookupIPLocationOperation {
         http: ProviderHttpClient,
         max_response_bytes: usize,
     ) -> Result<Self, ValidationError> {
+        Self::with_http_client_and_clock(
+            credentials,
+            http,
+            max_response_bytes,
+            Arc::new(SystemTime::now),
+        )
+    }
+
+    /// Use an injected clock for HTTP retry dates and time-dependent provider authentication.
+    pub fn with_http_client_and_clock(
+        credentials: Arc<dyn CredentialProvider<Credentials>>,
+        http: ProviderHttpClient,
+        max_response_bytes: usize,
+        clock: Arc<dyn Fn() -> SystemTime + Send + Sync>,
+    ) -> Result<Self, ValidationError> {
         if !(1..=(16 << 20)).contains(&max_response_bytes) {
             return Err(ValidationError::new(format!(
                 "{PROVIDER_LABEL} response size limit must be between one byte and sixteen MiB"
@@ -75,6 +91,7 @@ impl LookupIPLocationOperation {
             credentials,
             http,
             max_response_bytes,
+            clock,
         })
     }
 }
@@ -96,7 +113,7 @@ impl Query for LookupIPLocationOperation {
             );
         };
         let credentials = match self.credentials.resolve(call) {
-            Ok(credentials) if valid_key(credentials.value()) => credentials,
+            Ok(credentials) if credentials.is_valid() => credentials,
             _ => {
                 return rejected(
                     "defect",
@@ -105,7 +122,7 @@ impl Query for LookupIPLocationOperation {
                 );
             }
         };
-        let request = lookup_request(ip, credentials.value());
+        let request = lookup_request(ip, &credentials, self.clock.as_ref());
         let Ok(mut response) = self.http.send_traced(&request) else {
             return retry(
                 FailureKind::Availability,
@@ -116,7 +133,7 @@ impl Query for LookupIPLocationOperation {
         let status = response.status();
         let delay = parse_retry_after(
             response.headers().get("Retry-After").unwrap_or(""),
-            SystemTime::now(),
+            (self.clock)(),
         );
         if status != 200 {
             return match status {
@@ -142,7 +159,7 @@ impl Query for LookupIPLocationOperation {
             };
         }
         match read_bounded_body(&mut response, self.max_response_bytes) {
-            Ok(body) => decode_location(&body, delay),
+            Ok(body) => decode_location(&body, delay, ip),
             Err(ProviderHttpError::BodyTooLarge(_)) => rejected(
                 "invalidResponse",
                 FailureKind::ResponseTooLarge,
@@ -169,7 +186,7 @@ pub fn new_lookup_ip_location_step<Input>(
     QueryStep::new(config)
 }
 
-fn valid_key(key: &str) -> bool {
+pub(super) fn valid_key(key: &str) -> bool {
     !key.is_empty() && key.len() <= 1024 && key.bytes().all(|byte| byte.is_ascii_graphic())
 }
 

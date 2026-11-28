@@ -13,3 +13,18 @@ The first Python package lives in [`python/`](python/). It implements `lookupIPL
 ## TypeScript
 
 The [TypeScript package](typescript/) provides the same Query with a runnable Dex Worker/Client example and Go-recorded conformance replay.
+
+Java and Rust also implement `lookupIPLocation`. The [Java Worker](java/examples/io/superdurable/dexconnectors/ipplus360/IPLocationWorker.java) and [Rust Worker](rust/examples/lookup_ip_location.rs) register the static `ipplus360` connection and wire the `found` branch. Both take an object with the `ipAddress` field. Both canonicalize IPv4-mapped addresses before dispatch. Optional location fields default to empty strings.
+
+Run these commands from this connector directory. With `dexcli dev -open=false` running, set `DEX_FLOW_SERVICE_ADDRESS` to its Dex Server address. The integration tests supply their own token and transport, return HTTP 503 once, and verify the Worker retries and completes the Flow.
+
+```sh
+(cd java && ./gradlew build dexDevTest)
+(cd rust && cargo test --locked --all-targets)
+dexcli visualize java/examples/io/superdurable/dexconnectors/ipplus360/IPLocationWorker.java --schema-version 2.0 --lint app --json --open=false --out /tmp/ipplus360-java
+dexcli visualize rust/examples/lookup_ip_location.rs --schema-version 2.0 --lint app --json --open=false --out /tmp/ipplus360-rust
+```
+
+The Java graph is partial because the analyzer requires the inherited `QueryStep.execute` method and the input definition in the example source. The Rust analyzer also warns about the SDK-defined `QueryStep`. The integration tests exercise both Steps through a registered Worker.
+
+For a provider-backed Worker, supply the provider API key to the process as `IPPLUS360_API_KEY` and run `./gradlew ipLocationWorker` in `java/` or `cargo run --locked --example lookup_ip_location` in `rust/`. An actual lookup can consume provider quota.

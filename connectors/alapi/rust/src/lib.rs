@@ -50,12 +50,17 @@ impl From<SecretString> for Credentials {
 }
 
 impl Credentials {
-    fn value(&self) -> &str {
-        self.token.reveal()
+    fn is_valid(&self) -> bool {
+        lookup::valid_key(self.token.reveal())
     }
 }
 
-fn lookup_request(ip: std::net::Ipv4Addr, token: &str) -> ProviderHttpRequest {
+fn lookup_request(
+    ip: std::net::Ipv4Addr,
+    credentials: &Credentials,
+    _: &dyn Fn() -> std::time::SystemTime,
+) -> ProviderHttpRequest {
+    let token = credentials.token.reveal();
     ProviderHttpRequest::new("POST", ENDPOINT)
         .header("Accept", "application/json")
         .header("Content-Type", "application/json")
@@ -79,7 +84,11 @@ struct LookupResponse {
     data: Option<LocationData>,
 }
 
-fn decode_location(body: &[u8], delay: f64) -> QueryAttempt<LookupIPLocationOutput> {
+fn decode_location(
+    body: &[u8],
+    delay: f64,
+    _: std::net::Ipv4Addr,
+) -> QueryAttempt<LookupIPLocationOutput> {
     let response = serde_json::from_slice::<serde_json::Value>(body).and_then(|mut document| {
         lowercase_fields(&mut document);
         if let Some(data) = document.get_mut("data") {

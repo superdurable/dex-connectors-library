@@ -14,7 +14,7 @@ it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario,
 
 async function invokeIPPlus360(scenario: Scenario, recorder: ExchangeRecorder) {
   if (scenario.operation !== 'lookupIPLocation') throw new Error(`unknown IPPlus360 operation ${scenario.operation}`);
-  const client = new IPPlus360Client({}, new StaticCredentialProvider([[connection, { apiKey: new SecretString('private-test-key') }]]), {
+  const client = new IPPlus360Client({ maxResponseBytes: scenario.name.endsWith("-oversized") ? 16 : 65536 }, new StaticCredentialProvider([[connection, { apiKey: new SecretString('private-test-key') }]]), {
     send: request => answerRecordedRequest(recorder, request, before => new ProviderTransportError(before)),
   });
   const call: Call = {

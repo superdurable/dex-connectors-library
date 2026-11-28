@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Yikeapi provider transport and Go-compatible Query decisions."""
 
+import ipaddress
 import json
 from datetime import UTC, datetime
 
@@ -34,6 +35,31 @@ def _opaque(value: str, limit: int = 1024) -> bool:
     return (
         isinstance(value, str) and 0 < len(value) <= limit and all(0x20 < ord(char) < 0x7F for char in value)
     )
+
+
+_PRIVATE_NETWORKS = tuple(
+    ipaddress.ip_network(value) for value in ("10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16")
+)
+
+
+def _public_ipv4(value: object) -> str | None:
+    if not isinstance(value, str) or "%" in value:
+        return None
+    try:
+        parsed = ipaddress.ip_address(value)
+        address = parsed.ipv4_mapped if isinstance(parsed, ipaddress.IPv6Address) else parsed
+    except ValueError:
+        return None
+    if (
+        not isinstance(address, ipaddress.IPv4Address)
+        or address.is_loopback
+        or address.is_link_local
+        or address.is_unspecified
+        or address.is_multicast
+        or any(address in network for network in _PRIVATE_NETWORKS)
+    ):
+        return None
+    return str(address)
 
 
 class Client:
@@ -91,22 +117,8 @@ class LookupIPLocationOperation:
         )
 
     def _request(
-        self, input: LookupIPLocationInput, credentials: Credentials
+        self, address: str, credentials: Credentials
     ) -> httpx.Request | QueryAttempt[LookupIPLocationOutput]:
-        import ipaddress
-
-        try:
-            address = ipaddress.IPv4Address(input.ip_address)
-        except (ipaddress.AddressValueError, TypeError):
-            return self._branch("defect", FailureKind.VALIDATION)
-        if (
-            address.is_private
-            or address.is_loopback
-            or address.is_link_local
-            or address.is_unspecified
-            or address.is_multicast
-        ):
-            return self._branch("defect", FailureKind.VALIDATION)
         app_id = credentials.app_id.reveal()
         app_secret = credentials.app_secret.reveal()
         if not _opaque(app_id) or not _opaque(app_secret):
@@ -114,46 +126,48 @@ class LookupIPLocationOperation:
         return self.client.http_client.build_request(
             "GET",
             "https://apia.yikeapi.com/ip/",
-            params={"appid": app_id, "appsecret": app_secret, "ip": str(address)},
+            params={"appid": app_id, "appsecret": app_secret, "ip": address},
             headers={"Accept": "application/json"},
         )
 
     def _decode(
-        self, wire: object, input: LookupIPLocationInput
+        self, document: object, address: str
     ) -> LookupIPLocationOutput | QueryAttempt[LookupIPLocationOutput] | None:
-        if not isinstance(wire, dict) or type(wire.get("errcode")) is not int:
+        if not isinstance(document, dict):
             return None
-        if wire["errcode"] != 0:
-            return self._branch("providerRejected", FailureKind.PROVIDER_REJECTION)
-        import ipaddress
-
-        if (
-            wire.get("ip") != str(ipaddress.IPv4Address(input.ip_address))
-            or not isinstance(wire.get("country"), str)
-            or not wire["country"].strip()
-            or not isinstance(wire.get("city"), str)
-            or not wire["city"].strip()
-        ):
+        wire = {key.lower(): value for key, value in document.items()}
+        code = wire.get("errcode")
+        if type(code) is not int or not -(1 << 63) <= code < (1 << 63):
             return None
-        for field in ("province", "district"):
-            if not isinstance(wire.get(field, ""), str):
+        location: dict[str, str] = {}
+        for field in ("ip", "country", "province", "city", "district"):
+            value = wire.get(field)
+            if value is not None and not isinstance(value, str):
                 return None
+            location[field] = value or ""
+        if code != 0:
+            return self._branch("providerRejected", FailureKind.PROVIDER_REJECTION)
+        if location["ip"] != address or not location["country"].strip() or not location["city"].strip():
+            return None
         return LookupIPLocationOutput(
-            country=wire["country"],
-            province=wire.get("province", ""),
-            city=wire["city"],
-            district=wire.get("district", ""),
+            country=location["country"],
+            province=location["province"],
+            city=location["city"],
+            district=location["district"],
         )
 
     async def invoke(self, call: Call, input: LookupIPLocationInput) -> QueryAttempt[LookupIPLocationOutput]:
         """Read one bounded provider response without persisting credentials."""
         if not isinstance(input, LookupIPLocationInput):
             return self._branch("defect", FailureKind.VALIDATION)
+        address = _public_ipv4(input.ip_address)
+        if address is None:
+            return self._branch("defect", FailureKind.VALIDATION)
         try:
             credentials = await self.client.credentials.resolve(call)
         except (ValueError, LookupError, OSError, AttributeError):
             return self._branch("defect", FailureKind.AUTHENTICATION)
-        request = self._request(input, credentials)
+        request = self._request(address, credentials)
         if isinstance(request, QueryAttempt):
             return request
         try:
@@ -185,12 +199,16 @@ class LookupIPLocationOperation:
         finally:
             await response.aclose()
         try:
-            wire = json.loads(body)
+            wire = json.loads(body, parse_constant=_reject_nonfinite_number)
         except (ValueError, UnicodeDecodeError):
             return self._branch("invalidResponse", FailureKind.PROTOCOL)
-        result = self._decode(wire, input)
+        result = self._decode(wire, address)
         if isinstance(result, QueryAttempt):
             return result
         if result is None:
             return self._branch("invalidResponse", FailureKind.PROTOCOL)
         return QueryAttempt.branch_result("found", result, Receipt())
+
+
+def _reject_nonfinite_number(value: str) -> None:
+    raise ValueError(f"Invalid JSON number {value}")

@@ -45,6 +45,31 @@ def _retry(kind: FailureKind, message: str, delay: float = 0) -> QueryAttempt[Lo
     return QueryAttempt.retry(Failure(kind, "ipplus360", "lookupIPLocation", message), delay)
 
 
+_PRIVATE_NETWORKS = tuple(
+    ipaddress.ip_network(value) for value in ("10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16")
+)
+
+
+def _public_ipv4(value: object) -> str | None:
+    if not isinstance(value, str) or "%" in value:
+        return None
+    try:
+        parsed = ipaddress.ip_address(value)
+        address = parsed.ipv4_mapped if isinstance(parsed, ipaddress.IPv6Address) else parsed
+    except ValueError:
+        return None
+    if (
+        not isinstance(address, ipaddress.IPv4Address)
+        or address.is_loopback
+        or address.is_link_local
+        or address.is_unspecified
+        or address.is_multicast
+        or any(address in network for network in _PRIVATE_NETWORKS)
+    ):
+        return None
+    return str(address)
+
+
 class Client:
     """Resolve IPPlus360 credentials for each Query and own a redirect-safe HTTP transport."""
 
@@ -87,11 +112,8 @@ class LookupIPLocationOperation:
 
     async def invoke(self, call: Call, input: LookupIPLocationInput) -> QueryAttempt[LookupIPLocationOutput]:
         """Make one IPPlus360 request and classify its provider outcome."""
-        try:
-            address = ipaddress.ip_address(input.ip_address)
-            if not isinstance(address, ipaddress.IPv4Address) or not address.is_global:
-                raise ValueError("not a public IPv4 address")
-        except ValueError:
+        address = _public_ipv4(input.ip_address)
+        if address is None:
             return _branch("defect", FailureKind.VALIDATION, "IPPlus360 requires one public IPv4 address")
         try:
             credentials = await self.client.credentials.resolve(call)
@@ -103,7 +125,7 @@ class LookupIPLocationOperation:
                 "defect", FailureKind.AUTHENTICATION, "IPPlus360 credentials are unavailable or invalid"
             )
         try:
-            endpoint = _ENDPOINT + "?" + urlencode({"ip": str(address), "key": api_key})
+            endpoint = _ENDPOINT + "?" + urlencode({"ip": address, "key": api_key})
             request = self.client.http_client.build_request(
                 "GET", endpoint, headers={"Accept": "application/json"}
             )
@@ -150,12 +172,25 @@ class LookupIPLocationOperation:
 
 def _decode_location(body: bytes) -> QueryAttempt[LookupIPLocationOutput]:
     try:
-        wire: Any = json.loads(body)
+        document: Any = json.loads(body, parse_constant=_reject_nonfinite_number)
+        if not isinstance(document, dict):
+            raise ValueError("invalid envelope")
+        wire = {key.lower(): value for key, value in document.items()}
+        code = wire.get("code")
+        if not isinstance(code, str) or not code:
+            raise ValueError("invalid result code")
+        data = wire.get("data")
+        if data is not None and not isinstance(data, dict):
+            raise ValueError("invalid location")
+        values = {key.lower(): value for key, value in (data or {}).items()}
+        location: dict[str, str] = {}
+        for field in ("country", "prov", "city", "district", "isp"):
+            value = values.get(field)
+            if value is not None and not isinstance(value, str):
+                raise ValueError("invalid location field")
+            location[field] = value or ""
     except (ValueError, UnicodeDecodeError):
         return _branch("invalidResponse", FailureKind.PROTOCOL, "IPPlus360 returned invalid lookup data")
-    if not isinstance(wire, dict) or not isinstance(wire.get("code"), str) or not wire["code"]:
-        return _branch("invalidResponse", FailureKind.PROTOCOL, "IPPlus360 returned invalid lookup data")
-    code = wire["code"]
     if code == "NoData":
         return _branch("providerRejected", FailureKind.NOT_FOUND, "IPPlus360 returned no district data")
     if code != "Success":
@@ -184,25 +219,20 @@ def _decode_location(body: bytes) -> QueryAttempt[LookupIPLocationOutput]:
             else "unknown"
         )
         return _branch("providerRejected", kind, f"IPPlus360 rejected lookup with code {safe_code}")
-    location = wire.get("data")
-    if not isinstance(location, dict):
-        return _branch("invalidResponse", FailureKind.PROTOCOL, "IPPlus360 returned incomplete location data")
-    fields = ("country", "prov", "city", "district", "isp")
-    if (
-        any(not isinstance(location.get(field, ""), str) for field in fields)
-        or not location.get("country", "").strip()
-        or not location.get("city", "").strip()
-        or not location.get("district", "").strip()
-    ):
+    if not all(location[field].strip() for field in ("country", "city", "district")):
         return _branch("invalidResponse", FailureKind.PROTOCOL, "IPPlus360 returned incomplete location data")
     return QueryAttempt.branch_result(
         "found",
         LookupIPLocationOutput(
             country=location["country"],
-            province=location.get("prov", ""),
+            province=location["prov"],
             city=location["city"],
             district=location["district"],
-            operator=location.get("isp", ""),
+            operator=location["isp"],
         ),
         Receipt(),
     )
+
+
+def _reject_nonfinite_number(value: str) -> None:
+    raise ValueError(f"Invalid JSON number {value}")

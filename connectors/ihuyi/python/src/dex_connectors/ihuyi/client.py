@@ -6,7 +6,7 @@ import hashlib
 import ipaddress
 import json
 from collections.abc import Callable
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from urllib.parse import urlencode
 
@@ -48,16 +48,46 @@ def _retry(kind: FailureKind, message: str, delay: float = 0) -> QueryAttempt[Lo
 
 
 def _valid_credential(value: str) -> bool:
-    return bool(value) and len(value) <= 1024 and value.strip() == value and all(
-        0x20 < ord(character) < 0x7F for character in value
+    return (
+        bool(value)
+        and len(value) <= 1024
+        and value.strip() == value
+        and all(0x20 < ord(character) < 0x7F for character in value)
     )
+
+
+_PRIVATE_NETWORKS = tuple(
+    ipaddress.ip_network(value) for value in ("10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16")
+)
+
+
+def _public_ipv4(value: object) -> str | None:
+    if not isinstance(value, str) or "%" in value:
+        return None
+    try:
+        parsed = ipaddress.ip_address(value)
+        address = parsed.ipv4_mapped if isinstance(parsed, ipaddress.IPv6Address) else parsed
+    except ValueError:
+        return None
+    if (
+        not isinstance(address, ipaddress.IPv4Address)
+        or address.is_loopback
+        or address.is_link_local
+        or address.is_unspecified
+        or address.is_multicast
+        or any(address in network for network in _PRIVATE_NETWORKS)
+    ):
+        return None
+    return str(address)
 
 
 class Client:
     """Resolve Ihuyi credentials per Query and own a redirect-safe transport."""
 
     def __init__(
-        self, config: Config, credentials: CredentialProvider[Credentials],
+        self,
+        config: Config,
+        credentials: CredentialProvider[Credentials],
         http_client: httpx.AsyncClient | None = None,
         now: Callable[[], datetime] | None = None,
     ) -> None:
@@ -95,11 +125,8 @@ class LookupIPLocationOperation:
 
     async def invoke(self, call: Call, input: LookupIPLocationInput) -> QueryAttempt[LookupIPLocationOutput]:
         """Send a time-bound signed lookup and classify its provider outcome."""
-        try:
-            address = ipaddress.ip_address(input.ip_address)
-            if not isinstance(address, ipaddress.IPv4Address) or not address.is_global:
-                raise ValueError("not public IPv4")
-        except ValueError:
+        address = _public_ipv4(input.ip_address)
+        if address is None:
             return _branch("defect", FailureKind.VALIDATION, "Ihuyi requires one public IPv4 address")
         try:
             credentials = await self.client.credentials.resolve(call)
@@ -111,13 +138,16 @@ class LookupIPLocationOperation:
             return _branch(
                 "defect", FailureKind.AUTHENTICATION, "Ihuyi credentials are unavailable or invalid"
             )
-        timestamp = str(int(self.client.now().timestamp()))
+        elapsed = self.client.now().astimezone(UTC) - datetime(1970, 1, 1, tzinfo=UTC)
+        timestamp = str(elapsed // timedelta(seconds=1))
         digest = hashlib.md5((api_id + api_key + timestamp).encode(), usedforsecurity=False).hexdigest()
         try:
             request = self.client.http_client.build_request(
-                "POST", _ENDPOINT,
-                content=urlencode({"account": api_id, "password": digest,
-                                   "ip": str(address), "time": timestamp}),
+                "POST",
+                _ENDPOINT,
+                content=urlencode(
+                    {"account": api_id, "password": digest, "ip": str(address), "time": timestamp}
+                ),
                 headers={"Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json"},
             )
         except (httpx.HTTPError, ValueError):
@@ -136,14 +166,22 @@ class LookupIPLocationOperation:
                     FailureKind.AVAILABILITY, "Ihuyi lookup service is temporarily unavailable", delay
                 )
             if status != 200:
-                kind = (FailureKind.AUTHENTICATION if status == 401 else FailureKind.AUTHORIZATION
-                        if status == 403 else FailureKind.PROVIDER_REJECTION)
+                kind = (
+                    FailureKind.AUTHENTICATION
+                    if status == 401
+                    else FailureKind.AUTHORIZATION
+                    if status == 403
+                    else FailureKind.PROVIDER_REJECTION
+                )
                 return _branch("providerRejected", kind, f"Ihuyi rejected lookup with HTTP {status}")
             try:
                 body = await read_bounded_body(response, self.client.max_response_bytes)
             except BodyTooLargeError:
-                return _branch("invalidResponse", FailureKind.RESPONSE_TOO_LARGE,
-                               "Ihuyi response exceeded the configured limit")
+                return _branch(
+                    "invalidResponse",
+                    FailureKind.RESPONSE_TOO_LARGE,
+                    "Ihuyi response exceeded the configured limit",
+                )
             except ProviderTransportError:
                 return _retry(FailureKind.AVAILABILITY, "Ihuyi response was interrupted")
         finally:
@@ -153,25 +191,48 @@ class LookupIPLocationOperation:
 
 def _decode_location(body: bytes) -> QueryAttempt[LookupIPLocationOutput]:
     try:
-        wire: Any = json.loads(body)
-    except (ValueError, UnicodeDecodeError):
+        document: Any = json.loads(body, parse_constant=_reject_nonfinite_number)
+        if not isinstance(document, dict):
+            raise ValueError("invalid envelope")
+        wire = {key.lower(): value for key, value in document.items()}
+        code = wire["code"]
+        if type(code) is not int or not -(1 << 63) <= code < (1 << 63):
+            raise ValueError("invalid result code")
+        nested = wire.get("result")
+        if nested is not None and not isinstance(nested, dict):
+            raise ValueError("invalid location envelope")
+        wire = {key.lower(): value for key, value in (nested or {}).items()}
+        location: dict[str, str] = {}
+        for field in ("country", "porovince", "city", "district", "operator"):
+            value = wire.get(field)
+            if value is not None and not isinstance(value, str):
+                raise ValueError("invalid location field")
+            location[field] = value or ""
+    except (KeyError, ValueError, UnicodeDecodeError):
         return _branch("invalidResponse", FailureKind.PROTOCOL, "Ihuyi returned invalid lookup data")
-    if not isinstance(wire, dict) or type(wire.get("code")) is not int:
-        return _branch("invalidResponse", FailureKind.PROTOCOL, "Ihuyi returned invalid lookup data")
-    code = wire["code"]
     if code != 2:
-        kind = (FailureKind.AUTHENTICATION if code in (405, 4050, 40501, 40502)
-                else FailureKind.AUTHORIZATION if code in (400, 4052) else FailureKind.PROVIDER_REJECTION)
+        kind = (
+            FailureKind.AUTHENTICATION
+            if code in (405, 4050, 40501, 40502)
+            else FailureKind.AUTHORIZATION
+            if code in (400, 4052)
+            else FailureKind.PROVIDER_REJECTION
+        )
         return _branch("providerRejected", kind, f"Ihuyi rejected lookup with code {code}")
-    location = wire.get("result")
-    if (not isinstance(location, dict) or any(
-        not isinstance(location.get(field, ""), str)
-        for field in ("country", "porovince", "city", "district", "operator")
-    ) or not str(location.get("porovince", "")).strip() or not str(location.get("city", "")).strip()):
+    if not location["porovince"].strip() or not location["city"].strip():
         return _branch("invalidResponse", FailureKind.PROTOCOL, "Ihuyi returned incomplete location data")
     return QueryAttempt.branch_result(
-        "found", LookupIPLocationOutput(
-            country=location.get("country", ""), province=location["porovince"], city=location["city"],
-            district=location.get("district", ""), operator=location.get("operator", ""),
-        ), Receipt(),
+        "found",
+        LookupIPLocationOutput(
+            country=location["country"],
+            province=location["porovince"],
+            city=location["city"],
+            district=location["district"],
+            operator=location["operator"],
+        ),
+        Receipt(),
     )
+
+
+def _reject_nonfinite_number(value: str) -> None:
+    raise ValueError(f"Invalid JSON number {value}")

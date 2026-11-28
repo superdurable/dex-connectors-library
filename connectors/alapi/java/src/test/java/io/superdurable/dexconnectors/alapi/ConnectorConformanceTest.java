@@ -23,9 +23,9 @@ class ConnectorConformanceTest extends QueryScenarios {
     }
 
     @Override
-    protected QueryAttempt<?> invoke(
+    protected QueryAttempt<?> invokeScenario(
             Call call,
-            JsonNode input,
+            JsonNode scenario,
             CredentialProvider<SecretString> credentials,
             ProviderHttpTransport transport,
             int limit)
@@ -34,6 +34,6 @@ class ConnectorConformanceTest extends QueryScenarios {
                 new IPLocation.LookupIPLocationOperation(credentials, transport, limit);
         return operation.invoke(
                 call,
-                new ObjectMapper().treeToValue(input, IPLocation.LookupIPLocationInput.class));
+                new ObjectMapper().treeToValue(scenario.get("input"), IPLocation.LookupIPLocationInput.class));
     }
 }

@@ -339,6 +339,1338 @@
       },
       "name": "lookupIPLocation-oversized",
       "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "0e143fd7-776a-5522-88a3-0d19bdd0f8c6",
+      "exchanges": [
+        {
+          "body": "{\"errcode\":0,\"ip\":\"8.8.8.8\",\"country\":\"中国\",\"province\":\"广东\",\"city\":\"深圳\",\"district\":\"龙岗区\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ip/",
+          "query": {
+            "appid": [
+              "private-test-id"
+            ],
+            "appsecret": [
+              "private-test-key"
+            ],
+            "ip": [
+              "8.8.8.8"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "city": "深圳",
+          "country": "中国",
+          "district": "龙岗区",
+          "province": "广东"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "::ffff:8.8.8.8"
+      },
+      "name": "lookupIPLocation-mapped",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "b2fbdca6-8510-5645-a694-dae15a892deb",
+      "exchanges": [
+        {
+          "body": "{\"errcode\":0,\"ip\":\"8.8.8.8\",\"country\":\"中国\",\"province\":\"广东\",\"city\":\"深圳\",\"district\":\"龙岗区\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ip/",
+          "query": {
+            "appid": [
+              "private-test-id"
+            ],
+            "appsecret": [
+              "private-test-key"
+            ],
+            "ip": [
+              "8.8.8.8"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "city": "深圳",
+          "country": "中国",
+          "district": "龙岗区",
+          "province": "广东"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "0:0:0:0:0:ffff:808:808"
+      },
+      "name": "lookupIPLocation-mappedHex",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "f993b283-0850-53dd-8483-13bf143720e4",
+      "exchanges": [
+        {
+          "body": "{\"errcode\":0,\"ip\":\"192.0.2.1\",\"country\":\"中国\",\"province\":\"广东\",\"city\":\"深圳\",\"district\":\"龙岗区\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ip/",
+          "query": {
+            "appid": [
+              "private-test-id"
+            ],
+            "appsecret": [
+              "private-test-key"
+            ],
+            "ip": [
+              "192.0.2.1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "city": "深圳",
+          "country": "中国",
+          "district": "龙岗区",
+          "province": "广东"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "192.0.2.1"
+      },
+      "name": "lookupIPLocation-documentation",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "474c5325-8c59-58d5-8bb2-9da27afc4512",
+      "exchanges": [
+        {
+          "body": "{\"errcode\":0,\"ip\":\"240.0.0.1\",\"country\":\"中国\",\"province\":\"广东\",\"city\":\"深圳\",\"district\":\"龙岗区\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ip/",
+          "query": {
+            "appid": [
+              "private-test-id"
+            ],
+            "appsecret": [
+              "private-test-key"
+            ],
+            "ip": [
+              "240.0.0.1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "city": "深圳",
+          "country": "中国",
+          "district": "龙岗区",
+          "province": "广东"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "240.0.0.1"
+      },
+      "name": "lookupIPLocation-reserved",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "98afbe2d-0f4d-5680-bd16-d6ab3f090120",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "city": "",
+          "country": "",
+          "district": "",
+          "province": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "2001:db8::1"
+      },
+      "name": "lookupIPLocation-nonIPv4",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "94bcce9a-f731-548d-9500-394cec4b53a3",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "city": "",
+          "country": "",
+          "district": "",
+          "province": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "::ffff:8.8.8.8%en0"
+      },
+      "name": "lookupIPLocation-scoped",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "645625ff-7f03-55ba-b985-436f6b941bfa",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "city": "",
+          "country": "",
+          "district": "",
+          "province": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "008.8.8.8"
+      },
+      "name": "lookupIPLocation-leadingZero",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "3fc87df9-5e45-59bf-8080-574922c9b082",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "city": "",
+          "country": "",
+          "district": "",
+          "province": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "224.0.0.2"
+      },
+      "name": "lookupIPLocation-multicast",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "c2f6ad9c-3c72-5036-87b2-cd31ab9e76bd",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "city": "",
+          "country": "",
+          "district": "",
+          "province": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8/32"
+      },
+      "name": "lookupIPLocation-subnet",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "969feba2-44f2-50f2-ba36-869f73108399",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "city": "",
+          "country": "",
+          "district": "",
+          "province": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "::ffff:192.168.0.2"
+      },
+      "name": "lookupIPLocation-privateMapped",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "053cfa87-de88-502f-ba23-e769034c9bcf",
+      "exchanges": [
+        {
+          "body": "{\"errcode\":0,\"ip\":\"8.8.8.8\",\"country\":\"US\",\"city\":\"Test\",\"district\":null,\"prov\":null,\"isp\":null}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ip/",
+          "query": {
+            "appid": [
+              "private-test-id"
+            ],
+            "appsecret": [
+              "private-test-key"
+            ],
+            "ip": [
+              "8.8.8.8"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "city": "Test",
+          "country": "US",
+          "district": "",
+          "province": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-nullOptional",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "e5a74813-c6c8-530e-8550-b2bb1ab660ae",
+      "exchanges": [
+        {
+          "body": "{\"errcode\":0,\"ip\":\"8.8.8.8\",\"country\":\"US\",\"city\":\"Test\",\"district\":\"Test\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ip/",
+          "query": {
+            "appid": [
+              "private-test-id"
+            ],
+            "appsecret": [
+              "private-test-key"
+            ],
+            "ip": [
+              "8.8.8.8"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "city": "Test",
+          "country": "US",
+          "district": "Test",
+          "province": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-missingOptional",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "c42554a8-11e2-5136-a5f3-49a37f28f92f",
+      "exchanges": [
+        {
+          "body": "{\"errcode\":0,\"ip\":\"8.8.8.8\",\"country\":\"US\",\"district\":\"Test\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ip/",
+          "query": {
+            "appid": [
+              "private-test-id"
+            ],
+            "appsecret": [
+              "private-test-key"
+            ],
+            "ip": [
+              "8.8.8.8"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "city": "",
+          "country": "",
+          "district": "",
+          "province": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-missingCity",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "4d92bdf4-97b0-5a6c-90b6-020d36cdb6b2",
+      "exchanges": [
+        {
+          "body": "{\"errcode\":0,\"ip\":\"8.8.8.8\",\"country\":\"US\",\"city\":\"Test\",\"district\":123}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ip/",
+          "query": {
+            "appid": [
+              "private-test-id"
+            ],
+            "appsecret": [
+              "private-test-key"
+            ],
+            "ip": [
+              "8.8.8.8"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "city": "",
+          "country": "",
+          "district": "",
+          "province": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-wrongFieldType",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "29557e14-9ad5-550d-bf91-8afaf86962b6",
+      "exchanges": [
+        {
+          "body": "{\"ERRCODE\":0,\"IP\":\"8.8.8.8\",\"COUNTRY\":\"中国\",\"PROVINCE\":\"广东\",\"CITY\":\"深圳\",\"DISTRICT\":\"龙岗区\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ip/",
+          "query": {
+            "appid": [
+              "private-test-id"
+            ],
+            "appsecret": [
+              "private-test-key"
+            ],
+            "ip": [
+              "8.8.8.8"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "city": "深圳",
+          "country": "中国",
+          "district": "龙岗区",
+          "province": "广东"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-mixedCase",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "5ad7bfa7-a964-5a41-92c0-0f93394ba39c",
+      "exchanges": [
+        {
+          "body": "{\"errcode\": 0, \"ip\": \"8.8.8.8\", \"country\": \"\\u4e2d\\u56fd\", \"province\": \"\\u5e7f\\u4e1c\", \"city\": \"\\u6df1\\u5733\", \"district\": \"\\u9f99\\u5c97\\u533a\",\"extra\":NaN}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ip/",
+          "query": {
+            "appid": [
+              "private-test-id"
+            ],
+            "appsecret": [
+              "private-test-key"
+            ],
+            "ip": [
+              "8.8.8.8"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "city": "",
+          "country": "",
+          "district": "",
+          "province": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-nonFiniteExtra",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "4a4a0992-1f66-5745-b762-c3d1d2ecb869",
+      "exchanges": [
+        {
+          "body": "{\"errcode\":0,\"ip\":\"1.1.1.1\",\"country\":\"中国\",\"province\":\"广东\",\"city\":\"深圳\",\"district\":\"龙岗区\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ip/",
+          "query": {
+            "appid": [
+              "private-test-id"
+            ],
+            "appsecret": [
+              "private-test-key"
+            ],
+            "ip": [
+              "8.8.8.8"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "city": "",
+          "country": "",
+          "district": "",
+          "province": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-echoMismatch",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "950dd79f-fc08-5266-b7c0-7ca3152c3f65",
+      "exchanges": [
+        {
+          "body": "{\"errcode\":0,\"ip\":\"::ffff:8.8.8.8\",\"country\":\"中国\",\"province\":\"广东\",\"city\":\"深圳\",\"district\":\"龙岗区\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ip/",
+          "query": {
+            "appid": [
+              "private-test-id"
+            ],
+            "appsecret": [
+              "private-test-key"
+            ],
+            "ip": [
+              "8.8.8.8"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "city": "",
+          "country": "",
+          "district": "",
+          "province": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-echoMapped",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "475e0d95-8767-508a-aff1-3a120e1e871d",
+      "exchanges": [
+        {
+          "body": "{\"errcode\":0.0,\"ip\":\"8.8.8.8\",\"country\":\"中国\",\"province\":\"广东\",\"city\":\"深圳\",\"district\":\"龙岗区\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ip/",
+          "query": {
+            "appid": [
+              "private-test-id"
+            ],
+            "appsecret": [
+              "private-test-key"
+            ],
+            "ip": [
+              "8.8.8.8"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "city": "",
+          "country": "",
+          "district": "",
+          "province": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-zeroAsFloat",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "e27c5317-c5f3-54a9-b1b9-607d06bffa93",
+      "exchanges": [
+        {
+          "body": "{\"errcode\":9223372036854775808}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ip/",
+          "query": {
+            "appid": [
+              "private-test-id"
+            ],
+            "appsecret": [
+              "private-test-key"
+            ],
+            "ip": [
+              "8.8.8.8"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "city": "",
+          "country": "",
+          "district": "",
+          "province": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-oversizedCode",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "57023e0b-e1f4-57ed-ae83-3f83a3ca3acc",
+      "exchanges": [
+        {
+          "body": "{\"errcode\":401,\"ip\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ip/",
+          "query": {
+            "appid": [
+              "private-test-id"
+            ],
+            "appsecret": [
+              "private-test-key"
+            ],
+            "ip": [
+              "8.8.8.8"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "city": "",
+          "country": "",
+          "district": "",
+          "province": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-malformedRejection",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "a7949125-baf5-5748-9b81-873871cef715",
+      "exchanges": [
+        {
+          "body": "{\"errcode\":401}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ip/",
+          "query": {
+            "appid": [
+              "private-test-id"
+            ],
+            "appsecret": [
+              "private-test-key"
+            ],
+            "ip": [
+              "8.8.8.8"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "city": "",
+          "country": "",
+          "district": "",
+          "province": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-business401",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "5d747805-98b2-5247-a24d-ca69c165f1b2",
+      "exchanges": [
+        {
+          "body": "{\"errcode\":429}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ip/",
+          "query": {
+            "appid": [
+              "private-test-id"
+            ],
+            "appsecret": [
+              "private-test-key"
+            ],
+            "ip": [
+              "8.8.8.8"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "city": "",
+          "country": "",
+          "district": "",
+          "province": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-business429",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "156ff86f-10eb-53ce-8593-b7df3f1a6c3d",
+      "exchanges": [
+        {
+          "body": "{\"errcode\":503}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ip/",
+          "query": {
+            "appid": [
+              "private-test-id"
+            ],
+            "appsecret": [
+              "private-test-key"
+            ],
+            "ip": [
+              "8.8.8.8"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "city": "",
+          "country": "",
+          "district": "",
+          "province": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-business503",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "1d4f83d3-9cdf-5477-a2b9-ff140a6608f4",
+      "exchanges": [
+        {
+          "body": "{\"errcode\":-1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ip/",
+          "query": {
+            "appid": [
+              "private-test-id"
+            ],
+            "appsecret": [
+              "private-test-key"
+            ],
+            "ip": [
+              "8.8.8.8"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "city": "",
+          "country": "",
+          "district": "",
+          "province": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-business-1",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "4dbf29b5-2cbd-5411-b50d-7010d485dbb2",
+      "exchanges": [
+        {
+          "body": "{\"errcode\":0,\"ip\":\"8.8.8.8\",\"country\":\"中国\",\"province\":\"广东\",\"city\":\"深圳\",\"district\":\"龙岗区\"}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ip/",
+          "query": {
+            "appid": [
+              "private-test-id"
+            ],
+            "appsecret": [
+              "private-test-key"
+            ],
+            "ip": [
+              "8.8.8.8"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "city": "",
+          "country": "",
+          "district": "",
+          "province": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-http401",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "93e0ea40-5529-5f8b-b529-251da2d3c703",
+      "exchanges": [
+        {
+          "body": "{\"errcode\":0,\"ip\":\"8.8.8.8\",\"country\":\"中国\",\"province\":\"广东\",\"city\":\"深圳\",\"district\":\"龙岗区\"}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ip/",
+          "query": {
+            "appid": [
+              "private-test-id"
+            ],
+            "appsecret": [
+              "private-test-key"
+            ],
+            "ip": [
+              "8.8.8.8"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "city": "",
+          "country": "",
+          "district": "",
+          "province": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-http403",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "ff93bf9b-1775-530c-90ea-d3d0b2d298f6",
+      "exchanges": [
+        {
+          "body": "{\"errcode\":0,\"ip\":\"8.8.8.8\",\"country\":\"中国\",\"province\":\"广东\",\"city\":\"深圳\",\"district\":\"龙岗区\"}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ip/",
+          "query": {
+            "appid": [
+              "private-test-id"
+            ],
+            "appsecret": [
+              "private-test-key"
+            ],
+            "ip": [
+              "8.8.8.8"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "city": "",
+          "country": "",
+          "district": "",
+          "province": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-http404",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "85678042-7045-5a83-a77d-c6160c01dfe0",
+      "exchanges": [
+        {
+          "body": "{\"errcode\":0,\"ip\":\"8.8.8.8\",\"country\":\"中国\",\"province\":\"广东\",\"city\":\"深圳\",\"district\":\"龙岗区\"}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ip/",
+          "query": {
+            "appid": [
+              "private-test-id"
+            ],
+            "appsecret": [
+              "private-test-key"
+            ],
+            "ip": [
+              "8.8.8.8"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 408
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 7000,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-http408",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "bc423117-07be-525a-b70e-0e101b05e5c4",
+      "exchanges": [
+        {
+          "body": "{\"errcode\":0,\"ip\":\"8.8.8.8\",\"country\":\"中国\",\"province\":\"广东\",\"city\":\"深圳\",\"district\":\"龙岗区\"}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ip/",
+          "query": {
+            "appid": [
+              "private-test-id"
+            ],
+            "appsecret": [
+              "private-test-key"
+            ],
+            "ip": [
+              "8.8.8.8"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 7000,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-http429",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "88588f87-fa4e-56fe-84d3-1761931c5402",
+      "exchanges": [
+        {
+          "body": "{\"errcode\":0,\"ip\":\"8.8.8.8\",\"country\":\"中国\",\"province\":\"广东\",\"city\":\"深圳\",\"district\":\"龙岗区\"}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ip/",
+          "query": {
+            "appid": [
+              "private-test-id"
+            ],
+            "appsecret": [
+              "private-test-key"
+            ],
+            "ip": [
+              "8.8.8.8"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 7000,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-http503",
+      "operation": "lookupIPLocation"
     }
   ],
   "schemaVersion": 1

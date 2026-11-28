@@ -1,6 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
+import { isIP } from 'node:net';
 import { SecretString, newQueryBranch, newQueryRetry, type Call, type CredentialProvider, type Failure, type Query, type QueryAttempt, type QueryDefinition } from '@superdurable/connectors-sdk';
 import { BodyTooLargeError, parseRetryAfter, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { LookupIPLocationDefinition } from './generated/definitions.js';
@@ -21,7 +22,7 @@ export class YikeAPIClient {
   constructor(config: Config, readonly credentials: CredentialProvider<Credentials>, options: YikeAPIClientOptions = {}) {
     if (!config || !credentials) throw new TypeError('YikeAPI configuration and credentials are required');
     this.timeoutMs = config.timeoutMs ?? 10_000;
-    this.maxResponseBytes = config.maxResponseBytes ?? 1_048_576;
+    this.maxResponseBytes = config.maxResponseBytes ?? 65_536;
     if (!Number.isSafeInteger(this.timeoutMs) || this.timeoutMs <= 0 || !Number.isSafeInteger(this.maxResponseBytes) || this.maxResponseBytes <= 0 || this.maxResponseBytes > (16 << 20)) throw new TypeError('YikeAPI request limits are invalid');
     this.send = options.send ?? sendProviderRequest;
   }
@@ -35,7 +36,8 @@ export class LookupIPLocationOperation implements Query<LookupIPLocationInput, L
   /** Return the generated Query contract. */ definition(): QueryDefinition { return LookupIPLocationDefinition; }
   /** Classify a provider attempt without exposing credentials. */
   async invoke(call: Call, input: LookupIPLocationInput): Promise<QueryAttempt<LookupIPLocationOutput>> {
-    if (!input || !isPublicIPv4(input.ipAddress)) return branch('defect', 'VALIDATION');
+    const address = publicIPv4(input?.ipAddress);
+    if (!address) return branch('defect', 'VALIDATION');
     let appID = ''; let appSecret = '';
     try {
       const fields = await this.client.credentials.resolve(call, call.context.cancellationSignal);
@@ -43,7 +45,7 @@ export class LookupIPLocationOperation implements Query<LookupIPLocationInput, L
       appSecret = fields.appSecret instanceof SecretString ? fields.appSecret.reveal() : '';
     } catch { return branch('defect', 'AUTHENTICATION'); }
     if (!isValidCredential(appID) || !isValidCredential(appSecret)) return branch('defect', 'AUTHENTICATION');
-    const url = new URL(endpoint); url.searchParams.set('appid', appID); url.searchParams.set('appsecret', appSecret); url.searchParams.set('ip', input.ipAddress);
+    const url = new URL(endpoint); url.searchParams.set('appid', appID); url.searchParams.set('appsecret', appSecret); url.searchParams.set('ip', address);
     let response: ProviderResponse; let tooLarge = false;
     try {
       response = await this.client.send({ url: url.toString(), method: 'GET', headers: { Accept: 'application/json' }, timeoutMs: this.client.timeoutMs, maxResponseBytes: this.client.maxResponseBytes, addressPolicy: 'publicHTTPS', signal: call.context.cancellationSignal });
@@ -57,24 +59,53 @@ export class LookupIPLocationOperation implements Query<LookupIPLocationInput, L
     if (response.status === 408 || response.status >= 500) return retry('AVAILABILITY', retryAfterMs);
     if (response.status !== 200) return branch('providerRejected', response.status === 401 ? 'AUTHENTICATION' : response.status === 403 ? 'AUTHORIZATION' : 'PROVIDER_REJECTION');
     if (tooLarge || response.body.length > this.client.maxResponseBytes) return branch('invalidResponse', 'RESPONSE_TOO_LARGE');
-    let document: unknown;
-    try { document = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(response.body)) as unknown; } catch { return branch('invalidResponse', 'PROTOCOL'); }
-    if (!isRecord(document) || !Number.isInteger(document.errcode)) return branch('invalidResponse', 'PROTOCOL');
-    if (document.errcode !== 0) return branch('providerRejected', 'PROVIDER_REJECTION');
-    if (document.ip !== input.ipAddress || typeof document.country !== 'string' || !document.country.trim() || typeof document.province !== 'string' || typeof document.city !== 'string' || !document.city.trim() || typeof document.district !== 'string') return branch('invalidResponse', 'PROTOCOL');
-    return newQueryBranch('found', { country: document.country, province: document.province, city: document.city, district: document.district });
+    let wire: Record<string, unknown> | undefined;
+    try { wire = fieldsByName(JSON.parse(new TextDecoder().decode(response.body), readProviderNumber)); }
+    catch { return branch('invalidResponse', 'PROTOCOL'); }
+    if (!wire) return branch('invalidResponse', 'PROTOCOL');
+    const code = wire.errcode;
+    if (typeof code !== 'number' || !Number.isInteger(code)) return branch('invalidResponse', 'PROTOCOL');
+    const values = wire;
+    if (['ip', 'country', 'province', 'city', 'district'].some(field => values[field] != null && typeof values[field] !== 'string')) return branch('invalidResponse', 'PROTOCOL');
+    if (code !== 0) return branch('providerRejected', 'PROVIDER_REJECTION');
+    if (typeof values.country !== 'string' || !values.country.trim() || typeof values.city !== 'string' || !values.city.trim() || values.ip !== address) return branch('invalidResponse', 'PROTOCOL');
+    return newQueryBranch('found', { country: values.country, city: values.city, province: String(values.province ?? ''), district: String(values.district ?? '') });
   }
 }
 
-function isPublicIPv4(value: unknown): value is string {
-  if (typeof value !== 'string') return false;
-  const parts = value.split('.');
-  if (parts.length !== 4 || parts.some(part => !/^(0|[1-9]\d{0,2})$/.test(part) || Number(part) > 255)) return false;
-  const first = Number(parts[0]); const second = Number(parts[1]);
-  return first !== 0 && first !== 10 && first !== 127 && first < 224 && !(first === 169 && second === 254) && !(first === 172 && second >= 16 && second <= 31) && !(first === 192 && second === 168);
+function publicIPv4(value: unknown): string | undefined {
+  if (typeof value !== 'string' || value.includes('%')) return undefined;
+  const version = isIP(value);
+  let address = value;
+  if (version === 6) {
+    const mapped = /^\[::ffff:([a-f0-9]+):([a-f0-9]+)\]$/.exec(new URL('http://[' + value + ']').hostname);
+    if (!mapped) return undefined;
+    const high = parseInt(mapped[1]!, 16);
+    const low = parseInt(mapped[2]!, 16);
+    address = [high >>> 8, high & 255, low >>> 8, low & 255].join('.');
+  } else if (version !== 4) return undefined;
+  const parts = address.split('.');
+  const first = Number(parts[0]);
+  const second = Number(parts[1]);
+  return !(parts.every(part => part === '0')) && first !== 10 && first !== 127 && !(first >= 224 && first <= 239) && !(first === 169 && second === 254) && !(first === 172 && second >= 16 && second <= 31) && !(first === 192 && second === 168) ? address : undefined;
 }
-function isRecord(value: unknown): value is Record<string, unknown> { return typeof value === 'object' && value !== null && !Array.isArray(value); }
-function isValidCredential(value: string): boolean { return value.length > 0 && value.length <= 512 && /^[!-~]+$/.test(value); }
+function isValidCredential(value: string): boolean { return value.length > 0 && value.length <= 1024 && /^[!-~]+$/.test(value); }
 function failure(kind: Failure['kind']): Failure { return { provider: 'yikeapi', operation: 'lookupIPLocation', kind, message: 'YikeAPI location lookup failed' }; }
 function branch(name: string, kind: Failure['kind']): QueryAttempt<LookupIPLocationOutput> { return newQueryBranch(name, emptyOutput, {}, failure(kind)); }
 function retry(kind: Failure['kind'], delay = 0): QueryAttempt<LookupIPLocationOutput> { return newQueryRetry(failure(kind), delay); }
+
+function fieldsByName(value: unknown): Record<string, unknown> | undefined {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  return Object.fromEntries(Object.entries(value).map(([name, field]) => [name.toLowerCase(), field]));
+}
+
+
+// Go decodes the result code into int64 before classifying the provider response.
+function readProviderNumber(key: string, value: unknown, context?: { source?: string }): unknown {
+  if (key.toLowerCase() !== 'errcode' || typeof value !== 'number') return value;
+  const source = context?.source;
+  if (source === undefined) return Number.isSafeInteger(value) ? value : null;
+  if (!/^-?\d+$/.test(source) || source.length > 20) return null;
+  const integer = BigInt(source);
+  return integer >= -(1n << 63n) && integer < (1n << 63n) ? value : null;
+}

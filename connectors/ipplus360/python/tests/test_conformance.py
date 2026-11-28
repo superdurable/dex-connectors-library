@@ -21,7 +21,9 @@ ADAPTER = conformance.PythonOperationAdapter(
     CONNECTION,
     ipplus360,
     lambda http_client, recorder: ipplus360.Client(
-        ipplus360.Config(),
+        ipplus360.Config(
+            max_response_bytes=16 if recorder.scenario["name"].endswith("-oversized") else 65536
+        ),
         conformance.static_credentials(
             CONNECTION, ipplus360.Credentials(sdk.SecretString("private-test-key"))
         ),

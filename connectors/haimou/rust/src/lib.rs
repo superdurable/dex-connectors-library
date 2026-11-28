@@ -52,12 +52,17 @@ impl From<SecretString> for Credentials {
 }
 
 impl Credentials {
-    fn value(&self) -> &str {
-        self.api_key.reveal()
+    fn is_valid(&self) -> bool {
+        lookup::valid_key(self.api_key.reveal())
     }
 }
 
-fn lookup_request(ip: std::net::Ipv4Addr, token: &str) -> ProviderHttpRequest {
+fn lookup_request(
+    ip: std::net::Ipv4Addr,
+    credentials: &Credentials,
+    _: &dyn Fn() -> std::time::SystemTime,
+) -> ProviderHttpRequest {
+    let token = credentials.api_key.reveal();
     let parameters = std::collections::BTreeMap::from([
         ("ip".to_owned(), vec![ip.to_string()]),
         ("apikey".to_owned(), vec![token.to_owned()]),
@@ -82,7 +87,11 @@ struct LookupResponse {
     data: Option<LocationData>,
 }
 
-fn decode_location(body: &[u8], delay: f64) -> QueryAttempt<LookupIPLocationOutput> {
+fn decode_location(
+    body: &[u8],
+    delay: f64,
+    _: std::net::Ipv4Addr,
+) -> QueryAttempt<LookupIPLocationOutput> {
     let response = serde_json::from_slice::<serde_json::Value>(body).and_then(|mut document| {
         lowercase_fields(&mut document);
         if let Some(data) = document.get_mut("data") {

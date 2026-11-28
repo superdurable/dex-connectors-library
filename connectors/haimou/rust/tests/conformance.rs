@@ -4,7 +4,9 @@
 use dex_connector_haimou as connector;
 const CONNECTOR_ID: &str = "haimou";
 const ORIGIN: &str = "https://hmkj4399.com";
-const KEY: &str = "private-test-key";
+fn scenario_credentials(_: &str) -> connector::Credentials {
+    dex_connectors_sdk::SecretString::new("private-test-key").into()
+}
 
 #[path = "support/ip_location.rs"]
 mod ip_location;
