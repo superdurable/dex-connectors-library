@@ -1,0 +1,127 @@
+{
+  "connectorId": "personio",
+  "releaseTag": "connectors/personio/go/v0.2.0",
+  "package": {
+    "ecosystem": "maven",
+    "name": "io.superdurable:dex-connector-personio",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newListPersonsStep",
+      "kind": "query",
+      "operationId": "listPersons",
+      "inputType": "ListPersonsInput",
+      "description": "List one page of persons with optional name and employment-status filters.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListPersonsInput selects a page and optional Personio filters.",
+        "properties": {
+          "cursor": {
+            "description": "Cursor is the opaque cursor from a previous page; blank starts at the first page.",
+            "type": "string"
+          },
+          "firstName": {
+            "description": "FirstName filters exact first names; blank disables the filter.",
+            "type": "string"
+          },
+          "lastName": {
+            "description": "LastName filters exact last names; blank disables the filter.",
+            "type": "string"
+          },
+          "limit": {
+            "description": "Limit is 1 to 50 persons; zero uses Personio's default page size.",
+            "type": "integer"
+          },
+          "status": {
+            "description": "Status is ACTIVE or INACTIVE; blank includes both.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    {
+      "name": "newGetPersonStep",
+      "kind": "query",
+      "operationId": "getPerson",
+      "inputType": "GetPersonInput",
+      "description": "Read one person's ID and names without returning email or other personnel data.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "notFound",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetPersonInput selects one Personio person by its stable API ID.",
+        "properties": {
+          "personId": {
+            "description": "PersonID is the ID returned by the Personio v2 Persons API.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "personId"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

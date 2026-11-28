@@ -10,6 +10,8 @@ metadata:
 spec:
   provider: personio
   languages:
+    java: {version: v0.1.0, operations: [getPerson, listPersons], triggers: []}
+    rust: {version: v0.1.0, operations: [getPerson, listPersons], triggers: []}
     python:
       version: v0.2.0
       package: dex-connector-personio

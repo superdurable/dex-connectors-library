@@ -13,3 +13,21 @@ The operations follow Personio's [Retrieve a person](https://developer.personio.
 ## Persons directory
 
 `listPersons` reads one page with optional first name, last name, status, limit and cursor filters. Each person contains only the ID and names. Use the returned `nextCursor` in the next request, and stop when it is empty. The [Python example](python/examples/person_directory/README.md) and [TypeScript example](typescript/examples/person-directory/README.md) run the query through the `personio` connection.
+
+## Java and Rust
+
+Both packages expose `getPerson` and `listPersons`. Each query resolves credentials through the bound provider. A project-backed connection exchanges the integration credentials for a token with the Persons read scope and reuses it until renewal is due.
+
+The [Java Worker](java/examples/io/superdurable/dexconnectors/personio/PersonDirectoryWorker.java) registers both Flows. Run `./gradlew personDirectoryWorker` from `java/` with `PERSONIO_CLIENT_ID` and `PERSONIO_CLIENT_SECRET` supplied by the Worker's environment. The example stores the connection and its token in memory for that process. A hosted application can pass its loaded Dex project to `PersonioClient.fromProject`.
+
+The [Rust lookup Worker](rust/examples/get_person.rs) and [Rust directory Worker](rust/examples/list_persons.rs) load the `personio` connection from Dex project configuration. For local Dex Web, set `DEX_CONNECTOR_CONFIG_FILE` to the connections file. From `rust/`, run `cargo run --example get_person` or `cargo run --example list_persons`.
+
+All three Workers read `DEX_FLOW_SERVICE_ADDRESS` and default to `127.0.0.1:8801`. Start the registered `JavaPersonioGetPerson`, `JavaPersonioListPersons`, `RustPersonioGetPerson`, or `RustPersonioListPersons` Flow with its query input. Use `{"personId":"3003"}` for a lookup or `{"limit":10,"status":"ACTIVE"}` for a directory page.
+
+To generate the FDG 2.0 files from this connector directory:
+
+```sh
+for file in java/examples/io/superdurable/dexconnectors/personio/GetPersonFlow.java java/examples/io/superdurable/dexconnectors/personio/ListPersonsFlow.java rust/examples/get_person.rs rust/examples/list_persons.rs; do
+  dexcli visualize "$file" --schema-version 2.0 --lint app --json --open=false --out "/tmp/personio-$(basename "$file")"
+done
+```

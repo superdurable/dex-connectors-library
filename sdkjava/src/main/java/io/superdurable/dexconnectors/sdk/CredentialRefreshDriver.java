@@ -22,6 +22,20 @@ public interface CredentialRefreshDriver<C> {
     boolean isRefreshRequired(State<C> state);
 
     /**
+     * Whether the stored grant can be submitted again after a completed exchange fails.
+     *
+     * <p>The default protects credentials that might rotate during dispatch. Return true only
+     * when every exchange this state selects leaves the submitted credentials reusable.
+     * Explicit reauthorization errors and unfinished driver calls retain their normal handling.
+     *
+     * @param state the credential state used for the failed exchange
+     * @return whether a later call may use that same grant again
+     */
+    default boolean canRepeatFailedExchange(final State<C> state) {
+        return false;
+    }
+
+    /**
      * Exchanges credentials; callers persist the complete result atomically.
      *
      * @param state the current material, expiry, and decision time

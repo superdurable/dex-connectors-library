@@ -1,0 +1,44 @@
+{
+  "clientCredentials": {
+    "clientIDCredential": "client_id",
+    "clientSecretCredential": "client_secret",
+    "credentialMappings": [
+      {
+        "credential": "access_token",
+        "source": "access_token"
+      }
+    ],
+    "missingExpiry": "reject",
+    "scopes": [
+      "personio:persons:read"
+    ],
+    "storedMissingExpiry": "refresh",
+    "terminalErrorCodes": [
+      "invalid_client",
+      "unauthorized_client",
+      "invalid_scope"
+    ],
+    "tokenEndpoint": "https://api.personio.de/v2/auth/token",
+    "tokenEndpointAuthMethod": "client_secret_post",
+    "tokenExchangeTimeout": "8s"
+  },
+  "fields": [
+    {
+      "name": "client_id",
+      "required": true,
+      "type": "string"
+    },
+    {
+      "name": "client_secret",
+      "required": true,
+      "type": "secretString"
+    },
+    {
+      "name": "access_token",
+      "required": false,
+      "type": "secretString"
+    }
+  ],
+  "refreshable": true,
+  "type": "apiKey"
+}

@@ -243,7 +243,7 @@ public final class RefreshingProjectCredentialProvider<C> extends ProjectCredent
                 markOutcomeUnknown(admission);
                 throw error;
             } catch (Exception error) {
-                if (!isProvablyNoExchange(error)) {
+                if (!isProvablyNoExchange(error) && !driver.canRepeatFailedExchange(state)) {
                     // A failure after the request may have left the process cannot prove the token survived.
                     markOutcomeUnknown(admission);
                     throw new ReauthorizationRequiredException();

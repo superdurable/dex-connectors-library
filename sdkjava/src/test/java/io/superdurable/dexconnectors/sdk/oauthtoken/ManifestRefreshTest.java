@@ -56,6 +56,7 @@ class ManifestRefreshTest {
         final RecordingTransport transport = respond("{\"access_token\":\"next\",\"refresh_token\":\"rotated\","
                 + "\"expires_in\":3600,\"token_type\":\"bearer\",\"scope\":\"files.read\"}");
         final ManifestCredentialRefreshDriver<MapCredentials> driver = driver(auth(), transport);
+        assertFalse(driver.canRepeatFailedExchange(state(credentials(), null)));
         final CredentialRefreshDriver.Result<MapCredentials> result = driver.refresh(state(credentials(), null));
         assertEquals("next", result.getCredentials().values.get("access_token"));
         assertEquals("rotated", result.getCredentials().values.get("refresh_token"));

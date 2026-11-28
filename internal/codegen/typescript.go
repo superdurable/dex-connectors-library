@@ -104,21 +104,9 @@ func GenerateTypeScriptFromPackage(manifest schema.Manifest, connectorPackage *g
 }
 
 func generateTypeScriptRefreshDeclaration(manifest schema.Manifest) ([]byte, error) {
-	authorizationJSON, err := json.Marshal(manifest.Spec.Auth)
+	authorization, err := GenerateRefreshAuthorization(manifest)
 	if err != nil {
-		return nil, fmt.Errorf("encode refresh authorization: %w", err)
-	}
-	var authorizationFields map[string]any
-	if err := json.Unmarshal(authorizationJSON, &authorizationFields); err != nil {
-		return nil, fmt.Errorf("decode refresh authorization: %w", err)
-	}
-	trimTypeScriptRefreshMetadata(authorizationFields)
-	if len(manifest.Spec.Auth.Methods) > 0 {
-		delete(authorizationFields, "fields")
-	}
-	authorization, err := json.MarshalIndent(authorizationFields, "", "  ")
-	if err != nil {
-		return nil, fmt.Errorf("encode refresh authorization: %w", err)
+		return nil, err
 	}
 	fieldNames := map[string]string{}
 	for _, method := range manifest.Spec.Auth.AuthMethods() {
@@ -134,25 +122,6 @@ func generateTypeScriptRefreshDeclaration(manifest schema.Manifest) ([]byte, err
 		"export const Authorization = " + string(authorization) + ";\n\n" +
 		"/** Stored credential names mapped to runtime credential properties. */\n" +
 		"export const CredentialFields: Readonly<Record<string, string>> = " + string(fields) + ";\n"), nil
-}
-
-func trimTypeScriptRefreshMetadata(value any) {
-	switch fields := value.(type) {
-	case map[string]any:
-		for _, name := range []string{"description", "displayName", "goName", "guide", "connectionKind", "recommended", "methodLabel", "configuration", "authorizationEndpoint", "authorizationParameters", "credentialDerivations", "pkce", "oidc", "protocol"} {
-			delete(fields, name)
-		}
-		for name, field := range fields {
-			switch name {
-			case "methods", "fields", "oauth2", "clientCredentials", "serviceAccount", "refresh", "grants", "jwtBearer":
-				trimTypeScriptRefreshMetadata(field)
-			}
-		}
-	case []any:
-		for _, item := range fields {
-			trimTypeScriptRefreshMetadata(item)
-		}
-	}
 }
 
 func typeScriptHeader() string {

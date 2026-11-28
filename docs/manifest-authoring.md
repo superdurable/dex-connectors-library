@@ -64,6 +64,8 @@ to confirm the analyzer reads its bindings. A package
 lists a Trigger only when it exports that binding factory from its package root.
 A Python package that lists a Trigger requires `dex-connectors-sdk>=0.11.0,<1`.
 
+When a connector declares token renewal grants, `connectorctl generate` also writes the grant configuration for its declared Java and Rust packages. Java connectors load `refresh-authorization.json` beside `operation-definitions.json` in the connector's JAR resources. Rust packages can embed `src/generated_refresh_authorization.json` with `include_str!`. Pass the decoded object to the SDK's `ManifestCredentialRefreshDriver` and resolve credentials for each provider call. These files contain field names and grant settings. The connection store holds the actual credentials.
+
 For a declared Python package, generation also writes its `_generated/` module:
 Go-derived operation dataclasses, Config and Credentials, operation definitions
 and branch constants, Step factories, connection bindings, and manifest mock

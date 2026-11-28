@@ -70,6 +70,8 @@ Selecting local Dex Web files with `DEX_CONNECTOR_CONFIG_FILE` fails fast with
 inherit this limit. Local Dex Web support, with cross-language file locking, is
 planned for a later release.
 
+For manifest-based client credentials grants, a completed token request that fails transiently leaves the connection ready to retry. A rotating refresh grant can invalidate the submitted token during dispatch. The project provider requires reauthorization when that exchange has an unknown outcome. Both grant types honor explicit reauthorization errors.
+
 ## Operations
 
 A connector implements `Query<I, O>` for a read and `Mutation<I, O>` for a write.

@@ -189,7 +189,9 @@
       "exchanges": [
         {
           "body": "{}",
-          "headers": {},
+          "headers": {
+            "Retry-After": "4"
+          },
           "keyMode": "absent",
           "method": "GET",
           "path": "/persons",
@@ -226,7 +228,7 @@
         "failureKind": "RATE_LIMIT",
         "requestCount": 1,
         "retry": true,
-        "retryAfterMs": 0,
+        "retryAfterMs": 4000,
         "uncertain": false
       },
       "input": {
@@ -606,7 +608,9 @@
       "exchanges": [
         {
           "body": "{}",
-          "headers": {},
+          "headers": {
+            "Retry-After": "7"
+          },
           "keyMode": "absent",
           "method": "GET",
           "path": "/persons/3003",
@@ -626,7 +630,7 @@
         "failureKind": "AVAILABILITY",
         "requestCount": 1,
         "retry": true,
-        "retryAfterMs": 0,
+        "retryAfterMs": 7000,
         "uncertain": false
       },
       "input": {

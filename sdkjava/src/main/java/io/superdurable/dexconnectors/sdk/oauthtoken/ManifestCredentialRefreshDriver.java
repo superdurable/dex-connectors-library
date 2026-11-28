@@ -127,6 +127,18 @@ public final class ManifestCredentialRefreshDriver<C> implements CredentialRefre
     }
 
     /**
+     * Checks whether the selected method exclusively mints tokens with reusable client credentials.
+     *
+     * @param state the credential state used for the failed exchange
+     * @return true when every selected grant uses client credentials
+     */
+    @Override
+    public boolean canRepeatFailedExchange(final State<C> state) {
+        final List<ManifestGrant> grants = ManifestGrant.fromMethod(selectedMethod(state.getCredentials()));
+        return !grants.isEmpty() && grants.stream().allMatch(grant -> ManifestGrant.CLIENT_CREDENTIALS.equals(grant.kind));
+    }
+
+    /**
      * Checks declared access fields and the host's single credential expiry.
      *
      * @param state the current material, expiry, and decision time

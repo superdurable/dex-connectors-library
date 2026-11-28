@@ -216,6 +216,17 @@ func generatedLanguageManifestFiles(manifestPath string, manifest schema.Manifes
 			}
 			files[filepath.Join(path, "operation-definitions.json")] = definitions
 		}
+		if (language.name == "java" || language.name == "rust") && codegen.HasDeclaredTokenGrants(manifest) {
+			authorization, err := codegen.GenerateRefreshAuthorization(manifest)
+			if err != nil {
+				return nil, err
+			}
+			target := filepath.Join(path, "refresh-authorization.json")
+			if language.name == "rust" {
+				target = filepath.Join(path, "src", "generated_refresh_authorization.json")
+			}
+			files[target] = append(authorization, '\n')
+		}
 		if manifest.Spec.Codegen.ModelCatalog != nil && (language.name == "java" || language.name == "rust") && selectedOperations["listModels"] {
 			client, err := codegen.GenerateModelCatalogClient(manifest, connectorDirectory, language.name)
 			if err != nil {
@@ -330,7 +341,7 @@ func staleLanguageManifestFiles(manifestPath string, generated map[string][]byte
 	}
 	paths := append(pythonFiles, filepath.Join(connectorDirectory, "typescript", "dex-connector.json"),
 		filepath.Join(connectorDirectory, "rust", "dex-connector.json"), filepath.Join(connectorDirectory, "rust", "src", "generated_definitions.rs"))
-	paths = append(paths, filepath.Join(connectorDirectory, "rust", "src", "generated_model_catalog.rs"))
+	paths = append(paths, filepath.Join(connectorDirectory, "rust", "src", "generated_model_catalog.rs"), filepath.Join(connectorDirectory, "rust", "src", "generated_refresh_authorization.json"))
 	javaCatalogs, err := filepath.Glob(filepath.Join(connectorDirectory, "java", "src", "main", "java", "io", "superdurable", "dexconnectors", "*", "ModelCatalog.java"))
 	if err != nil {
 		return nil, err
@@ -349,7 +360,7 @@ func staleLanguageManifestFiles(manifestPath string, generated map[string][]byte
 		if err != nil {
 			return err
 		}
-		if (entry.Name() == "dex-connector.json" || entry.Name() == "operation-definitions.json") && !entry.IsDir() {
+		if (entry.Name() == "dex-connector.json" || entry.Name() == "operation-definitions.json" || entry.Name() == "refresh-authorization.json") && !entry.IsDir() {
 			paths = append(paths, path)
 		}
 		return nil

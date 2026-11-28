@@ -347,3 +347,45 @@ func generatedFactory(t *testing.T, packageManifestPath, operationID string) map
 	require.FailNow(t, "operation is missing", operationID)
 	return nil
 }
+
+func TestNativeRefreshAuthorizationLifecycle(t *testing.T) {
+	repositoryRoot := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(repositoryRoot, "catalog.yaml"), []byte("connectors: []\n"), 0o600))
+	const fixtureDirectory = "connectors/acme/directory"
+	writeConnectorFixture(t, repositoryRoot, fixtureDirectory, "example.com/directory/go")
+	manifestPath := filepath.Join(repositoryRoot, fixtureDirectory, "connector.yaml")
+	manifest, err := schema.Decode(strings.NewReader(readFixtureManifest(t)))
+	require.NoError(t, err)
+	manifest.Spec.Languages = &schema.Languages{
+		Java: &schema.LanguagePackage{Version: "v0.1.0", Operations: []string{"appendRows"}},
+		Rust: &schema.LanguagePackage{Version: "v0.1.0", Operations: []string{"appendRows"}},
+	}
+	manifest.Spec.Auth = schema.Auth{}
+	require.NoError(t, json.Unmarshal([]byte(`{"type":"apiKey","refreshable":true,"guide":{"startURL":"https://example.org/setup"},"clientCredentials":{"tokenEndpoint":"https://example.org/token","tokenEndpointAuthMethod":"client_secret_post","tokenExchangeTimeout":"8s","scopes":["directory:read"]}}`), &manifest.Spec.Auth))
+	goPackage := newConnectorGoPackage(manifestPath)
+	files, err := generatedLanguageManifestFiles(manifestPath, manifest, goPackage)
+	require.NoError(t, err)
+	directory := filepath.Dir(manifestPath)
+	javaPath := filepath.Join(javaConnectorManifestDirectory(directory, fixtureDirectory), "refresh-authorization.json")
+	rustPath := filepath.Join(directory, "rust", "src", "generated_refresh_authorization.json")
+	require.NotEmpty(t, files[javaPath])
+	require.Equal(t, files[javaPath], files[rustPath])
+	var authorization map[string]any
+	require.NoError(t, json.Unmarshal(files[rustPath], &authorization))
+	require.NotContains(t, authorization, "guide")
+	grant := authorization["clientCredentials"].(map[string]any)
+	require.Equal(t, "client_secret_post", grant["tokenEndpointAuthMethod"])
+	require.Equal(t, "8s", grant["tokenExchangeTimeout"])
+	require.Equal(t, []any{"directory:read"}, grant["scopes"])
+
+	require.NoError(t, writeGeneratedFiles(files))
+	manifest.Spec.Auth.ClientCredentials = nil
+	files, err = generatedLanguageManifestFiles(manifestPath, manifest, goPackage)
+	require.NoError(t, err)
+	require.NotContains(t, files, javaPath)
+	require.NotContains(t, files, rustPath)
+	stale, err := staleLanguageManifestFiles(manifestPath, files)
+	require.NoError(t, err)
+	require.Contains(t, stale, javaPath)
+	require.Contains(t, stale, rustPath)
+}

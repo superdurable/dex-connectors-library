@@ -1,0 +1,87 @@
+{
+  "getPerson": {
+    "branches": [
+      {
+        "description": "Personio returned the selected person.",
+        "id": "found",
+        "optional": false
+      },
+      {
+        "description": "Personio returned no accessible person for this ID.",
+        "id": "notFound",
+        "optional": true
+      },
+      {
+        "description": "Personio conclusively rejected the lookup.",
+        "id": "providerRejected",
+        "optional": true
+      },
+      {
+        "description": "Personio returned malformed or oversized JSON.",
+        "id": "invalidResponse",
+        "optional": true
+      },
+      {
+        "description": "Local input or connection credentials are invalid.",
+        "id": "defect",
+        "optional": true
+      }
+    ],
+    "operation": {
+      "connectorId": "personio",
+      "operationId": "getPerson"
+    },
+    "stepDefaults": {
+      "executeDurability": 2,
+      "executeMethodTimeout": 30000000000,
+      "executeRetry": {
+        "BackoffCoefficient": 2,
+        "InitialInterval": 1000000000,
+        "MaximumAttempts": 0,
+        "MaximumInterval": 300000000000,
+        "TotalDuration": 3600000000000
+      },
+      "heartbeatTimeout": 0
+    }
+  },
+  "listPersons": {
+    "branches": [
+      {
+        "description": "Personio returned one page of selected persons.",
+        "id": "listed",
+        "optional": false
+      },
+      {
+        "description": "Personio conclusively rejected the list request.",
+        "id": "providerRejected",
+        "optional": true
+      },
+      {
+        "description": "Personio returned malformed or oversized JSON.",
+        "id": "invalidResponse",
+        "optional": true
+      },
+      {
+        "description": "Local filters or connection credentials are invalid.",
+        "id": "defect",
+        "optional": true
+      }
+    ],
+    "operation": {
+      "connectorId": "personio",
+      "operationId": "listPersons"
+    },
+    "stepDefaults": {
+      "executeDurability": 2,
+      "executeMethodTimeout": 30000000000,
+      "executeRetry": {
+        "BackoffCoefficient": 2,
+        "InitialInterval": 1000000000,
+        "MaximumAttempts": 0,
+        "MaximumInterval": 300000000000,
+        "TotalDuration": 3600000000000
+      },
+      "heartbeatTimeout": 0
+    }
+  }
+}
