@@ -1,0 +1,42 @@
+{
+  "listDepartments": {
+    "branches": [
+      {
+        "description": "Hesi returned department metadata.",
+        "id": "listed",
+        "optional": false
+      },
+      {
+        "description": "Hesi rejected credentials or access.",
+        "id": "providerRejected",
+        "optional": true
+      },
+      {
+        "description": "Hesi returned malformed or oversized data.",
+        "id": "invalidResponse",
+        "optional": true
+      },
+      {
+        "description": "Local credentials or pagination are invalid.",
+        "id": "defect",
+        "optional": true
+      }
+    ],
+    "operation": {
+      "connectorId": "hesi",
+      "operationId": "listDepartments"
+    },
+    "stepDefaults": {
+      "executeDurability": 2,
+      "executeMethodTimeout": 30000000000,
+      "executeRetry": {
+        "BackoffCoefficient": 2,
+        "InitialInterval": 1000000000,
+        "MaximumAttempts": 0,
+        "MaximumInterval": 300000000000,
+        "TotalDuration": 3600000000000
+      },
+      "heartbeatTimeout": 0
+    }
+  }
+}

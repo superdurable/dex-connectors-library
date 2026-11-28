@@ -420,6 +420,563 @@
       "input": {},
       "name": "listDepartments-retry-business",
       "operation": "listDepartments"
+    },
+    {
+      "callId": "3bbd10b1-7945-5e04-a913-ddf13ee7dbf1",
+      "exchanges": [
+        {
+          "body": "{\"CODE\":0,\"DATA\":{\"ACCESS_TOKEN\":\"T\u0026+\",\"EXPIRES_IN\":180}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/auth/access_token/get",
+          "query": {
+            "app_id": [
+              "REDACTED_APP_ID"
+            ],
+            "app_secret": [
+              "REDACTED_APP_SECRET"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"CODE\":0,\"DATA\":{\"DATA_LIST\":[{\"DEPT_ID\":\"D\",\"NAME\":\"物流\",\"PARENT_ID\":null,\"leader_id\":\"excluded\"},{\"DEPT_ID\":\"D\",\"NAME\":\"物流\",\"PARENT_ID\":null,\"leader_id\":\"excluded\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/department/list",
+          "query": {
+            "access_token": [
+              "T\u0026+"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "departments": [
+            {
+              "id": "D",
+              "name": "物流",
+              "parentID": ""
+            },
+            {
+              "id": "D",
+              "name": "物流",
+              "parentID": ""
+            }
+          ]
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listDepartments-credential-escape",
+      "operation": "listDepartments"
+    },
+    {
+      "callId": "fb99550a-e012-5fef-a772-e0c4acd0e06f",
+      "exchanges": [
+        {
+          "body": "{\"code\":0.0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/auth/access_token/get",
+          "query": {
+            "app_id": [
+              "REDACTED_APP_ID"
+            ],
+            "app_secret": [
+              "REDACTED_APP_SECRET"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "departments": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listDepartments-invalid-auth-code",
+      "operation": "listDepartments"
+    },
+    {
+      "callId": "48d8bd59-7f0f-5303-832e-1524b2324175",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"access_token\":\"X\",\"expires_in\":179}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/auth/access_token/get",
+          "query": {
+            "app_id": [
+              "REDACTED_APP_ID"
+            ],
+            "app_secret": [
+              "REDACTED_APP_SECRET"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "departments": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listDepartments-expired-authorization",
+      "operation": "listDepartments"
+    },
+    {
+      "callId": "0df0b9df-63d0-54ee-a0de-78fde367a587",
+      "exchanges": [
+        {
+          "body": "{\"code\":1007,\"data\":{\"expires_in\":\"1\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/auth/access_token/get",
+          "query": {
+            "app_id": [
+              "REDACTED_APP_ID"
+            ],
+            "app_secret": [
+              "REDACTED_APP_SECRET"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "departments": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listDepartments-invalid-auth-error",
+      "operation": "listDepartments"
+    },
+    {
+      "callId": "206ef843-ec3f-55fa-9081-d1bcf7e0c50b",
+      "exchanges": [
+        {
+          "body": "{\"code\":1009}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/auth/access_token/get",
+          "query": {
+            "app_id": [
+              "REDACTED_APP_ID"
+            ],
+            "app_secret": [
+              "REDACTED_APP_SECRET"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listDepartments-auth-limited",
+      "operation": "listDepartments"
+    },
+    {
+      "callId": "a6ef3e87-eb3a-523d-a983-1924f9240f58",
+      "exchanges": [
+        {
+          "body": "{\"code\":403}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/auth/access_token/get",
+          "query": {
+            "app_id": [
+              "REDACTED_APP_ID"
+            ],
+            "app_secret": [
+              "REDACTED_APP_SECRET"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "departments": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listDepartments-auth-forbidden",
+      "operation": "listDepartments"
+    },
+    {
+      "callId": "2353ff36-e3f7-52c1-8dde-533fcebc18f5",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"access_token\":\"REDACTED_ACCESS_TOKEN\",\"expires_in\":7200}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/auth/access_token/get",
+          "query": {
+            "app_id": [
+              "REDACTED_APP_ID"
+            ],
+            "app_secret": [
+              "REDACTED_APP_SECRET"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"code\":1007,\"data\":{\"data_list\":[{\"dept_id\":true}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/department/list",
+          "query": {
+            "access_token": [
+              "REDACTED_ACCESS_TOKEN"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "departments": []
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listDepartments-invalid-error-data",
+      "operation": "listDepartments"
+    },
+    {
+      "callId": "47e312a6-3803-5f37-b8e5-6aff04b82fec",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"access_token\":\"REDACTED_ACCESS_TOKEN\",\"expires_in\":7200}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/auth/access_token/get",
+          "query": {
+            "app_id": [
+              "REDACTED_APP_ID"
+            ],
+            "app_secret": [
+              "REDACTED_APP_SECRET"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"code\":1007,\"data\":{\"data_list\":[null]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/department/list",
+          "query": {
+            "access_token": [
+              "REDACTED_ACCESS_TOKEN"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "departments": []
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listDepartments-rejected-null-row",
+      "operation": "listDepartments"
+    },
+    {
+      "callId": "744076c0-e597-5371-b884-b44ea25734e8",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"access_token\":\"REDACTED_ACCESS_TOKEN\",\"expires_in\":7200}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/auth/access_token/get",
+          "query": {
+            "app_id": [
+              "REDACTED_APP_ID"
+            ],
+            "app_secret": [
+              "REDACTED_APP_SECRET"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"code\":0,\"data\":{\"data_list\":[{\"DEPT_ID\":\"D\",\"NAME\":\"界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界\",\"PARENT_ID\":null,\"leader_id\":\"excluded\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/department/list",
+          "query": {
+            "access_token": [
+              "REDACTED_ACCESS_TOKEN"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "departments": []
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listDepartments-utf8-limit",
+      "operation": "listDepartments"
+    },
+    {
+      "callId": "5aa362b4-4ed5-5577-87b3-4d8341d36d3a",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"access_token\":\"REDACTED_ACCESS_TOKEN\",\"expires_in\":7200}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/auth/access_token/get",
+          "query": {
+            "app_id": [
+              "REDACTED_APP_ID"
+            ],
+            "app_secret": [
+              "REDACTED_APP_SECRET"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"code\":0,\"data\":{\"data_list\":[{\"dept_id\":\"dept-1\",\"name\":\"Engineering\",\"parent_id\":\"root\"}]}}",
+          "headers": {
+            "Retry-After": "12"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/department/list",
+          "query": {
+            "access_token": [
+              "REDACTED_ACCESS_TOKEN"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 12000,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listDepartments-second-stage-503",
+      "operation": "listDepartments"
+    },
+    {
+      "callId": "48652cb3-ab96-5ae4-99f5-536ef92e2ba5",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"access_token\":\"REDACTED_ACCESS_TOKEN\",\"expires_in\":7200}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/auth/access_token/get",
+          "query": {
+            "app_id": [
+              "REDACTED_APP_ID"
+            ],
+            "app_secret": [
+              "REDACTED_APP_SECRET"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"code\":0,\"data\":{\"data_list\":[{\"dept_id\":\"dept-1\",\"name\":\"Engineering\",\"parent_id\":\"root\"}]}}",
+          "headers": {
+            "Retry-After": "12"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/department/list",
+          "query": {
+            "access_token": [
+              "REDACTED_ACCESS_TOKEN"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "departments": []
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listDepartments-second-stage-forbidden",
+      "operation": "listDepartments"
     }
   ],
   "schemaVersion": 1

@@ -9,8 +9,10 @@ metadata:
   version: v0.1.0
 spec:
   languages:
-    python: {version: v0.1.0, operations: [listDepartments], triggers: []}
-    typescript: {version: v0.1.0, operations: [listDepartments], triggers: []}
+    java: {version: v0.1.0, operations: [listDepartments], triggers: []}
+    rust: {version: v0.1.0, operations: [listDepartments], triggers: []}
+    python: {version: v0.1.1, operations: [listDepartments], triggers: []}
+    typescript: {version: v0.1.1, operations: [listDepartments], triggers: []}
   provider: weiling
   codegen:
     go:

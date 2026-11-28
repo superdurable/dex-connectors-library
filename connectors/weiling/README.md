@@ -11,3 +11,7 @@ As a Weiling CRM administrator, open **设置 > 开放平台** and copy AppId an
 Run the [department directory example](go/examples/department-directory/README.md). Its synthetic mock is not live Weiling data. Live credentials, permissions, and actual department response compatibility remain unverified.
 
 The [Python package](python/README.md) includes a runnable Dex Worker and Client example and replays the Go-recorded provider scenarios.
+
+## Java and Rust
+
+The [Java Worker](java/examples/io/superdurable/dexconnectors/weiling/DepartmentDirectoryWorker.java) and [Rust Worker](rust/examples/list_departments.rs) list departments using the `weiling` connection. Set `WEILING_APP_ID` and `WEILING_APP_SECRET` in the Worker environment. With Dex running, use `./gradlew departmentDirectoryWorker` in `java/` or `cargo run --example list_departments` in `rust/`. Each operation reuses its token until the credentials change or the token reaches its two-minute refresh window.

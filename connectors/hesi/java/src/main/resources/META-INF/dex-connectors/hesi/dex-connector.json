@@ -1,0 +1,65 @@
+{
+  "connectorId": "hesi",
+  "releaseTag": "connectors/hesi/go/v0.1.0",
+  "package": {
+    "ecosystem": "maven",
+    "name": "io.superdurable:dex-connector-hesi",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newListDepartmentsStep",
+      "kind": "query",
+      "operationId": "listDepartments",
+      "inputType": "ListDepartmentsInput",
+      "description": "List one bounded page of department metadata.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListDepartmentsInput selects a zero-based department window; zero count uses 20.",
+        "properties": {
+          "count": {
+            "description": "Count is the number of departments requested, from 1 to 100.",
+            "type": "integer"
+          },
+          "start": {
+            "description": "Start is the zero-based department offset.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "count",
+          "start"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

@@ -1,0 +1,52 @@
+{
+  "connectorId": "weiling",
+  "releaseTag": "connectors/weiling/go/v0.1.0",
+  "package": {
+    "ecosystem": "cargo",
+    "name": "dex-connector-weiling",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_list_departments_step",
+      "kind": "query",
+      "operationId": "listDepartments",
+      "inputType": "ListDepartmentsInput",
+      "description": "List Weiling CRM department metadata.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListDepartmentsInput requests the accessible department directory without caller-supplied identifiers.",
+        "properties": {},
+        "type": "object"
+      }
+    }
+  ]
+}

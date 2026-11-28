@@ -15,3 +15,7 @@ The [department directory Flow](go/examples/department-directory/) is a runnable
 The [Python department directory Flow](python/examples/department_directory/) uses the same static `hesi` connection and `listDepartments` contract. Its Go-recorded replay and real Dex retry test use synthetic credentials and provider responses. Live Hesi enterprise authorization and department data remain unverified.
 
 The [TypeScript department directory Flow](typescript/examples/department-list/) replays the same Go scenarios and verifies retry and persistence against a real Dex Worker and Client.
+
+## Java and Rust
+
+The [Java Worker](java/examples/io/superdurable/dexconnectors/hesi/DepartmentDirectoryWorker.java) and [Rust Worker](rust/examples/list_departments.rs) fetch the first department page using the `hesi` connection. Set `HESI_APP_KEY` and `HESI_APP_SECURITY` in the Worker environment. With Dex running, use `./gradlew departmentDirectoryWorker` in `java/` or `cargo run --example list_departments` in `rust/`. Each query exchanges the application credentials for a fresh access token before requesting the page.

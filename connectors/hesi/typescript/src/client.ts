@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { SecretString, newQueryBranch, newQueryRetry, type Call, type CredentialProvider, type Failure, type Query, type QueryAttempt, type QueryDefinition } from '@superdurable/connectors-sdk';
+import { integerCode, parseBalanceResponse } from './provider-json.js';
 import { BodyTooLargeError, parseRetryAfter, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ListDepartmentsDefinition } from './generated/definitions.js';
 import type { Config, Credentials, ListDepartmentsInput, ListDepartmentsOutput } from './generated/models.js';
@@ -54,19 +55,19 @@ export class ListDepartmentsOperation implements Query<ListDepartmentsInput, Lis
 
   /** Keep the access token out of Flow output, receipts, and failures. */
   async invoke(call: Call, input: ListDepartmentsInput): Promise<QueryAttempt<ListDepartmentsOutput>> {
-    if (!input || !Number.isSafeInteger(input.start) || !Number.isSafeInteger(input.count)) return branch('defect', 'VALIDATION', 'start or count is outside the supported range');
-    const count = input.count || 20;
-    if (input.start < 0 || input.start > 1_000_000 || count < 1 || count > 100) return branch('defect', 'VALIDATION', 'start or count is outside the supported range');
     let credentials: Credentials;
     try { credentials = await this.client.credentials.resolve(call, call.context.cancellationSignal); }
     catch { return branch('defect', 'AUTHENTICATION', 'Hesi credentials are unavailable or invalid'); }
     const appKey = credentials.appKey instanceof SecretString ? credentials.appKey.reveal() : '';
     const appSecurity = credentials.appSecurity instanceof SecretString ? credentials.appSecurity.reveal() : '';
     if (!isValidCredential(appKey) || !isValidCredential(appSecurity)) return branch('defect', 'AUTHENTICATION', 'Hesi credentials are unavailable or invalid');
+    if (!input || !Number.isSafeInteger(input.start) || !Number.isSafeInteger(input.count)) return branch('defect', 'VALIDATION', 'start or count is outside the supported range');
+    const count = input.count || 20;
+    if (input.start < 0 || input.start > 1_000_000 || count < 1 || count > 100) return branch('defect', 'VALIDATION', 'start or count is outside the supported range');
     const authResult = await this.sendStage(call, { url: `${this.client.baseUrl}/api/openapi/v1/auth/getAccessToken`, method: 'POST', headers: { Accept: 'application/json', 'Content-Type': 'application/json' }, body: new TextEncoder().encode(JSON.stringify({ appKey, appSecurity })), timeoutMs: this.client.timeoutMs, maxResponseBytes: this.client.maxResponseBytes, addressPolicy: 'publicHTTPS', signal: call.context.cancellationSignal }, 'authorization');
     if (authResult.attempt) return authResult.attempt;
     let token: unknown;
-    try { const document = parseJSON(authResult.body); token = isRecord(document) && isRecord(document.value) ? document.value.accessToken : undefined; }
+    try { const document = parseJSON(authResult.body); token = isRecord(document) && isRecord(document.value) ? document.value.accesstoken : undefined; }
     catch { return branch('invalidResponse', 'PROTOCOL', 'Hesi returned invalid authorization data'); }
     if (typeof token !== 'string' || !isValidCredential(token)) return branch('invalidResponse', 'PROTOCOL', 'Hesi returned invalid authorization data');
     const url = new URL(`${this.client.baseUrl}/api/openapi/v1/departments`);
@@ -77,13 +78,15 @@ export class ListDepartmentsOperation implements Query<ListDepartmentsInput, Lis
     if (departmentResult.attempt) return departmentResult.attempt;
     try {
       const document = parseJSON(departmentResult.body);
-      if (!isRecord(document) || !Number.isSafeInteger(document.count) || (document.count as number) < 0 || !Array.isArray(document.items) || document.items.length > count) throw new TypeError('invalid page');
+      if (!isRecord(document) || !Array.isArray(document.items) || document.items.length > count) throw new TypeError('invalid page');
+      const reported = document.count == null ? 0n : integerCode(document.count);
+      if (reported === undefined || reported < 0n || reported > BigInt(Number.MAX_SAFE_INTEGER)) throw new TypeError('invalid count');
       const departments: NonNullable<ListDepartmentsOutput['departments']> = [];
       for (const item of document.items) {
-        if (!isRecord(item) || typeof item.id !== 'string' || !item.id || item.id.length > 256 || typeof item.name !== 'string' || !item.name || item.name.length > 512 || (item.code !== undefined && (typeof item.code !== 'string' || item.code.length > 256)) || typeof item.active !== 'boolean') throw new TypeError('invalid department');
+        if (!isRecord(item) || typeof item.id !== 'string' || !item.id || Buffer.byteLength(item.id) > 256 || typeof item.name !== 'string' || !item.name || Buffer.byteLength(item.name) > 512 || (item.code != null && (typeof item.code !== 'string' || Buffer.byteLength(item.code) > 256)) || typeof item.active !== 'boolean') throw new TypeError('invalid department');
         departments.push({ id: item.id, name: item.name, code: item.code ?? '', active: item.active });
       }
-      const total = document.count as number;
+      const total = Number(reported);
       let nextStart = 0;
       if (input.start + departments.length < total) {
         if (departments.length === 0 || input.start + departments.length > 1_000_000) throw new TypeError('pagination cannot advance');
@@ -98,6 +101,7 @@ export class ListDepartmentsOperation implements Query<ListDepartmentsInput, Lis
       const response = await this.client.send(request);
       if (response.status === 429) return { attempt: retry('RATE_LIMIT', `Hesi ${stage} request rate limited`, retryAfter(response.headers)) };
       if (response.status === 408 || response.status >= 500) return { attempt: retry('AVAILABILITY', `Hesi ${stage} temporarily unavailable`, retryAfter(response.headers)) };
+      if (response.body.byteLength > this.client.maxResponseBytes) return { attempt: branch('invalidResponse', 'RESPONSE_TOO_LARGE', 'Hesi response exceeded the configured limit') };
       if (response.status !== 200) return { attempt: branch('providerRejected', response.status === 401 || response.status === 403 ? 'AUTHENTICATION' : 'PROVIDER_REJECTION', `Hesi rejected ${stage} with HTTP ${response.status}`) };
       return { body: response.body };
     } catch (error) {
@@ -111,8 +115,8 @@ export class ListDepartmentsOperation implements Query<ListDepartmentsInput, Lis
   }
 }
 
-function parseJSON(body: Uint8Array | undefined): unknown { if (!body) throw new TypeError('missing body'); return JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(body)) as unknown; }
-function retryAfter(headers: ProviderResponse['headers']): number { const value = headers['retry-after']; return parseRetryAfter(Array.isArray(value) ? value[0] ?? '' : value ?? ''); }
+function parseJSON(body: Uint8Array | undefined): unknown { if (!body) throw new TypeError('missing body'); return parseBalanceResponse(body); }
+function retryAfter(headers: ProviderResponse['headers']): number { const value = Object.entries(headers).find(([name]) => name.toLowerCase() === 'retry-after')?.[1]; return parseRetryAfter(Array.isArray(value) ? value[0] ?? '' : value ?? ''); }
 function isRecord(value: unknown): value is Record<string, unknown> { return typeof value === 'object' && value !== null && !Array.isArray(value); }
 function isValidCredential(value: string): boolean { return value.length > 0 && value.length <= 2048 && /^[!-~]+$/.test(value); }
 function failure(kind: Failure['kind'], message: string): Failure { return { provider: 'hesi', operation: 'listDepartments', kind, message }; }

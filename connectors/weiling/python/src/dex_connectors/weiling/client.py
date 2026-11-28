@@ -159,27 +159,28 @@ class ListDepartmentsOperation:
             if not isinstance(result, bytes):
                 return result
             try:
-                wire = json.loads(result)
+                wire = json.loads(
+                    result, object_pairs_hook=lambda pairs: {name.lower(): value for name, value in pairs}
+                )
             except (UnicodeDecodeError, ValueError):
                 return self._branch("invalidResponse", FailureKind.PROTOCOL)
-            if (
-                not isinstance(wire, dict)
-                or not isinstance(wire.get("code"), int)
-                or isinstance(wire["code"], bool)
+            if not isinstance(wire, dict) or not _is_wire_integer(wire.get("code")):
+                return self._branch("invalidResponse", FailureKind.PROTOCOL)
+            data = wire.get("data")
+            if data is not None and not isinstance(data, dict):
+                return self._branch("invalidResponse", FailureKind.PROTOCOL)
+            token = (data or {}).get("access_token")
+            expires_in = (data or {}).get("expires_in")
+            if (token is not None and not isinstance(token, str)) or (
+                expires_in is not None and not _is_wire_integer(expires_in)
             ):
                 return self._branch("invalidResponse", FailureKind.PROTOCOL)
             if wire["code"] != 0:
                 return self._provider_code(wire["code"])
-            data = wire.get("data")
-            if not isinstance(data, dict):
-                return self._branch("invalidResponse", FailureKind.PROTOCOL)
-            token = data.get("access_token")
-            expires_in = data.get("expires_in")
             if (
                 not isinstance(token, str)
                 or not _valid_credential(token)
                 or not isinstance(expires_in, int)
-                or isinstance(expires_in, bool)
                 or not 180 <= expires_in <= 86400
             ):
                 return self._branch("invalidResponse", FailureKind.PROTOCOL)
@@ -212,37 +213,40 @@ class ListDepartmentsOperation:
         if not isinstance(result, bytes):
             return result
         try:
-            wire = json.loads(result)
+            wire = json.loads(
+                result, object_pairs_hook=lambda pairs: {name.lower(): value for name, value in pairs}
+            )
         except (UnicodeDecodeError, ValueError):
             return self._branch("invalidResponse", FailureKind.PROTOCOL)
-        if (
-            not isinstance(wire, dict)
-            or not isinstance(wire.get("code"), int)
-            or isinstance(wire["code"], bool)
-        ):
+        if not isinstance(wire, dict) or not _is_wire_integer(wire.get("code")):
             return self._branch("invalidResponse", FailureKind.PROTOCOL)
-        if wire["code"] != 0:
-            return self._provider_code(wire["code"])
         data = wire.get("data")
-        if (
-            not isinstance(data, dict)
-            or not isinstance(data.get("data_list"), list)
-            or len(data["data_list"]) > 10000
-        ):
+        if data is not None and not isinstance(data, dict):
+            return self._branch("invalidResponse", FailureKind.PROTOCOL)
+        rows = (data or {}).get("data_list")
+        if rows is not None and not isinstance(rows, list):
             return self._branch("invalidResponse", FailureKind.PROTOCOL)
         departments: list[DepartmentSummary] = []
-        for item in data["data_list"]:
-            if not isinstance(item, dict):
+        for row in rows or []:
+            if row is None:
+                row = {}
+            if not isinstance(row, dict):
                 return self._branch("invalidResponse", FailureKind.PROTOCOL)
-            identifier, name, parent = item.get("dept_id"), item.get("name"), item.get("parent_id", "")
-            if (
-                not isinstance(identifier, str)
-                or not 0 < len(identifier) <= 256
-                or not isinstance(name, str)
-                or not 0 < len(name) <= 512
-                or not isinstance(parent, str)
-                or len(parent) > 256
-            ):
+            fields = tuple(row.get(key) for key in ("dept_id", "name", "parent_id"))
+            if any(value is not None and not isinstance(value, str) for value in fields):
                 return self._branch("invalidResponse", FailureKind.PROTOCOL)
-            departments.append(DepartmentSummary(id=identifier, name=name, parent_id=parent))
+            departments.append(DepartmentSummary(*(value or "" for value in fields)))
+        if wire["code"] != 0:
+            return self._provider_code(wire["code"])
+        if rows is None or any(
+            not 0 < len(row.id.encode()) <= 256
+            or not 0 < len(row.name.encode()) <= 512
+            or len(row.parent_id.encode()) > 256
+            for row in departments
+        ):
+            return self._branch("invalidResponse", FailureKind.PROTOCOL)
         return QueryAttempt.branch_result("listed", ListDepartmentsOutput(tuple(departments)), Receipt())
+
+
+def _is_wire_integer(value: object) -> bool:
+    return type(value) is int and -(1 << 63) <= value < (1 << 63)

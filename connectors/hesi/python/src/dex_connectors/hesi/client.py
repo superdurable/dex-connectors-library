@@ -61,7 +61,11 @@ def _valid_credential(value: object) -> bool:
 
 
 def _decode_json(body: bytes) -> Any:
-    return json.loads(body, parse_constant=lambda _: (_ for _ in ()).throw(ValueError()))
+    return json.loads(
+        body,
+        object_pairs_hook=lambda pairs: {name.lower(): value for name, value in pairs},
+        parse_constant=lambda _: (_ for _ in ()).throw(ValueError()),
+    )
 
 
 class Client:
@@ -142,7 +146,7 @@ class ListDepartmentsOperation:
             return auth_attempt
         try:
             auth_wire = _decode_json(auth_body)
-            token = auth_wire["value"]["accessToken"]
+            token = auth_wire["value"]["accesstoken"]
             if not _valid_credential(token):
                 raise ValueError("invalid access token")
         except (ValueError, UnicodeDecodeError, KeyError, TypeError, IndexError):
@@ -200,19 +204,30 @@ class ListDepartmentsOperation:
 def _decode_departments(body: bytes, start: int, count: int) -> QueryAttempt[ListDepartmentsOutput]:
     try:
         wire = _decode_json(body)
-        total, items = wire["count"], wire["items"]
-        if type(total) is not int or total < 0 or not isinstance(items, list) or len(items) > count:
+        if not isinstance(wire, dict):
+            raise ValueError("invalid department page")
+        total, items = wire.get("count"), wire["items"]
+        if total is None:
+            total = 0
+        if (
+            type(total) is not int
+            or not 0 <= total < (1 << 63)
+            or not isinstance(items, list)
+            or len(items) > count
+        ):
             raise ValueError("invalid page")
         departments = []
         for item in items:
-            department_id, name, code, active = item["id"], item["name"], item.get("code", ""), item["active"]
+            department_id, name, code, active = item["id"], item["name"], item.get("code"), item["active"]
+            if code is None:
+                code = ""
             if (
                 not isinstance(department_id, str)
-                or not 0 < len(department_id) <= 256
+                or not 0 < len(department_id.encode()) <= 256
                 or not isinstance(name, str)
-                or not 0 < len(name) <= 512
+                or not 0 < len(name.encode()) <= 512
                 or not isinstance(code, str)
-                or len(code) > 256
+                or len(code.encode()) > 256
                 or type(active) is not bool
             ):
                 raise ValueError("invalid department")
