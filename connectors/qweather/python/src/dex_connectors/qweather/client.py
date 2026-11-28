@@ -4,6 +4,8 @@
 
 import json
 import math
+import re
+from calendar import monthrange
 from datetime import UTC, datetime
 
 import httpx
@@ -57,6 +59,29 @@ def _valid_host(host: str) -> bool:
     )
 
 
+def _fields_by_name(fields: dict[str, object]) -> dict[str, object]:
+    return {name.lower(): value for name, value in fields.items()}
+
+
+def _valid_time(text: str) -> bool:
+    parts = re.fullmatch(
+        r"([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{1,2}):([0-9]{2})(?::([0-9]{2})(?:[.,][0-9]+)?)?(?:Z|[+-]([0-9]{2}):([0-9]{2}))",
+        text,
+    )
+    if not parts:
+        return False
+    year, month, day, hour, minute, second, zone_hour, zone_minute = (int(v or 0) for v in parts.groups())
+    return (
+        1 <= month <= 12
+        and 1 <= day <= monthrange(year, month)[1]
+        and hour < 24
+        and minute < 60
+        and second < 60
+        and zone_hour <= 24
+        and zone_minute <= 60
+    )
+
+
 class Client:
     """Own QWeather HTTP limits and resolve the account host and key per attempt."""
 
@@ -104,15 +129,12 @@ class GetCurrentWeatherOperation:
         self, call: Call, input: GetCurrentWeatherInput
     ) -> QueryAttempt[GetCurrentWeatherOutput]:
         """Validate coordinates and classify the one provider request."""
-        if not isinstance(input, GetCurrentWeatherInput) or not all(
-            (
-                isinstance(input.latitude, (int, float)),
-                isinstance(input.longitude, (int, float)),
-                math.isfinite(input.latitude),
-                math.isfinite(input.longitude),
-                -90 <= input.latitude <= 90,
-                -180 <= input.longitude <= 180,
-            )
+        if (
+            not isinstance(input, GetCurrentWeatherInput)
+            or type(input.latitude) not in (int, float)
+            or type(input.longitude) not in (int, float)
+            or not -90 <= input.latitude <= 90
+            or not -180 <= input.longitude <= 180
         ):
             return _branch("defect", FailureKind.VALIDATION, "latitude or longitude is invalid")
         try:
@@ -146,11 +168,14 @@ class GetCurrentWeatherOperation:
                     "invalidResponse", FailureKind.RESPONSE_TOO_LARGE, "QWeather response exceeded limit"
                 )
             except ProviderTransportError:
+                if response.status_code == 429:
+                    return _retry(FailureKind.RATE_LIMIT, "QWeather rate limited the request", delay)
                 return _retry(FailureKind.AVAILABILITY, "QWeather response was interrupted")
             if response.status_code == 429:
                 try:
-                    problem = json.loads(body)
-                    if "over-monthly-limit" in str(problem.get("error", {}).get("type", "")).lower():
+                    problem = json.loads(body, object_hook=_fields_by_name)
+                    problem_type = problem.get("error", {}).get("type")
+                    if isinstance(problem_type, str) and "over-monthly-limit" in problem_type.lower():
                         return _retry(FailureKind.QUOTA_EXHAUSTED, "QWeather monthly limit reached", delay)
                 except (ValueError, AttributeError, TypeError):
                     pass
@@ -169,26 +194,34 @@ class GetCurrentWeatherOperation:
                     "providerRejected", kind, f"QWeather rejected with HTTP {response.status_code}"
                 )
             try:
-                wire = json.loads(body, parse_constant=lambda _: (_ for _ in ()).throw(ValueError()))
+                wire = json.loads(
+                    body,
+                    object_hook=_fields_by_name,
+                    parse_constant=lambda _: (_ for _ in ()).throw(ValueError()),
+                )
                 condition, temperature = wire["condition"], wire["temperature"]
                 text, code = condition["text"], condition["code"]
                 value, unit = temperature["value"], temperature["unit"]
-                valid_time = wire["validTime"]
+                valid_time = wire["validtime"]
                 attributions = wire["metadata"]["attributions"]
                 if not all(isinstance(x, str) and x for x in (text, code, unit, valid_time)):
                     raise ValueError("invalid weather strings")
-                if not isinstance(value, (int, float)) or not math.isfinite(value):
+                if type(value) not in (int, float) or not math.isfinite(value):
                     raise ValueError("invalid temperature")
-                datetime.fromisoformat(valid_time.replace("Z", "+00:00"))
+                if not _valid_time(valid_time):
+                    raise ValueError("invalid observation time")
                 if (
                     not isinstance(attributions, list)
                     or not 1 <= len(attributions) <= 16
                     or any(
-                        not isinstance(x, str) or not x or len(x) > 500 or key in x or host in x
+                        not isinstance(x, str)
+                        or not x
+                        or len(x.encode("utf-8")) > 500
+                        or key in x
+                        or host in x
                         for x in attributions
                     )
-                    or key in text
-                    or host in text
+                    or any(key in field or host in field for field in (text, code, unit, valid_time))
                 ):
                     raise ValueError("invalid attributions")
                 output = GetCurrentWeatherOutput(

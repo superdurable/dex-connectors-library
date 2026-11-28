@@ -260,6 +260,1596 @@
       },
       "name": "getCurrentWeather-defect",
       "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "e1d52be1-79d6-5288-a130-816c949e7ff1",
+      "exchanges": [
+        {
+          "body": "{\"Error\":{\"TYPE\":\"https://example.test/OVER-MONTHLY-LIMIT\"}}",
+          "headers": {
+            "Retry-After": "8"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/weather/v1/current/39.920000/116.410000",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Qw-Api-Key": [
+              "private-test-key"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "QUOTA_EXHAUSTED",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 8000,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 39.92,
+        "longitude": 116.41
+      },
+      "name": "getCurrentWeather-monthly",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "aa2bcf87-b97a-57c1-b715-993ba8abdea5",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {
+            "Retry-After": "8"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/weather/v1/current/39.920000/116.410000",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Qw-Api-Key": [
+              "private-test-key"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 8000,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 39.92,
+        "longitude": 116.41
+      },
+      "name": "getCurrentWeather-malformedRate",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "d5120d9a-6789-5d11-91c6-9fa1817c5ad2",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"type\":[\"over-monthly-limit\"]}}",
+          "headers": {
+            "Retry-After": "8"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/weather/v1/current/39.920000/116.410000",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Qw-Api-Key": [
+              "private-test-key"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 8000,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 39.92,
+        "longitude": 116.41
+      },
+      "name": "getCurrentWeather-wrongProblemType",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "894ee2ea-b880-5c6f-9e8f-d0025ad93b80",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"type\":\"over-monthly-limit\"}}",
+          "headers": {
+            "Retry-After": "8"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/weather/v1/current/39.920000/116.410000",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Qw-Api-Key": [
+              "private-test-key"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 8000,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 39.92,
+        "longitude": 116.41
+      },
+      "name": "getCurrentWeather-rate-smallLimit",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "29274c4b-4512-5369-ad0f-7863f2491914",
+      "exchanges": [
+        {
+          "body": "{\"metadata\":{\"attributions\":[\"https://developer.qweather.com/attribution.html\"]},\"validTime\":\"2024-05-31T03:15Z\",\"condition\":{\"text\":\"Few Clouds\",\"code\":\"102\"},\"temperature\":{\"value\":31.71,\"unit\":\"°C\"},\"humidity\":0.69}",
+          "headers": {
+            "Retry-After": "8"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/weather/v1/current/39.920000/116.410000",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Qw-Api-Key": [
+              "private-test-key"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "attributions": [],
+          "conditionCode": "",
+          "conditionText": "",
+          "temperatureUnit": "",
+          "temperatureValue": 0,
+          "validTime": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 39.92,
+        "longitude": 116.41
+      },
+      "name": "getCurrentWeather-auth-smallLimit",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "5e7394a8-1403-5aaf-b487-83f903e1835c",
+      "exchanges": [
+        {
+          "body": "{\"metadata\":{\"attributions\":[\"https://developer.qweather.com/attribution.html\"]},\"validTime\":\"2024-05-31T03:15Z\",\"condition\":{\"text\":\"Few Clouds\",\"code\":\"102\"},\"temperature\":{\"value\":31.71,\"unit\":\"°C\"},\"humidity\":0.69}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/weather/v1/current/39.920000/116.410000",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Qw-Api-Key": [
+              "private-test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "attributions": [],
+          "conditionCode": "",
+          "conditionText": "",
+          "temperatureUnit": "",
+          "temperatureValue": 0,
+          "validTime": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 39.92,
+        "longitude": 116.41
+      },
+      "name": "getCurrentWeather-weather-smallLimit",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "2bbeeeca-1071-5b21-82ee-8eeaaf0dbf84",
+      "exchanges": [
+        {
+          "body": "{\"metadata\":{\"attributions\":[\"https://developer.qweather.com/attribution.html\"]},\"validTime\":\"2024-05-31T03:15Z\",\"condition\":{\"text\":\"Few Clouds\",\"code\":\"102\"},\"temperature\":{\"value\":31.71,\"unit\":\"°C\"},\"humidity\":0.69}",
+          "headers": {
+            "Retry-After": "8"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/weather/v1/current/39.920000/116.410000",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Qw-Api-Key": [
+              "private-test-key"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 8000,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 39.92,
+        "longitude": 116.41
+      },
+      "name": "getCurrentWeather-unavailable-smallLimit",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "30fa4e4b-759f-544c-82c5-b859534de3df",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "8"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/weather/v1/current/39.920000/116.410000",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Qw-Api-Key": [
+              "private-test-key"
+            ]
+          },
+          "status": 408
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 8000,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 39.92,
+        "longitude": 116.41
+      },
+      "name": "getCurrentWeather-timeout",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "dd4a1249-b21d-5c2a-b32e-0b6cfc86f287",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "8"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/weather/v1/current/39.920000/116.410000",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Qw-Api-Key": [
+              "private-test-key"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "attributions": [],
+          "conditionCode": "",
+          "conditionText": "",
+          "temperatureUnit": "",
+          "temperatureValue": 0,
+          "validTime": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 39.92,
+        "longitude": 116.41
+      },
+      "name": "getCurrentWeather-forbidden",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "3ccffcd4-1dd8-557e-818d-54f9cef2e383",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "8"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/weather/v1/current/39.920000/116.410000",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Qw-Api-Key": [
+              "private-test-key"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "attributions": [],
+          "conditionCode": "",
+          "conditionText": "",
+          "temperatureUnit": "",
+          "temperatureValue": 0,
+          "validTime": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 39.92,
+        "longitude": 116.41
+      },
+      "name": "getCurrentWeather-badRequest",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "bab20a4a-6e1a-53c7-a952-ff06b33b23ae",
+      "exchanges": [
+        {
+          "body": "{\"metadata\":{\"attributions\":[\"https://developer.qweather.com/attribution.html\"]},\"validTime\":\"2024-05-31T03:15Z\",\"condition\":{\"text\":\"Few Clouds\",\"code\":\"102\"},\"temperature\":{\"value\":31.71,\"unit\":\"°C\"},\"humidity\":0.69}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/weather/v1/current/0.007812/-0.023438",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Qw-Api-Key": [
+              "private-test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "attributions": [
+            "https://developer.qweather.com/attribution.html"
+          ],
+          "conditionCode": "102",
+          "conditionText": "Few Clouds",
+          "temperatureUnit": "°C",
+          "temperatureValue": 31.71,
+          "validTime": "2024-05-31T03:15Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 0.0078125,
+        "longitude": -0.0234375
+      },
+      "name": "getCurrentWeather-ties",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "6f0b25b1-d6d5-591f-8cf2-36c98a76c835",
+      "exchanges": [
+        {
+          "body": "{\"metadata\":{\"attributions\":[\"https://developer.qweather.com/attribution.html\"]},\"validTime\":\"2024-05-31T03:15Z\",\"condition\":{\"text\":\"Few Clouds\",\"code\":\"102\"},\"temperature\":{\"value\":31.71,\"unit\":\"°C\"},\"humidity\":0.69}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/weather/v1/current/-0.000000/0.000001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Qw-Api-Key": [
+              "private-test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "attributions": [
+            "https://developer.qweather.com/attribution.html"
+          ],
+          "conditionCode": "102",
+          "conditionText": "Few Clouds",
+          "temperatureUnit": "°C",
+          "temperatureValue": 31.71,
+          "validTime": "2024-05-31T03:15Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": -4e-7,
+        "longitude": 6e-7
+      },
+      "name": "getCurrentWeather-negativeSmall",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "7e2b41c6-2055-546a-b114-c9aabd7d8583",
+      "exchanges": [
+        {
+          "body": "{\"metadata\":{\"attributions\":[\"https://developer.qweather.com/attribution.html\"]},\"validTime\":\"2024-05-31T03:15Z\",\"condition\":{\"text\":\"Few Clouds\",\"code\":\"102\"},\"temperature\":{\"value\":31.71,\"unit\":\"°C\"},\"humidity\":0.69}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/weather/v1/current/-90.000000/180.000000",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Qw-Api-Key": [
+              "private-test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "attributions": [
+            "https://developer.qweather.com/attribution.html"
+          ],
+          "conditionCode": "102",
+          "conditionText": "Few Clouds",
+          "temperatureUnit": "°C",
+          "temperatureValue": 31.71,
+          "validTime": "2024-05-31T03:15Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": -90,
+        "longitude": 180
+      },
+      "name": "getCurrentWeather-poles",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "6ada6bdb-919f-5cb6-9659-ecff3f9dfbf1",
+      "exchanges": [
+        {
+          "body": "{\"metadata\":{\"attributions\":[\"https://developer.qweather.com/attribution.html\"]},\"validTime\":\"2024-05-31T03:15Z\",\"condition\":{\"text\":\"Few Clouds\",\"code\":\"102\"},\"temperature\":{\"value\":31.71,\"unit\":\"°C\"},\"humidity\":0.69}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/weather/v1/current/90.000000/-180.000000",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Qw-Api-Key": [
+              "private-test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "attributions": [
+            "https://developer.qweather.com/attribution.html"
+          ],
+          "conditionCode": "102",
+          "conditionText": "Few Clouds",
+          "temperatureUnit": "°C",
+          "temperatureValue": 31.71,
+          "validTime": "2024-05-31T03:15Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 90,
+        "longitude": -180
+      },
+      "name": "getCurrentWeather-antimeridian",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "dcca627e-d008-547a-9a35-fb03d43844c9",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "attributions": [],
+          "conditionCode": "",
+          "conditionText": "",
+          "temperatureUnit": "",
+          "temperatureValue": 0,
+          "validTime": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 1,
+        "longitude": 180.1
+      },
+      "name": "getCurrentWeather-invalidLongitude",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "85525b65-071f-5895-aa40-4b813551f9f6",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "attributions": [],
+          "conditionCode": "",
+          "conditionText": "",
+          "temperatureUnit": "",
+          "temperatureValue": 0,
+          "validTime": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 39.92,
+        "longitude": 116.41
+      },
+      "name": "getCurrentWeather-missingCredential",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "df86c662-2f11-53b8-86c9-8c6c53166cb1",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "attributions": [],
+          "conditionCode": "",
+          "conditionText": "",
+          "temperatureUnit": "",
+          "temperatureValue": 0,
+          "validTime": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 39.92,
+        "longitude": 116.41
+      },
+      "name": "getCurrentWeather-invalidHost",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "e836886f-484b-5f0b-95fd-ccbd8f61e55c",
+      "exchanges": [
+        {
+          "body": "{\"metadata\":{\"attributions\":[\"界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界\"]},\"validTime\":\"2024-05-31T03:15Z\",\"condition\":{\"text\":\"Few Clouds\",\"code\":\"102\"},\"temperature\":{\"value\":31.71,\"unit\":\"°C\"},\"humidity\":0.69}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/weather/v1/current/39.920000/116.410000",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Qw-Api-Key": [
+              "private-test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "attributions": [],
+          "conditionCode": "",
+          "conditionText": "",
+          "temperatureUnit": "",
+          "temperatureValue": 0,
+          "validTime": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 39.92,
+        "longitude": 116.41
+      },
+      "name": "getCurrentWeather-longAttribution",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "8538e6e3-c17d-5981-9d1c-889dfd48ca45",
+      "exchanges": [
+        {
+          "body": "{\"metadata\":{\"attributions\":[\"界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界ab\"]},\"validTime\":\"2024-05-31T03:15Z\",\"condition\":{\"text\":\"Few Clouds\",\"code\":\"102\"},\"temperature\":{\"value\":31.71,\"unit\":\"°C\"},\"humidity\":0.69}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/weather/v1/current/39.920000/116.410000",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Qw-Api-Key": [
+              "private-test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "attributions": [
+            "界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界ab"
+          ],
+          "conditionCode": "102",
+          "conditionText": "Few Clouds",
+          "temperatureUnit": "°C",
+          "temperatureValue": 31.71,
+          "validTime": "2024-05-31T03:15Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 39.92,
+        "longitude": 116.41
+      },
+      "name": "getCurrentWeather-maxAttribution",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "84b4fc8b-a9f8-5573-b245-bbb658075ece",
+      "exchanges": [
+        {
+          "body": "{\"metadata\":{\"attributions\":[\"a\",\"a\",\"a\",\"a\",\"a\",\"a\",\"a\",\"a\",\"a\",\"a\",\"a\",\"a\",\"a\",\"a\",\"a\",\"a\",\"a\"]},\"validTime\":\"2024-05-31T03:15Z\",\"condition\":{\"text\":\"Few Clouds\",\"code\":\"102\"},\"temperature\":{\"value\":31.71,\"unit\":\"°C\"},\"humidity\":0.69}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/weather/v1/current/39.920000/116.410000",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Qw-Api-Key": [
+              "private-test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "attributions": [],
+          "conditionCode": "",
+          "conditionText": "",
+          "temperatureUnit": "",
+          "temperatureValue": 0,
+          "validTime": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 39.92,
+        "longitude": 116.41
+      },
+      "name": "getCurrentWeather-manyAttributions",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "0275ddbd-545f-5263-b310-466e89743280",
+      "exchanges": [
+        {
+          "body": "{\"metadata\":{\"attributions\":[\"0\",\"1\",\"2\",\"3\",\"4\",\"5\",\"6\",\"7\",\"8\",\"9\",\"10\",\"11\",\"12\",\"13\",\"14\",\"15\"]},\"validTime\":\"2024-05-31T03:15Z\",\"condition\":{\"text\":\"Few Clouds\",\"code\":\"102\"},\"temperature\":{\"value\":31.71,\"unit\":\"°C\"},\"humidity\":0.69}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/weather/v1/current/39.920000/116.410000",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Qw-Api-Key": [
+              "private-test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "attributions": [
+            "0",
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "10",
+            "11",
+            "12",
+            "13",
+            "14",
+            "15"
+          ],
+          "conditionCode": "102",
+          "conditionText": "Few Clouds",
+          "temperatureUnit": "°C",
+          "temperatureValue": 31.71,
+          "validTime": "2024-05-31T03:15Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 39.92,
+        "longitude": 116.41
+      },
+      "name": "getCurrentWeather-orderedAttributions",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "60dea92d-a2bc-561b-a035-8feafe8b8ab1",
+      "exchanges": [
+        {
+          "body": "{\"metadata\":{\"attributions\":[]},\"validTime\":\"2024-05-31T03:15Z\",\"condition\":{\"text\":\"Few Clouds\",\"code\":\"102\"},\"temperature\":{\"value\":31.71,\"unit\":\"°C\"},\"humidity\":0.69}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/weather/v1/current/39.920000/116.410000",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Qw-Api-Key": [
+              "private-test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "attributions": [],
+          "conditionCode": "",
+          "conditionText": "",
+          "temperatureUnit": "",
+          "temperatureValue": 0,
+          "validTime": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 39.92,
+        "longitude": 116.41
+      },
+      "name": "getCurrentWeather-missingAttributions",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "6ce5b5c9-d4dd-59fa-a0a2-a24184af8316",
+      "exchanges": [
+        {
+          "body": "{\"metadata\":{\"attributions\":[\"https://developer.qweather.com/attribution.html\"]},\"validTime\":\"2024-05-31T03:15Z\",\"condition\":{\"text\":\"echo private-test-key\",\"code\":\"102\"},\"temperature\":{\"value\":31.71,\"unit\":\"°C\"},\"humidity\":0.69}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/weather/v1/current/39.920000/116.410000",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Qw-Api-Key": [
+              "private-test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "attributions": [],
+          "conditionCode": "",
+          "conditionText": "",
+          "temperatureUnit": "",
+          "temperatureValue": 0,
+          "validTime": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 39.92,
+        "longitude": 116.41
+      },
+      "name": "getCurrentWeather-keyEcho",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "5933d336-b20a-5125-8e46-b06959e599ee",
+      "exchanges": [
+        {
+          "body": "{\"metadata\":{\"attributions\":[\"https://developer.qweather.com/attribution.html\"]},\"validTime\":\"2024-05-31T03:15Z\",\"condition\":{\"text\":\"Few Clouds\",\"code\":\"102\"},\"temperature\":{\"value\":31.71,\"unit\":\"private-test-key\"},\"humidity\":0.69}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/weather/v1/current/39.920000/116.410000",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Qw-Api-Key": [
+              "private-test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "attributions": [],
+          "conditionCode": "",
+          "conditionText": "",
+          "temperatureUnit": "",
+          "temperatureValue": 0,
+          "validTime": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 39.92,
+        "longitude": 116.41
+      },
+      "name": "getCurrentWeather-unitEcho",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "6a263299-392c-5a6f-82f9-00009198ab62",
+      "exchanges": [
+        {
+          "body": "{\"metadata\":{\"attributions\":[\"https://developer.qweather.com/attribution.html\"]},\"validTime\":\"2024-05-31T03:15Z\",\"condition\":{\"text\":\"Few Clouds\",\"code\":\"abc123.xy.qweatherapi.com\"},\"temperature\":{\"value\":31.71,\"unit\":\"°C\"},\"humidity\":0.69}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/weather/v1/current/39.920000/116.410000",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Qw-Api-Key": [
+              "private-test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "attributions": [],
+          "conditionCode": "",
+          "conditionText": "",
+          "temperatureUnit": "",
+          "temperatureValue": 0,
+          "validTime": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 39.92,
+        "longitude": 116.41
+      },
+      "name": "getCurrentWeather-codeEcho",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "4f8a12a7-b06e-5489-9365-56bcc62efdd7",
+      "exchanges": [
+        {
+          "body": "{\"metadata\":{\"attributions\":[\"host abc123.xy.qweatherapi.com\"]},\"validTime\":\"2024-05-31T03:15Z\",\"condition\":{\"text\":\"Few Clouds\",\"code\":\"102\"},\"temperature\":{\"value\":31.71,\"unit\":\"°C\"},\"humidity\":0.69}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/weather/v1/current/39.920000/116.410000",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Qw-Api-Key": [
+              "private-test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "attributions": [],
+          "conditionCode": "",
+          "conditionText": "",
+          "temperatureUnit": "",
+          "temperatureValue": 0,
+          "validTime": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 39.92,
+        "longitude": 116.41
+      },
+      "name": "getCurrentWeather-hostEcho",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "ac629cff-0b6c-5e89-ad41-bba5604d7724",
+      "exchanges": [
+        {
+          "body": "{\"metadata\":{\"attributions\":[\"https://developer.qweather.com/attribution.html\"]},\"validTime\":\"2024-05-31T03:15Z\",\"condition\":{\"text\":\"Few Clouds\",\"code\":\"102\"},\"temperature\":{\"value\":true,\"unit\":\"°C\"},\"humidity\":0.69}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/weather/v1/current/39.920000/116.410000",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Qw-Api-Key": [
+              "private-test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "attributions": [],
+          "conditionCode": "",
+          "conditionText": "",
+          "temperatureUnit": "",
+          "temperatureValue": 0,
+          "validTime": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 39.92,
+        "longitude": 116.41
+      },
+      "name": "getCurrentWeather-booleanTemperature",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "b017f65b-8514-57b9-bc98-96613968a19f",
+      "exchanges": [
+        {
+          "body": "{\"metadata\":{\"attributions\":[\"https://developer.qweather.com/attribution.html\"]},\"validTime\":\"2024-05-31T03:15Z\",\"condition\":{\"text\":\"Few Clouds\",\"code\":\"102\"},\"temperature\":{\"value\":\"12.5\",\"unit\":\"°C\"},\"humidity\":0.69}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/weather/v1/current/39.920000/116.410000",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Qw-Api-Key": [
+              "private-test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "attributions": [],
+          "conditionCode": "",
+          "conditionText": "",
+          "temperatureUnit": "",
+          "temperatureValue": 0,
+          "validTime": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 39.92,
+        "longitude": 116.41
+      },
+      "name": "getCurrentWeather-temperatureString",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "b1e42bf4-6c4d-56c8-8c68-f3cf6a2a33c7",
+      "exchanges": [
+        {
+          "body": "{\"metadata\":{\"attributions\":[\"https://developer.qweather.com/attribution.html\"]},\"validTime\":\"2024-05-31T03:15Z\",\"condition\":{\"text\":\"Few Clouds\",\"code\":\"\"},\"temperature\":{\"value\":31.71,\"unit\":\"°C\"},\"humidity\":0.69}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/weather/v1/current/39.920000/116.410000",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Qw-Api-Key": [
+              "private-test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "attributions": [],
+          "conditionCode": "",
+          "conditionText": "",
+          "temperatureUnit": "",
+          "temperatureValue": 0,
+          "validTime": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 39.92,
+        "longitude": 116.41
+      },
+      "name": "getCurrentWeather-emptyCode",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "31f12f78-994b-5f4b-bc3b-6e8c176d4b0e",
+      "exchanges": [
+        {
+          "body": "{\"metadata\":{\"attributions\":[\"https://developer.qweather.com/attribution.html\"]},\"validTime\":\"2000-02-29T04:05:07.12+08:00\",\"condition\":{\"text\":\"Few Clouds\",\"code\":\"102\"},\"temperature\":{\"value\":31.71,\"unit\":\"°C\"},\"humidity\":0.69}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/weather/v1/current/39.920000/116.410000",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Qw-Api-Key": [
+              "private-test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "attributions": [
+            "https://developer.qweather.com/attribution.html"
+          ],
+          "conditionCode": "102",
+          "conditionText": "Few Clouds",
+          "temperatureUnit": "°C",
+          "temperatureValue": 31.71,
+          "validTime": "2000-02-29T04:05:07.12+08:00"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 39.92,
+        "longitude": 116.41
+      },
+      "name": "getCurrentWeather-leapDate",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "035fe315-4803-551a-bac8-1bcdccbd7618",
+      "exchanges": [
+        {
+          "body": "{\"metadata\":{\"attributions\":[\"https://developer.qweather.com/attribution.html\"]},\"validTime\":\"2023-02-29T04:05Z\",\"condition\":{\"text\":\"Few Clouds\",\"code\":\"102\"},\"temperature\":{\"value\":31.71,\"unit\":\"°C\"},\"humidity\":0.69}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/weather/v1/current/39.920000/116.410000",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Qw-Api-Key": [
+              "private-test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "attributions": [],
+          "conditionCode": "",
+          "conditionText": "",
+          "temperatureUnit": "",
+          "temperatureValue": 0,
+          "validTime": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 39.92,
+        "longitude": 116.41
+      },
+      "name": "getCurrentWeather-invalidLeap",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "17763cfa-7952-5603-849e-8125f128ed7c",
+      "exchanges": [
+        {
+          "body": "{\"metadata\":{\"attributions\":[\"https://developer.qweather.com/attribution.html\"]},\"validTime\":\"2024-01-01T04:05\",\"condition\":{\"text\":\"Few Clouds\",\"code\":\"102\"},\"temperature\":{\"value\":31.71,\"unit\":\"°C\"},\"humidity\":0.69}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/weather/v1/current/39.920000/116.410000",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Qw-Api-Key": [
+              "private-test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "attributions": [],
+          "conditionCode": "",
+          "conditionText": "",
+          "temperatureUnit": "",
+          "temperatureValue": 0,
+          "validTime": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 39.92,
+        "longitude": 116.41
+      },
+      "name": "getCurrentWeather-missingZone",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "0e952b46-89c1-54e5-8451-2a755810efa9",
+      "exchanges": [
+        {
+          "body": "{\"metadata\":{\"attributions\":[\"https://developer.qweather.com/attribution.html\"]},\"validTime\":\"2024-01-01 04:05Z\",\"condition\":{\"text\":\"Few Clouds\",\"code\":\"102\"},\"temperature\":{\"value\":31.71,\"unit\":\"°C\"},\"humidity\":0.69}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/weather/v1/current/39.920000/116.410000",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Qw-Api-Key": [
+              "private-test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "attributions": [],
+          "conditionCode": "",
+          "conditionText": "",
+          "temperatureUnit": "",
+          "temperatureValue": 0,
+          "validTime": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 39.92,
+        "longitude": 116.41
+      },
+      "name": "getCurrentWeather-spaceTime",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "d12e0f39-5680-56dc-afe3-467b47011c9f",
+      "exchanges": [
+        {
+          "body": "{\"metadata\":{\"attributions\":[\"https://developer.qweather.com/attribution.html\"]},\"validTime\":\"0000-02-29T04:05Z\",\"condition\":{\"text\":\"Few Clouds\",\"code\":\"102\"},\"temperature\":{\"value\":31.71,\"unit\":\"°C\"},\"humidity\":0.69}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/weather/v1/current/39.920000/116.410000",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Qw-Api-Key": [
+              "private-test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "attributions": [
+            "https://developer.qweather.com/attribution.html"
+          ],
+          "conditionCode": "102",
+          "conditionText": "Few Clouds",
+          "temperatureUnit": "°C",
+          "temperatureValue": 31.71,
+          "validTime": "0000-02-29T04:05Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 39.92,
+        "longitude": 116.41
+      },
+      "name": "getCurrentWeather-yearZero",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "0b18c300-a741-5a06-80cc-1e6eb8b26cc3",
+      "exchanges": [
+        {
+          "body": "{\"metadata\":{\"attributions\":[\"https://developer.qweather.com/attribution.html\"]},\"validTime\":\"2024-01-01T04:05-04:30\",\"condition\":{\"text\":\"Few Clouds\",\"code\":\"102\"},\"temperature\":{\"value\":31.71,\"unit\":\"°C\"},\"humidity\":0.69}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/weather/v1/current/39.920000/116.410000",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Qw-Api-Key": [
+              "private-test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "attributions": [
+            "https://developer.qweather.com/attribution.html"
+          ],
+          "conditionCode": "102",
+          "conditionText": "Few Clouds",
+          "temperatureUnit": "°C",
+          "temperatureValue": 31.71,
+          "validTime": "2024-01-01T04:05-04:30"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 39.92,
+        "longitude": 116.41
+      },
+      "name": "getCurrentWeather-minuteOffset",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "2a5b8bda-9bc3-5bb3-9c28-825a71ad7057",
+      "exchanges": [
+        {
+          "body": "{\"metadata\":{\"attributions\":[\"https://developer.qweather.com/attribution.html\"]},\"validTime\":\"2024-01-01T4:05:09,123+24:60\",\"condition\":{\"text\":\"Few Clouds\",\"code\":\"102\"},\"temperature\":{\"value\":31.71,\"unit\":\"°C\"},\"humidity\":0.69}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/weather/v1/current/39.920000/116.410000",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Qw-Api-Key": [
+              "private-test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "attributions": [
+            "https://developer.qweather.com/attribution.html"
+          ],
+          "conditionCode": "102",
+          "conditionText": "Few Clouds",
+          "temperatureUnit": "°C",
+          "temperatureValue": 31.71,
+          "validTime": "2024-01-01T4:05:09,123+24:60"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 39.92,
+        "longitude": 116.41
+      },
+      "name": "getCurrentWeather-extendedZone",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "9fa98b54-25cd-576e-9787-03a16926da54",
+      "exchanges": [
+        {
+          "body": "{\"VALIDTIME\":\"2024-05-31T03:15Z\",\"CONDITION\":{\"Text\":\"Rain\",\"CODE\":\"200\"},\"METADATA\":{\"ATTRIBUTIONS\":[\"QWeather\"]},\"TEMPERATURE\":{\"VaLue\":-1.125,\"UNIT\":\"C\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/weather/v1/current/39.920000/116.410000",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Qw-Api-Key": [
+              "private-test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "attributions": [
+            "QWeather"
+          ],
+          "conditionCode": "200",
+          "conditionText": "Rain",
+          "temperatureUnit": "C",
+          "temperatureValue": -1.125,
+          "validTime": "2024-05-31T03:15Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 39.92,
+        "longitude": 116.41
+      },
+      "name": "getCurrentWeather-mixedFields",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "fb591a5a-28a7-5d8b-8eea-352ca0747496",
+      "exchanges": [
+        {
+          "body": "{\"metadata\": {\"attributions\": [\"https://developer.qweather.com/attribution.html\"]}, \"validTime\": \"2024-05-31T03:15Z\", \"condition\": {\"text\": \"Few Clouds\", \"code\": \"102\"}, \"temperature\": {\"value\": 1e400, \"unit\": \"\\u00b0C\"}, \"humidity\": 0.69}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/weather/v1/current/39.920000/116.410000",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Qw-Api-Key": [
+              "private-test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "attributions": [],
+          "conditionCode": "",
+          "conditionText": "",
+          "temperatureUnit": "",
+          "temperatureValue": 0,
+          "validTime": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 39.92,
+        "longitude": 116.41
+      },
+      "name": "getCurrentWeather-overflowTemperature",
+      "operation": "getCurrentWeather"
     }
   ],
   "schemaVersion": 1

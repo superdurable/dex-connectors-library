@@ -20,14 +20,18 @@ CONNECTION = sdk.ConnectionRef("qweather", "qweather")
 
 def make_client(client: object, recorder: conformance.ExchangeRecorder) -> connector.Client:
     """Build the Query with synthetic credentials for the recorded scenario."""
-    secret_values = (
-        (sdk.SecretString(""), sdk.SecretString(""))
-        if recorder.scenario["name"] == "getCurrentWeather-defect"
-        else (sdk.SecretString("private-test-host.qweatherapi.com"), sdk.SecretString("private-test-key"))
+    name = str(recorder.scenario["name"])
+    host = (
+        "spoof.qweatherapi.com.example"
+        if name == "getCurrentWeather-invalidHost"
+        else "abc123.xy.qweatherapi.com"
     )
+    key = "" if name == "getCurrentWeather-missingCredential" else "private-test-key"
     return connector.Client(
-        connector.Config(),
-        conformance.static_credentials(CONNECTION, connector.Credentials(*secret_values)),
+        connector.Config(max_response_bytes=16) if name.endswith("-smallLimit") else connector.Config(),
+        conformance.static_credentials(
+            CONNECTION, connector.Credentials(sdk.SecretString(host), sdk.SecretString(key))
+        ),
         client,
     )
 

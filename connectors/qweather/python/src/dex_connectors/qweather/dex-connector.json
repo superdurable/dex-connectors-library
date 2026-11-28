@@ -1,10 +1,10 @@
 {
   "connectorId": "qweather",
-  "releaseTag": "connectors/qweather/go/v0.1.0",
+  "releaseTag": "connectors/qweather/go/v0.1.1",
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-qweather",
-    "version": "0.1.0"
+    "version": "0.1.1"
   },
   "factories": [
     {

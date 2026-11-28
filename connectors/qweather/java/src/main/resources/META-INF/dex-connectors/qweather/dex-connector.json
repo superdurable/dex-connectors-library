@@ -1,0 +1,65 @@
+{
+  "connectorId": "qweather",
+  "releaseTag": "connectors/qweather/go/v0.1.1",
+  "package": {
+    "ecosystem": "maven",
+    "name": "io.superdurable:dex-connector-qweather",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newGetCurrentWeatherStep",
+      "kind": "query",
+      "operationId": "getCurrentWeather",
+      "inputType": "GetCurrentWeatherInput",
+      "description": "Read current weather at decimal latitude and longitude.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetCurrentWeatherInput locates the weather sample in decimal degrees.",
+        "properties": {
+          "latitude": {
+            "description": "Latitude is geographic latitude in decimal degrees, from -90 to 90.",
+            "type": "number"
+          },
+          "longitude": {
+            "description": "Longitude is geographic longitude in decimal degrees, from -180 to 180.",
+            "type": "number"
+          }
+        },
+        "required": [
+          "latitude",
+          "longitude"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

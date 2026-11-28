@@ -1,0 +1,42 @@
+{
+  "getCurrentWeather": {
+    "branches": [
+      {
+        "description": "QWeather returned current weather for the coordinates.",
+        "id": "found",
+        "optional": false
+      },
+      {
+        "description": "QWeather rejected authentication, host, or location. HTTP 429 rate and monthly limits retry instead.",
+        "id": "providerRejected",
+        "optional": true
+      },
+      {
+        "description": "QWeather returned malformed or oversized data.",
+        "id": "invalidResponse",
+        "optional": true
+      },
+      {
+        "description": "Local coordinates, credentials, or settings are invalid.",
+        "id": "defect",
+        "optional": true
+      }
+    ],
+    "operation": {
+      "connectorId": "qweather",
+      "operationId": "getCurrentWeather"
+    },
+    "stepDefaults": {
+      "executeDurability": 2,
+      "executeMethodTimeout": 30000000000,
+      "executeRetry": {
+        "BackoffCoefficient": 2,
+        "InitialInterval": 2000000000,
+        "MaximumAttempts": 3,
+        "MaximumInterval": 20000000000,
+        "TotalDuration": 300000000000
+      },
+      "heartbeatTimeout": 0
+    }
+  }
+}

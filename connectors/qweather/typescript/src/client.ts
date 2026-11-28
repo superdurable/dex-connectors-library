@@ -36,11 +36,11 @@ export class QWeatherClient {
     const apiHost = credentials.apiHost instanceof SecretString ? credentials.apiHost.reveal() : '';
     const apiKey = credentials.apiKey instanceof SecretString ? credentials.apiKey.reveal() : '';
     if (!validAPIHost(apiHost) || !apiKey || apiKey.length > 1024 || !/^[!-~]+$/.test(apiKey)) return { error: 'credential', retryAfterMs: 0, apiHost: '', apiKey: '' };
-    const path = `/weather/v1/current/${input.latitude.toFixed(6)}/${input.longitude.toFixed(6)}`;
+    const path = `/weather/v1/current/${coordinate(input.latitude)}/${coordinate(input.longitude)}`;
     let response: ProviderResponse;
     try { response = await this.send({ url: `https://${apiHost}${path}`, method: 'GET', headers: { 'X-QW-Api-Key': apiKey, Accept: 'application/json' }, timeoutMs: this.timeoutMs, maxResponseBytes: this.maxResponseBytes, addressPolicy: 'publicHTTPS', signal: call.context.cancellationSignal }); }
     catch (error) {
-      if (error instanceof BodyTooLargeError && error.status !== undefined) return { response: { status: error.status, headers: error.headers ?? {}, body: new Uint8Array() }, error: 'tooLarge', retryAfterMs: 0, apiHost, apiKey };
+      if (error instanceof BodyTooLargeError && error.status !== undefined) return { response: { status: error.status, headers: error.headers ?? {}, body: new Uint8Array() }, error: 'tooLarge', retryAfterMs: parseRetryAfter(header(error.headers ?? {},'retry-after')), apiHost, apiKey };
       return { error: 'transport', retryAfterMs: 0, apiHost, apiKey };
     }
     return { response, error: response.body.length > this.maxResponseBytes ? 'tooLarge' : undefined, retryAfterMs: parseRetryAfter(header(response.headers, 'retry-after')), apiHost, apiKey };
@@ -59,23 +59,57 @@ export class GetCurrentWeatherOperation implements Query<GetCurrentWeatherInput,
     if (exchange.error === 'transport' || !exchange.response) return retry('AVAILABILITY');
     const { status, body } = exchange.response;
     if (status === 408 || status >= 500) return retry('AVAILABILITY', exchange.retryAfterMs);
-    if (status === 429) return retry(isMonthlyLimit(body) ? 'QUOTA_EXHAUSTED' : 'RATE_LIMIT', exchange.retryAfterMs);
+    if (status === 429) return retry(exchange.error !== 'tooLarge' && isMonthlyLimit(body) ? 'QUOTA_EXHAUSTED' : 'RATE_LIMIT', exchange.retryAfterMs);
     if (exchange.error === 'tooLarge') return branch('invalidResponse', 'RESPONSE_TOO_LARGE');
     if (status !== 200) return branch('providerRejected', status === 401 ? 'AUTHENTICATION' : status === 403 ? 'AUTHORIZATION' : 'PROVIDER_REJECTION');
     let wire: unknown;
-    try { wire = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(body)) as unknown; }
+    try { wire = parseWeatherJSON(body) as unknown; }
     catch { return branch('invalidResponse', 'PROTOCOL'); }
     if (!isRecord(wire) || !isRecord(wire.condition) || !isRecord(wire.temperature) || !isRecord(wire.metadata)) return branch('invalidResponse', 'PROTOCOL');
     const condition = wire.condition;
     const temperature = wire.temperature;
     const attributions = wire.metadata.attributions;
-    if (typeof condition.text !== 'string' || !condition.text || condition.text.includes(exchange.apiKey) || condition.text.includes(exchange.apiHost) || typeof condition.code !== 'string' || !condition.code || typeof temperature.value !== 'number' || !Number.isFinite(temperature.value) || typeof temperature.unit !== 'string' || !temperature.unit || typeof wire.validTime !== 'string' || !Number.isFinite(Date.parse(wire.validTime)) || !Array.isArray(attributions) || attributions.length < 1 || attributions.length > 16 || attributions.some(value => typeof value !== 'string' || !value || value.length > 500 || value.includes(exchange.apiKey) || value.includes(exchange.apiHost))) return branch('invalidResponse', 'PROTOCOL');
-    return newQueryBranch('found', { conditionText: condition.text, conditionCode: condition.code, temperatureValue: temperature.value, temperatureUnit: temperature.unit, validTime: wire.validTime, attributions: attributions as string[] });
+    if (typeof condition.text !== 'string' || !condition.text || condition.text.includes(exchange.apiKey) || condition.text.includes(exchange.apiHost) || typeof condition.code !== 'string' || !condition.code || typeof temperature.value !== 'number' || !Number.isFinite(temperature.value) || typeof temperature.unit !== 'string' || !temperature.unit || typeof wire.validtime !== 'string' || !validTime(wire.validtime) || [condition.code,temperature.unit,wire.validtime].some(value=>value.includes(exchange.apiKey)||value.includes(exchange.apiHost)) || !Array.isArray(attributions) || attributions.length < 1 || attributions.length > 16 || attributions.some(value => typeof value !== 'string' || !value || new TextEncoder().encode(value).length > 500 || value.includes(exchange.apiKey) || value.includes(exchange.apiHost))) return branch('invalidResponse', 'PROTOCOL');
+    return newQueryBranch('found', { conditionText: condition.text, conditionCode: condition.code, temperatureValue: temperature.value, temperatureUnit: temperature.unit, validTime: wire.validtime, attributions: attributions as string[] });
   }
 }
 
+function coordinate(value: number): string {
+  const magnitude = Math.abs(value);
+  // Binary half-way cases at six decimal places are odd multiples of 1/128.
+  if ((magnitude * 128) % 2 === 1) {
+    const lower = Math.floor(magnitude * 1_000_000);
+    const rounded = lower + (lower % 2);
+    const whole = Math.floor(rounded / 1_000_000);
+    const fraction = String(rounded % 1_000_000).padStart(6, '0');
+    return `${value < 0 ? '-' : ''}${whole}.${fraction}`;
+  }
+  return Object.is(value, -0) ? '-0.000000' : value.toFixed(6);
+}
+
+function parseWeatherJSON(body: Uint8Array): unknown {
+  return JSON.parse(new TextDecoder().decode(body), (_name: string, value: unknown) => {
+    if (!isRecord(value)) return value;
+    return Object.fromEntries(Object.entries(value).map(([key, field]) => [key.toLowerCase(), field]));
+  });
+}
+
+function validTime(text: string): boolean {
+  const parts = /^([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{1,2}):([0-9]{2})(?::([0-9]{2})(?:[.,][0-9]+)?)?(?:Z|[+-]([0-9]{2}):([0-9]{2}))$/.exec(text);
+  if (!parts || parts[0] !== text) return false;
+  const number = (index: number) => Number(parts[index] ?? 0);
+  const year = number(1);
+  const month = number(2);
+  const day = number(3);
+  const isLeapYear = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const days = [31, isLeapYear ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  return day >= 1 && day <= (days[month - 1] ?? 0)
+    && number(4) < 24 && number(5) < 60 && number(6) < 60
+    && number(7) <= 24 && number(8) <= 60;
+}
+
 function validAPIHost(host: string): boolean { return host.length > 0 && host.length <= 253 && host !== 'qweatherapi.com' && host.endsWith('.qweatherapi.com') && host.split('.').every(label => label.length > 0 && label.length <= 63 && /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/.test(label)); }
-function isMonthlyLimit(body: Uint8Array): boolean { try { const wire = JSON.parse(new TextDecoder().decode(body)) as unknown; return isRecord(wire) && isRecord(wire.error) && typeof wire.error.type === 'string' && wire.error.type.toLowerCase().includes('over-monthly-limit'); } catch { return false; } }
+function isMonthlyLimit(body: Uint8Array): boolean { try { const wire = parseWeatherJSON(body) as unknown; return isRecord(wire) && isRecord(wire.error) && typeof wire.error.type === 'string' && wire.error.type.toLowerCase().includes('over-monthly-limit'); } catch { return false; } }
 function isRecord(value: unknown): value is Record<string, unknown> { return typeof value === 'object' && value !== null && !Array.isArray(value); }
 function header(headers: ProviderResponse['headers'], name: string): string { const value = Object.entries(headers).find(([key]) => key.toLowerCase() === name)?.[1]; return Array.isArray(value) ? value[0] ?? '' : value ?? ''; }
 function failure(kind: Failure['kind']): Failure { return { provider: 'qweather', operation: 'getCurrentWeather', kind, message: 'QWeather current-weather query failed' }; }

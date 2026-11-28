@@ -27,8 +27,9 @@ from .flow import CONNECTION_NAME, GetCurrentWeatherFlow
 
 
 @pytest.mark.asyncio
-async def test_query_retries_503(tmp_path: Path) -> None:
-    """Persist QWeather output after a provider availability retry."""
+@pytest.mark.parametrize("condition_code", ["102", "private-test-key"], ids=["found", "credential-echo"])
+async def test_query_retries_503(tmp_path: Path, condition_code: str) -> None:
+    """Persist a valid observation and fail the Flow when the provider echoes the key."""
     requests: list[httpx.Request] = []
 
     def answer(request: httpx.Request) -> httpx.Response:
@@ -42,7 +43,7 @@ async def test_query_retries_503(tmp_path: Path) -> None:
                 {
                     "metadata": {"attributions": ["https://developer.qweather.com/attribution.html"]},
                     "validTime": "2024-05-31T03:15Z",
-                    "condition": {"text": "Few Clouds", "code": "102"},
+                    "condition": {"text": "Few Clouds", "code": condition_code},
                     "temperature": {"value": 31.71, "unit": "°C"},
                     "humidity": 0.69,
                 }
@@ -71,9 +72,14 @@ async def test_query_retries_503(tmp_path: Path) -> None:
                 flow_id = f"qweather-python-{uuid4().hex}"
                 await client.start_flow(flow, flow_id, GetCurrentWeatherInput(39.92, 116.41))
                 result = await asyncio.wait_for(client.wait_for_flow(flow_id, timedelta(seconds=25)), 30)
-                assert result.status == dex.FlowStatus.COMPLETED, result.error_message
-                output = result.single_output(GetCurrentWeatherOutput)
-                assert output.condition_code == "102"
+                if condition_code == "102":
+                    assert result.status == dex.FlowStatus.COMPLETED, result.error_message
+                    output = result.single_output(GetCurrentWeatherOutput)
+                    assert output.condition_code == condition_code
+                else:
+                    assert result.status == dex.FlowStatus.FAILED
+                    assert condition_code not in (result.error_message or "")
+                    assert not result.completions
                 assert len(requests) == 2
         finally:
             await worker.stop()

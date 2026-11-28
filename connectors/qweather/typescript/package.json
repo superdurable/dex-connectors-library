@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-qweather",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "license": "MIT",
   "description": "QWeather current-weather connector for Dex TypeScript applications",
   "repository": {

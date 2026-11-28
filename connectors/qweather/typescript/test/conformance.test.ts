@@ -15,8 +15,8 @@ it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario,
 async function invokeQWeather(scenario: Scenario, recorder: ExchangeRecorder) {
   if (scenario.operation !== 'getCurrentWeather') throw new Error(`unknown QWeather operation ${scenario.operation}`);
   return withScenarioHTTPServer(recorder, async baseUrl => {
-    const credentials: Credentials = { apiHost: new SecretString('abc123.xy.qweatherapi.com'), apiKey: new SecretString(scenario.name === 'getCurrentWeather-defect' ? '' : 'private-test-key') };
-    const client = new QWeatherClient({ ...(scenario.name === 'getCurrentWeather-oversized' ? { maxResponseBytes: 16 } : {}) }, new StaticCredentialProvider<Credentials>([[connection, credentials]]), {
+    const credentials: Credentials = { apiHost: new SecretString(scenario.name==='getCurrentWeather-invalidHost' ? 'spoof.qweatherapi.com.example':'abc123.xy.qweatherapi.com'), apiKey: new SecretString(scenario.name === 'getCurrentWeather-missingCredential' ? '' : 'private-test-key') };
+    const client = new QWeatherClient({ ...(scenario.name.endsWith('-smallLimit') ? { maxResponseBytes: 16 } : {}) }, new StaticCredentialProvider<Credentials>([[connection, credentials]]), {
       send: request => {
         if (scenario.exchanges[0]?.transportFailure) {
           recorder.record({ method: request.method, url: request.url, headers: request.headers ?? {}, body: request.body });

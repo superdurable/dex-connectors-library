@@ -120,8 +120,10 @@ func (operation GetCurrentWeatherOperation) Invoke(call sdkgo.Call, input GetCur
 			return weatherBranch(GetCurrentWeatherBranchInvalidResponse, sdkgo.FailureProtocol, "QWeather returned invalid attributions")
 		}
 	}
-	if strings.Contains(wire.Condition.Text, credentials.APIKey.Reveal()) || strings.Contains(wire.Condition.Text, credentials.APIHost.Reveal()) {
-		return weatherBranch(GetCurrentWeatherBranchInvalidResponse, sdkgo.FailureProtocol, "QWeather returned invalid weather data")
+	for _, field := range []string{wire.Condition.Text, wire.Condition.Code, wire.Temperature.Unit, wire.ValidTime} {
+		if strings.Contains(field, credentials.APIKey.Reveal()) || strings.Contains(field, credentials.APIHost.Reveal()) {
+			return weatherBranch(GetCurrentWeatherBranchInvalidResponse, sdkgo.FailureProtocol, "QWeather returned invalid weather data")
+		}
 	}
 	output := GetCurrentWeatherOutput{ConditionText: wire.Condition.Text, ConditionCode: wire.Condition.Code, TemperatureValue: *wire.Temperature.Value, TemperatureUnit: wire.Temperature.Unit, ValidTime: wire.ValidTime, Attributions: wire.Metadata.Attributions}
 	return sdkgo.NewQueryBranch(GetCurrentWeatherBranchFound, output, nil, sdkgo.Receipt{})

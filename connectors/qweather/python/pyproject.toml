@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "dex-connector-qweather"
-version = "0.1.0"
-description = "Bocha web search connector for Dex Flows"
+version = "0.1.1"
+description = "QWeather current weather connector for Dex Flows"
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
