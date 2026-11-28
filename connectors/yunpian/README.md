@@ -16,3 +16,7 @@ The runnable Go example is in [`go/examples/balance-read`](go/examples/balance-r
 The first Python package implements the read-only `getAccountBalance` operation and replays all Go-recorded outcomes. See the [Python package](python/README.md) and its [runnable Flow](python/examples/account_balance/README.md). Live provider authorization and responses remain unverified.
 
 The [TypeScript package](typescript/) (v0.1.0) includes a [runnable Dex Flow](typescript/examples/basic/) and Go conformance replay.
+
+## Java and Rust
+
+The [Java Worker](java/examples/io/superdurable/dexconnectors/yunpian/AccountBalanceWorker.java) and [Rust Worker](rust/examples/get_account_balance.rs) run `getAccountBalance` with the `yunpian` connection. Supply `YUNPIAN_API_KEY` through the Worker environment. With Dex running, use `./gradlew accountBalanceWorker` from `java/` or `cargo run --example get_account_balance` from `rust/`.

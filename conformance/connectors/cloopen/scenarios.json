@@ -578,6 +578,489 @@
       "input": {},
       "name": "getBalance-missing-credentials",
       "operation": "getBalance"
+    },
+    {
+      "callId": "8e8055e6-82d6-56f5-ae37-c0826fed49d5",
+      "exchanges": [
+        {
+          "body": "{\"STATUSCODE\":\"000000\",\"account\":{\"BALANCE\":\"41.200\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2013-12-26/Accounts/abcdefghijklmnopqrstuvwxyz012345/AccountInfo",
+          "query": {
+            "sig": [
+              "43EA465F3965E90380A3B666E063AD49"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXowMTIzNDU6MjAyNjExMTYxMjM0NTY="
+            ],
+            "Content-Type": [
+              "application/json;charset=utf-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "fetched",
+        "failureKind": "",
+        "output": {
+          "balance": "41.200"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-16T12:34:56Z",
+      "input": {},
+      "name": "getBalance-casing",
+      "operation": "getBalance"
+    },
+    {
+      "callId": "2f065cc3-8558-510d-84c6-7a5482bf432e",
+      "exchanges": [
+        {
+          "body": "{\"statusCode\":\"111111\",\"Account\":{\"balance\":12}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2013-12-26/Accounts/abcdefghijklmnopqrstuvwxyz012345/AccountInfo",
+          "query": {
+            "sig": [
+              "43EA465F3965E90380A3B666E063AD49"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXowMTIzNDU6MjAyNjExMTYxMjM0NTY="
+            ],
+            "Content-Type": [
+              "application/json;charset=utf-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "balance": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-16T12:34:56Z",
+      "input": {},
+      "name": "getBalance-malformed-limit",
+      "operation": "getBalance"
+    },
+    {
+      "callId": "f64fa780-1c52-57ad-acf9-6c01da35954a",
+      "exchanges": [
+        {
+          "body": "{\"statusCode\":\"111012\",\"Account\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2013-12-26/Accounts/abcdefghijklmnopqrstuvwxyz012345/AccountInfo",
+          "query": {
+            "sig": [
+              "43EA465F3965E90380A3B666E063AD49"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXowMTIzNDU6MjAyNjExMTYxMjM0NTY="
+            ],
+            "Content-Type": [
+              "application/json;charset=utf-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "balance": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-16T12:34:56Z",
+      "input": {},
+      "name": "getBalance-malformed-availability",
+      "operation": "getBalance"
+    },
+    {
+      "callId": "039ef2e3-fd02-5971-84e6-a639982d2c76",
+      "exchanges": [
+        {
+          "body": "{\"statusCode\":\"111111\",\"Account\":null}",
+          "headers": {
+            "Retry-After": "12"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2013-12-26/Accounts/abcdefghijklmnopqrstuvwxyz012345/AccountInfo",
+          "query": {
+            "sig": [
+              "43EA465F3965E90380A3B666E063AD49"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXowMTIzNDU6MjAyNjExMTYxMjM0NTY="
+            ],
+            "Content-Type": [
+              "application/json;charset=utf-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-16T12:34:56Z",
+      "input": {},
+      "name": "getBalance-missing-on-rejection",
+      "operation": "getBalance"
+    },
+    {
+      "callId": "f4ac54eb-005f-5bc4-8b1f-6f04d7914b73",
+      "exchanges": [
+        {
+          "body": "{\"statusCode\":123}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2013-12-26/Accounts/abcdefghijklmnopqrstuvwxyz012345/AccountInfo",
+          "query": {
+            "sig": [
+              "43EA465F3965E90380A3B666E063AD49"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXowMTIzNDU6MjAyNjExMTYxMjM0NTY="
+            ],
+            "Content-Type": [
+              "application/json;charset=utf-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "balance": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-16T12:34:56Z",
+      "input": {},
+      "name": "getBalance-code-number",
+      "operation": "getBalance"
+    },
+    {
+      "callId": "db8c4620-4fe5-58cd-ba04-07047299484a",
+      "exchanges": [
+        {
+          "body": "{\"statusCode\":\"000000\",\"Account\":{\"balance\":\"00.00\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2013-12-26/Accounts/abcdefghijklmnopqrstuvwxyz012345/AccountInfo",
+          "query": {
+            "sig": [
+              "43EA465F3965E90380A3B666E063AD49"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXowMTIzNDU6MjAyNjExMTYxMjM0NTY="
+            ],
+            "Content-Type": [
+              "application/json;charset=utf-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "balance": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-16T12:34:56Z",
+      "input": {},
+      "name": "getBalance-leading-zero",
+      "operation": "getBalance"
+    },
+    {
+      "callId": "d69fdc5d-7be3-5a2a-9ef5-0d891b1a2355",
+      "exchanges": [
+        {
+          "body": "{\"statusCode\":\"000000\",\"Account\":{\"balance\":\"99999999999999999999999999999999999999999999999999999999999999999\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2013-12-26/Accounts/abcdefghijklmnopqrstuvwxyz012345/AccountInfo",
+          "query": {
+            "sig": [
+              "43EA465F3965E90380A3B666E063AD49"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXowMTIzNDU6MjAyNjExMTYxMjM0NTY="
+            ],
+            "Content-Type": [
+              "application/json;charset=utf-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "balance": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-16T12:34:56Z",
+      "input": {},
+      "name": "getBalance-too-long",
+      "operation": "getBalance"
+    },
+    {
+      "callId": "cf0cca59-4a64-5af1-9436-03e87309154b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2013-12-26/Accounts/abcdefghijklmnopqrstuvwxyz012345/AccountInfo",
+          "query": {
+            "sig": [
+              "43EA465F3965E90380A3B666E063AD49"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXowMTIzNDU6MjAyNjExMTYxMjM0NTY="
+            ],
+            "Content-Type": [
+              "application/json;charset=utf-8"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "balance": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-16T12:34:56Z",
+      "input": {},
+      "name": "getBalance-http-auth",
+      "operation": "getBalance"
+    },
+    {
+      "callId": "d62df462-ccf2-544c-8079-1da5cafdd051",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2013-12-26/Accounts/abcdefghijklmnopqrstuvwxyz012345/AccountInfo",
+          "query": {
+            "sig": [
+              "43EA465F3965E90380A3B666E063AD49"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXowMTIzNDU6MjAyNjExMTYxMjM0NTY="
+            ],
+            "Content-Type": [
+              "application/json;charset=utf-8"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "balance": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-16T12:34:56Z",
+      "input": {},
+      "name": "getBalance-http-authorization",
+      "operation": "getBalance"
+    },
+    {
+      "callId": "d6d6d548-a53a-593a-ada4-dd7d52e5e1f5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2013-12-26/Accounts/abcdefghijklmnopqrstuvwxyz012345/AccountInfo",
+          "query": {
+            "sig": [
+              "43EA465F3965E90380A3B666E063AD49"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXowMTIzNDU6MjAyNjExMTYxMjM0NTY="
+            ],
+            "Content-Type": [
+              "application/json;charset=utf-8"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "balance": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-16T12:34:56Z",
+      "input": {},
+      "name": "getBalance-http-other",
+      "operation": "getBalance"
+    },
+    {
+      "callId": "ccc7c4ce-ff27-5d0a-a0cf-522ae2942e74",
+      "exchanges": [
+        {
+          "body": "{\"statusCode\":\"000000\",\"Account\":{\"balance\":\"0.00\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2013-12-26/Accounts/abcdefghijklmnopqrstuvwxyz012345/AccountInfo",
+          "query": {
+            "sig": [
+              "22E7677C160F46C5E498A769AABB8DDC"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXowMTIzNDU6MjAyODAyMjkwMDAwMDA="
+            ],
+            "Content-Type": [
+              "application/json;charset=utf-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "fetched",
+        "failureKind": "",
+        "output": {
+          "balance": "0.00"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2028-02-29T00:00:00.999Z",
+      "input": {},
+      "name": "getBalance-new-day",
+      "operation": "getBalance"
     }
   ],
   "schemaVersion": 1

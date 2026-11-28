@@ -3,7 +3,7 @@
 
 import { Attribute, StepList, StepRef, gracefulComplete, jsonCodec, type Context, type Flow, type PersistenceSchema, type Step, type StepDecision } from '@superdurable/dex';
 import type { QueryResult } from '@superdurable/connectors-sdk';
-import { newGetBalanceStep, type Connection, type GetBalanceInput, type GetBalanceOutput } from '../../src/index.js';
+import { newGetBalanceStep, type Connection, type GetBalanceInput, type GetBalanceOutput } from '@superdurable/connector-cloopen';
 
 /** Static Dex Web connection used by the example. */ export const ConnectionName = 'cloopen';
 /** Persisted main account balance. */ export const balanceAttribute = new Attribute<GetBalanceOutput>('cloopen-balance', jsonCodec<GetBalanceOutput>());

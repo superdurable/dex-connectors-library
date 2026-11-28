@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-cloopen",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "license": "MIT",
   "description": "Cloopen main-account balance connector for Dex TypeScript applications",
   "repository": {

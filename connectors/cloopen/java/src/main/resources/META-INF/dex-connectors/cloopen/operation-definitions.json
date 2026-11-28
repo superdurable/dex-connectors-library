@@ -1,0 +1,42 @@
+{
+  "getBalance": {
+    "branches": [
+      {
+        "description": "Cloopen returned the main-account balance.",
+        "id": "fetched",
+        "optional": false
+      },
+      {
+        "description": "Cloopen rejected the account or request.",
+        "id": "providerRejected",
+        "optional": true
+      },
+      {
+        "description": "Cloopen returned malformed or oversized data.",
+        "id": "invalidResponse",
+        "optional": true
+      },
+      {
+        "description": "Connection credentials are missing or invalid.",
+        "id": "defect",
+        "optional": true
+      }
+    ],
+    "operation": {
+      "connectorId": "cloopen",
+      "operationId": "getBalance"
+    },
+    "stepDefaults": {
+      "executeDurability": 2,
+      "executeMethodTimeout": 30000000000,
+      "executeRetry": {
+        "BackoffCoefficient": 2,
+        "InitialInterval": 1000000000,
+        "MaximumAttempts": 0,
+        "MaximumInterval": 300000000000,
+        "TotalDuration": 3600000000000
+      },
+      "heartbeatTimeout": 0
+    }
+  }
+}

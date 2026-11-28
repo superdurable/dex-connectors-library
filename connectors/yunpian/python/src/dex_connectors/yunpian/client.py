@@ -5,8 +5,8 @@
 import ipaddress
 import json
 import math
+import re
 from datetime import UTC, datetime
-from typing import Any
 from urllib.parse import urlsplit
 
 import httpx
@@ -154,16 +154,35 @@ class GetAccountBalanceOperation:
         return _decode_balance(status, body, delay)
 
 
+class _NumberToken(str):
+    pass
+
+
+def _invalid_constant(token: str) -> None:
+    raise ValueError("Invalid JSON number")
+
+
 def _decode_balance(status: int, body: bytes, delay: float) -> QueryAttempt[AccountBalance]:
     try:
-        document: Any = json.loads(body)
+        decoder = json.JSONDecoder(
+            parse_int=_NumberToken,
+            parse_float=_NumberToken,
+            parse_constant=_invalid_constant,
+            object_hook=lambda fields: {key.lower(): value for key, value in fields.items()},
+        )
+        document, _ = decoder.raw_decode(body.decode("utf-8", errors="replace").lstrip(" \r\n\t"))
     except (ValueError, UnicodeDecodeError):
         return _branch("invalidResponse", FailureKind.PROTOCOL, "Yunpian returned invalid account JSON")
+    if document is None:
+        document = {}
     if not isinstance(document, dict):
         return _branch("invalidResponse", FailureKind.PROTOCOL, "Yunpian returned invalid account JSON")
     code = document.get("code")
     if code is not None:
-        if type(code) is not int:
+        if not isinstance(code, _NumberToken) or len(code) > 20 or not re.fullmatch(r"-?[0-9]+", code):
+            return _branch("invalidResponse", FailureKind.PROTOCOL, "Yunpian returned invalid account JSON")
+        code = int(code)
+        if not -(1 << 63) <= code < 1 << 63:
             return _branch("invalidResponse", FailureKind.PROTOCOL, "Yunpian returned invalid account JSON")
         if code == -5:
             return _retry(FailureKind.RATE_LIMIT, "Yunpian query frequency exceeded", delay)
@@ -180,6 +199,6 @@ def _decode_balance(status: int, body: bytes, delay: float) -> QueryAttempt[Acco
     balance = document.get("balance")
     if balance is None:
         return _branch("invalidResponse", FailureKind.PROTOCOL, "Yunpian account balance is missing")
-    if type(balance) not in (int, float) or balance < 0 or not math.isfinite(balance):
+    if not isinstance(balance, _NumberToken) or not math.isfinite(value := float(balance)) or value < 0:
         return _branch("invalidResponse", FailureKind.PROTOCOL, "Yunpian account balance is invalid")
-    return QueryAttempt.branch_result("read", AccountBalance(float(balance)), Receipt())
+    return QueryAttempt.branch_result("read", AccountBalance(value), Receipt())

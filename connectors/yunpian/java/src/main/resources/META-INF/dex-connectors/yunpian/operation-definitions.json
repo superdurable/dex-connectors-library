@@ -1,0 +1,42 @@
+{
+  "getAccountBalance": {
+    "branches": [
+      {
+        "description": "Yunpian returned the account balance.",
+        "id": "read",
+        "optional": false
+      },
+      {
+        "description": "Yunpian conclusively rejected the query.",
+        "id": "providerRejected",
+        "optional": true
+      },
+      {
+        "description": "Yunpian returned invalid account JSON.",
+        "id": "invalidResponse",
+        "optional": true
+      },
+      {
+        "description": "The local connection credential is missing or invalid.",
+        "id": "defect",
+        "optional": true
+      }
+    ],
+    "operation": {
+      "connectorId": "yunpian",
+      "operationId": "getAccountBalance"
+    },
+    "stepDefaults": {
+      "executeDurability": 2,
+      "executeMethodTimeout": 30000000000,
+      "executeRetry": {
+        "BackoffCoefficient": 2,
+        "InitialInterval": 1000000000,
+        "MaximumAttempts": 0,
+        "MaximumInterval": 300000000000,
+        "TotalDuration": 3600000000000
+      },
+      "heartbeatTimeout": 0
+    }
+  }
+}

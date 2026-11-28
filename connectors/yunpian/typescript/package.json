@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-yunpian",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "license": "MIT",
   "description": "Yunpian connector for Dex TypeScript applications",
   "repository": {

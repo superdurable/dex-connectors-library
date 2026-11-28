@@ -10,7 +10,6 @@ import json
 import re
 from collections.abc import Callable
 from datetime import UTC, datetime
-from typing import Any
 
 import httpx
 from dex_connectors.sdk import (
@@ -62,10 +61,8 @@ def _branch(branch: str, kind: FailureKind, message: str) -> QueryAttempt[GetBal
     return QueryAttempt.branch_result(branch, GetBalanceOutput(), Receipt(), _failure(kind, message))
 
 
-def _wire_field(document: dict[str, Any], name: str) -> Any:
-    if name in document:
-        return document[name]
-    return next((value for key, value in document.items() if key.casefold() == name.casefold()), None)
+def _reject_constant(token: str) -> None:
+    raise ValueError("Invalid JSON number")
 
 
 class Client:
@@ -130,13 +127,7 @@ class GetBalanceOperation:
         try:
             timestamp = self.client.clock().astimezone(UTC).strftime("%Y%m%d%H%M%S")
             # Cloopen's REST protocol requires this legacy MD5 signature.
-            signature = (
-                hashlib.md5(
-                    (account_sid + auth_token + timestamp).encode()
-                )
-                .hexdigest()
-                .upper()
-            )
+            signature = hashlib.md5((account_sid + auth_token + timestamp).encode()).hexdigest().upper()
             authorization = base64.b64encode((account_sid + ":" + timestamp).encode()).decode()
             url = (
                 self.client.base_url + "/2013-12-26/Accounts/" + account_sid + "/AccountInfo?sig=" + signature
@@ -190,11 +181,21 @@ class GetBalanceOperation:
                 )
                 return _branch(PROVIDER_REJECTED, kind, "Cloopen rejected the account lookup")
             try:
-                document = json.loads(contents)
+                document = json.loads(
+                    contents,
+                    parse_constant=_reject_constant,
+                    object_hook=lambda fields: {key.lower(): value for key, value in fields.items()},
+                )
                 if not isinstance(document, dict):
                     raise ValueError
-                status_code = _wire_field(document, "statusCode")
+                status_code = document.get("statuscode")
                 if not isinstance(status_code, str) or not status_code:
+                    raise ValueError
+                account = document.get("account")
+                if account is not None and not isinstance(account, dict):
+                    raise ValueError
+                balance = account.get("balance") if account is not None else None
+                if balance is not None and not isinstance(balance, str):
                     raise ValueError
                 if status_code != "000000":
                     if status_code == "111111":
@@ -210,10 +211,6 @@ class GetBalanceOperation:
                         FailureKind.PROVIDER_REJECTION,
                         "Cloopen rejected the account lookup",
                     )
-                account = _wire_field(document, "Account")
-                if not isinstance(account, dict):
-                    raise ValueError
-                balance = _wire_field(account, "balance")
                 if (
                     not isinstance(balance, str)
                     or len(balance) > 64

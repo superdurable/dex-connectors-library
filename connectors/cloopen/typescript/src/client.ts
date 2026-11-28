@@ -80,21 +80,23 @@ export class GetBalanceOperation implements Query<GetBalanceInput, GetBalanceOut
     const response = exchange.response;
     if (response.status !== 200) return terminal('providerRejected', httpFailureKind(response.status), 'Cloopen rejected the account lookup');
     let wire: unknown;
-    try { wire = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(response.body)) as unknown; }
+    try { wire = JSON.parse(new TextDecoder().decode(response.body), (_name, value: unknown) => isRecord(value) ? Object.fromEntries(Object.entries(value).map(([name, field]) => [name.toLowerCase(), field])) : value) as unknown; }
     catch { return terminal('invalidResponse', 'PROTOCOL', 'Cloopen returned an invalid account response'); }
-    if (!wire || typeof wire !== 'object' || Array.isArray(wire)) return terminal('invalidResponse', 'PROTOCOL', 'Cloopen returned an invalid account response');
-    const fields = wire as Record<string, unknown>;
-    const statusCode = fields.statusCode;
+    if (!isRecord(wire)) return terminal('invalidResponse', 'PROTOCOL', 'Cloopen returned an invalid account response');
+    const statusCode = wire.statuscode;
+    const account = wire.account;
+    if (account != null && !isRecord(account)) return terminal('invalidResponse','PROTOCOL','Cloopen returned an invalid account response');
+    const balance = account?.balance;
+    if (balance != null && typeof balance !== 'string') return terminal('invalidResponse','PROTOCOL','Cloopen returned an invalid balance');
     if (typeof statusCode !== 'string' || !statusCode) return terminal('invalidResponse', 'PROTOCOL', 'Cloopen returned an invalid account response');
     if (statusCode === '111111') return newQueryRetry(failure('RATE_LIMIT', 'Cloopen concurrency limit reached'));
     if (statusCode.startsWith('1110')) return newQueryRetry(failure('AVAILABILITY', 'Cloopen reported an internal failure'));
     if (statusCode !== '000000') return terminal('providerRejected', 'PROVIDER_REJECTION', 'Cloopen rejected the account lookup');
-    if (!fields.Account || typeof fields.Account !== 'object' || Array.isArray(fields.Account)) return terminal('invalidResponse', 'PROTOCOL', 'Cloopen returned an invalid balance');
-    const balance = (fields.Account as Record<string, unknown>).balance;
     if (typeof balance !== 'string' || balance.length > 64 || !/^(0|[1-9][0-9]*)(\.[0-9]+)?$/.test(balance)) return terminal('invalidResponse', 'PROTOCOL', 'Cloopen returned an invalid balance');
     return newQueryBranch('fetched', { balance });
   }
 }
+function isRecord(value: unknown): value is Record<string, unknown> { return typeof value === 'object' && value !== null && !Array.isArray(value); }
 function validAccountSid(value: string): boolean { return /^[A-Za-z0-9]{32}$/.test(value); }
 function validAuthToken(value: string): boolean { return value.length === 32 && /^[!-~]+$/.test(value); }
 function failure(kind: Failure['kind'], message: string): Failure { return { kind, provider: 'cloopen', operation: 'getBalance', message }; }

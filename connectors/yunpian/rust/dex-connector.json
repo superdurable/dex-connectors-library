@@ -1,0 +1,52 @@
+{
+  "connectorId": "yunpian",
+  "releaseTag": "connectors/yunpian/go/v0.1.0",
+  "package": {
+    "ecosystem": "cargo",
+    "name": "dex-connector-yunpian",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_get_account_balance_step",
+      "kind": "query",
+      "operationId": "getAccountBalance",
+      "inputType": "GetAccountBalanceInput",
+      "description": "Read the SMS account balance without exposing account contact details.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "read",
+          "field": "read",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetAccountBalanceInput has no parameters; the connection identifies the account.",
+        "properties": {},
+        "type": "object"
+      }
+    }
+  ]
+}
