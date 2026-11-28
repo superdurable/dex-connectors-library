@@ -20,14 +20,14 @@ CONNECTION = sdk.ConnectionRef("navinfo", "navinfo")
 
 def create_client(http_client: object, recorder: conformance.ExchangeRecorder) -> connector.Client:
     """Build a credential-safe client for each Go recording."""
-    credential = connector.Credentials(sdk.SecretString("test-secret"))
-    if (
-        recorder.scenario["name"] == "lookupIPLocation-defect"
-        and recorder.scenario["expected"]["failureKind"] == "AUTHENTICATION"
-    ):
-        credential = connector.Credentials(sdk.SecretString(""))
+    token = "" if recorder.scenario["name"] == "lookupIPLocation-missingCredential" else "test-secret"
+    credential = connector.Credentials(sdk.SecretString(token))
     return connector.Client(
-        connector.Config(), conformance.static_credentials(CONNECTION, credential), http_client
+        connector.Config(
+            max_response_bytes=16 if recorder.scenario["name"].endswith("-oversized") else 1 << 20
+        ),
+        conformance.static_credentials(CONNECTION, credential),
+        http_client,
     )
 
 

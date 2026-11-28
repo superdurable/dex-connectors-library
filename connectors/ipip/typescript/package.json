@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-ipip",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "license": "MIT",
   "description": "IPIP IP-location connector for Dex TypeScript applications",
   "repository": {

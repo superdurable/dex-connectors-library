@@ -1,0 +1,42 @@
+{
+  "lookupIPLocation": {
+    "branches": [
+      {
+        "description": "NavInfo returned coarse city location.",
+        "id": "found",
+        "optional": false
+      },
+      {
+        "description": "NavInfo rejected the AK, IP, quota, or permission.",
+        "id": "providerRejected",
+        "optional": true
+      },
+      {
+        "description": "NavInfo returned malformed or oversized location data.",
+        "id": "invalidResponse",
+        "optional": true
+      },
+      {
+        "description": "The local AK or IP address is invalid.",
+        "id": "defect",
+        "optional": true
+      }
+    ],
+    "operation": {
+      "connectorId": "navinfo",
+      "operationId": "lookupIPLocation"
+    },
+    "stepDefaults": {
+      "executeDurability": 2,
+      "executeMethodTimeout": 30000000000,
+      "executeRetry": {
+        "BackoffCoefficient": 2,
+        "InitialInterval": 2000000000,
+        "MaximumAttempts": 3,
+        "MaximumInterval": 30000000000,
+        "TotalDuration": 300000000000
+      },
+      "heartbeatTimeout": 0
+    }
+  }
+}

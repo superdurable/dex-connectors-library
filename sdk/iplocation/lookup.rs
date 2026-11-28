@@ -18,10 +18,10 @@ use sdk::{
 };
 use serde::{Deserialize, Serialize};
 
-/// IPv4 address whose location should be looked up.
+/// IP address whose location should be looked up.
 #[derive(Clone, Default, Deserialize, Serialize)]
 pub struct LookupIPLocationInput {
-    /// A public IPv4 address in textual form.
+    /// IP literal in a family supported by the provider.
     #[serde(rename = "ipAddress")]
     pub ip_address: String,
 }
@@ -38,7 +38,7 @@ impl Default for Config {
     fn default() -> Self {
         Self {
             timeout: Duration::from_nanos(10000000000),
-            max_response_bytes: 65536,
+            max_response_bytes: crate::DEFAULT_MAX_RESPONSE_BYTES,
         }
     }
 }
@@ -105,11 +105,14 @@ impl Query for LookupIPLocationOperation {
     }
 
     fn invoke(&self, call: &Call<'_>, input: &Self::Input) -> QueryAttempt<Self::Output> {
-        let Some(ip) = public_ipv4(&input.ip_address) else {
+        let Some(ip) = crate::ADDRESS_POLICY.parse(&input.ip_address) else {
             return rejected(
                 "defect",
                 FailureKind::Validation,
-                &format!("{PROVIDER_LABEL} requires one public IPv4 address"),
+                &format!(
+                    "{PROVIDER_LABEL} requires one {}",
+                    crate::ADDRESS_POLICY.description()
+                ),
             );
         };
         let credentials = match self.credentials.resolve(call) {
@@ -159,7 +162,7 @@ impl Query for LookupIPLocationOperation {
             };
         }
         match read_bounded_body(&mut response, self.max_response_bytes) {
-            Ok(body) => decode_location(&body, delay, ip),
+            Ok(body) => decode_location(&body, delay, ip, &credentials),
             Err(ProviderHttpError::BodyTooLarge(_)) => rejected(
                 "invalidResponse",
                 FailureKind::ResponseTooLarge,
@@ -190,21 +193,41 @@ pub(super) fn valid_key(key: &str) -> bool {
     !key.is_empty() && key.len() <= 1024 && key.bytes().all(|byte| byte.is_ascii_graphic())
 }
 
-fn public_ipv4(value: &str) -> Option<std::net::Ipv4Addr> {
-    use std::net::IpAddr;
-    let address = match value.parse::<IpAddr>().ok()? {
-        IpAddr::V4(address) => address,
-        IpAddr::V6(address) => address.to_ipv4_mapped()?,
-    };
-    if address.is_private()
-        || address.is_loopback()
-        || address.is_link_local()
-        || address.is_unspecified()
-        || address.is_multicast()
-    {
-        return None;
+/// Address families accepted by the provider, including private space when allowed.
+#[allow(dead_code)] // Each standalone provider uses one policy.
+pub(super) enum LookupAddressPolicy {
+    Any,
+    Ipv4,
+    PublicIpv4,
+}
+
+impl LookupAddressPolicy {
+    fn description(&self) -> &'static str {
+        match self {
+            Self::Any => "IPv4 or IPv6 address",
+            Self::Ipv4 => "IPv4 address",
+            Self::PublicIpv4 => "public IPv4 address",
+        }
     }
-    Some(address)
+
+    fn parse(&self, value: &str) -> Option<std::net::IpAddr> {
+        use std::net::IpAddr;
+        match value.parse::<IpAddr>().ok()?.to_canonical() {
+            IpAddr::V4(address)
+                if matches!(self, Self::PublicIpv4)
+                    && (address.is_private()
+                        || address.is_loopback()
+                        || address.is_link_local()
+                        || address.is_unspecified()
+                        || address.is_multicast()) =>
+            {
+                None
+            }
+            address @ IpAddr::V4(_) => Some(address),
+            address @ IpAddr::V6(_) if matches!(self, Self::Any) => Some(address),
+            _ => None,
+        }
+    }
 }
 
 pub(super) fn rejected(

@@ -21,8 +21,15 @@ ADAPTER = conformance.PythonOperationAdapter(
     CONNECTION,
     ipip,
     lambda http_client, recorder: ipip.Client(
-        ipip.Config(),
-        conformance.static_credentials(CONNECTION, ipip.Credentials(sdk.SecretString("test-secret"))),
+        ipip.Config(max_response_bytes=16 if recorder.scenario["name"].endswith("-oversized") else 1 << 20),
+        conformance.static_credentials(
+            CONNECTION,
+            ipip.Credentials(
+                sdk.SecretString(
+                    "" if recorder.scenario["name"] == "lookupIPLocation-missingCredential" else "test-secret"
+                )
+            ),
+        ),
         http_client,
     ),
 )

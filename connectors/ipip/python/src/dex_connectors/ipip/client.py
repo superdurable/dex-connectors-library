@@ -89,6 +89,10 @@ class LookupIPLocationOperation:
         """Make one IPIP request and classify its provider outcome."""
         try:
             address = ipaddress.ip_address(input.ip_address)
+            if isinstance(address, ipaddress.IPv6Address):
+                if address.scope_id is not None:
+                    raise ValueError("scoped IPv6 address")
+                address = address.ipv4_mapped or address
         except ValueError:
             return _branch("defect", FailureKind.VALIDATION, "IPIP requires one valid IP address")
         try:
@@ -99,7 +103,7 @@ class LookupIPLocationOperation:
         except (ValueError, LookupError, OSError):
             return _branch("defect", FailureKind.AUTHENTICATION, "IPIP token is unavailable or invalid")
         try:
-            endpoint = _ENDPOINT + quote(str(address), safe="") + "?" + urlencode({"token": token})
+            endpoint = _ENDPOINT + quote(str(address), safe=":") + "?" + urlencode({"token": token})
             request = self.client.http_client.build_request(
                 "GET", endpoint, headers={"Accept": "application/json"}
             )
@@ -144,20 +148,30 @@ class LookupIPLocationOperation:
 
 def _decode_location(body: bytes) -> QueryAttempt[LookupIPLocationOutput]:
     try:
-        wire: Any = json.loads(body)
+        wire: Any = json.loads(
+            body.decode("utf-8", errors="replace"), parse_constant=_reject_nonfinite_number
+        )
     except (ValueError, UnicodeDecodeError):
         return _branch("invalidResponse", FailureKind.PROTOCOL, "IPIP returned invalid location data")
-    if not isinstance(wire, dict) or not isinstance(wire.get("ret"), str) or not wire["ret"]:
+    if not isinstance(wire, dict):
         return _branch("invalidResponse", FailureKind.PROTOCOL, "IPIP returned invalid location data")
-    if wire["ret"] == "err":
+    fields = ("country_name", "region_name", "city_name", "country_code")
+    response = {key.lower(): value for key, value in wire.items()}
+    values: dict[str, Any] = response
+    for level in ("data", "info"):
+        nested = values.get(level)
+        if nested is not None and not isinstance(nested, dict):
+            return _branch("invalidResponse", FailureKind.PROTOCOL, "IPIP returned invalid location data")
+        values = {key.lower(): value for key, value in (nested or {}).items()}
+    info = values
+    if any(info.get(field) is not None and not isinstance(info[field], str) for field in fields):
+        return _branch("invalidResponse", FailureKind.PROTOCOL, "IPIP returned invalid location data")
+    if response.get("ret") == "err":
         return _branch(
             "providerRejected", FailureKind.PROVIDER_REJECTION, "IPIP rejected the location request"
         )
-    info = wire.get("data", {}).get("info") if isinstance(wire.get("data"), dict) else None
-    fields = ("country_name", "region_name", "city_name", "country_code")
     if (
-        wire["ret"] != "ok"
-        or not isinstance(info, dict)
+        response.get("ret") != "ok"
         or any(not isinstance(info.get(field), str) for field in fields)
         or not info["country_name"]
         or not info["country_code"]
@@ -173,3 +187,7 @@ def _decode_location(body: bytes) -> QueryAttempt[LookupIPLocationOutput]:
         ),
         Receipt(),
     )
+
+
+def _reject_nonfinite_number(value: str) -> None:
+    raise ValueError(f"Invalid JSON number {value}")

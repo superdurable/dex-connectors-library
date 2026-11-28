@@ -17,6 +17,8 @@ use sdk::providerhttp::ProviderHttpRequest;
 use sdk::{FailureKind, QueryAttempt, Receipt, SecretString};
 use serde::{Deserialize, Serialize};
 
+const ADDRESS_POLICY: lookup::LookupAddressPolicy = lookup::LookupAddressPolicy::PublicIpv4;
+const DEFAULT_MAX_RESPONSE_BYTES: usize = 65_536;
 const PROVIDER_LABEL: &str = "YikeAPI";
 const CONNECTOR_ID: &str = "yikeapi";
 const ENDPOINT: &str = r"https://apia.yikeapi.com/ip/";
@@ -50,7 +52,7 @@ impl Credentials {
 }
 
 fn lookup_request(
-    ip: std::net::Ipv4Addr,
+    ip: std::net::IpAddr,
     credentials: &Credentials,
     _: &dyn Fn() -> std::time::SystemTime,
 ) -> ProviderHttpRequest {
@@ -89,7 +91,8 @@ struct LookupResponse {
 fn decode_location(
     body: &[u8],
     _: f64,
-    ip: std::net::Ipv4Addr,
+    ip: std::net::IpAddr,
+    _: &Credentials,
 ) -> QueryAttempt<LookupIPLocationOutput> {
     let response = serde_json::from_slice::<serde_json::Value>(body).and_then(|mut document| {
         lowercase_fields(&mut document);

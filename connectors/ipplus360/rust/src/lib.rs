@@ -17,6 +17,8 @@ use sdk::providerhttp::ProviderHttpRequest;
 use sdk::{FailureKind, QueryAttempt, Receipt, SecretString};
 use serde::{Deserialize, Serialize};
 
+const ADDRESS_POLICY: lookup::LookupAddressPolicy = lookup::LookupAddressPolicy::PublicIpv4;
+const DEFAULT_MAX_RESPONSE_BYTES: usize = 65_536;
 const PROVIDER_LABEL: &str = "IPPlus360";
 const CONNECTOR_ID: &str = "ipplus360";
 const ENDPOINT: &str = r"https://api.ipplus360.com/ip/geo/v1/district/";
@@ -58,7 +60,7 @@ impl Credentials {
 }
 
 fn lookup_request(
-    ip: std::net::Ipv4Addr,
+    ip: std::net::IpAddr,
     credentials: &Credentials,
     _: &dyn Fn() -> std::time::SystemTime,
 ) -> ProviderHttpRequest {
@@ -90,7 +92,8 @@ struct LookupResponse {
 fn decode_location(
     body: &[u8],
     _: f64,
-    _: std::net::Ipv4Addr,
+    _: std::net::IpAddr,
+    _: &Credentials,
 ) -> QueryAttempt<LookupIPLocationOutput> {
     let response = serde_json::from_slice::<serde_json::Value>(body).and_then(|mut document| {
         lowercase_fields(&mut document);

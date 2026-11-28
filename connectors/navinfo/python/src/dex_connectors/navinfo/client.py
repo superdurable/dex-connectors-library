@@ -53,7 +53,6 @@ class Client:
             or not 0 < config.max_response_bytes <= 16 << 20
         ):
             raise ValueError("Navinfo configuration and credentials are required")
-        pass
         self.config = config
         self.credentials = credentials
         self.http_client = http_client or new_provider_http_client(config.timeout_seconds)
@@ -93,14 +92,8 @@ class LookupIPLocationOperation:
         )
 
     def _request(
-        self, input: LookupIPLocationInput, credentials: Credentials
+        self, address: ipaddress.IPv4Address, credentials: Credentials
     ) -> httpx.Request | QueryAttempt[LookupIPLocationOutput]:
-        try:
-            address = ipaddress.ip_address(input.ip_address)
-        except ValueError:
-            return self._branch("defect", FailureKind.VALIDATION)
-        if address.version != 4:
-            return self._branch("defect", FailureKind.VALIDATION)
         token = credentials.ak.reveal()
         if not _opaque(token, 1024):
             return self._branch("defect", FailureKind.AUTHENTICATION)
@@ -112,26 +105,34 @@ class LookupIPLocationOperation:
         )
 
     def _decode(
-        self, wire: object, input: LookupIPLocationInput, credentials: Credentials
+        self, wire: object, credentials: Credentials
     ) -> LookupIPLocationOutput | QueryAttempt[LookupIPLocationOutput] | None:
         if not isinstance(wire, dict):
             return None
-        status = wire.get("status")
-        if type(status) is not int:
+        response = {key.lower(): value for key, value in wire.items()}
+        status = response.get("status")
+        if type(status) is not int or not -(1 << 63) <= status < (1 << 63):
             return None
+        data = response.get("data")
+        if data is not None and not isinstance(data, dict):
+            return None
+        fields = {key.lower(): value for key, value in (data or {}).items()}
+        location: dict[str, str] = {}
+        for name in ("prov", "city", "adcode"):
+            value = fields.get(name)
+            if value is not None and not isinstance(value, str):
+                return None
+            location[name] = value or ""
         if status in (1008, 1010):
             return self._retry(FailureKind.RATE_LIMIT)
         if status != 200:
             return self._branch("providerRejected", FailureKind.PROVIDER_REJECTION)
-        data = wire.get("data")
-        if not isinstance(data, dict):
-            return None
-        province, city, adcode = data.get("prov", ""), data.get("city", ""), data.get("adcode", "")
+        province, city, adcode = location["prov"], location["city"], location["adcode"]
         if (
-            not all(isinstance(value, str) for value in (province, city, adcode))
-            or len(province) > 128
-            or len(city) > 128
-            or len(adcode) > 16
+            data is None
+            or len(province.encode()) > 128
+            or len(city.encode()) > 128
+            or len(adcode.encode()) > 16
             or any(char in province + city + adcode for char in "\r\n\x00")
             or credentials.ak.reveal() in province + city + adcode
         ):
@@ -143,10 +144,18 @@ class LookupIPLocationOperation:
         if not isinstance(input, LookupIPLocationInput):
             return self._branch("defect", FailureKind.VALIDATION)
         try:
+            address = ipaddress.ip_address(input.ip_address)
+        except ValueError:
+            return self._branch("defect", FailureKind.VALIDATION)
+        if isinstance(address, ipaddress.IPv6Address):
+            if address.scope_id is not None or address.ipv4_mapped is None:
+                return self._branch("defect", FailureKind.VALIDATION)
+            address = address.ipv4_mapped
+        try:
             credentials = await self.client.credentials.resolve(call)
         except (ValueError, LookupError, OSError, AttributeError):
             return self._branch("defect", FailureKind.AUTHENTICATION)
-        request = self._request(input, credentials)
+        request = self._request(address, credentials)
         if isinstance(request, QueryAttempt):
             return request
         try:
@@ -178,12 +187,16 @@ class LookupIPLocationOperation:
         finally:
             await response.aclose()
         try:
-            wire = json.loads(body)
+            wire = json.loads(body.decode("utf-8", errors="replace"), parse_constant=_reject_nonfinite_number)
         except (ValueError, UnicodeDecodeError):
             return self._branch("invalidResponse", FailureKind.PROTOCOL)
-        result = self._decode(wire, input, credentials)
+        result = self._decode(wire, credentials)
         if isinstance(result, QueryAttempt):
             return result
         if result is None:
             return self._branch("invalidResponse", FailureKind.PROTOCOL)
         return QueryAttempt.branch_result("found", result, Receipt())
+
+
+def _reject_nonfinite_number(value: str) -> None:
+    raise ValueError(f"Invalid JSON number {value}")

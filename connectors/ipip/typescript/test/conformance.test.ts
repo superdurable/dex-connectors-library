@@ -14,7 +14,7 @@ it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario,
 
 async function invokeIPIP(scenario: Scenario, recorder: ExchangeRecorder) {
   if (scenario.operation !== 'lookupIPLocation') throw new Error(`unknown IPIP operation ${scenario.operation}`);
-  const client = new IPIPClient({}, new StaticCredentialProvider([[connection, { token: new SecretString('test-secret') }]]), {
+  const client = new IPIPClient(scenario.name.endsWith("-oversized") ? { maxResponseBytes: 16 } : {}, new StaticCredentialProvider([[connection, { token: new SecretString(scenario.name === 'lookupIPLocation-missingCredential' ? '' : 'test-secret') }]]), {
     send: request => answerRecordedRequest(recorder, request, before => new ProviderTransportError(before)),
   });
   const call: Call = {

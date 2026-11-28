@@ -13,8 +13,8 @@ const connection = { provider: 'navinfo', name: 'navinfo' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeNavInfo, ''));
 
 async function invokeNavInfo(scenario: Scenario, recorder: ExchangeRecorder) {
-  const credentials = new StaticCredentialProvider([[connection, { ak: new SecretString("test-secret") }]]);
-  const client = new NavInfoClient({}, credentials, {
+  const credentials = new StaticCredentialProvider([[connection, { ak: new SecretString(scenario.name === 'lookupIPLocation-missingCredential' ? '' : 'test-secret') }]]);
+  const client = new NavInfoClient(scenario.name.endsWith("-oversized") ? { maxResponseBytes: 16 } : {}, credentials, {
     send: request => answerRecordedRequest(recorder, request, before => new ProviderTransportError(before)),
   });
   const call: Call = {

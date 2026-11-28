@@ -269,6 +269,1897 @@
       },
       "name": "lookupIPLocation-transport",
       "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "1cd9cbe3-887f-532c-9e40-b2b427d9d97b",
+      "exchanges": [
+        {
+          "body": "{\"status\":200,\"data\":{\"prov\":\"北京市\",\"city\":\"北京市\",\"adcode\":\"110000\",\"private\":\"private-cover\"},\"msg\":\"private-trace\"}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open-api/position/v1/ip",
+          "query": {
+            "ak": [
+              "test-secret"
+            ],
+            "ip": [
+              "10.0.0.1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "adcode": "110000",
+          "city": "北京市",
+          "province": "北京市"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "10.0.0.1"
+      },
+      "name": "lookupIPLocation-private",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "f91b6230-e142-51a9-b81e-2eb62078d01f",
+      "exchanges": [
+        {
+          "body": "{\"status\":200,\"data\":{\"prov\":\"北京市\",\"city\":\"北京市\",\"adcode\":\"110000\",\"private\":\"private-cover\"},\"msg\":\"private-trace\"}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open-api/position/v1/ip",
+          "query": {
+            "ak": [
+              "test-secret"
+            ],
+            "ip": [
+              "0.0.0.0"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "adcode": "110000",
+          "city": "北京市",
+          "province": "北京市"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "0.0.0.0"
+      },
+      "name": "lookupIPLocation-unspecified",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "fc10c564-6b0a-51b7-b9f2-93be3bff47fa",
+      "exchanges": [
+        {
+          "body": "{\"status\":200,\"data\":{\"prov\":\"北京市\",\"city\":\"北京市\",\"adcode\":\"110000\",\"private\":\"private-cover\"},\"msg\":\"private-trace\"}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open-api/position/v1/ip",
+          "query": {
+            "ak": [
+              "test-secret"
+            ],
+            "ip": [
+              "8.8.8.8"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "adcode": "110000",
+          "city": "北京市",
+          "province": "北京市"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "::ffff:8.8.8.8"
+      },
+      "name": "lookupIPLocation-mapped",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "b2c9b6cc-9e19-5d4b-85af-5e64b37c6025",
+      "exchanges": [
+        {
+          "body": "{\"status\":200,\"data\":{\"prov\":\"北京市\",\"city\":\"北京市\",\"adcode\":\"110000\",\"private\":\"private-cover\"},\"msg\":\"private-trace\"}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open-api/position/v1/ip",
+          "query": {
+            "ak": [
+              "test-secret"
+            ],
+            "ip": [
+              "8.8.8.8"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "adcode": "110000",
+          "city": "北京市",
+          "province": "北京市"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "0:0:0:0:0:ffff:808:808"
+      },
+      "name": "lookupIPLocation-mappedHex",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "601c64a3-af0e-5ad1-bf36-8eeaf9c0bca6",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "adcode": "",
+          "city": "",
+          "province": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "2001:0DB8:0000:0000:0001:0000:0000:0002"
+      },
+      "name": "lookupIPLocation-v6",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "d575aa61-7c48-5547-a6a7-1366a4d387ac",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "adcode": "",
+          "city": "",
+          "province": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "::1"
+      },
+      "name": "lookupIPLocation-v6Loopback",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "19313189-1f55-585b-b9cc-6c6341a8a502",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "adcode": "",
+          "city": "",
+          "province": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "2001:db8::"
+      },
+      "name": "lookupIPLocation-v6Trailing",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "17736c43-c524-57ef-ab46-2ca6ea85f70a",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "adcode": "",
+          "city": "",
+          "province": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "2001:db8::192.0.2.8"
+      },
+      "name": "lookupIPLocation-v6Embedded",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "b73722e5-a121-5bec-9ebb-cb75a34bbcf0",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "adcode": "",
+          "city": "",
+          "province": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "::"
+      },
+      "name": "lookupIPLocation-v6AllZero",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "4e84b1db-c671-5f4c-bf46-2adefa2ffafe",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "adcode": "",
+          "city": "",
+          "province": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "fe80::1%eth0"
+      },
+      "name": "lookupIPLocation-scoped",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "021251a0-f082-5f6e-9ff4-0d5b40c818ed",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "adcode": "",
+          "city": "",
+          "province": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "127.1"
+      },
+      "name": "lookupIPLocation-short",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "56300df5-e8e8-562d-a497-66e6373909c1",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "adcode": "",
+          "city": "",
+          "province": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "008.8.8.8"
+      },
+      "name": "lookupIPLocation-padded",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "99047964-800f-577f-9751-33a8dd3b79c8",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "adcode": "",
+          "city": "",
+          "province": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "example.test"
+      },
+      "name": "lookupIPLocation-hostname",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "b1c7d8fa-acc7-59d9-b056-90db7118cff3",
+      "exchanges": [
+        {
+          "body": "{\"status\":200,\"data\":{\"prov\":\"北京市\",\"city\":\"北京市\",\"adcode\":\"110000\",\"private\":\"private-cover\"},\"msg\":\"private-trace\"}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open-api/position/v1/ip",
+          "query": {
+            "ak": [
+              "test-secret"
+            ],
+            "ip": [
+              "8.8.8.8"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "adcode": "",
+          "city": "",
+          "province": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-http401",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "f9b3b1e5-1bc0-54b2-87ca-9e1bb3c0bfd2",
+      "exchanges": [
+        {
+          "body": "{\"status\":200,\"data\":{\"prov\":\"北京市\",\"city\":\"北京市\",\"adcode\":\"110000\",\"private\":\"private-cover\"},\"msg\":\"private-trace\"}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open-api/position/v1/ip",
+          "query": {
+            "ak": [
+              "test-secret"
+            ],
+            "ip": [
+              "8.8.8.8"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "adcode": "",
+          "city": "",
+          "province": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-http403",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "03e73508-bf86-585b-bb32-e851c8a34dee",
+      "exchanges": [
+        {
+          "body": "{\"status\":200,\"data\":{\"prov\":\"北京市\",\"city\":\"北京市\",\"adcode\":\"110000\",\"private\":\"private-cover\"},\"msg\":\"private-trace\"}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open-api/position/v1/ip",
+          "query": {
+            "ak": [
+              "test-secret"
+            ],
+            "ip": [
+              "8.8.8.8"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "adcode": "",
+          "city": "",
+          "province": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-http404",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "147b4e78-1a47-5357-8ead-9388f539d353",
+      "exchanges": [
+        {
+          "body": "{\"status\":200,\"data\":{\"prov\":\"北京市\",\"city\":\"北京市\",\"adcode\":\"110000\",\"private\":\"private-cover\"},\"msg\":\"private-trace\"}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open-api/position/v1/ip",
+          "query": {
+            "ak": [
+              "test-secret"
+            ],
+            "ip": [
+              "8.8.8.8"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 408
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 7000,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-http408",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "d0804d16-7b85-5898-8e2a-74ee7b3c94b7",
+      "exchanges": [
+        {
+          "body": "{\"status\":200,\"data\":{\"prov\":\"北京市\",\"city\":\"北京市\",\"adcode\":\"110000\",\"private\":\"private-cover\"},\"msg\":\"private-trace\"}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open-api/position/v1/ip",
+          "query": {
+            "ak": [
+              "test-secret"
+            ],
+            "ip": [
+              "8.8.8.8"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 7000,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-http429",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "48cd09de-04b6-5426-af43-ea7157afcd67",
+      "exchanges": [
+        {
+          "body": "{\"status\":200,\"data\":{\"prov\":\"北京市\",\"city\":\"北京市\",\"adcode\":\"110000\",\"private\":\"private-cover\"},\"msg\":\"private-trace\"}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open-api/position/v1/ip",
+          "query": {
+            "ak": [
+              "test-secret"
+            ],
+            "ip": [
+              "8.8.8.8"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 7000,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-http503",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "1d209688-e918-51eb-a757-14ac0f069ea9",
+      "exchanges": [
+        {
+          "body": "{\"STATUS\":200,\"DATA\":{\"PROV\":\"北京市\",\"CITY\":\"北京市\",\"ADCODE\":\"110000\",\"PRIVATE\":\"private-cover\"},\"MSG\":\"private-trace\"}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open-api/position/v1/ip",
+          "query": {
+            "ak": [
+              "test-secret"
+            ],
+            "ip": [
+              "8.8.8.8"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "adcode": "110000",
+          "city": "北京市",
+          "province": "北京市"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-mixedCase",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "84c2dbbe-8993-5167-9769-aecf0657a74a",
+      "exchanges": [
+        {
+          "body": "{\"status\":200,\"data\":{\"prov\":\"北京市\",\"city\":\"北京市\",\"adcode\":\"110000\",\"private\":\"private-cover\"},\"msg\":\"private-trace\"}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open-api/position/v1/ip",
+          "query": {
+            "ak": [
+              "test-secret"
+            ],
+            "ip": [
+              "8.8.8.8"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "adcode": "",
+          "city": "",
+          "province": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-oversized",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "42fcbf0d-c53f-5381-bbd5-a820b1a3e084",
+      "exchanges": [
+        {
+          "body": "{\"status\": 200, \"data\": {\"prov\": \"\\u5317\\u4eac\\u5e02\", \"city\": \"\\u5317\\u4eac\\u5e02\", \"adcode\": \"110000\", \"private\": \"private-cover\"}, \"msg\": \"private-trace\",\"other\":NaN}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open-api/position/v1/ip",
+          "query": {
+            "ak": [
+              "test-secret"
+            ],
+            "ip": [
+              "8.8.8.8"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "adcode": "",
+          "city": "",
+          "province": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-nonFiniteIgnored",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "abbc47c3-647a-51c5-bad4-45cbd94e0887",
+      "exchanges": [
+        {
+          "body": "{\"status\": 200, \"data\": {\"prov\": \"\\u5317\\u4eac\\u5e02\", \"city\": \"\\u5317\\u4eac\\u5e02\", \"adcode\": \"110000\", \"private\": \"private-cover\"}, \"msg\": \"private-trace\"}{}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open-api/position/v1/ip",
+          "query": {
+            "ak": [
+              "test-secret"
+            ],
+            "ip": [
+              "8.8.8.8"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "adcode": "",
+          "city": "",
+          "province": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-trailing",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "9c440b78-858f-5da7-afab-6a9d7bceea30",
+      "exchanges": [
+        {
+          "body": "{\"status\":200,\"data\":{}}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open-api/position/v1/ip",
+          "query": {
+            "ak": [
+              "test-secret"
+            ],
+            "ip": [
+              "8.8.8.8"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "adcode": "",
+          "city": "",
+          "province": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-empty",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "3a3ea5c4-e5a6-5a0a-ac48-86dcdeb9b430",
+      "exchanges": [
+        {
+          "body": "{\"status\":200,\"data\":{\"city\":null}}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open-api/position/v1/ip",
+          "query": {
+            "ak": [
+              "test-secret"
+            ],
+            "ip": [
+              "8.8.8.8"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "adcode": "",
+          "city": "",
+          "province": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-nullFields",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "cc0a654d-cf6c-51ce-8217-9daf487b547c",
+      "exchanges": [
+        {
+          "body": "{\"status\":200,\"data\":null}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open-api/position/v1/ip",
+          "query": {
+            "ak": [
+              "test-secret"
+            ],
+            "ip": [
+              "8.8.8.8"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "adcode": "",
+          "city": "",
+          "province": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-missing",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "d3350430-0137-5f98-ac4a-156cfcae3e36",
+      "exchanges": [
+        {
+          "body": "{\"status\":200,\"data\":{\"adcode\":123}}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open-api/position/v1/ip",
+          "query": {
+            "ak": [
+              "test-secret"
+            ],
+            "ip": [
+              "8.8.8.8"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "adcode": "",
+          "city": "",
+          "province": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-number",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "e9042218-873c-54dd-8569-f926b767835a",
+      "exchanges": [
+        {
+          "body": "{\"status\":200,\"data\":{\"city\":\"界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界ab\"}}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open-api/position/v1/ip",
+          "query": {
+            "ak": [
+              "test-secret"
+            ],
+            "ip": [
+              "8.8.8.8"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "adcode": "",
+          "city": "界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界ab",
+          "province": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-unicodeBoundary",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "06bbe3d5-9249-5374-bdab-c40ff1ea3cce",
+      "exchanges": [
+        {
+          "body": "{\"status\":200,\"data\":{\"city\":\"界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界\"}}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open-api/position/v1/ip",
+          "query": {
+            "ak": [
+              "test-secret"
+            ],
+            "ip": [
+              "8.8.8.8"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "adcode": "",
+          "city": "",
+          "province": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-unicodeTooLong",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "e7591be8-26a1-55aa-b25c-7f3f41a11a2d",
+      "exchanges": [
+        {
+          "body": "{\"status\":200,\"data\":{\"adcode\":\"1111111111111111\"}}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open-api/position/v1/ip",
+          "query": {
+            "ak": [
+              "test-secret"
+            ],
+            "ip": [
+              "8.8.8.8"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "adcode": "1111111111111111",
+          "city": "",
+          "province": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-adcodeBoundary",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "b537583a-4395-52c9-ac76-1b77150ca2cb",
+      "exchanges": [
+        {
+          "body": "{\"status\":200,\"data\":{\"adcode\":\"11111111111111111\"}}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open-api/position/v1/ip",
+          "query": {
+            "ak": [
+              "test-secret"
+            ],
+            "ip": [
+              "8.8.8.8"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "adcode": "",
+          "city": "",
+          "province": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-adcodeTooLong",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "aa70247d-1aec-5488-936c-f5ba3d919739",
+      "exchanges": [
+        {
+          "body": "{\"status\":200,\"data\":{\"prov\":\"test-\",\"city\":\"secret\"}}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open-api/position/v1/ip",
+          "query": {
+            "ak": [
+              "test-secret"
+            ],
+            "ip": [
+              "8.8.8.8"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "adcode": "",
+          "city": "",
+          "province": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-splitKey",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "7e8b6a54-29d8-5dd4-ac6e-ca62ce1a13c3",
+      "exchanges": [
+        {
+          "body": "{\"status\":200,\"data\":{\"adcode\":\"test-secret\"}}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open-api/position/v1/ip",
+          "query": {
+            "ak": [
+              "test-secret"
+            ],
+            "ip": [
+              "8.8.8.8"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "adcode": "",
+          "city": "",
+          "province": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-wholeKey",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "08853a35-b317-550a-a489-b7438644993e",
+      "exchanges": [
+        {
+          "body": "{\"status\":200,\"data\":{\"city\":\"a\\tb\"}}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open-api/position/v1/ip",
+          "query": {
+            "ak": [
+              "test-secret"
+            ],
+            "ip": [
+              "8.8.8.8"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "adcode": "",
+          "city": "a\tb",
+          "province": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-tab",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "be0f5e97-7c7e-519a-abf6-ebe61e2fedde",
+      "exchanges": [
+        {
+          "body": "{\"status\":200,\"data\":{\"city\":\"a\\u0000b\"}}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open-api/position/v1/ip",
+          "query": {
+            "ak": [
+              "test-secret"
+            ],
+            "ip": [
+              "8.8.8.8"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "adcode": "",
+          "city": "",
+          "province": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-nul",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "606d8d92-b29c-5a60-8ff9-dce5f9e39cef",
+      "exchanges": [
+        {
+          "body": "{\"status\":200,\"data\":{\"city\":\"x\\ny\"}}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open-api/position/v1/ip",
+          "query": {
+            "ak": [
+              "test-secret"
+            ],
+            "ip": [
+              "8.8.8.8"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "adcode": "",
+          "city": "",
+          "province": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-lf",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "02977a82-c8cf-5671-a984-6ba115842eec",
+      "exchanges": [
+        {
+          "body": "{\"status\":200,\"data\":{\"city\":\"x\\ry\"}}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open-api/position/v1/ip",
+          "query": {
+            "ak": [
+              "test-secret"
+            ],
+            "ip": [
+              "8.8.8.8"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "adcode": "",
+          "city": "",
+          "province": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-cr",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "85e566c5-b6be-57c0-a43f-d4149410889b",
+      "exchanges": [
+        {
+          "body": "{\"status\":1008}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open-api/position/v1/ip",
+          "query": {
+            "ak": [
+              "test-secret"
+            ],
+            "ip": [
+              "8.8.8.8"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-busy",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "5c872020-d343-5c36-a4c0-e39fd5eea8a7",
+      "exchanges": [
+        {
+          "body": "{\"status\":1010}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open-api/position/v1/ip",
+          "query": {
+            "ak": [
+              "test-secret"
+            ],
+            "ip": [
+              "8.8.8.8"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-rate",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "410d13db-27e7-5f9b-a0e2-fde592d75a27",
+      "exchanges": [
+        {
+          "body": "{\"status\":-1}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open-api/position/v1/ip",
+          "query": {
+            "ak": [
+              "test-secret"
+            ],
+            "ip": [
+              "8.8.8.8"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "adcode": "",
+          "city": "",
+          "province": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-unrecognized",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "a24f86fc-ed79-5839-aa90-928a6263de02",
+      "exchanges": [
+        {
+          "body": "{\"status\":9223372036854775808}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open-api/position/v1/ip",
+          "query": {
+            "ak": [
+              "test-secret"
+            ],
+            "ip": [
+              "8.8.8.8"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "adcode": "",
+          "city": "",
+          "province": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-tooLarge",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "75eed20a-f0c1-5cd2-ba09-a75a5539a06b",
+      "exchanges": [
+        {
+          "body": "{\"status\":200.0}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open-api/position/v1/ip",
+          "query": {
+            "ak": [
+              "test-secret"
+            ],
+            "ip": [
+              "8.8.8.8"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "adcode": "",
+          "city": "",
+          "province": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-float",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "79b18717-adba-5d6a-8e22-84e6203f6a93",
+      "exchanges": [
+        {
+          "body": "{\"status\":1008,\"data\":{\"city\":4}}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open-api/position/v1/ip",
+          "query": {
+            "ak": [
+              "test-secret"
+            ],
+            "ip": [
+              "8.8.8.8"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "adcode": "",
+          "city": "",
+          "province": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-malformedBusy",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "e303a518-79b9-52d4-969d-04adab2f323a",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "adcode": "",
+          "city": "",
+          "province": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-missingCredential",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "6b917f15-886d-5703-93a0-45d75df89dcf",
+      "exchanges": [
+        {
+          "body": "{\"status\":200}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open-api/position/v1/ip",
+          "query": {
+            "ak": [
+              "test-secret"
+            ],
+            "ip": [
+              "8.8.8.8"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "adcode": "",
+          "city": "",
+          "province": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-missingPayload",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "d2309493-b3af-5a88-b156-0dd19e9e0ed4",
+      "exchanges": [
+        {
+          "body": "{\"status\":200,\"data\":\"bad\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open-api/position/v1/ip",
+          "query": {
+            "ak": [
+              "test-secret"
+            ],
+            "ip": [
+              "8.8.8.8"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "adcode": "",
+          "city": "",
+          "province": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-malformedPayload",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "70f6394c-44d3-56de-993d-d2928ede2450",
+      "exchanges": [
+        {
+          "body": "{\"status\":1007}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open-api/position/v1/ip",
+          "query": {
+            "ak": [
+              "test-secret"
+            ],
+            "ip": [
+              "8.8.8.8"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "adcode": "",
+          "city": "",
+          "province": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-dailyQuota",
+      "operation": "lookupIPLocation"
     }
   ],
   "schemaVersion": 1
